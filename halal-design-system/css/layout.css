@@ -1,0 +1,352 @@
+/* حلل المعرفة — Layout (Navbar, Sidebar, Main) */
+
+/* ── Navbar ── */
+.ds-navbar {
+  background: var(--ds-card);
+  padding: 1rem 2rem;
+  box-shadow: var(--ds-shadow-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 1px solid var(--ds-border);
+  min-height: var(--ds-navbar-height);
+}
+
+.ds-navbar-left,
+.ds-navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.ds-navbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.ds-logo-img {
+  height: 45px;
+  max-width: 280px;
+  object-fit: contain;
+}
+
+.ds-breadcrumb {
+  font-size: 0.9rem;
+  color: var(--ds-text-muted);
+}
+
+.ds-breadcrumb strong {
+  color: var(--ds-text);
+  font-weight: 600;
+}
+
+.ds-navbar-icon {
+  font-size: 1.2rem;
+  color: var(--ds-text);
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+.ds-navbar-icon:hover {
+  color: var(--ds-secondary);
+}
+
+.ds-toggle-sidebar {
+  display: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--ds-text);
+}
+
+/* ── User Menu ── */
+.ds-user-menu {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ds-user-info {
+  text-align: right;
+}
+
+.ds-user-name {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.ds-user-position {
+  font-size: 0.8rem;
+  color: var(--ds-text-muted);
+}
+
+.ds-user-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--ds-radius-md);
+  background: var(--ds-gradient-secondary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.ds-user-avatar:hover {
+  transform: scale(1.08);
+  box-shadow: var(--ds-shadow-btn);
+}
+
+/* ── Main Layout ── */
+.ds-main-layout {
+  display: flex;
+  min-height: calc(100vh - var(--ds-navbar-height));
+}
+
+.ds-app {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── Sidebar ── */
+.ds-sidebar {
+  width: var(--ds-sidebar-width);
+  background: var(--ds-card);
+  border-left: 1px solid var(--ds-border);
+  padding: 2rem 0;
+  position: fixed;
+  top: var(--ds-navbar-height);
+  right: 0;
+  height: calc(100vh - var(--ds-navbar-height));
+  overflow-y: auto;
+  transition: all 0.3s ease;
+  z-index: 999;
+}
+
+.ds-app > .ds-sidebar {
+  top: 0;
+  height: 100vh;
+  box-shadow: -2px 0 12px rgba(0, 92, 123, 0.06);
+}
+
+.ds-sidebar-logo {
+  padding: 28px 24px 20px;
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-logo-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ds-primary);
+  line-height: 1.2;
+}
+
+.ds-logo-sub {
+  font-size: 12px;
+  color: var(--ds-secondary);
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.ds-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--ds-secondary-light);
+  border: 1px solid rgba(64, 186, 172, 0.25);
+  border-radius: var(--ds-radius-pill);
+  padding: 4px 10px;
+  font-size: 11px;
+  color: var(--ds-secondary);
+  margin-top: 10px;
+}
+
+.ds-sidebar-nav {
+  flex: 1;
+  padding: 16px 0;
+}
+
+.ds-nav-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--ds-text-muted);
+  padding: 12px 24px 6px;
+  opacity: 0.7;
+}
+
+.ds-sidebar-item,
+.ds-nav-btn {
+  width: 100%;
+  padding: 1rem 2rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  color: var(--ds-text-muted);
+  text-decoration: none;
+  border: none;
+  background: none;
+  border-right: 3px solid transparent;
+  font-family: var(--ds-font-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-align: right;
+}
+
+.ds-nav-btn {
+  padding: 12px 24px;
+  font-size: 14px;
+}
+
+.ds-sidebar-item:hover,
+.ds-sidebar-item.active,
+.ds-nav-btn:hover,
+.ds-nav-btn.active {
+  background: var(--ds-accent-light);
+  color: var(--ds-primary);
+  border-right-color: var(--ds-secondary);
+}
+
+.ds-nav-btn.active {
+  font-weight: 600;
+}
+
+.ds-sidebar-icon,
+.ds-nav-btn i {
+  font-size: 1.3rem;
+  width: 24px;
+  text-align: center;
+  color: var(--ds-secondary);
+}
+
+.ds-nav-btn i {
+  font-size: 15px;
+  width: 18px;
+}
+
+.ds-sidebar-stats {
+  padding: 16px;
+  border-top: 1px solid var(--ds-border);
+}
+
+/* ── Content ── */
+.ds-content,
+.ds-main {
+  flex: 1;
+  margin-right: var(--ds-sidebar-width);
+  padding: 2rem;
+}
+
+.ds-main {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+/* ── Topbar ── */
+.ds-topbar {
+  background: var(--ds-card);
+  border-bottom: 1px solid var(--ds-border);
+  padding: 0 32px;
+  height: var(--ds-topbar-height);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  box-shadow: var(--ds-shadow-sm);
+}
+
+.ds-topbar-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ds-primary);
+}
+
+.ds-topbar-sub {
+  font-size: 12px;
+  color: var(--ds-text-muted);
+  margin-top: 2px;
+}
+
+.ds-topbar-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.ds-page-content {
+  padding: 32px;
+}
+
+/* ── Login Layout ── */
+.ds-login-page {
+  background: var(--ds-gradient-page);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+.ds-login-container {
+  width: 100%;
+  max-width: 420px;
+  padding: 2rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .ds-navbar {
+    padding: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .ds-navbar-center {
+    display: none;
+  }
+
+  .ds-toggle-sidebar {
+    display: block;
+  }
+
+  .ds-sidebar {
+    top: 0;
+    height: 100vh;
+    right: calc(-1 * var(--ds-sidebar-width));
+    box-shadow: -4px 0 16px rgba(0, 0, 0, 0.1);
+  }
+
+  .ds-sidebar.open {
+    right: 0;
+  }
+
+  .ds-content,
+  .ds-main {
+    margin-right: 0;
+  }
+
+  .ds-content {
+    padding: 1.5rem;
+  }
+
+  .ds-breadcrumb,
+  .ds-user-info {
+    display: none;
+  }
+
+  .ds-cards-grid,
+  .ds-stats-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .ds-app-card {
+    flex-direction: column;
+  }
+}
