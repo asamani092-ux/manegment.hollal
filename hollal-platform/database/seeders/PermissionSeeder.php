@@ -35,6 +35,22 @@ class PermissionSeeder extends Seeder
         'tasks.create',
         'tasks.update',
         'tasks.delete',
+        'meetings.view',
+        'meetings.create',
+        'meetings.update',
+        'meetings.delete',
+        'expenses.view',
+        'expenses.create',
+        'expenses.approve',
+        'expenses.pay',
+        'salaries.view',
+        'salaries.manage',
+        'documents.view',
+        'documents.create',
+        'contracts.view',
+        'contracts.create',
+        'contracts.manage',
+        'reports.view',
     ];
 
     public function run(): void

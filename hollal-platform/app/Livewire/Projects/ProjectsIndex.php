@@ -377,6 +377,7 @@ class ProjectsIndex extends Component
         $projects = Project::query()
             ->select(['id', 'name', 'manager_id', 'status', 'start_date', 'end_date', 'budget', 'current_phase', 'target_audience'])
             ->with(['manager:id,name'])
+            ->withSum(['expenseRequests as actual_spend' => fn ($q) => $q->countedAsSpend()], 'amount')
             ->when($this->projectSearch, fn ($q) => $q->where('name', 'like', '%'.$this->projectSearch.'%'))
             ->latest()
             ->paginate(8, pageName: 'projectsPage');

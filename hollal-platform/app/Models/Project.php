@@ -64,4 +64,38 @@ class Project extends Model
     {
         return $this->hasMany(Partnership::class);
     }
+
+    /** @return HasMany<ExpenseRequest, $this> */
+    public function expenseRequests(): HasMany
+    {
+        return $this->hasMany(ExpenseRequest::class);
+    }
+
+    public function actualSpend(): float
+    {
+        return (float) $this->expenseRequests()
+            ->countedAsSpend()
+            ->sum('amount');
+    }
+
+    public function remainingBudget(): ?float
+    {
+        if ($this->budget === null) {
+            return null;
+        }
+
+        return (float) $this->budget - $this->actualSpend();
+    }
+
+    /** @return HasMany<ProjectUpdate, $this> */
+    public function projectUpdates(): HasMany
+    {
+        return $this->hasMany(ProjectUpdate::class);
+    }
+
+    /** @return HasMany<Document, $this> */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(Document::class);
+    }
 }

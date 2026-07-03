@@ -31,16 +31,28 @@
                         <th>المدير</th>
                         <th>الحالة</th>
                         <th>الميزانية</th>
+                        <th>الإنفاق الفعلي</th>
+                        <th>المتبقي</th>
                         <th>المرحلة</th>
                         <th>إجراءات</th>
                     </tr>
                 </x-slot:head>
                 @forelse ($projects as $project)
                     <tr wire:key="project-{{ $project->id }}">
-                        <td>{{ $project->name }}</td>
+                        <td>
+                            <a href="{{ route('projects.show', $project) }}" class="ds-link">{{ $project->name }}</a>
+                        </td>
                         <td>{{ $project->manager?->name ?? '—' }}</td>
                         <td>{{ $projectStatusLabels[$project->status] ?? $project->status }}</td>
                         <td>{{ $project->budget !== null ? number_format((float) $project->budget, 2) : '—' }}</td>
+                        <td>{{ number_format((float) ($project->actual_spend ?? 0), 2) }}</td>
+                        <td>
+                            @if ($project->budget !== null)
+                                {{ number_format((float) $project->budget - (float) ($project->actual_spend ?? 0), 2) }}
+                            @else
+                                —
+                            @endif
+                        </td>
                         <td>{{ $project->current_phase ?: '—' }}</td>
                         <td>
                             <x-ds-action-icons
@@ -56,7 +68,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="ds-text-muted ds-table-empty">لا توجد مشاريع</td>
+                        <td colspan="8" class="ds-text-muted ds-table-empty">لا توجد مشاريع</td>
                     </tr>
                 @endforelse
             </x-ds-table>
@@ -193,6 +205,24 @@
                     <x-ds-form-group label="المخرجات النهائية" :error="$errors->first('final_outputs')">
                         <textarea class="ds-input" rows="3" wire:model="final_outputs" @disabled($projectViewOnly)></textarea>
                     </x-ds-form-group>
+
+                    @if ($projectViewOnly && $projectId)
+                        @php
+                            $viewProject = \App\Models\Project::withSum(['expenseRequests as actual_spend' => fn ($q) => $q->countedAsSpend()], 'amount')->find($projectId);
+                        @endphp
+                        @if ($viewProject)
+                            <div class="ds-detail-row">
+                                <span class="ds-detail-label">الإنفاق الفعلي:</span>
+                                <span>{{ number_format((float) ($viewProject->actual_spend ?? 0), 2) }}</span>
+                            </div>
+                            @if ($viewProject->budget !== null)
+                                <div class="ds-detail-row">
+                                    <span class="ds-detail-label">المتبقي من الميزانية:</span>
+                                    <span>{{ number_format((float) $viewProject->budget - (float) ($viewProject->actual_spend ?? 0), 2) }}</span>
+                                </div>
+                            @endif
+                        @endif
+                    @endif
 
                     @if ($projectId && auth()->user()->can('projects.update'))
                         <div class="ds-form-group">

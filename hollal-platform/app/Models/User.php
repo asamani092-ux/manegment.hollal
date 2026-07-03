@@ -63,6 +63,42 @@ class User extends Authenticatable
         return $this->hasMany(Task::class, 'assigned_by');
     }
 
+    /** @return HasMany<Meeting, $this> */
+    public function chairedMeetings(): HasMany
+    {
+        return $this->hasMany(Meeting::class, 'chair_id');
+    }
+
+    /** @return HasMany<Meeting, $this> */
+    public function secretaryMeetings(): HasMany
+    {
+        return $this->hasMany(Meeting::class, 'secretary_id');
+    }
+
+    /** @return BelongsToMany<Meeting, $this> */
+    public function meetings(): BelongsToMany
+    {
+        return $this->belongsToMany(Meeting::class, 'meeting_user')->withTimestamps();
+    }
+
+    /** @return HasMany<MeetingItem, $this> */
+    public function responsibleMeetingItems(): HasMany
+    {
+        return $this->hasMany(MeetingItem::class, 'responsible_id');
+    }
+
+    /** @return HasMany<Contract, $this> */
+    public function contracts(): HasMany
+    {
+        return $this->hasMany(Contract::class, 'employee_id');
+    }
+
+    /** @return HasMany<ExpenseRequest, $this> */
+    public function expenseRequests(): HasMany
+    {
+        return $this->hasMany(ExpenseRequest::class, 'requester_id');
+    }
+
     protected function casts(): array
     {
         return [
