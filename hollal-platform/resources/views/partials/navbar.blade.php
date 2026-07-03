@@ -12,6 +12,9 @@
     </div>
 
     <div class="ds-navbar-end">
+        @auth
+            <livewire:notification-bell />
+        @endauth
         <div class="ds-user-dropdown" id="ds-user-dropdown">
             <button type="button" class="ds-user-trigger" id="ds-user-trigger" aria-haspopup="true" aria-expanded="false">
                 <span class="ds-user-avatar">{{ mb_substr(auth()->user()->name, 0, 1) }}</span>

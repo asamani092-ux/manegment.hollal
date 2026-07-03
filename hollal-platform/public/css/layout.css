@@ -70,6 +70,144 @@
   background: var(--ds-accent-light);
 }
 
+/* ── Notifications Bell ── */
+.ds-notifications-dropdown {
+  position: relative;
+}
+
+.ds-notifications-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-sm);
+  background: var(--ds-card);
+  color: var(--ds-text-muted);
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.ds-notifications-trigger:hover {
+  color: var(--ds-primary);
+  border-color: var(--ds-secondary);
+  background: var(--ds-accent-light);
+}
+
+.ds-notifications-badge {
+  position: absolute;
+  top: -4px;
+  left: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--ds-danger);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.ds-notifications-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  width: min(320px, calc(100vw - 2rem));
+  background: var(--ds-card);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+  box-shadow: var(--ds-shadow-md);
+  z-index: 1001;
+  overflow: hidden;
+}
+
+.ds-notifications-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 0.875rem;
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-notifications-title {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--ds-text);
+}
+
+.ds-notifications-mark-all {
+  border: none;
+  background: none;
+  padding: 0;
+  font-family: var(--ds-font-primary);
+  font-size: 0.75rem;
+  color: var(--ds-primary);
+  cursor: pointer;
+}
+
+.ds-notifications-mark-all:hover {
+  text-decoration: underline;
+}
+
+.ds-notifications-empty {
+  padding: 1rem 0.875rem;
+  font-size: 0.8125rem;
+  color: var(--ds-text-muted);
+  text-align: center;
+}
+
+.ds-notifications-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.ds-notifications-item {
+  border-bottom: 1px solid var(--ds-border);
+}
+
+.ds-notifications-item:last-child {
+  border-bottom: none;
+}
+
+.ds-notifications-item.is-unread {
+  background: var(--ds-accent-light);
+}
+
+.ds-notifications-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.875rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.2s ease;
+}
+
+.ds-notifications-link:hover {
+  background: var(--ds-bg);
+}
+
+.ds-notifications-message {
+  font-size: 0.8125rem;
+  color: var(--ds-text);
+  line-height: 1.4;
+  text-align: right;
+}
+
+.ds-notifications-time {
+  font-size: 0.6875rem;
+  color: var(--ds-text-muted);
+  text-align: right;
+}
+
 /* ── User Dropdown ── */
 .ds-user-dropdown {
   position: relative;

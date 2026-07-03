@@ -6,6 +6,7 @@ use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
+use App\Notifications\TaskAssigned;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -154,7 +155,19 @@ class TasksIndex extends Component
             $data['submitted_file'] = $this->submittedFile->store('tasks', 'local');
         }
 
-        Task::updateOrCreate(['id' => $this->taskId], $data);
+        if ($isEdit) {
+            $task = Task::findOrFail($this->taskId);
+            $previousAssignee = $task->assigned_to;
+            $task->update($data);
+            $task->refresh();
+
+            if ($previousAssignee !== $task->assigned_to && $task->assigned_to) {
+                User::find($task->assigned_to)?->notify(new TaskAssigned($task));
+            }
+        } else {
+            $task = Task::create($data);
+            User::find($task->assigned_to)?->notify(new TaskAssigned($task));
+        }
 
         $this->closeTaskModal();
         $this->dispatch('toast', type: 'success', message: $isEdit ? 'تم تحديث المهمة' : 'تم إسناد المهمة');
