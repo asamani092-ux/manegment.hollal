@@ -49,8 +49,8 @@ class DepartmentsIndex extends Component
 
     public function openEdit(int $id): void
     {
-        $this->authorize('departments.update');
         $department = Department::findOrFail($id);
+        $this->authorize('update', $department);
         $this->departmentId = $department->id;
         $this->name = $department->name;
         $this->viewOnly = false;
@@ -59,8 +59,8 @@ class DepartmentsIndex extends Component
 
     public function openView(int $id): void
     {
-        $this->authorize('departments.view');
         $department = Department::findOrFail($id);
+        $this->authorize('view', $department);
         $this->departmentId = $department->id;
         $this->name = $department->name;
         $this->viewOnly = true;
@@ -74,7 +74,13 @@ class DepartmentsIndex extends Component
         }
 
         $isEdit = (bool) $this->departmentId;
-        $this->authorize($isEdit ? 'departments.update' : 'departments.create');
+
+        if ($isEdit) {
+            $department = Department::findOrFail($this->departmentId);
+            $this->authorize('update', $department);
+        } else {
+            $this->authorize('departments.create');
+        }
 
         $this->validate([
             'name' => 'required|string|max:255|unique:departments,name,'.($this->departmentId ?? 'NULL'),
@@ -89,8 +95,9 @@ class DepartmentsIndex extends Component
 
     public function delete(int $id): void
     {
-        $this->authorize('departments.delete');
-        Department::findOrFail($id)->delete();
+        $department = Department::findOrFail($id);
+        $this->authorize('delete', $department);
+        $department->delete();
         $this->dispatch('toast', type: 'success', message: 'تم حذف القسم');
     }
 

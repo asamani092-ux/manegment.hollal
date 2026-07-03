@@ -41,8 +41,8 @@ class RolesIndex extends Component
 
     public function openEditModal(int $id): void
     {
-        $this->authorize('roles.update');
         $role = Role::with('permissions:id,name')->findOrFail($id);
+        $this->authorize('update', $role);
         $this->roleId = $role->id;
         $this->name = $role->name;
         $this->selectedPermissions = $role->permissions->pluck('name')->all();
@@ -52,7 +52,8 @@ class RolesIndex extends Component
     public function save(): void
     {
         if ($this->roleId) {
-            $this->authorize('roles.update');
+            $role = Role::findOrFail($this->roleId);
+            $this->authorize('update', $role);
         } else {
             $this->authorize('roles.create');
         }
@@ -76,11 +77,11 @@ class RolesIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'تم حفظ الدور بنجاح');
     }
 
-    /** Soft delete — never hard delete. */
     public function delete(int $id): void
     {
-        $this->authorize('roles.delete');
-        Role::findOrFail($id)->delete();
+        $role = Role::findOrFail($id);
+        $this->authorize('delete', $role);
+        $role->delete();
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->dispatch('toast', type: 'success', message: 'تم حذف الدور');
     }

@@ -55,17 +55,19 @@ class UsersIndex extends Component
 
     public function openEditModal(int $id): void
     {
-        $this->authorize('users.update');
+        $user = User::with('roles:id,name')->findOrFail($id);
+        $this->authorize('update', $user);
         $this->viewOnly = false;
-        $this->fillForm(User::with('roles:id,name')->findOrFail($id));
+        $this->fillForm($user);
         $this->showModal = true;
     }
 
     public function openViewModal(int $id): void
     {
-        $this->authorize('users.view');
+        $user = User::with('roles:id,name')->findOrFail($id);
+        $this->authorize('view', $user);
         $this->viewOnly = true;
-        $this->fillForm(User::with('roles:id,name')->findOrFail($id));
+        $this->fillForm($user);
         $this->showModal = true;
     }
 
@@ -89,7 +91,8 @@ class UsersIndex extends Component
         }
 
         if ($this->userId) {
-            $this->authorize('users.update');
+            $user = User::findOrFail($this->userId);
+            $this->authorize('update', $user);
         } else {
             $this->authorize('users.create');
         }
@@ -133,18 +136,11 @@ class UsersIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'تم حفظ المستخدم بنجاح');
     }
 
-    /** Soft delete only. */
     public function delete(int $id): void
     {
-        $this->authorize('users.delete');
-
-        if ($id === auth()->id()) {
-            $this->dispatch('toast', type: 'error', message: 'لا يمكنك حذف حسابك');
-
-            return;
-        }
-
-        User::findOrFail($id)->delete();
+        $user = User::findOrFail($id);
+        $this->authorize('delete', $user);
+        $user->delete();
         $this->dispatch('toast', type: 'success', message: 'تم حذف المستخدم');
     }
 

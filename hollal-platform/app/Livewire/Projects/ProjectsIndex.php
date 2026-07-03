@@ -130,6 +130,10 @@ class ProjectsIndex extends Component
 
     public function saveProject(): void
     {
+        if ($this->projectViewOnly) {
+            return;
+        }
+
         if ($this->projectId) {
             $project = Project::findOrFail($this->projectId);
             $this->authorize('update', $project);
@@ -194,6 +198,10 @@ class ProjectsIndex extends Component
 
     public function savePartnership(): void
     {
+        if ($this->partnershipViewOnly) {
+            return;
+        }
+
         if ($this->partnershipId) {
             $partnership = Partnership::findOrFail($this->partnershipId);
             $this->authorize('update', $partnership);

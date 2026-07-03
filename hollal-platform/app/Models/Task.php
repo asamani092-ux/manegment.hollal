@@ -58,4 +58,10 @@ class Task extends Model
     {
         return $this->belongsTo(Project::class);
     }
+
+    /** @return BelongsTo<Meeting, $this> */
+    public function meeting(): BelongsTo
+    {
+        return $this->belongsTo(Meeting::class);
+    }
 }

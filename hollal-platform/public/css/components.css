@@ -890,6 +890,45 @@
   padding: 1rem;
 }
 
+.ds-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--ds-border);
+  padding-bottom: 0.75rem;
+}
+
+.ds-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--ds-radius-sm);
+  font-family: var(--ds-font-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1.5px solid var(--ds-border);
+  background: var(--ds-card);
+  color: var(--ds-primary);
+  transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.ds-tab:hover {
+  border-color: var(--ds-secondary);
+  color: var(--ds-secondary);
+}
+
+.ds-tab-active {
+  background: var(--ds-gradient-brand);
+  color: #fff;
+  border-color: transparent;
+}
+
+.ds-tab-active:hover {
+  color: #fff;
+}
+
 @media (max-width: 768px) {
   .ds-grid-2 {
     grid-template-columns: 1fr;

@@ -25,6 +25,11 @@ class ProjectPolicy
         return $this->canAccess($user, $project);
     }
 
+    public function submitUpdate(User $user, Project $project): bool
+    {
+        return $project->manager_id === $user->id;
+    }
+
     protected function canAccess(User $user, Project $project): bool
     {
         if ($user->can('projects.update')) {

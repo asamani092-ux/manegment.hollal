@@ -39,6 +39,26 @@ class AuthTest extends TestCase
         $this->assertAuthenticatedAs($user);
     }
 
+    public function test_login_regenerates_session_id(): void
+    {
+        $user = User::factory()->create([
+            'phone' => '0506666666',
+            'password' => Hash::make(self::TEST_PASSWORD),
+            'must_change_password' => false,
+        ]);
+        $user->givePermissionTo('dashboard.view');
+
+        $this->startSession();
+        $oldSessionId = session()->getId();
+
+        $this->post(route('login'), [
+            'phone' => '0506666666',
+            'password' => self::TEST_PASSWORD,
+        ])->assertRedirect(route('dashboard'));
+
+        $this->assertNotSame($oldSessionId, session()->getId());
+    }
+
     public function test_login_fails_with_wrong_password(): void
     {
         User::factory()->create([
