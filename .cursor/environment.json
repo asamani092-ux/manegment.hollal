@@ -1,0 +1,21 @@
+{
+  "name": "hollal-platform",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "install": "cd hollal-platform && composer install --no-interaction && (test -f .env || cp .env.example .env) && php artisan key:generate --force && touch database/database.sqlite && php artisan migrate --force --no-interaction",
+  "terminals": [
+    {
+      "name": "Laravel",
+      "command": "cd hollal-platform && php artisan db:seed --force --no-interaction 2>/dev/null; cd hollal-platform && php artisan serve --host=0.0.0.0 --port=8000",
+      "description": "Hollal management platform (Arabic RTL UI)"
+    }
+  ],
+  "ports": [
+    {
+      "name": "web",
+      "port": 8000
+    }
+  ]
+}

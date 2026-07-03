@@ -4,7 +4,9 @@ composer.phar
 Thumbs.db
 .idea/
 .vscode/
-.cursor/
+.cursor/*
+!.cursor/environment.json
+!.cursor/Dockerfile
 
 # Laravel (hollal-platform)
 hollal-platform/vendor/
