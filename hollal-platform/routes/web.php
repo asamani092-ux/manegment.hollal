@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\TaskFileDownloadController;
 use App\Livewire\Departments\DepartmentsIndex;
 use App\Livewire\Partnerships\PartnershipGuestView;
@@ -23,7 +24,12 @@ Route::post('/logout', [AuthController::class, 'logout'])
     ->middleware('auth')
     ->name('logout');
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware('auth')->group(function () {
+    Route::get('/change-password', [ChangePasswordController::class, 'showChangePasswordForm'])->name('password.change');
+    Route::post('/change-password', [ChangePasswordController::class, 'changePassword'])->name('password.change.update');
+});
+
+Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/files/tasks/{task}/{type}', TaskFileDownloadController::class)
         ->whereIn('type', ['attachment', 'submitted'])
         ->name('tasks.files.download');
