@@ -211,13 +211,13 @@
                         @if ($existingAttachmentPath)
                             <div class="ds-detail-row">
                                 <span class="ds-detail-label">مرفق المهمة:</span>
-                                <a class="ds-link" href="{{ asset('storage/'.$existingAttachmentPath) }}" target="_blank" rel="noopener">تحميل</a>
+                                <a class="ds-link" href="{{ route('tasks.files.download', ['task' => $taskId, 'type' => 'attachment']) }}">تحميل</a>
                             </div>
                         @endif
                         @if ($existingSubmittedPath)
                             <div class="ds-detail-row">
                                 <span class="ds-detail-label">ملف التسليم:</span>
-                                <a class="ds-link" href="{{ asset('storage/'.$existingSubmittedPath) }}" target="_blank" rel="noopener">تحميل</a>
+                                <a class="ds-link" href="{{ route('tasks.files.download', ['task' => $taskId, 'type' => 'submitted']) }}">تحميل</a>
                             </div>
                         @endif
                     @endif

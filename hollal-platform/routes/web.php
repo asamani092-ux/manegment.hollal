@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\TaskFileDownloadController;
 use App\Livewire\Departments\DepartmentsIndex;
 use App\Livewire\Partnerships\PartnershipGuestView;
 use App\Livewire\Projects\ProjectsIndex;
@@ -23,6 +24,10 @@ Route::post('/logout', [AuthController::class, 'logout'])
     ->name('logout');
 
 Route::middleware(['auth'])->group(function () {
+    Route::get('/files/tasks/{task}/{type}', TaskFileDownloadController::class)
+        ->whereIn('type', ['attachment', 'submitted'])
+        ->name('tasks.files.download');
+
     Route::view('/dashboard', 'dashboard.index')
         ->middleware('permission:dashboard.view')
         ->name('dashboard');

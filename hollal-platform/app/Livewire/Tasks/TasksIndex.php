@@ -144,11 +144,11 @@ class TasksIndex extends Component
         }
 
         if ($this->attachment) {
-            $data['attachment_path'] = $this->attachment->store('tasks/attachments', 'public');
+            $data['attachment_path'] = $this->attachment->store('tasks', 'local');
         }
 
         if ($this->submittedFile) {
-            $data['submitted_file'] = $this->submittedFile->store('tasks/submitted', 'public');
+            $data['submitted_file'] = $this->submittedFile->store('tasks', 'local');
         }
 
         Task::updateOrCreate(['id' => $this->taskId], $data);
