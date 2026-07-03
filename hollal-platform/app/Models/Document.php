@@ -56,7 +56,7 @@ class Document extends Model
                     }
                 })
                 ->orWhere(function (Builder $dept) use ($user) {
-                    if ($user->department_id) {
+                    if ($user->can('documents.view') && $user->department_id) {
                         $dept->where('confidentiality', 'department')
                             ->whereHas('uploader', fn (Builder $u) => $u->where('department_id', $user->department_id));
                     }

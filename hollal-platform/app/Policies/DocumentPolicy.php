@@ -70,7 +70,7 @@ class DocumentPolicy
 
     protected function canAccessDepartment(User $user, Document $document): bool
     {
-        if (! $user->department_id) {
+        if (! $user->can('documents.view') || ! $user->department_id) {
             return false;
         }
 

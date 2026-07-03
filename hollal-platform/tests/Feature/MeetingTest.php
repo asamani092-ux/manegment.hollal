@@ -43,8 +43,8 @@ class MeetingTest extends TestCase
     public static function meetingRoutesProvider(): array
     {
         return [
-            'meetings index' => [route('meetings.index')],
-            'open decisions' => [route('meetings.open-decisions')],
+            'meetings index' => ['/meetings'],
+            'open decisions' => ['/meetings/open-decisions'],
         ];
     }
 

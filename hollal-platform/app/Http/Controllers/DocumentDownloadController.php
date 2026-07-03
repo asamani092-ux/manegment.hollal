@@ -20,6 +20,11 @@ class DocumentDownloadController extends Controller
             abort(404);
         }
 
-        return Storage::disk('local')->download($document->path);
+        $filename = basename($document->path);
+
+        return response()->streamDownload(
+            fn () => print(Storage::disk('local')->get($document->path)),
+            $filename
+        );
     }
 }

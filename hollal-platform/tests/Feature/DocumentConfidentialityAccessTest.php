@@ -39,17 +39,20 @@ class DocumentConfidentialityAccessTest extends TestCase
         $this->uploader = User::factory()->create([
             'phone' => '0501111111',
             'department_id' => $this->departmentA->id,
+            'must_change_password' => false,
         ]);
 
         $this->sameDepartmentUser = User::factory()->create([
             'phone' => '0502222222',
             'department_id' => $this->departmentA->id,
+            'must_change_password' => false,
         ]);
         $this->sameDepartmentUser->givePermissionTo('documents.view');
 
         $this->otherDepartmentUser = User::factory()->create([
             'phone' => '0503333333',
             'department_id' => $this->departmentB->id,
+            'must_change_password' => false,
         ]);
         $this->otherDepartmentUser->givePermissionTo('documents.view');
 
