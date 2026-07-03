@@ -112,16 +112,18 @@ class ProjectsIndex extends Component
 
     public function openProjectEdit(int $id): void
     {
-        $this->authorize('projects.update');
-        $this->fillProjectForm(Project::with('team:id')->findOrFail($id));
+        $project = Project::with('team:id')->findOrFail($id);
+        $this->authorize('update', $project);
+        $this->fillProjectForm($project);
         $this->projectViewOnly = false;
         $this->showProjectModal = true;
     }
 
     public function openProjectView(int $id): void
     {
-        $this->authorize('projects.view');
-        $this->fillProjectForm(Project::with('team:id')->findOrFail($id));
+        $project = Project::with('team:id')->findOrFail($id);
+        $this->authorize('view', $project);
+        $this->fillProjectForm($project);
         $this->projectViewOnly = true;
         $this->showProjectModal = true;
     }
@@ -129,7 +131,8 @@ class ProjectsIndex extends Component
     public function saveProject(): void
     {
         if ($this->projectId) {
-            $this->authorize('projects.update');
+            $project = Project::findOrFail($this->projectId);
+            $this->authorize('update', $project);
         } else {
             $this->authorize('projects.create');
         }
@@ -140,7 +143,7 @@ class ProjectsIndex extends Component
         $data = $this->projectPayload();
         $project = Project::updateOrCreate(['id' => $this->projectId], $data);
 
-        if (auth()->user()->can('projects.update')) {
+        if (auth()->user()->can('update', $project)) {
             $project->team()->sync($this->teamUserIds);
         }
 
@@ -150,16 +153,17 @@ class ProjectsIndex extends Component
 
     public function syncProjectTeam(): void
     {
-        $this->authorize('projects.update');
         $project = Project::findOrFail($this->projectId);
+        $this->authorize('update', $project);
         $project->team()->sync($this->teamUserIds);
         $this->dispatch('toast', type: 'success', message: 'تم تحديث فريق المشروع');
     }
 
     public function deleteProject(int $id): void
     {
-        $this->authorize('projects.delete');
-        Project::findOrFail($id)->delete();
+        $project = Project::findOrFail($id);
+        $this->authorize('delete', $project);
+        $project->delete();
         $this->dispatch('toast', type: 'success', message: 'تم حذف المشروع');
     }
 
@@ -172,16 +176,18 @@ class ProjectsIndex extends Component
 
     public function openPartnershipEdit(int $id): void
     {
-        $this->authorize('partnerships.update');
-        $this->fillPartnershipForm(Partnership::findOrFail($id));
+        $partnership = Partnership::findOrFail($id);
+        $this->authorize('update', $partnership);
+        $this->fillPartnershipForm($partnership);
         $this->partnershipViewOnly = false;
         $this->showPartnershipModal = true;
     }
 
     public function openPartnershipView(int $id): void
     {
-        $this->authorize('partnerships.view');
-        $this->fillPartnershipForm(Partnership::findOrFail($id));
+        $partnership = Partnership::findOrFail($id);
+        $this->authorize('view', $partnership);
+        $this->fillPartnershipForm($partnership);
         $this->partnershipViewOnly = true;
         $this->showPartnershipModal = true;
     }
@@ -189,7 +195,8 @@ class ProjectsIndex extends Component
     public function savePartnership(): void
     {
         if ($this->partnershipId) {
-            $this->authorize('partnerships.update');
+            $partnership = Partnership::findOrFail($this->partnershipId);
+            $this->authorize('update', $partnership);
         } else {
             $this->authorize('partnerships.create');
         }
@@ -224,8 +231,9 @@ class ProjectsIndex extends Component
 
     public function deletePartnership(int $id): void
     {
-        $this->authorize('partnerships.delete');
-        Partnership::findOrFail($id)->delete();
+        $partnership = Partnership::findOrFail($id);
+        $this->authorize('delete', $partnership);
+        $partnership->delete();
         $this->dispatch('toast', type: 'success', message: 'تم حذف الشراكة');
     }
 

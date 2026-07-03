@@ -86,16 +86,18 @@ class TasksIndex extends Component
 
     public function openTaskEdit(int $id): void
     {
-        $this->authorize('tasks.update');
-        $this->fillTaskForm(Task::findOrFail($id));
+        $task = Task::findOrFail($id);
+        $this->authorize('update', $task);
+        $this->fillTaskForm($task);
         $this->taskViewOnly = false;
         $this->showTaskModal = true;
     }
 
     public function openTaskView(int $id): void
     {
-        $this->authorize('tasks.view');
-        $this->fillTaskForm(Task::findOrFail($id));
+        $task = Task::findOrFail($id);
+        $this->authorize('view', $task);
+        $this->fillTaskForm($task);
         $this->taskViewOnly = true;
         $this->showTaskModal = true;
     }
@@ -109,7 +111,8 @@ class TasksIndex extends Component
         $isEdit = (bool) $this->taskId;
 
         if ($isEdit) {
-            $this->authorize('tasks.update');
+            $task = Task::findOrFail($this->taskId);
+            $this->authorize('update', $task);
         } else {
             $this->authorize('tasks.create');
         }
@@ -159,7 +162,8 @@ class TasksIndex extends Component
 
     public function updateTaskStatus(int $taskId, string $newStatus): void
     {
-        $this->authorize('tasks.update');
+        $task = Task::findOrFail($taskId);
+        $this->authorize('update', $task);
 
         if (! in_array($newStatus, ['new', 'in_progress', 'pending_review', 'completed', 'overdue'], true)) {
             $this->dispatch('toast', type: 'error', message: 'حالة غير صالحة');
@@ -173,8 +177,9 @@ class TasksIndex extends Component
 
     public function deleteTask(int $id): void
     {
-        $this->authorize('tasks.delete');
-        Task::findOrFail($id)->delete();
+        $task = Task::findOrFail($id);
+        $this->authorize('delete', $task);
+        $task->delete();
         $this->dispatch('toast', type: 'success', message: 'تم حذف المهمة');
     }
 
