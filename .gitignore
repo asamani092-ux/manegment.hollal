@@ -1,0 +1,20 @@
+# أدوات محلية
+composer.phar
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+.cursor/
+
+# Laravel (hollal-platform)
+hollal-platform/vendor/
+hollal-platform/node_modules/
+hollal-platform/.env
+hollal-platform/.env.backup
+hollal-platform/.env.production
+hollal-platform/public/storage
+hollal-platform/public/hot
+hollal-platform/public/build
+hollal-platform/storage/*.key
+hollal-platform/database/*.sqlite
+hollal-platform/database/database.sqlite

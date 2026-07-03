@@ -1,0 +1,86 @@
+/* حلل المعرفة — Base Styles */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--ds-font-primary);
+  background-color: var(--ds-bg);
+  color: var(--ds-text);
+  font-size: 0.875rem;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+[data-theme="dark"] body {
+  font-family: var(--ds-font-forms);
+  background: var(--ds-gradient-page);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+@keyframes ds-fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ds-fade-in {
+  animation: ds-fadeIn 0.3s ease;
+}
+
+.ds-page {
+  display: none;
+}
+
+.ds-page.active {
+  display: block;
+  animation: ds-fadeIn 0.3s ease;
+}
+
+.ds-page-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--ds-text);
+}
+
+.ds-section-heading {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 0.75rem;
+  color: var(--ds-text);
+}
+
+.ds-text-muted {
+  color: var(--ds-text-muted);
+}
+
+.ds-gradient-text {
+  background: var(--ds-gradient-brand);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

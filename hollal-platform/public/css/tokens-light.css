@@ -1,0 +1,71 @@
+/* حلل المعرفة — Light Theme Tokens (منصة / فواتير / QR) */
+:root,
+[data-theme="light"] {
+  /* Brand */
+  --ds-primary: #005c7b;
+  --ds-primary-dark: #003d52;
+  --ds-primary-deeper: #002c3d;
+  --ds-secondary: #40baac;
+  --ds-secondary-hover: #2e9b8e;
+  --ds-secondary-alt: #2aa89a;
+  --ds-accent: #c59649;
+  --ds-accent-light: #e8f9f7;
+  --ds-accent-gold-light: rgba(197, 150, 73, 0.12);
+
+  /* Semantic */
+  --ds-success: #2db57a;
+  --ds-success-alt: #10b981;
+  --ds-warning: #f59e0b;
+  --ds-danger: #e05252;
+  --ds-error: #ef4444;
+  --ds-info: #42a5f5;
+
+  /* Surfaces */
+  --ds-bg: #f8fafb;
+  --ds-bg-alt: #f5f7f9;
+  --ds-card: #ffffff;
+  --ds-border: #e8eef5;
+
+  /* Text */
+  --ds-text: #2a3f5f;
+  --ds-text-muted: #788fa0;
+
+  /* Effects */
+  --ds-shadow-sm: 0 2px 8px rgba(0, 92, 123, 0.08);
+  --ds-shadow-md: 0 8px 24px rgba(0, 92, 123, 0.12);
+  --ds-shadow-lg: 0 4px 16px rgba(0, 92, 123, 0.2);
+  --ds-shadow-btn: 0 6px 20px rgba(64, 186, 172, 0.3);
+  --ds-focus-ring: 0 0 0 3px rgba(64, 186, 172, 0.12);
+  --ds-secondary-light: rgba(64, 186, 172, 0.12);
+
+  /* Radius */
+  --ds-radius: 14px;
+  --ds-radius-md: 10px;
+  --ds-radius-sm: 8px;
+  --ds-radius-xs: 6px;
+  --ds-radius-pill: 20px;
+
+  /* Gradients */
+  --ds-gradient-brand: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-secondary) 100%);
+  --ds-gradient-secondary: linear-gradient(135deg, var(--ds-secondary) 0%, var(--ds-secondary-hover) 100%);
+  --ds-gradient-hero: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-primary-dark) 50%, var(--ds-secondary) 100%);
+  --ds-gradient-page: linear-gradient(135deg, var(--ds-bg-alt) 0%, var(--ds-accent-light) 100%);
+  --ds-gradient-invoice-header: linear-gradient(135deg, var(--ds-primary) 0%, var(--ds-primary-dark) 60%, var(--ds-primary-deeper) 100%);
+
+  /* Layout */
+  --ds-sidebar-width: 220px;
+  --ds-navbar-height: 56px;
+  --ds-topbar-height: 56px;
+
+  /* Aliases (توافق مع الأسماء القديمة) */
+  --primary-dark: var(--ds-primary);
+  --primary-light: var(--ds-secondary);
+  --accent-light: var(--ds-accent-light);
+  --bg-primary: var(--ds-card);
+  --bg-light: var(--ds-bg);
+  --text-primary: var(--ds-text);
+  --text-secondary: var(--ds-text-muted);
+  --border-color: var(--ds-border);
+  --shadow-sm: var(--ds-shadow-sm);
+  --shadow-md: var(--ds-shadow-md);
+}
