@@ -14,10 +14,16 @@
             'other' => 'أخرى',
         ];
         $paymentLabels = [
-            'cash' => 'نقدي',
-            'bank_transfer' => 'تحويل بنكي',
-            'card' => 'بطاقة',
+            'transfer' => 'تحويل',
+            'pos' => 'نقاط بيع',
+            'cheque' => 'شيك',
             'other' => 'أخرى',
+        ];
+        $priorityLabels = [
+            'low' => 'منخفضة',
+            'normal' => 'عادية',
+            'high' => 'عالية',
+            'urgent' => 'عاجلة',
         ];
     @endphp
 
@@ -28,6 +34,15 @@
         button-icon="fa-plus"
         wire:click="openExpenseCreate"
     />
+
+    @if ($canManageSettings)
+        <div class="ds-page-toolbar">
+            <a href="{{ route('settings.expenses') }}" class="ds-btn ds-btn-outline ds-btn-sm">
+                <i class="fas fa-cog" aria-hidden="true"></i>
+                إعدادات سلسلة الاعتماد
+            </a>
+        </div>
+    @endif
 
     <div class="ds-page-toolbar">
         <div class="ds-toolbar-actions">
@@ -71,6 +86,7 @@
                     <tr>
                         <th>النوع</th>
                         <th>المبلغ</th>
+                        <th>الأولوية</th>
                         <th>المشروع</th>
                         <th>الحالة</th>
                         <th>التاريخ</th>
@@ -81,6 +97,7 @@
                     <tr wire:key="my-expense-{{ $expense->id }}">
                         <td>{{ $typeLabels[$expense->type] ?? $expense->type }}</td>
                         <td>{{ number_format((float) $expense->amount, 2) }}</td>
+                        <td>{{ $priorityLabels[$expense->priority] ?? $expense->priority }}</td>
                         <td>{{ $expense->project?->name ?? '—' }}</td>
                         <td>{{ $statusLabels[$expense->status] ?? $expense->status }}</td>
                         <td>{{ $expense->created_at?->format('Y-m-d') ?? '—' }}</td>
@@ -105,7 +122,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="ds-text-muted ds-table-empty">لا توجد طلبات</td>
+                        <td colspan="7" class="ds-text-muted ds-table-empty">لا توجد طلبات</td>
                     </tr>
                 @endforelse
             </x-ds-table>
@@ -121,6 +138,7 @@
                         <th>مقدم الطلب</th>
                         <th>النوع</th>
                         <th>المبلغ</th>
+                        <th>الأولوية</th>
                         <th>المشروع</th>
                         <th>الحالة</th>
                         <th>إجراءات</th>
@@ -131,6 +149,7 @@
                         <td>{{ $expense->requester?->name ?? '—' }}</td>
                         <td>{{ $typeLabels[$expense->type] ?? $expense->type }}</td>
                         <td>{{ number_format((float) $expense->amount, 2) }}</td>
+                        <td>{{ $priorityLabels[$expense->priority] ?? $expense->priority }}</td>
                         <td>{{ $expense->project?->name ?? '—' }}</td>
                         <td>{{ $statusLabels[$expense->status] ?? $expense->status }}</td>
                         <td>
@@ -159,7 +178,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="ds-text-muted ds-table-empty">لا توجد طلبات</td>
+                        <td colspan="7" class="ds-text-muted ds-table-empty">لا توجد طلبات</td>
                     </tr>
                 @endforelse
             </x-ds-table>
@@ -195,6 +214,13 @@
                         <x-ds-form-group label="المبلغ" :error="$errors->first('amount')">
                             <input type="number" step="0.01" class="ds-input" wire:model="amount" @disabled($expenseViewOnly)>
                         </x-ds-form-group>
+                        <x-ds-form-group label="الأولوية" :error="$errors->first('priority')">
+                            <select class="ds-input" wire:model="priority" @disabled($expenseViewOnly)>
+                                @foreach ($priorityLabels as $value => $label)
+                                    <option value="{{ $value }}">{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </x-ds-form-group>
                         <x-ds-form-group label="طريقة الدفع" :error="$errors->first('payment_method')">
                             <select class="ds-input" wire:model="payment_method" @disabled($expenseViewOnly)>
                                 @foreach ($paymentLabels as $value => $label)
@@ -219,6 +245,10 @@
                         <x-ds-form-group label="المرفق" :error="$errors->first('attachment')">
                             <input type="file" class="ds-input" wire:model="attachment" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
                             <div wire:loading wire:target="attachment" class="ds-text-muted">جاري الرفع...</div>
+                        </x-ds-form-group>
+                        <x-ds-form-group label="التقاط بالكاميرا" :error="$errors->first('cameraAttachment')">
+                            <input type="file" class="ds-input" wire:model="cameraAttachment" accept="image/*" capture="environment">
+                            <div wire:loading wire:target="cameraAttachment" class="ds-text-muted">جاري الرفع...</div>
                         </x-ds-form-group>
                     @endif
 

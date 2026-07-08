@@ -56,6 +56,8 @@ return [
         'contracts.manage' => 'إدارة العقود',
 
         'reports.view' => 'عرض التقارير',
+
+        'settings.manage' => 'إدارة إعدادات النظام',
     ],
 
     'groups' => [
@@ -72,6 +74,7 @@ return [
         'documents' => 'المستندات',
         'contracts' => 'العقود',
         'reports' => 'التقارير',
+        'settings' => 'الإعدادات',
     ],
 
 ];

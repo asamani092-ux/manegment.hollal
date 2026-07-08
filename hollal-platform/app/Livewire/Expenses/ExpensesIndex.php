@@ -5,13 +5,10 @@ namespace App\Livewire\Expenses;
 use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\ExpenseRequest;
 use App\Models\Project;
-use App\Models\User;
-use App\Notifications\ExpenseApproved;
-use App\Notifications\ExpenseAwaitingApproval;
 use App\Notifications\ExpenseRejected;
+use App\Services\ExpenseApprovalService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
-use Illuminate\Support\Facades\Notification;
 use Livewire\Component;
 use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
@@ -50,11 +47,15 @@ class ExpensesIndex extends Component
 
     public string $reason = '';
 
-    public string $payment_method = 'bank_transfer';
+    public string $priority = 'normal';
+
+    public string $payment_method = 'transfer';
 
     public ?int $project_id = null;
 
     public ?TemporaryUploadedFile $attachment = null;
+
+    public ?TemporaryUploadedFile $cameraAttachment = null;
 
     public ?string $existingAttachmentPath = null;
 
@@ -96,6 +97,19 @@ class ExpensesIndex extends Component
     {
         $this->resetPage('myExpensesPage');
         $this->resetPage('allExpensesPage');
+    }
+
+    public function updatedAttachment(): void
+    {
+        $this->validateAttachment('attachment');
+    }
+
+    public function updatedCameraAttachment(): void
+    {
+        $this->validateAttachment('cameraAttachment');
+        if ($this->cameraAttachment) {
+            $this->attachment = $this->cameraAttachment;
+        }
     }
 
     public function openExpenseCreate(): void
@@ -142,9 +156,11 @@ class ExpensesIndex extends Component
             'type' => 'required|in:operational,travel,supplies,other',
             'amount' => 'required|numeric|min:0.01',
             'reason' => 'required|string',
-            'payment_method' => 'required|in:cash,bank_transfer,card,other',
+            'priority' => 'required|in:low,normal,high,urgent',
+            'payment_method' => 'required|in:transfer,pos,cheque,other',
             'project_id' => 'nullable|exists:projects,id',
             'attachment' => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
+            'cameraAttachment' => 'nullable|file|max:5120|mimes:jpg,jpeg,png',
         ]);
 
         $data = [
@@ -152,6 +168,7 @@ class ExpensesIndex extends Component
             'type' => $this->type,
             'amount' => $this->amount,
             'reason' => $this->reason,
+            'priority' => $this->priority,
             'payment_method' => $this->payment_method,
             'project_id' => $this->project_id,
             'status' => 'draft',
@@ -183,21 +200,7 @@ class ExpensesIndex extends Component
         $expense = ExpenseRequest::findOrFail($id);
         $this->authorize('submit', $expense);
 
-        $expense->update([
-            'status' => 'pending',
-            'rejection_reason' => null,
-            'approver_id' => null,
-            'approved_at' => null,
-        ]);
-
-        $expense->load(['requester:id,name', 'project:id,name']);
-
-        $approvers = User::permission('expenses.approve')
-            ->where('is_active', true)
-            ->where('id', '!=', auth()->id())
-            ->get();
-
-        Notification::send($approvers, new ExpenseAwaitingApproval($expense));
+        app(ExpenseApprovalService::class)->initializeChain($expense);
 
         $this->closeExpenseModal();
         $this->dispatch('toast', type: 'success', message: 'تم إرسال الطلب للموافقة');
@@ -208,16 +211,7 @@ class ExpensesIndex extends Component
         $expense = ExpenseRequest::findOrFail($id);
         $this->authorize('approve', $expense);
 
-        $expense->update([
-            'status' => 'approved',
-            'approver_id' => auth()->id(),
-            'approved_at' => now(),
-            'rejection_reason' => null,
-        ]);
-
-        $expense->load(['requester:id,name', 'approver:id,name']);
-
-        $expense->requester?->notify(new ExpenseApproved($expense));
+        app(ExpenseApprovalService::class)->approve(auth()->user(), $expense);
 
         $this->dispatch('toast', type: 'success', message: 'تمت الموافقة على الطلب');
     }
@@ -240,15 +234,9 @@ class ExpensesIndex extends Component
             'rejectionReason' => 'required|string|min:3',
         ]);
 
-        $expense->update([
-            'status' => 'rejected',
-            'approver_id' => auth()->id(),
-            'approved_at' => now(),
-            'rejection_reason' => $this->rejectionReason,
-        ]);
+        app(ExpenseApprovalService::class)->reject(auth()->user(), $expense, $this->rejectionReason);
 
         $expense->load(['requester:id,name', 'approver:id,name']);
-
         $expense->requester?->notify(new ExpenseRejected($expense));
 
         $this->closeRejectModal();
@@ -287,12 +275,20 @@ class ExpensesIndex extends Component
         $this->resetValidation();
     }
 
+    protected function validateAttachment(string $field): void
+    {
+        $this->validate([
+            $field => 'nullable|file|max:5120|mimes:jpg,jpeg,png,pdf,doc,docx',
+        ]);
+    }
+
     protected function fillExpenseForm(ExpenseRequest $expense): void
     {
         $this->expenseId = $expense->id;
         $this->type = $expense->type;
         $this->amount = (string) $expense->amount;
         $this->reason = $expense->reason;
+        $this->priority = $expense->priority ?? 'normal';
         $this->payment_method = $expense->payment_method;
         $this->project_id = $expense->project_id;
         $this->existingAttachmentPath = $expense->attachment;
@@ -305,9 +301,11 @@ class ExpensesIndex extends Component
         $this->type = 'operational';
         $this->amount = '';
         $this->reason = '';
-        $this->payment_method = 'bank_transfer';
+        $this->priority = 'normal';
+        $this->payment_method = 'transfer';
         $this->project_id = null;
         $this->attachment = null;
+        $this->cameraAttachment = null;
         $this->existingAttachmentPath = null;
         $this->resetValidation();
     }
@@ -316,9 +314,9 @@ class ExpensesIndex extends Component
     {
         $query = ExpenseRequest::query()
             ->select([
-                'id', 'requester_id', 'project_id', 'type', 'amount', 'reason',
-                'payment_method', 'attachment', 'status', 'approver_id', 'approved_at',
-                'rejection_reason', 'created_at',
+                'id', 'requester_id', 'project_id', 'type', 'amount', 'reason', 'priority',
+                'payment_method', 'attachment', 'status', 'current_approval_stage',
+                'approver_id', 'approved_at', 'paid_ready_at', 'rejection_reason', 'created_at',
             ])
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->projectFilter, fn ($q) => $q->where('project_id', $this->projectFilter));
@@ -330,7 +328,7 @@ class ExpensesIndex extends Component
             $query->with(['project:id,name', 'requester:id,name', 'approver:id,name']);
         }
 
-        return $query->latest();
+        return $query->orderByPriority()->latest();
     }
 
     public function render(): View
@@ -346,6 +344,7 @@ class ExpensesIndex extends Component
             'projects' => Project::orderBy('name')->get(['id', 'name']),
             'statusOptions' => ExpenseRequest::STATUSES,
             'canViewAll' => $canViewAll,
+            'canManageSettings' => auth()->user()->can('settings.manage'),
         ])->layout('layouts.app', ['title' => 'المصروفات']);
     }
 }

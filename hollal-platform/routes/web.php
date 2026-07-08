@@ -19,6 +19,7 @@ use App\Livewire\Payroll\PayrollIndex;
 use App\Livewire\Projects\ProjectShow;
 use App\Livewire\Projects\ProjectsIndex;
 use App\Livewire\Reports\ReportsIndex;
+use App\Livewire\Settings\ExpenseSettingsIndex;
 use App\Livewire\Settings\RolesIndex;
 use App\Livewire\Tasks\TasksIndex;
 use App\Livewire\Users\UsersIndex;
@@ -103,6 +104,10 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/settings/roles', RolesIndex::class)
         ->middleware('permission:roles.view')
         ->name('settings.roles');
+
+    Route::get('/settings/expenses', ExpenseSettingsIndex::class)
+        ->middleware('permission:settings.manage')
+        ->name('settings.expenses');
 
     Route::get('/users', UsersIndex::class)
         ->middleware('permission:users.view')

@@ -4,12 +4,14 @@ namespace Tests\Feature;
 
 use App\Livewire\Expenses\ExpensesIndex;
 use App\Models\ExpenseRequest;
-use App\Models\Project;
+use App\Models\ExpenseSetting;
 use App\Models\User;
-use App\Notifications\ExpenseApproved;
 use App\Notifications\ExpenseAwaitingApproval;
+use App\Notifications\ExpensePaidReady;
 use App\Notifications\ExpenseRejected;
+use App\Services\ExpenseApprovalService;
 use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -21,7 +23,9 @@ class ExpenseRequestTest extends TestCase
 
     protected User $requester;
 
-    protected User $approver;
+    protected User $executive;
+
+    protected User $finance;
 
     protected User $viewer;
 
@@ -30,14 +34,20 @@ class ExpenseRequestTest extends TestCase
         parent::setUp();
 
         $this->seed(PermissionSeeder::class);
+        $this->seed(RoleSeeder::class);
 
-        $this->requester = User::factory()->create(['phone' => '0503333333']);
-        $this->requester->givePermissionTo(['expenses.create']);
+        ExpenseSetting::current()->update(['chain_mode' => 'short']);
 
-        $this->approver = User::factory()->create(['phone' => '0504444444']);
-        $this->approver->givePermissionTo(['expenses.view', 'expenses.approve']);
+        $this->requester = User::factory()->create(['phone' => '0503333333', 'must_change_password' => false]);
+        $this->requester->assignRole('Employee');
 
-        $this->viewer = User::factory()->create(['phone' => '0505555555']);
+        $this->executive = User::factory()->create(['phone' => '0504444444', 'must_change_password' => false]);
+        $this->executive->assignRole('Executive Manager');
+
+        $this->finance = User::factory()->create(['phone' => '0504444445', 'must_change_password' => false]);
+        $this->finance->assignRole('Finance');
+
+        $this->viewer = User::factory()->create(['phone' => '0505555555', 'must_change_password' => false]);
         $this->viewer->givePermissionTo(['expenses.view']);
     }
 
@@ -51,7 +61,8 @@ class ExpenseRequestTest extends TestCase
             ->set('type', 'operational')
             ->set('amount', '1500.50')
             ->set('reason', 'شراء مستلزمات')
-            ->set('payment_method', 'bank_transfer')
+            ->set('payment_method', 'transfer')
+            ->set('priority', 'normal')
             ->call('saveExpense', true)
             ->assertHasNoErrors();
 
@@ -59,21 +70,27 @@ class ExpenseRequestTest extends TestCase
 
         $this->assertNotNull($expense);
         $this->assertSame('pending', $expense->status);
+        $this->assertSame(ExpenseApprovalService::STAGE_EXECUTIVE, $expense->current_approval_stage);
         $this->assertSame($this->requester->id, $expense->requester_id);
 
-        Notification::assertSentTo($this->approver, ExpenseAwaitingApproval::class);
+        Notification::assertSentTo($this->executive, ExpenseAwaitingApproval::class);
     }
 
-    public function test_approver_can_approve_expense_and_notify_requester(): void
+    public function test_finance_approver_completes_chain_and_notifies_requester(): void
     {
         Notification::fake();
 
         $expense = ExpenseRequest::factory()->pending()->create([
             'requester_id' => $this->requester->id,
             'amount' => 2000,
+            'current_approval_stage' => ExpenseApprovalService::STAGE_FINANCE,
+            'approval_stages' => [
+                ExpenseApprovalService::STAGE_EXECUTIVE,
+                ExpenseApprovalService::STAGE_FINANCE,
+            ],
         ]);
 
-        Livewire::actingAs($this->approver)
+        Livewire::actingAs($this->finance)
             ->test(ExpensesIndex::class)
             ->call('approveExpense', $expense->id)
             ->assertHasNoErrors();
@@ -81,21 +98,27 @@ class ExpenseRequestTest extends TestCase
         $expense->refresh();
 
         $this->assertSame('approved', $expense->status);
-        $this->assertSame($this->approver->id, $expense->approver_id);
+        $this->assertSame($this->finance->id, $expense->approver_id);
         $this->assertNotNull($expense->approved_at);
+        $this->assertNotNull($expense->paid_ready_at);
 
-        Notification::assertSentTo($this->requester, ExpenseApproved::class);
+        Notification::assertSentTo($this->requester, ExpensePaidReady::class);
     }
 
-    public function test_approver_can_reject_expense_with_reason_and_notify_requester(): void
+    public function test_executive_can_reject_expense_with_reason_and_notify_requester(): void
     {
         Notification::fake();
 
         $expense = ExpenseRequest::factory()->pending()->create([
             'requester_id' => $this->requester->id,
+            'current_approval_stage' => ExpenseApprovalService::STAGE_EXECUTIVE,
+            'approval_stages' => [
+                ExpenseApprovalService::STAGE_EXECUTIVE,
+                ExpenseApprovalService::STAGE_FINANCE,
+            ],
         ]);
 
-        Livewire::actingAs($this->approver)
+        Livewire::actingAs($this->executive)
             ->test(ExpensesIndex::class)
             ->call('openRejectModal', $expense->id)
             ->set('rejectionReason', 'المبلغ يتجاوز الميزانية')
@@ -110,10 +133,11 @@ class ExpenseRequestTest extends TestCase
         Notification::assertSentTo($this->requester, ExpenseRejected::class);
     }
 
-    public function test_user_without_approve_permission_cannot_approve(): void
+    public function test_user_without_stage_permission_cannot_approve(): void
     {
         $expense = ExpenseRequest::factory()->pending()->create([
             'requester_id' => $this->requester->id,
+            'current_approval_stage' => ExpenseApprovalService::STAGE_EXECUTIVE,
         ]);
 
         Livewire::actingAs($this->viewer)
@@ -126,7 +150,7 @@ class ExpenseRequestTest extends TestCase
 
     public function test_project_actual_spend_includes_approved_and_paid_expenses(): void
     {
-        $project = Project::factory()->create(['budget' => 10000]);
+        $project = \App\Models\Project::factory()->create(['budget' => 10000]);
 
         ExpenseRequest::factory()->create([
             'project_id' => $project->id,

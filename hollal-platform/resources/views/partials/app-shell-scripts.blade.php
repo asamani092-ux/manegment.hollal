@@ -37,6 +37,14 @@
             });
         });
 
+        var moreToggle = document.getElementById('ds-sidebar-more-toggle');
+        var moreSection = document.getElementById('ds-sidebar-more');
+
+        moreToggle?.addEventListener('click', function () {
+            var isOpen = moreSection?.classList.toggle('is-open');
+            moreToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
+
         trigger?.addEventListener('click', function (e) {
             e.stopPropagation();
             var isOpen = dropdown?.classList.toggle('open');

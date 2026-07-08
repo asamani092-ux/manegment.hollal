@@ -51,6 +51,7 @@ class PermissionSeeder extends Seeder
         'contracts.create',
         'contracts.manage',
         'reports.view',
+        'settings.manage',
     ];
 
     public function run(): void

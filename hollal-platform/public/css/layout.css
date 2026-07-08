@@ -421,6 +421,56 @@
   flex-shrink: 0;
 }
 
+.ds-sidebar-more {
+  border-top: 1px solid var(--ds-border);
+  margin-top: 0.5rem;
+  padding-top: 0.25rem;
+}
+
+.ds-sidebar-more-toggle {
+  width: 100%;
+  padding: 0.625rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+  color: var(--ds-text-muted);
+  border: none;
+  background: none;
+  font-family: var(--ds-font-primary);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.ds-sidebar-more-toggle:hover {
+  background: var(--ds-accent-light);
+  color: var(--ds-primary);
+}
+
+.ds-sidebar-more-chevron {
+  margin-right: auto;
+  transition: transform 0.2s ease;
+}
+
+.ds-sidebar-more.is-open .ds-sidebar-more-chevron {
+  transform: rotate(180deg);
+}
+
+.ds-sidebar-more-panel {
+  display: none;
+}
+
+.ds-sidebar-more.is-open .ds-sidebar-more-panel {
+  display: block;
+}
+
+.ds-sidebar-item-nested {
+  padding-right: 1.5rem;
+  font-size: 0.8rem;
+}
+
 /* ── Content ── */
 .ds-content {
   flex: 1;

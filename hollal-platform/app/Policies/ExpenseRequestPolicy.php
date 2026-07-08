@@ -4,12 +4,15 @@ namespace App\Policies;
 
 use App\Models\ExpenseRequest;
 use App\Models\User;
+use App\Services\ExpenseApprovalService;
 
 /**
  * Expense request — requester, module permissions, approval workflow.
  */
 class ExpenseRequestPolicy
 {
+    public function __construct(protected ExpenseApprovalService $approvalService) {}
+
     public function viewAny(User $user): bool
     {
         return $user->can('expenses.view')
@@ -23,7 +26,8 @@ class ExpenseRequestPolicy
         return $user->id === $expenseRequest->requester_id
             || $user->can('expenses.view')
             || $user->can('expenses.approve')
-            || $user->can('expenses.pay');
+            || $user->can('expenses.pay')
+            || $this->approvalService->canApprove($user, $expenseRequest);
     }
 
     public function create(User $user): bool
@@ -52,8 +56,7 @@ class ExpenseRequestPolicy
 
     public function approve(User $user, ExpenseRequest $expenseRequest): bool
     {
-        return $user->can('expenses.approve')
-            && $expenseRequest->status === 'pending';
+        return $this->approvalService->canApprove($user, $expenseRequest);
     }
 
     public function reject(User $user, ExpenseRequest $expenseRequest): bool
@@ -64,7 +67,8 @@ class ExpenseRequestPolicy
     public function pay(User $user, ExpenseRequest $expenseRequest): bool
     {
         return $user->can('expenses.pay')
-            && $expenseRequest->status === 'approved';
+            && $expenseRequest->status === 'approved'
+            && $expenseRequest->paid_ready_at !== null;
     }
 
     public function downloadAttachment(User $user, ExpenseRequest $expenseRequest): bool

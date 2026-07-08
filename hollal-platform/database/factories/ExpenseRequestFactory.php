@@ -22,7 +22,8 @@ class ExpenseRequestFactory extends Factory
             'type' => 'operational',
             'amount' => fake()->randomFloat(2, 100, 5000),
             'reason' => fake()->sentence(),
-            'payment_method' => 'bank_transfer',
+            'payment_method' => 'transfer',
+            'priority' => 'normal',
             'status' => 'draft',
         ];
     }

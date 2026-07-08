@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\NavigationHelper;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -25,7 +26,7 @@ class OperationalRolesTest extends TestCase
      */
     protected function visibleNavRoutes(User $user): array
     {
-        return collect(config('navigation'))
+        return collect(NavigationHelper::allItems())
             ->filter(fn (array $item): bool => $user->can($item['permission']))
             ->pluck('route')
             ->values()
@@ -47,9 +48,7 @@ class OperationalRolesTest extends TestCase
     {
         $user = $this->makeUserForRole('General Manager', '0501111111');
 
-        $expected = collect(config('navigation'))->pluck('route')->all();
-
-        $this->assertSame($expected, $this->visibleNavRoutes($user));
+        $this->assertSame(NavigationHelper::allRoutes(), $this->visibleNavRoutes($user));
     }
 
     public function test_executive_manager_sidebar_visibility(): void
@@ -59,13 +58,13 @@ class OperationalRolesTest extends TestCase
         $this->assertSame(
             [
                 'dashboard',
-                'projects.index',
+                'users.index',
                 'tasks.index',
                 'meetings.index',
-                'documents.index',
                 'expenses.index',
+                'projects.index',
+                'documents.index',
                 'reports.index',
-                'users.index',
             ],
             $this->visibleNavRoutes($user)
         );
@@ -78,11 +77,11 @@ class OperationalRolesTest extends TestCase
         $this->assertSame(
             [
                 'dashboard',
-                'projects.index',
                 'tasks.index',
                 'meetings.index',
-                'documents.index',
                 'expenses.index',
+                'projects.index',
+                'documents.index',
             ],
             $this->visibleNavRoutes($user)
         );
@@ -95,10 +94,10 @@ class OperationalRolesTest extends TestCase
         $this->assertSame(
             [
                 'dashboard',
-                'payroll.index',
                 'expenses.index',
                 'contracts.index',
                 'reports.index',
+                'payroll.index',
             ],
             $this->visibleNavRoutes($user)
         );
@@ -111,11 +110,11 @@ class OperationalRolesTest extends TestCase
         $this->assertSame(
             [
                 'dashboard',
-                'projects.index',
                 'tasks.index',
                 'meetings.index',
-                'documents.index',
                 'expenses.index',
+                'projects.index',
+                'documents.index',
             ],
             $this->visibleNavRoutes($user)
         );
