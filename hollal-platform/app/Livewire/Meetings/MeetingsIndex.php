@@ -28,15 +28,7 @@ class MeetingsIndex extends Component
 
     public ?string $scheduled_at = null;
 
-    public string $location = '';
-
-    public string $link = '';
-
-    public ?int $chair_id = null;
-
-    public ?int $secretary_id = null;
-
-    public string $status = 'scheduled';
+    public string $agenda = '';
 
     /** @var array<int> */
     public array $attendeeIds = [];
@@ -87,37 +79,35 @@ class MeetingsIndex extends Component
 
         $isEdit = (bool) $this->meetingId;
 
-        if ($isEdit) {
-            $meeting = Meeting::findOrFail($this->meetingId);
-            $this->authorize('update', $meeting);
-        } else {
-            $this->authorize('meetings.create');
-        }
-
         $this->validate([
             'title' => 'required|string|max:255',
             'scheduled_at' => 'required|date',
-            'location' => 'nullable|string|max:255',
-            'link' => 'nullable|url|max:500',
-            'chair_id' => 'nullable|exists:users,id',
-            'secretary_id' => 'nullable|exists:users,id',
-            'status' => 'required|in:scheduled,in_progress,completed,cancelled',
+            'agenda' => 'nullable|string',
             'attendeeIds' => 'array',
             'attendeeIds.*' => 'integer|exists:users,id',
+        ], [
+            'title.required' => 'عنوان الاجتماع مطلوب',
+            'scheduled_at.required' => 'تاريخ ووقت الاجتماع مطلوب',
         ]);
 
-        $meeting = Meeting::updateOrCreate(
-            ['id' => $this->meetingId],
-            [
+        if ($isEdit) {
+            $meeting = Meeting::findOrFail($this->meetingId);
+            $this->authorize('update', $meeting);
+            $meeting->update([
                 'title' => $this->title,
                 'scheduled_at' => $this->scheduled_at,
-                'location' => $this->location ?: null,
-                'link' => $this->link ?: null,
-                'chair_id' => $this->chair_id,
-                'secretary_id' => $this->secretary_id,
-                'status' => $this->status,
-            ]
-        );
+                'agenda' => $this->agenda ?: null,
+            ]);
+        } else {
+            $this->authorize('meetings.create');
+            $meeting = Meeting::create([
+                'title' => $this->title,
+                'scheduled_at' => $this->scheduled_at,
+                'agenda' => $this->agenda ?: null,
+                'status' => 'scheduled',
+                'chair_id' => auth()->id(),
+            ]);
+        }
 
         if (auth()->user()->can('update', $meeting)) {
             $meeting->attendees()->sync($this->attendeeIds);
@@ -146,11 +136,7 @@ class MeetingsIndex extends Component
         $this->meetingId = $meeting->id;
         $this->title = $meeting->title;
         $this->scheduled_at = $meeting->scheduled_at?->format('Y-m-d\TH:i');
-        $this->location = $meeting->location ?? '';
-        $this->link = $meeting->link ?? '';
-        $this->chair_id = $meeting->chair_id;
-        $this->secretary_id = $meeting->secretary_id;
-        $this->status = $meeting->status;
+        $this->agenda = $meeting->agenda ?? '';
         $this->attendeeIds = $meeting->attendees->pluck('id')->all();
     }
 
@@ -160,11 +146,7 @@ class MeetingsIndex extends Component
         $this->viewOnly = false;
         $this->title = '';
         $this->scheduled_at = null;
-        $this->location = '';
-        $this->link = '';
-        $this->chair_id = null;
-        $this->secretary_id = null;
-        $this->status = 'scheduled';
+        $this->agenda = '';
         $this->attendeeIds = [];
         $this->resetValidation();
     }
@@ -172,8 +154,7 @@ class MeetingsIndex extends Component
     protected function meetingQuery(bool $upcoming)
     {
         return Meeting::query()
-            ->select(['id', 'title', 'scheduled_at', 'location', 'link', 'chair_id', 'secretary_id', 'status'])
-            ->with(['chair:id,name', 'secretary:id,name'])
+            ->select(['id', 'title', 'scheduled_at', 'agenda', 'status'])
             ->when($this->search, fn ($q) => $q->where('title', 'like', '%'.$this->search.'%'))
             ->when(
                 $upcoming,

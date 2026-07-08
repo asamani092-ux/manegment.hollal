@@ -1,4 +1,4 @@
-<div>
+<div dir="rtl">
     @php
         $statusLabels = [
             'new' => 'جديدة',
@@ -34,10 +34,34 @@
         </div>
     </div>
 
-    {{-- My tasks --}}
     <section class="ds-section-spaced">
         <h2 class="ds-section-heading">مهامي</h2>
-        <x-ds-table>
+
+        <div class="ds-task-cards ds-task-cards-mobile">
+            @forelse ($myTasks as $task)
+                <article class="ds-task-card" wire:key="my-card-{{ $task->id }}">
+                    <h3 class="ds-task-card-title">{{ $task->title }}</h3>
+                    <div class="ds-task-card-meta">
+                        <span>{{ $task->project?->name ?? 'بدون مشروع' }}</span>
+                        <span>{{ $priorityLabels[$task->priority] ?? $task->priority }}</span>
+                        <span>{{ $task->due_date?->format('Y-m-d') ?? '—' }}</span>
+                    </div>
+                    @include('livewire.tasks.partials.status-badge', ['status' => $task->status])
+                    <p class="ds-text-muted">من: {{ $task->assigner?->name ?? '—' }}</p>
+                    <div class="ds-task-card-actions">
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openTaskView({{ $task->id }})">عرض</button>
+                        @can('update', $task)
+                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openTaskEdit({{ $task->id }})">تعديل</button>
+                        @endcan
+                    </div>
+                </article>
+            @empty
+                <p class="ds-text-muted">لا توجد مهام</p>
+            @endforelse
+        </div>
+
+        <div class="ds-task-table-desktop">
+            <x-ds-table>
                 <x-slot:head>
                     <tr>
                         <th>العنوان</th>
@@ -48,99 +72,52 @@
                         <th>إجراءات</th>
                     </tr>
                 </x-slot:head>
-                @forelse ($myTasks as $task)
-                    <tr wire:key="my-task-{{ $task->id }}">
+                @foreach ($myTasks as $task)
+                    <tr wire:key="my-row-{{ $task->id }}">
                         <td>{{ $task->title }}</td>
                         <td>{{ $task->project?->name ?? '—' }}</td>
                         <td>{{ $priorityLabels[$task->priority] ?? $task->priority }}</td>
+                        <td>{{ $statusLabels[$task->status] ?? $task->status }}</td>
+                        <td>{{ $task->due_date?->format('Y-m-d') ?? '—' }}</td>
                         <td>
-                            @can('tasks.update')
-                                <select class="ds-input ds-status-select" wire:change="updateTaskStatus({{ $task->id }}, $event.target.value)">
-                                    @foreach ($statusOptions as $opt)
-                                        <option value="{{ $opt }}" @selected($task->status === $opt)>{{ $statusLabels[$opt] ?? $opt }}</option>
-                                    @endforeach
-                                </select>
-                            @else
-                                {{ $statusLabels[$task->status] ?? $task->status }}
-                            @endcan
-                        </td>
-                        <td>{{ $task->due_date?->format('Y-m-d H:i') ?? '—' }}</td>
-                        <td>
-                            <x-ds-action-icons
-                                :show-view="true"
-                                :show-edit="auth()->user()->can('tasks.update')"
-                                :show-delete="auth()->user()->can('tasks.delete')"
-                                :view-action="'openTaskView('.$task->id.')'"
-                                :edit-action="'openTaskEdit('.$task->id.')'"
-                                :delete-action="'deleteTask('.$task->id.')'"
-                                delete-confirm="حذف هذه المهمة؟"
-                            />
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openTaskView({{ $task->id }})">عرض</button>
                         </td>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="6" class="ds-text-muted ds-table-empty">لا توجد مهام</td>
-                    </tr>
-                @endforelse
+                @endforeach
             </x-ds-table>
-
+        </div>
         {{ $myTasks->links() }}
     </section>
 
-    {{-- Delegated --}}
     <section class="ds-section-spaced">
         <h2 class="ds-section-heading">مهام أسندتها</h2>
-        <x-ds-table>
-                <x-slot:head>
-                    <tr>
-                        <th>العنوان</th>
-                        <th>المُسند إليه</th>
-                        <th>المشروع</th>
-                        <th>الحالة</th>
-                        <th>إجراءات</th>
-                    </tr>
-                </x-slot:head>
-                @forelse ($assignedByMe as $task)
-                    <tr wire:key="delegated-task-{{ $task->id }}">
-                        <td>{{ $task->title }}</td>
-                        <td>{{ $task->assignee?->name ?? '—' }}</td>
-                        <td>{{ $task->project?->name ?? '—' }}</td>
-                        <td>
-                            @can('tasks.update')
-                                <select class="ds-input ds-status-select" wire:change="updateTaskStatus({{ $task->id }}, $event.target.value)">
-                                    @foreach ($statusOptions as $opt)
-                                        <option value="{{ $opt }}" @selected($task->status === $opt)>{{ $statusLabels[$opt] ?? $opt }}</option>
-                                    @endforeach
-                                </select>
-                            @else
-                                {{ $statusLabels[$task->status] ?? $task->status }}
-                            @endcan
-                        </td>
-                        <td>
-                            <x-ds-action-icons
-                                :show-view="true"
-                                :show-edit="auth()->user()->can('tasks.update')"
-                                :show-delete="auth()->user()->can('tasks.delete')"
-                                :view-action="'openTaskView('.$task->id.')'"
-                                :edit-action="'openTaskEdit('.$task->id.')'"
-                                :delete-action="'deleteTask('.$task->id.')'"
-                                delete-confirm="حذف هذه المهمة؟"
-                            />
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="ds-text-muted ds-table-empty">لا توجد مهام</td>
-                    </tr>
-                @endforelse
-            </x-ds-table>
-
+        <div class="ds-task-cards ds-task-cards-mobile">
+            @forelse ($assignedByMe as $task)
+                <article class="ds-task-card" wire:key="delegated-card-{{ $task->id }}">
+                    <h3 class="ds-task-card-title">{{ $task->title }}</h3>
+                    <div class="ds-task-card-meta">
+                        <span>إلى: {{ $task->assignee?->name ?? '—' }}</span>
+                        <span>{{ $task->project?->name ?? '—' }}</span>
+                    </div>
+                    @include('livewire.tasks.partials.status-badge', ['status' => $task->status])
+                    <div class="ds-task-card-actions">
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openTaskView({{ $task->id }})">عرض</button>
+                        @can('update', $task)
+                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openTaskEdit({{ $task->id }})">تعديل</button>
+                            <button type="button" class="ds-btn ds-btn-danger ds-btn-sm" wire:click="deleteTask({{ $task->id }})" wire:confirm="حذف هذه المهمة؟">حذف</button>
+                        @endcan
+                    </div>
+                </article>
+            @empty
+                <p class="ds-text-muted">لا توجد مهام</p>
+            @endforelse
+        </div>
         {{ $assignedByMe->links() }}
     </section>
 
     @if ($showTaskModal)
         <div class="ds-modal-overlay" wire:click.self="closeTaskModal">
-            <div class="ds-modal ds-modal-lg" role="dialog">
+            <div class="ds-modal ds-modal-lg" role="dialog" dir="rtl">
                 <div class="ds-modal-header">
                     <h3>
                         @if ($taskViewOnly)
@@ -154,6 +131,11 @@
                     <button type="button" class="ds-modal-close" wire:click="closeTaskModal">&times;</button>
                 </div>
                 <div class="ds-modal-body">
+                    @if ($currentTask && $taskViewOnly)
+                        <div class="ds-detail-row"><span class="ds-detail-label">المُسند:</span> {{ $currentTask->assigner?->name ?? '—' }}</div>
+                        <div class="ds-detail-row"><span class="ds-detail-label">المُسند إليه:</span> {{ $currentTask->assignee?->name ?? '—' }}</div>
+                    @endif
+
                     <x-ds-form-group label="العنوان" :error="$errors->first('title')">
                         <input type="text" class="ds-input" wire:model="title" @disabled($taskViewOnly)>
                     </x-ds-form-group>
@@ -198,34 +180,38 @@
 
                     @if (! $taskViewOnly)
                         <x-ds-form-group label="مرفق المهمة" :error="$errors->first('attachment')">
-                            <input type="file" class="ds-input" wire:model="attachment" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                            <input type="file" class="ds-input" wire:model="attachment">
                             <div wire:loading wire:target="attachment" class="ds-text-muted">جاري الرفع...</div>
-                        </x-ds-form-group>
-                        <x-ds-form-group label="ملف التسليم" :error="$errors->first('submittedFile')">
-                            <input type="file" class="ds-input" wire:model="submittedFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
-                            <div wire:loading wire:target="submittedFile" class="ds-text-muted">جاري الرفع...</div>
                         </x-ds-form-group>
                     @endif
 
-                    @if ($taskViewOnly)
-                        @if ($existingAttachmentPath)
-                            <div class="ds-detail-row">
-                                <span class="ds-detail-label">مرفق المهمة:</span>
-                                <a class="ds-link" href="{{ route('tasks.files.download', ['task' => $taskId, 'type' => 'attachment']) }}">تحميل</a>
-                            </div>
-                        @endif
-                        @if ($existingSubmittedPath)
-                            <div class="ds-detail-row">
-                                <span class="ds-detail-label">ملف التسليم:</span>
-                                <a class="ds-link" href="{{ route('tasks.files.download', ['task' => $taskId, 'type' => 'submitted']) }}">تحميل</a>
-                            </div>
-                        @endif
+                    @if ($taskId && $currentTask)
+                        <div class="ds-notes-timeline">
+                            <h4 class="ds-section-heading">الملاحظات</h4>
+                            @forelse ($taskNotes as $note)
+                                <div class="ds-note-item" wire:key="note-{{ $note->id }}">
+                                    <div class="ds-note-meta">{{ $note->author?->name }} — {{ $note->created_at?->format('Y-m-d H:i') }}</div>
+                                    <p>{{ $note->body }}</p>
+                                </div>
+                            @empty
+                                <p class="ds-text-muted">لا توجد ملاحظات بعد</p>
+                            @endforelse
+
+                            @can('addNote', $currentTask)
+                                <x-ds-form-group label="إضافة ملاحظة" :error="$errors->first('noteBody')">
+                                    <textarea class="ds-input" rows="2" wire:model="noteBody" placeholder="اكتب ملاحظتك..."></textarea>
+                                </x-ds-form-group>
+                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="addTaskNote" wire:loading.attr="disabled">
+                                    إضافة ملاحظة
+                                </button>
+                            @endcan
+                        </div>
                     @endif
                 </div>
                 <div class="ds-modal-footer">
                     @if (! $taskViewOnly)
-                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveTask" wire:loading.attr="disabled">
-                            <i class="fas fa-save"></i> حفظ
+                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveTask" wire:loading.attr="disabled" wire:target="saveTask,attachment,submittedFile">
+                            <i class="fas fa-save" aria-hidden="true"></i> حفظ
                         </button>
                     @endif
                     <button type="button" class="ds-btn ds-btn-outline" wire:click="closeTaskModal">إغلاق</button>

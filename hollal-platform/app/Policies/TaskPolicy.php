@@ -6,7 +6,7 @@ use App\Models\Task;
 use App\Models\User;
 
 /**
- * Task (إسناد) — assigner, assignee, or elevated module permission.
+ * Task (إسناد) — assigner edits; assignee is read-only except notes.
  */
 class TaskPolicy
 {
@@ -17,12 +17,25 @@ class TaskPolicy
 
     public function update(User $user, Task $task): bool
     {
-        return $this->isParticipant($user, $task) || $user->can('tasks.update');
+        if ($this->isAssigneeOnly($user, $task)) {
+            return false;
+        }
+
+        return $user->id === $task->assigned_by || $user->can('tasks.update');
     }
 
     public function delete(User $user, Task $task): bool
     {
-        return $this->isParticipant($user, $task) || $user->can('tasks.delete');
+        if ($this->isAssigneeOnly($user, $task)) {
+            return false;
+        }
+
+        return $user->id === $task->assigned_by || $user->can('tasks.delete');
+    }
+
+    public function addNote(User $user, Task $task): bool
+    {
+        return $this->isParticipant($user, $task);
     }
 
     public function downloadFile(User $user, Task $task, string $type): bool
@@ -38,5 +51,11 @@ class TaskPolicy
     {
         return $user->id === $task->assigned_by
             || $user->id === $task->assigned_to;
+    }
+
+    protected function isAssigneeOnly(User $user, Task $task): bool
+    {
+        return $user->id === $task->assigned_to
+            && $user->id !== $task->assigned_by;
     }
 }

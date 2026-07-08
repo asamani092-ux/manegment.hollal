@@ -26,6 +26,11 @@ class MeetingPolicy
         return $user->id === $meeting->chair_id || $user->id === $meeting->secretary_id;
     }
 
+    public function downloadPdf(User $user, Meeting $meeting): bool
+    {
+        return $this->view($user, $meeting);
+    }
+
     protected function canAccess(User $user, Meeting $meeting): bool
     {
         if ($user->can('meetings.update')) {

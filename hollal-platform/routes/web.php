@@ -93,6 +93,10 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         ->middleware('permission:meetings.view')
         ->name('meetings.open-decisions');
 
+    Route::get('/meetings/{meeting}/minutes/pdf', \App\Http\Controllers\MeetingMinutesPdfController::class)
+        ->middleware('permission:meetings.view')
+        ->name('meetings.minutes.pdf');
+
     Route::get('/meetings/{meeting}/minutes', MeetingMinutes::class)
         ->middleware('permission:meetings.view')
         ->name('meetings.minutes');

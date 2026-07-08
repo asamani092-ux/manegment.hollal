@@ -92,16 +92,12 @@ class MeetingTest extends TestCase
 
     public function test_admin_can_create_meeting_via_livewire(): void
     {
-        $chair = User::factory()->create(['phone' => '0504444444']);
-
         Livewire::actingAs($this->admin)
             ->test(MeetingsIndex::class)
             ->call('openCreate')
             ->set('title', 'اجتماع التخطيط')
             ->set('scheduled_at', now()->addDay()->format('Y-m-d\TH:i'))
-            ->set('location', 'قاعة A')
-            ->set('chair_id', $chair->id)
-            ->set('status', 'scheduled')
+            ->set('agenda', 'مناقشة الخطة الربعية')
             ->call('save')
             ->assertHasNoErrors()
             ->assertSet('showModal', false);

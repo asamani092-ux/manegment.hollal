@@ -2,12 +2,14 @@
 
 namespace App\Livewire\Meetings;
 
+use App\Mail\MeetingMinutesMailable;
 use App\Models\Meeting;
 use App\Models\MeetingItem;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
 
 class MeetingMinutes extends Component
@@ -79,10 +81,12 @@ class MeetingMinutes extends Component
             'decision' => 'nullable|string',
             'responsible_id' => 'nullable|exists:users,id',
             'due_date' => 'nullable|date',
-            'status' => 'required|in:open,in_progress,done',
         ]);
 
         $isEdit = (bool) $this->itemId;
+        $existingStatus = $isEdit
+            ? MeetingItem::where('meeting_id', $this->meeting->id)->findOrFail($this->itemId)->status
+            : 'open';
 
         MeetingItem::updateOrCreate(
             ['id' => $this->itemId, 'meeting_id' => $this->meeting->id],
@@ -92,7 +96,7 @@ class MeetingMinutes extends Component
                 'decision' => $this->decision ?: null,
                 'responsible_id' => $this->responsible_id,
                 'due_date' => $this->due_date,
-                'status' => $this->status,
+                'status' => $existingStatus,
             ]
         );
 
@@ -150,6 +154,28 @@ class MeetingMinutes extends Component
         ]);
 
         $this->dispatch('toast', type: 'success', message: 'تم تحويل القرار إلى مهمة');
+    }
+
+    public function sendMinutesByEmail(): void
+    {
+        $this->authorize('view', $this->meeting);
+
+        $this->meeting->load('attendees:id,name,email');
+        $recipients = $this->meeting->attendees->pluck('email')->filter()->unique()->values();
+
+        if ($recipients->isEmpty()) {
+            $this->dispatch('toast', type: 'error', message: 'لا يوجد بريد إلكتروني للحضور');
+
+            return;
+        }
+
+        try {
+            Mail::to($recipients->all())->queue(new MeetingMinutesMailable($this->meeting));
+            $this->dispatch('toast', type: 'success', message: 'تم إدراج إرسال المحضر في قائمة الانتظار (يتطلب SMTP)');
+        } catch (\Throwable $exception) {
+            report($exception);
+            $this->dispatch('toast', type: 'error', message: 'تعذّر الإرسال — تحقق من إعداد SMTP');
+        }
     }
 
     public function closeItemModal(): void

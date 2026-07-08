@@ -5,6 +5,7 @@ namespace App\Livewire\Tasks;
 use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\TaskNote;
 use App\Models\User;
 use App\Notifications\TaskAssigned;
 use Illuminate\Contracts\View\View;
@@ -56,6 +57,11 @@ class TasksIndex extends Component
 
     public ?string $existingSubmittedPath = null;
 
+    public string $noteBody = '';
+
+    /** @var \Illuminate\Support\Collection<int, TaskNote> */
+    public $taskNotes;
+
     protected $queryString = [
         'statusFilter' => ['except' => ''],
         'taskSearch' => ['except' => ''],
@@ -64,6 +70,7 @@ class TasksIndex extends Component
     public function mount(): void
     {
         $this->authorize('tasks.view');
+        $this->taskNotes = collect();
     }
 
     public function updatingStatusFilter(): void
@@ -91,6 +98,7 @@ class TasksIndex extends Component
         $this->authorize('update', $task);
         $this->fillTaskForm($task);
         $this->taskViewOnly = false;
+        $this->loadTaskNotes($task);
         $this->showTaskModal = true;
     }
 
@@ -100,6 +108,7 @@ class TasksIndex extends Component
         $this->authorize('view', $task);
         $this->fillTaskForm($task);
         $this->taskViewOnly = true;
+        $this->loadTaskNotes($task);
         $this->showTaskModal = true;
     }
 
@@ -130,7 +139,11 @@ class TasksIndex extends Component
             'submittedFile' => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
         ];
 
-        $this->validate($rules);
+        $this->validate($rules, [
+            'title.required' => 'عنوان المهمة مطلوب',
+            'assigned_to.required' => 'يجب اختيار المُسند إليه',
+            'assigned_to.exists' => 'المستخدم المحدد غير موجود',
+        ]);
 
         $data = [
             'title' => $this->title,
@@ -188,6 +201,28 @@ class TasksIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'تم تحديث حالة المهمة');
     }
 
+    public function addTaskNote(): void
+    {
+        $task = Task::findOrFail($this->taskId);
+        $this->authorize('addNote', $task);
+
+        $this->validate([
+            'noteBody' => 'required|string|min:2|max:2000',
+        ], [
+            'noteBody.required' => 'نص الملاحظة مطلوب',
+        ]);
+
+        TaskNote::create([
+            'task_id' => $task->id,
+            'author_id' => auth()->id(),
+            'body' => $this->noteBody,
+        ]);
+
+        $this->noteBody = '';
+        $this->loadTaskNotes($task);
+        $this->dispatch('toast', type: 'success', message: 'تمت إضافة الملاحظة');
+    }
+
     public function deleteTask(int $id): void
     {
         $task = Task::findOrFail($id);
@@ -216,6 +251,11 @@ class TasksIndex extends Component
         $this->existingSubmittedPath = $task->submitted_file;
     }
 
+    protected function loadTaskNotes(Task $task): void
+    {
+        $this->taskNotes = $task->notes()->with('author:id,name')->get();
+    }
+
     protected function resetTaskForm(): void
     {
         $this->taskId = null;
@@ -231,6 +271,8 @@ class TasksIndex extends Component
         $this->submittedFile = null;
         $this->existingAttachmentPath = null;
         $this->existingSubmittedPath = null;
+        $this->noteBody = '';
+        $this->taskNotes = collect();
         $this->resetValidation();
     }
 
@@ -262,6 +304,7 @@ class TasksIndex extends Component
             'users' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'projects' => Project::orderBy('name')->get(['id', 'name']),
             'statusOptions' => ['new', 'in_progress', 'pending_review', 'completed', 'overdue'],
+            'currentTask' => $this->taskId ? Task::with(['assigner:id,name', 'assignee:id,name', 'project:id,name'])->find($this->taskId) : null,
         ])->layout('layouts.app', ['title' => 'إسناد']);
     }
 }
