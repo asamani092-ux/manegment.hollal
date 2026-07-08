@@ -603,6 +603,8 @@
   border: 1px solid var(--ds-border);
   box-shadow: var(--ds-shadow-md);
   animation: ds-fadeIn 0.25s ease;
+  direction: rtl;
+  text-align: right;
 }
 
 .ds-modal-lg {
@@ -661,7 +663,8 @@
 .ds-toast-container {
   position: fixed;
   bottom: 1.5rem;
-  left: 1.5rem;
+  right: 1.5rem;
+  left: auto;
   z-index: 1100;
   display: flex;
   flex-direction: column;
@@ -1088,4 +1091,60 @@
     width: 80px;
     height: 80px;
   }
+}
+
+/* ── RTL page polish ── */
+.ds-page-rtl {
+  direction: rtl;
+  text-align: right;
+}
+
+.ds-ltr-num,
+.ds-input[type="date"],
+.ds-input[type="datetime-local"],
+.ds-input[type="month"],
+.ds-input[type="number"],
+.ds-input[type="tel"] {
+  direction: ltr;
+  text-align: right;
+}
+
+.ds-btn .fas,
+.ds-btn .ds-icon {
+  margin-inline-end: 0.35rem;
+}
+
+.ds-btn-loading,
+.ds-inline-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.8125rem;
+}
+
+.ds-empty-state {
+  text-align: center;
+  padding: 2rem 1rem;
+  color: var(--ds-text-muted);
+  border: 1px dashed var(--ds-border);
+  border-radius: var(--ds-radius);
+  background: var(--ds-bg);
+}
+
+.ds-empty-state-icon {
+  font-size: 1.75rem;
+  margin-bottom: 0.5rem;
+  color: var(--ds-text-muted);
+  opacity: 0.65;
+}
+
+.ds-table-empty {
+  text-align: center;
+  padding: 1.5rem !important;
+}
+
+.ds-list-cards-mobile {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
 }

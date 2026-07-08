@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     <x-ds-page-header
         title="الاجتماعات"
         :show-button="auth()->user()->can('meetings.create')"
@@ -30,7 +30,7 @@
                 <article class="ds-meeting-card" wire:key="upcoming-{{ $meeting->id }}">
                     <div>
                         <h3 class="ds-task-card-title">{{ $meeting->title }}</h3>
-                        <p class="ds-text-muted">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</p>
+                        <p class="ds-text-muted ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</p>
                         @if ($meeting->agenda)
                             <p class="ds-text-muted">{{ \Illuminate\Support\Str::limit($meeting->agenda, 120) }}</p>
                         @endif
@@ -49,7 +49,7 @@
                     </div>
                 </article>
             @empty
-                <p class="ds-text-muted ds-table-empty">لا توجد اجتماعات قادمة</p>
+                <x-ds-empty-state message="لا توجد اجتماعات قادمة" icon="fa-calendar-alt" />
             @endforelse
         </div>
         {{ $upcomingMeetings->links() }}
@@ -62,7 +62,7 @@
                 <article class="ds-meeting-card" wire:key="past-{{ $meeting->id }}">
                     <div>
                         <h3 class="ds-task-card-title">{{ $meeting->title }}</h3>
-                        <p class="ds-text-muted">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</p>
+                        <p class="ds-text-muted ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</p>
                     </div>
                     <div class="ds-toolbar-actions">
                         <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes', $meeting) }}">المحضر</a>
@@ -78,7 +78,7 @@
                     </div>
                 </article>
             @empty
-                <p class="ds-text-muted ds-table-empty">لا توجد اجتماعات سابقة</p>
+                <x-ds-empty-state message="لا توجد اجتماعات سابقة" icon="fa-calendar-alt" />
             @endforelse
         </div>
         {{ $pastMeetings->links() }}
@@ -123,8 +123,9 @@
                 </div>
                 <div class="ds-modal-footer">
                     @if (! $viewOnly)
-                        <button type="button" class="ds-btn ds-btn-primary" wire:click="save" wire:loading.attr="disabled">
-                            <i class="fas fa-save" aria-hidden="true"></i> حفظ
+                        <button type="button" class="ds-btn ds-btn-primary" wire:click="save" wire:loading.attr="disabled" wire:target="save">
+                            <span wire:loading.remove wire:target="save"><i class="fas fa-save" aria-hidden="true"></i> حفظ</span>
+                            <span wire:loading wire:target="save" class="ds-btn-loading">جاري الحفظ…</span>
                         </button>
                     @endif
                     <button type="button" class="ds-btn ds-btn-outline" wire:click="closeModal">إغلاق</button>
@@ -132,4 +133,4 @@
             </div>
         </div>
     @endif
-</div>
+</x-ds-page>

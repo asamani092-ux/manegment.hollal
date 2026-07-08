@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     <x-ds-page-header
         title="الأقسام"
         :show-button="auth()->user()->can('departments.create')"
@@ -80,4 +80,4 @@
             </div>
         </div>
     @endif
-</div>
+</x-ds-page>

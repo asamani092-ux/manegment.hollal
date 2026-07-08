@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     @php
         $statusLabels = [
             'draft' => 'مسودة',
@@ -81,6 +81,34 @@
     @if ($activeTab === 'my')
         <section class="ds-section-spaced">
             <h2 class="ds-section-heading">طلباتي</h2>
+
+            <div class="ds-task-cards ds-list-cards-mobile">
+                @forelse ($myExpenses as $expense)
+                    <article class="ds-task-card" wire:key="my-exp-card-{{ $expense->id }}">
+                        <h3 class="ds-task-card-title">{{ $typeLabels[$expense->type] ?? $expense->type }}</h3>
+                        <div class="ds-task-card-meta">
+                            <span class="ds-ltr-num">{{ number_format((float) $expense->amount, 2) }}</span>
+                            <span>{{ $priorityLabels[$expense->priority] ?? $expense->priority }}</span>
+                            <span class="ds-ltr-num">{{ $expense->created_at?->format('Y-m-d') ?? '—' }}</span>
+                        </div>
+                        <span class="ds-badge ds-badge-pending">{{ $statusLabels[$expense->status] ?? $expense->status }}</span>
+                        <p class="ds-text-muted">{{ $expense->project?->name ?? 'بدون مشروع' }}</p>
+                        <div class="ds-task-card-actions">
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openExpenseView({{ $expense->id }})">عرض</button>
+                            @can('update', $expense)
+                                <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openExpenseEdit({{ $expense->id }})">تعديل</button>
+                            @endcan
+                            @can('submit', $expense)
+                                <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="submitExpense({{ $expense->id }})">إرسال</button>
+                            @endcan
+                        </div>
+                    </article>
+                @empty
+                    <x-ds-empty-state message="لا توجد طلبات" icon="fa-money-bill-wave" />
+                @endforelse
+            </div>
+
+            <div class="ds-list-table-desktop">
             <x-ds-table>
                 <x-slot:head>
                     <tr>
@@ -122,16 +150,40 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="ds-text-muted ds-table-empty">لا توجد طلبات</td>
+                        <td colspan="7"><x-ds-empty-state message="لا توجد طلبات" icon="fa-money-bill-wave" /></td>
                     </tr>
                 @endforelse
             </x-ds-table>
+            </div>
 
             {{ $myExpenses->links() }}
         </section>
     @elseif ($canViewAll && $allExpenses)
         <section class="ds-section-spaced">
             <h2 class="ds-section-heading">جميع الطلبات</h2>
+
+            <div class="ds-task-cards ds-list-cards-mobile">
+                @forelse ($allExpenses as $expense)
+                    <article class="ds-task-card" wire:key="all-exp-card-{{ $expense->id }}">
+                        <h3 class="ds-task-card-title">{{ $expense->requester?->name ?? '—' }}</h3>
+                        <div class="ds-task-card-meta">
+                            <span>{{ $typeLabels[$expense->type] ?? $expense->type }}</span>
+                            <span class="ds-ltr-num">{{ number_format((float) $expense->amount, 2) }}</span>
+                        </div>
+                        <span class="ds-badge ds-badge-pending">{{ $statusLabels[$expense->status] ?? $expense->status }}</span>
+                        <div class="ds-task-card-actions">
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openExpenseView({{ $expense->id }})">عرض</button>
+                            @can('approve', $expense)
+                                <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="approveExpense({{ $expense->id }})">موافقة</button>
+                            @endcan
+                        </div>
+                    </article>
+                @empty
+                    <x-ds-empty-state message="لا توجد طلبات" icon="fa-money-bill-wave" />
+                @endforelse
+            </div>
+
+            <div class="ds-list-table-desktop">
             <x-ds-table>
                 <x-slot:head>
                     <tr>
@@ -178,10 +230,11 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="7" class="ds-text-muted ds-table-empty">لا توجد طلبات</td>
+                        <td colspan="7"><x-ds-empty-state message="لا توجد طلبات" icon="fa-money-bill-wave" /></td>
                     </tr>
                 @endforelse
             </x-ds-table>
+            </div>
 
             {{ $allExpenses->links() }}
         </section>
@@ -261,11 +314,13 @@
                 </div>
                 <div class="ds-modal-footer">
                     @if (! $expenseViewOnly)
-                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveExpense(false)" wire:loading.attr="disabled">
-                            <i class="fas fa-save"></i> حفظ مسودة
+                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveExpense(false)" wire:loading.attr="disabled" wire:target="saveExpense">
+                            <span wire:loading.remove wire:target="saveExpense"><i class="fas fa-save"></i> حفظ مسودة</span>
+                            <span wire:loading wire:target="saveExpense" class="ds-btn-loading">جاري الحفظ…</span>
                         </button>
-                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveExpense(true)" wire:loading.attr="disabled">
-                            <i class="fas fa-paper-plane"></i> إرسال للموافقة
+                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveExpense(true)" wire:loading.attr="disabled" wire:target="saveExpense">
+                            <span wire:loading.remove wire:target="saveExpense"><i class="fas fa-paper-plane"></i> إرسال للموافقة</span>
+                            <span wire:loading wire:target="saveExpense" class="ds-btn-loading">جاري الإرسال…</span>
                         </button>
                     @endif
                     <button type="button" class="ds-btn ds-btn-outline" wire:click="closeExpenseModal">إغلاق</button>
@@ -295,4 +350,4 @@
             </div>
         </div>
     @endif
-</div>
+</x-ds-page>

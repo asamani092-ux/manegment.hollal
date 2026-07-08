@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     <x-ds-page-header
         title="الأدوار والصلاحيات"
         :show-button="auth()->user()->can('roles.create')"
@@ -76,4 +76,4 @@
             </div>
         </div>
     @endif
-</div>
+</x-ds-page>

@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     @php
         $projectStatusLabels = ['active' => 'نشط', 'completed' => 'مكتمل', 'on_hold' => 'متوقف'];
         $partnershipStatusLabels = ['pending_form' => 'بانتظار النموذج', 'negotiation' => 'تفاوض', 'active' => 'نشطة', 'completed' => 'مكتملة'];
@@ -24,6 +24,31 @@
             </div>
         </div>
 
+        <div class="ds-task-cards ds-list-cards-mobile">
+            @forelse ($projects as $project)
+                <article class="ds-task-card" wire:key="project-card-{{ $project->id }}">
+                    <h3 class="ds-task-card-title">{{ $project->name }}</h3>
+                    <div class="ds-task-card-meta">
+                        <span>{{ $project->manager?->name ?? '—' }}</span>
+                        <span>{{ $projectStatusLabels[$project->status] ?? $project->status }}</span>
+                    </div>
+                    @if ($project->budget !== null)
+                        <p class="ds-text-muted ds-ltr-num">الميزانية: {{ number_format((float) $project->budget, 2) }}</p>
+                    @endif
+                    <div class="ds-task-card-actions">
+                        <a href="{{ route('projects.show', $project) }}" class="ds-btn ds-btn-outline ds-btn-sm">تفاصيل</a>
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openProjectView({{ $project->id }})">عرض</button>
+                        @can('projects.update')
+                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openProjectEdit({{ $project->id }})">تعديل</button>
+                        @endcan
+                    </div>
+                </article>
+            @empty
+                <x-ds-empty-state message="لا توجد مشاريع" icon="fa-project-diagram" />
+            @endforelse
+        </div>
+
+        <div class="ds-list-table-desktop">
         <x-ds-table>
                 <x-slot:head>
                     <tr>
@@ -44,9 +69,9 @@
                         </td>
                         <td>{{ $project->manager?->name ?? '—' }}</td>
                         <td>{{ $projectStatusLabels[$project->status] ?? $project->status }}</td>
-                        <td>{{ $project->budget !== null ? number_format((float) $project->budget, 2) : '—' }}</td>
-                        <td>{{ number_format((float) ($project->actual_spend ?? 0), 2) }}</td>
-                        <td>
+                        <td class="ds-ltr-num">{{ $project->budget !== null ? number_format((float) $project->budget, 2) : '—' }}</td>
+                        <td class="ds-ltr-num">{{ number_format((float) ($project->actual_spend ?? 0), 2) }}</td>
+                        <td class="ds-ltr-num">
                             @if ($project->budget !== null)
                                 {{ number_format((float) $project->budget - (float) ($project->actual_spend ?? 0), 2) }}
                             @else
@@ -68,10 +93,11 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="8" class="ds-text-muted ds-table-empty">لا توجد مشاريع</td>
+                        <td colspan="8"><x-ds-empty-state message="لا توجد مشاريع" icon="fa-project-diagram" /></td>
                     </tr>
                 @endforelse
             </x-ds-table>
+        </div>
 
         {{ $projects->links() }}
     </section>
@@ -135,7 +161,7 @@
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="ds-text-muted ds-table-empty">لا توجد شراكات</td>
+                        <td colspan="6"><x-ds-empty-state message="لا توجد شراكات" icon="fa-handshake" /></td>
                     </tr>
                 @endforelse
             </x-ds-table>
@@ -245,8 +271,9 @@
                 </div>
                 <div class="ds-modal-footer">
                     @if (! $projectViewOnly)
-                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveProject">
-                            <i class="fas fa-save"></i> حفظ
+                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveProject" wire:loading.attr="disabled" wire:target="saveProject">
+                            <span wire:loading.remove wire:target="saveProject"><i class="fas fa-save"></i> حفظ</span>
+                            <span wire:loading wire:target="saveProject" class="ds-btn-loading">جاري الحفظ…</span>
                         </button>
                     @endif
                     <button type="button" class="ds-btn ds-btn-outline" wire:click="closeProjectModal">إغلاق</button>
@@ -316,8 +343,9 @@
                 </div>
                 <div class="ds-modal-footer">
                     @if (! $partnershipViewOnly)
-                        <button type="button" class="ds-btn ds-btn-primary" wire:click="savePartnership">
-                            <i class="fas fa-save"></i> حفظ
+                        <button type="button" class="ds-btn ds-btn-primary" wire:click="savePartnership" wire:loading.attr="disabled" wire:target="savePartnership">
+                            <span wire:loading.remove wire:target="savePartnership"><i class="fas fa-save"></i> حفظ</span>
+                            <span wire:loading wire:target="savePartnership" class="ds-btn-loading">جاري الحفظ…</span>
                         </button>
                     @endif
                     <button type="button" class="ds-btn ds-btn-outline" wire:click="closePartnershipModal">إغلاق</button>
@@ -325,4 +353,4 @@
             </div>
         </div>
     @endif
-</div>
+</x-ds-page>

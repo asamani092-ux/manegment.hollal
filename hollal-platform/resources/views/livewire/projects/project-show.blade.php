@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     @php
         $statusLabels = ['active' => 'نشط', 'completed' => 'مكتمل', 'on_hold' => 'متوقف'];
         $expenseStatusLabels = [
@@ -249,4 +249,4 @@
             @endforelse
         </section>
     @endif
-</div>
+</x-ds-page>

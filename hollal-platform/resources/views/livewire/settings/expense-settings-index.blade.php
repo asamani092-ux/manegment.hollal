@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     <x-ds-page-header title="إعدادات سلسلة اعتماد المصروفات" />
 
     <section class="ds-section">
@@ -25,4 +25,4 @@
             </div>
         </form>
     </section>
-</div>
+</x-ds-page>

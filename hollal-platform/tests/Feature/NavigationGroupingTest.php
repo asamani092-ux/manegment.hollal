@@ -59,4 +59,16 @@ class NavigationGroupingTest extends TestCase
         $this->assertCount(6, $nav['secondary']);
         $this->assertCount(12, NavigationHelper::allItems());
     }
+
+    public function test_secondary_module_routes_reachable_for_general_manager(): void
+    {
+        $user = User::factory()->create(['must_change_password' => false]);
+        $user->assignRole('General Manager');
+
+        foreach (config('navigation.secondary') as $item) {
+            $this->actingAs($user)
+                ->get(route($item['route']))
+                ->assertOk();
+        }
+    }
 }

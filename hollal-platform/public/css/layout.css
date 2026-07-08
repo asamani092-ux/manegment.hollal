@@ -494,20 +494,28 @@
   max-width: 400px;
 }
 
-/* ── Responsive ── */
+/* ── Responsive list cards (mobile) / tables (desktop) ── */
 @media (min-width: 900px) {
-  .ds-task-table-desktop {
+  .ds-task-table-desktop,
+  .ds-list-table-desktop {
     display: block;
   }
 
-  .ds-task-cards-mobile {
+  .ds-task-cards-mobile,
+  .ds-list-cards-mobile {
     display: none;
   }
 }
 
 @media (max-width: 899px) {
-  .ds-task-cards-mobile {
+  .ds-task-cards-mobile,
+  .ds-list-cards-mobile {
     display: grid;
+  }
+
+  .ds-task-table-desktop,
+  .ds-list-table-desktop {
+    display: none;
   }
 }
 

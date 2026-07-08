@@ -1,5 +1,5 @@
 {{-- Global toast: session flashes + Livewire 'toast' events --}}
-<div class="ds-toast-container" id="ds-toast-root">
+<div class="ds-toast-container" id="ds-toast-root" dir="rtl">
     @if (session('success'))
         <div class="ds-toast ds-toast-success">{{ session('success') }}</div>
     @endif

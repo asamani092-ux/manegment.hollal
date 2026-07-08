@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     @if ($selectedReport)
         <x-ds-page-header title="تفاصيل التقرير الأسبوعي" />
 
@@ -115,4 +115,4 @@
 
         {{ $reports->links() }}
     @endif
-</div>
+</x-ds-page>

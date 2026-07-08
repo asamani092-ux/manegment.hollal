@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     @php
         $itemStatusLabels = ['open' => 'مفتوح', 'in_progress' => 'قيد التنفيذ', 'done' => 'منجز'];
     @endphp
@@ -58,4 +58,4 @@
     </div>
 
     {{ $decisions->links() }}
-</div>
+</x-ds-page>

@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
   @php
     $itemStatusLabels = ['open' => 'مفتوح', 'in_progress' => 'قيد التنفيذ', 'done' => 'منجز'];
   @endphp
@@ -114,8 +114,9 @@
         </div>
         <div class="ds-modal-footer">
           @if (! $itemViewOnly)
-            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveItem">
-              <i class="fas fa-save" aria-hidden="true"></i> حفظ
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveItem" wire:loading.attr="disabled" wire:target="saveItem">
+              <span wire:loading.remove wire:target="saveItem"><i class="fas fa-save" aria-hidden="true"></i> حفظ</span>
+              <span wire:loading wire:target="saveItem" class="ds-btn-loading">جاري الحفظ…</span>
             </button>
           @endif
           <button type="button" class="ds-btn ds-btn-outline" wire:click="closeItemModal">إغلاق</button>
@@ -123,4 +124,4 @@
       </div>
     </div>
   @endif
-</div>
+</x-ds-page>

@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     @php
         $confidentialityLabels = ['team' => 'الفريق', 'department' => 'القسم', 'managers' => 'المدراء'];
     @endphp
@@ -117,4 +117,4 @@
             </div>
         </div>
     @endif
-</div>
+</x-ds-page>

@@ -1,4 +1,4 @@
-<div dir="rtl">
+<x-ds-page>
     @php
         $statusLabels = [
             'new' => 'جديدة',
@@ -56,7 +56,7 @@
                     </div>
                 </article>
             @empty
-                <p class="ds-text-muted">لا توجد مهام</p>
+                <x-ds-empty-state message="لا توجد مهام" icon="fa-tasks" />
             @endforelse
         </div>
 
@@ -78,7 +78,7 @@
                         <td>{{ $task->project?->name ?? '—' }}</td>
                         <td>{{ $priorityLabels[$task->priority] ?? $task->priority }}</td>
                         <td>{{ $statusLabels[$task->status] ?? $task->status }}</td>
-                        <td>{{ $task->due_date?->format('Y-m-d') ?? '—' }}</td>
+                        <td class="ds-ltr-num">{{ $task->due_date?->format('Y-m-d') ?? '—' }}</td>
                         <td>
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openTaskView({{ $task->id }})">عرض</button>
                         </td>
@@ -109,7 +109,7 @@
                     </div>
                 </article>
             @empty
-                <p class="ds-text-muted">لا توجد مهام</p>
+                <x-ds-empty-state message="لا توجد مهام مسندة" icon="fa-tasks" />
             @endforelse
         </div>
         {{ $assignedByMe->links() }}
@@ -219,4 +219,4 @@
             </div>
         </div>
     @endif
-</div>
+</x-ds-page>

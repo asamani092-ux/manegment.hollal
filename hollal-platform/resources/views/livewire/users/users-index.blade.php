@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     @php
         $roleLabels = ['Super Admin' => 'مدير النظام'];
     @endphp
@@ -135,4 +135,4 @@
             </div>
         </div>
     @endif
-</div>
+</x-ds-page>

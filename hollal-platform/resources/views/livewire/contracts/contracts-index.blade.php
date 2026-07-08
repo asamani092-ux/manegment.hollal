@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     @php
         $statusLabels = [
             'active' => 'ساري',
@@ -149,4 +149,4 @@
             </div>
         </div>
     @endif
-</div>
+</x-ds-page>

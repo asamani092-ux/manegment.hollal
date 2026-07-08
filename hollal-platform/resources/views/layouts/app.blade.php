@@ -16,7 +16,7 @@
     <div class="ds-main-layout">
         @include('partials.sidebar')
 
-        <main class="ds-content">
+        <main class="ds-content ds-page-rtl" dir="rtl">
             @hasSection('content')
                 @yield('content')
             @else

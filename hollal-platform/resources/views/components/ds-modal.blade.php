@@ -5,8 +5,8 @@
 ])
 
 @if ($show)
-    <div {{ $attributes->merge(['class' => 'ds-modal-overlay']) }}>
-        <div @class(['ds-modal', 'ds-modal-lg' => $size === 'lg']) role="dialog">
+    <div {{ $attributes->merge(['class' => 'ds-modal-overlay']) }} dir="rtl">
+        <div @class(['ds-modal', 'ds-modal-lg' => $size === 'lg']) role="dialog" dir="rtl">
             @if (isset($header))
                 <div class="ds-modal-header">{{ $header }}</div>
             @endif

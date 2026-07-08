@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     @php
         $transferLabels = ['pending' => 'معلق', 'transferred' => 'محوّل', 'failed' => 'فشل'];
     @endphp
@@ -129,4 +129,4 @@
             </div>
         </div>
     @endif
-</div>
+</x-ds-page>

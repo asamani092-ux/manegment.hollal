@@ -1,4 +1,4 @@
-<div>
+<x-ds-page>
     @php
         $statusLabels = [
             'new' => 'جديدة',
@@ -129,4 +129,4 @@
             </div>
         </div>
     </section>
-</div>
+</x-ds-page>
