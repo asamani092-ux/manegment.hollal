@@ -6,6 +6,7 @@ use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\ExpenseRequest;
 use App\Models\Project;
 use App\Notifications\ExpenseRejected;
+use App\Services\AuditLogService;
 use App\Services\ExpenseApprovalService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -249,6 +250,8 @@ class ExpensesIndex extends Component
         $this->authorize('pay', $expense);
 
         $expense->update(['status' => 'paid']);
+
+        app(AuditLogService::class)->record('expense.paid', $expense);
 
         $this->dispatch('toast', type: 'success', message: 'تم تسجيل الدفع');
     }

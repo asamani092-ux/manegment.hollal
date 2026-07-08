@@ -44,18 +44,20 @@ Route::middleware('auth')->group(function () {
 });
 
 Route::middleware(['auth', 'password.changed'])->group(function () {
-    Route::get('/files/tasks/{task}/{type}', TaskFileDownloadController::class)
-        ->whereIn('type', ['attachment', 'submitted'])
-        ->name('tasks.files.download');
+    Route::middleware('throttle:files')->group(function () {
+        Route::get('/files/tasks/{task}/{type}', TaskFileDownloadController::class)
+            ->whereIn('type', ['attachment', 'submitted'])
+            ->name('tasks.files.download');
 
-    Route::get('/files/contracts/{contract}', ContractFileDownloadController::class)
-        ->name('contracts.files.download');
+        Route::get('/files/contracts/{contract}', ContractFileDownloadController::class)
+            ->name('contracts.files.download');
 
-    Route::get('/files/expenses/{expenseRequest}', ExpenseFileDownloadController::class)
-        ->name('expenses.files.download');
+        Route::get('/files/expenses/{expenseRequest}', ExpenseFileDownloadController::class)
+            ->name('expenses.files.download');
 
-    Route::get('/files/documents/{document}', DocumentDownloadController::class)
-        ->name('documents.files.download');
+        Route::get('/files/documents/{document}', DocumentDownloadController::class)
+            ->name('documents.files.download');
+    });
 
     Route::get('/dashboard', DashboardIndex::class)
         ->middleware('permission:dashboard.view')

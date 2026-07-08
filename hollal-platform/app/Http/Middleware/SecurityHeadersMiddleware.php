@@ -29,6 +29,17 @@ class SecurityHeadersMiddleware
         $response->headers->set('X-XSS-Protection', '0');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 
+        $response->headers->set(
+            'Content-Security-Policy-Report-Only',
+            "default-src 'self'; ".
+            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; ".
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; ".
+            "img-src 'self' data:; ".
+            "font-src 'self' https://cdnjs.cloudflare.com; ".
+            "connect-src 'self'; ".
+            "frame-ancestors 'none'"
+        );
+
         return $response;
     }
 }

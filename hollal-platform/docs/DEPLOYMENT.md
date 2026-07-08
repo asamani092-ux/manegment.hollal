@@ -1,91 +1,132 @@
-# Hollal Platform — Production Deployment
+# نشر منصة حلّل — الإنتاج
 
-## Requirements
+دليل نشر Laravel 13 على VPS / Railway / أي بيئة إنتاجية دائمة.
 
-- PHP 8.3+ with extensions: `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `curl`
+---
+
+## 1. المتطلبات
+
+- PHP 8.3+ مع امتدادات: `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `gd` أو `imagick`
 - MySQL 8+
-- Node.js 20+ (asset build only)
-- Composer 2.x
+- Composer 2
+- Node (اختياري — الأصول ثابتة في `public/css`)
+- Supervisor أو systemd لـ queue worker و cron
 
-## Environment
+---
 
-1. Copy `.env.production.example` to `.env` on the server.
-2. Set `APP_KEY` via `php artisan key:generate`.
-3. Configure database, mail, and `APP_URL` (HTTPS).
-4. Keep `APP_DEBUG=false` and `APP_ENV=production`.
+## 2. إعداد البيئة
 
-## Install
+```bash
+cp .env.production.example .env
+php artisan key:generate
+```
+
+عدّل `.env`:
+
+| المتغير | القيمة |
+|---------|--------|
+| `APP_ENV` | `production` |
+| `APP_DEBUG` | `false` |
+| `APP_URL` | `https://your-domain.example` |
+| `APP_LOCALE` | `ar` |
+| `DB_*` | بيانات MySQL |
+| `ADMIN_INITIAL_PASSWORD` | كلمة مرور المدير الأولى (لا تُرفع للمستودع) |
+| `SESSION_ENCRYPT` | `true` |
+| `SESSION_LIFETIME` | `60` |
+| `SESSION_SECURE_COOKIE` | `true` |
+
+`AppServiceProvider` يفرض `https` تلقائياً في `production`.
+
+---
+
+## 3. التثبيت والهجرة
 
 ```bash
 composer install --no-dev --optimize-autoloader
-npm ci && npm run build
 php artisan migrate --force
 php artisan db:seed --class=PermissionSeeder --force
-php artisan storage:link
+php artisan db:seed --class=RoleSeeder --force
+php artisan db:seed --class=AdminUserSeeder --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 ```
 
-## Scheduler
+**تسجيل الدخول الأول:** جوال `0500000000` + قيمة `ADMIN_INITIAL_PASSWORD`.
 
-Add a cron entry (runs queued jobs and scheduled commands):
+---
+
+## 4. Cron (مهام مجدولة)
 
 ```cron
 * * * * * cd /path/to/hollal-platform && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-Scheduled tasks include task due/overdue alerts, contract expiry notices, and weekly report generation.
+---
 
-## Queue worker
+## 5. Queue Worker
 
-When `QUEUE_CONNECTION=database`, run a persistent worker:
-
-```bash
-php artisan queue:work --sleep=3 --tries=3
+```ini
+[program:hollal-worker]
+command=php /path/to/hollal-platform/artisan queue:work database --sleep=3 --tries=3 --max-time=3600
+autostart=true
+autorestart=true
+user=www-data
 ```
 
-## Security
+---
 
-- `SecurityHeadersMiddleware` adds baseline HTTP security headers on every response.
-- Session lifetime defaults to 60 minutes (`SESSION_LIFETIME=60`); sessions regenerate on login.
-- File downloads use policy checks and private `local` disk storage.
-- Do not commit `.env` or production secrets.
+## 6. التخزين الدائم للملفات
 
-## Health check
+الملفات الحساسة تُخزَّن على قرص `local` → `storage/app/private` (مهام، مصروفات، عقود، مستندات).
 
-Laravel exposes `/up` for load balancer probes.
+**تحذير:** حاويات Docker / نشر بدون volume تفقد الملفات عند إعادة التشغيل.
 
-## Backup
+| البيئة | الحل الموصى به |
+|--------|----------------|
+| VPS | volume مربوط بـ `storage/app/private` |
+| Kubernetes | PersistentVolumeClaim |
+| S3-compatible | `FILESYSTEM_DISK=s3` + ضبط `AWS_*` في `.env` |
 
-Before each deploy, back up the database and uploaded files:
+لا تشغّل `php artisan storage:link` للملفات الخاصة — التحميل عبر مسارات `/files/*` المحمية فقط.
 
-```bash
-# Database (MySQL)
-mysqldump -u "$DB_USERNAME" -p"$DB_PASSWORD" "$DB_DATABASE" \
-  | gzip > "backups/hollal-$(date +%Y%m%d-%H%M).sql.gz"
+---
 
-# Uploaded files (tasks, contracts, expenses, documents)
-tar -czf "backups/storage-$(date +%Y%m%d-%H%M).tar.gz" storage/app/private
-```
-
-Store backups off-server and verify archive integrity before proceeding.
-
-## Restore test
-
-Periodically validate backups on a staging host:
+## 7. النسخ الاحتياطي اليومي
 
 ```bash
-# Restore database
-gunzip -c backups/hollal-YYYYMMDD-HHMM.sql.gz | mysql -u user -p hollal_staging
+# MySQL
+mysqldump -u hollal -p hollal > backup-$(date +%F).sql
 
-# Restore files
-tar -xzf backups/storage-YYYYMMDD-HHMM.tar.gz -C /path/to/hollal-platform
-
-# Smoke test
-php artisan migrate --force
-php artisan test
-curl -f https://staging.example.com/up
+# ملفات خاصة
+tar -czf private-$(date +%F).tar.gz storage/app/private
 ```
 
-Confirm login, file downloads, and scheduled commands before promoting to production.
+احفظ النسخ خارج الخادم (S3 / NAS). اختبر الاستعادة شهرياً.
+
+---
+
+## 8. RESTORE TEST — قائمة تحقق
+
+- [ ] استعادة dump MySQL إلى بيئة staging
+- [ ] استعادة `storage/app/private` إلى نفس المسار
+- [ ] `php artisan migrate --force` (إن لزم)
+- [ ] تسجيل دخول مدير + موظف
+- [ ] تحميل مرفق مصروف / مستند / مهمة عبر `/files/*`
+- [ ] إرسال طلب مصروف وموافقة
+- [ ] مراجعة `audit_logs` لوجود سجلات حديثة
+
+---
+
+## 9. الأمان (مُدمَج)
+
+- رؤوس HTTP: HSTS (إنتاج)، `X-Frame-Options: DENY`, `nosniff`, `Referrer-Policy`, CSP Report-Only
+- جلسات: 60 دقيقة، تشفير، إعادة توليد عند الدخول
+- تحميل الملفات: سياسات + rate limit 30/دقيقة على `/files/*`
+- سجل تدقيق: `audit_logs` (append-only)
+
+راجع `docs/SECURITY-REVIEW.md` للتفاصيل.
+
+---
+
+*آخر تحديث: يوليو 2026 — Batch 4 (Part J)*

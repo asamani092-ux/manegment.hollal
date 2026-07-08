@@ -8,6 +8,7 @@ use App\Models\ExpenseSetting;
 use App\Models\User;
 use App\Notifications\ExpenseAwaitingApproval;
 use App\Notifications\ExpensePaidReady;
+use App\Services\AuditLogService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Notification;
 
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Notification;
  */
 class ExpenseApprovalService
 {
+    public function __construct(protected AuditLogService $auditLog) {}
     public const STAGE_DEPARTMENT_MANAGER = 'department_manager';
 
     public const STAGE_EXECUTIVE = 'executive';
@@ -107,6 +109,11 @@ class ExpenseApprovalService
                 'paid_ready_at' => now(),
             ]);
 
+            $this->auditLog->record('expense.approved', $expense, [
+                'stage' => $stage,
+                'final' => true,
+            ], $approver);
+
             $expense->requester?->notify(new ExpensePaidReady($expense->fresh()));
 
             return;
@@ -118,14 +125,21 @@ class ExpenseApprovalService
             'approved_at' => now(),
         ]);
 
+        $this->auditLog->record('expense.approved', $expense, [
+            'stage' => $stage,
+            'next_stage' => $nextStage,
+        ], $approver);
+
         $this->notifyApproversForStage($expense->fresh(), $nextStage);
     }
 
     public function reject(User $approver, ExpenseRequest $expense, string $reason): void
     {
+        $stage = $expense->current_approval_stage ?? 'unknown';
+
         ExpenseApprovalLog::create([
             'expense_request_id' => $expense->id,
-            'stage' => $expense->current_approval_stage ?? 'unknown',
+            'stage' => $stage,
             'approver_id' => $approver->id,
             'action' => 'rejected',
             'notes' => $reason,
@@ -139,6 +153,11 @@ class ExpenseApprovalService
             'approved_at' => now(),
             'rejection_reason' => $reason,
         ]);
+
+        $this->auditLog->record('expense.rejected', $expense, [
+            'stage' => $stage,
+            'reason' => $reason,
+        ], $approver);
     }
 
     protected function isDepartmentManager(User $user, ExpenseRequest $expense): bool

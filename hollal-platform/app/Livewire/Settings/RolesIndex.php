@@ -3,6 +3,7 @@
 namespace App\Livewire\Settings;
 
 use App\Models\Role;
+use App\Services\AuditLogService;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -53,8 +54,10 @@ class RolesIndex extends Component
         if ($this->roleId) {
             $role = Role::findOrFail($this->roleId);
             $this->authorize('update', $role);
+            $previousPermissions = $role->permissions->pluck('name')->all();
         } else {
             $this->authorize('roles.create');
+            $previousPermissions = [];
         }
 
         $this->validate([
@@ -71,6 +74,15 @@ class RolesIndex extends Component
         $role->syncPermissions($this->selectedPermissions);
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
+        app(AuditLogService::class)->record(
+            $this->roleId ? 'role.updated' : 'role.created',
+            $role,
+            [
+                'permissions_before' => $previousPermissions,
+                'permissions_after' => $this->selectedPermissions,
+            ]
+        );
+
         $this->showModal = false;
         $this->resetForm();
         $this->dispatch('toast', type: 'success', message: 'تم حفظ الدور بنجاح');
@@ -80,8 +92,15 @@ class RolesIndex extends Component
     {
         $role = Role::findOrFail($id);
         $this->authorize('delete', $role);
+        $roleName = $role->name;
+        $permissions = $role->permissions->pluck('name')->all();
         $role->delete();
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        app(AuditLogService::class)->record('role.deleted', metadata: [
+            'role_name' => $roleName,
+            'permissions' => $permissions,
+        ]);
         $this->dispatch('toast', type: 'success', message: 'تم حذف الدور');
     }
 
