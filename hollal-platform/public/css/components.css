@@ -728,6 +728,23 @@
   border-color: rgba(224, 82, 82, 0.2);
 }
 
+.ds-permission-group {
+  margin-bottom: 1.25rem;
+}
+
+.ds-permission-group:last-child {
+  margin-bottom: 0;
+}
+
+.ds-permission-group-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--ds-primary);
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--ds-border);
+}
+
 .ds-permissions-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));

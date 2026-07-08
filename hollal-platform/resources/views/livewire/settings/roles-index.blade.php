@@ -49,15 +49,22 @@
                                placeholder="مثال: مدير الموارد البشرية">
                     </x-ds-form-group>
                     <x-ds-form-group label="الصلاحيات">
-                        <div class="ds-permissions-grid">
-                            @foreach ($allPermissions as $permission)
-                                <label class="ds-checkbox-label">
-                                    <input type="checkbox" value="{{ $permission->name }}"
-                                           wire:model="selectedPermissions">
-                                    <span><x-ds-permission-label :name="$permission->name" /></span>
-                                </label>
-                            @endforeach
-                        </div>
+                        @foreach ($groupedPermissions as $groupKey => $permissions)
+                            <div class="ds-permission-group">
+                                <h4 class="ds-permission-group-title">
+                                    {{ config('permission_labels.groups')[$groupKey] ?? $groupKey }}
+                                </h4>
+                                <div class="ds-permissions-grid">
+                                    @foreach ($permissions as $permissionName)
+                                        <label class="ds-checkbox-label">
+                                            <input type="checkbox" value="{{ $permissionName }}"
+                                                   wire:model="selectedPermissions">
+                                            <span><x-ds-permission-label :name="$permissionName" /></span>
+                                        </label>
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endforeach
                     </x-ds-form-group>
                 </div>
                 <div class="ds-modal-footer">

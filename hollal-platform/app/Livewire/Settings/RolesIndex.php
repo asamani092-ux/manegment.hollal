@@ -7,7 +7,6 @@ use Database\Seeders\PermissionSeeder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
-use Spatie\Permission\Models\Permission;
 use Spatie\Permission\PermissionRegistrar;
 
 /**
@@ -106,9 +105,8 @@ class RolesIndex extends Component
             'roles' => Role::withCount('permissions')
                 ->orderBy('name')
                 ->get(['id', 'name', 'created_at']),
-            'allPermissions' => Permission::orderBy('name')
-                ->get(['id', 'name']),
-            'permissionGroups' => collect(PermissionSeeder::PERMISSIONS),
+            'groupedPermissions' => collect(PermissionSeeder::PERMISSIONS)
+                ->groupBy(fn (string $permission): string => explode('.', $permission, 2)[0]),
         ])->layout('layouts.app', ['title' => 'الأدوار والصلاحيات']);
     }
 }
