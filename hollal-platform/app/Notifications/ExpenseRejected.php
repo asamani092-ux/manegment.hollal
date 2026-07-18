@@ -10,13 +10,14 @@ use Illuminate\Notifications\Notification;
 class ExpenseRejected extends Notification implements ShouldQueue
 {
     use Queueable;
+    use \App\Notifications\Concerns\SendsToPreferredChannels;
 
     public function __construct(public ExpenseRequest $expenseRequest) {}
 
     /** @return list<string> */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return $this->preferredChannels($notifiable);
     }
 
     /** @return array<string, mixed> */

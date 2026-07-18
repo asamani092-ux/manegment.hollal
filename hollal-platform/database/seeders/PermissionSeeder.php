@@ -52,6 +52,7 @@ class PermissionSeeder extends Seeder
         'documents.create',
         'reports.view',
         'settings.manage',
+        'settings.notifications.manage',
     ];
 
     public function run(): void

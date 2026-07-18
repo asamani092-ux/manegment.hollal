@@ -56,6 +56,7 @@ return [
         'reports.view' => 'عرض التقارير',
 
         'settings.manage' => 'إدارة إعدادات النظام',
+        'settings.notifications.manage' => 'إدارة إعدادات الإشعارات والبريد',
     ],
 
     'groups' => [
