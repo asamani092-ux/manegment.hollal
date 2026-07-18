@@ -1,16 +1,26 @@
 /* حلل المعرفة — Light Theme Tokens (منصة / فواتير / QR) */
 :root,
 [data-theme="light"] {
-  /* Brand */
-  --ds-primary: #005c7b;
-  --ds-primary-dark: #003d52;
-  --ds-primary-deeper: #002c3d;
-  --ds-secondary: #40baac;
-  --ds-secondary-hover: #2e9b8e;
-  --ds-secondary-alt: #2aa89a;
-  --ds-accent: #c59649;
+  /* Brand identity v1.1 (ui-reference) — extend, keep legacy aliases below */
+  --ds-brand-academic: #0F3446;
+  --ds-brand-gold: #C4A052;
+  --ds-brand-teal: #27A588;
+
+  /* Brand (active) */
+  --ds-primary: var(--ds-brand-academic);
+  --ds-primary-dark: #0a2430;
+  --ds-primary-deeper: #071820;
+  --ds-secondary: var(--ds-brand-teal);
+  --ds-secondary-hover: #1f8a72;
+  --ds-secondary-alt: #238f76;
+  --ds-accent: var(--ds-brand-gold);
   --ds-accent-light: #e8f9f7;
-  --ds-accent-gold-light: rgba(197, 150, 73, 0.12);
+  --ds-accent-gold-light: rgba(196, 160, 82, 0.12);
+
+  /* Legacy brand (compat — do not delete) */
+  --ds-primary-legacy: #005c7b;
+  --ds-secondary-legacy: #40baac;
+  --ds-accent-legacy: #c59649;
 
   /* Semantic */
   --ds-success: #2db57a;

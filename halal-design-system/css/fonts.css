@@ -1,9 +1,0 @@
-/* حلل المعرفة — Design System Fonts */
-@import url('https://fonts.googleapis.com/css2?family=Alexandria:wght@100;200;300;400;500;600;700;800;900&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@100;200;300;400;500;600;700&display=swap');
-
-:root {
-  --ds-font-primary: 'Alexandria', 'Tahoma', sans-serif;
-  --ds-font-forms: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
-  --ds-font-mono: 'Courier New', monospace;
-}

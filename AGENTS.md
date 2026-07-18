@@ -32,4 +32,4 @@ php artisan serve --host=0.0.0.0 --port=8000
 ## ملاحظة
 
 هذا الإعداد لـ **Cursor Cloud Agents** (VM معزولة + port forwarding).  
-للنشر الإنتاجي الدائم على VPS/Railway راجع `hollal-platform/docs/CLOUD-DEPLOY.md`.
+للنشر الإنتاجي الدائم على **Hostinger** راجع `hollal-platform/docs/DEPLOYMENT.md`.

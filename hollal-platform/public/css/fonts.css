@@ -3,7 +3,9 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@100;200;300;400;500;600;700&display=swap');
 
 :root {
-  --ds-font-primary: 'Alexandria', 'Tahoma', sans-serif;
+  /* Identity (v1.1): IBM Plex Sans Arabic primary — Alexandria retained as fallback */
+  --ds-font-primary: 'IBM Plex Sans Arabic', 'Alexandria', 'Tahoma', sans-serif;
   --ds-font-forms: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, sans-serif;
+  --ds-font-display: 'Alexandria', 'IBM Plex Sans Arabic', 'Tahoma', sans-serif;
   --ds-font-mono: 'Courier New', monospace;
 }

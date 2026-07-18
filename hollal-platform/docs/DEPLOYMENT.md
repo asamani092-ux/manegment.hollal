@@ -1,6 +1,6 @@
 # نشر منصة حلّل — الإنتاج
 
-دليل نشر Laravel 13 على VPS / Railway / أي بيئة إنتاجية دائمة.
+دليل نشر Laravel 13 على **Hostinger** / VPS — بيئة إنتاجية دائمة (لا Railway/Render).
 
 ---
 

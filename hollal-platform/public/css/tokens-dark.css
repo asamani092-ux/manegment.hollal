@@ -1,10 +1,18 @@
 /* حلل المعرفة — Dark Theme Tokens (نماذج / SurveyJS) */
 [data-theme="dark"] {
-  --ds-primary: #065d7c;
-  --ds-primary-dark: #044663;
-  --ds-secondary: #3fb9a9;
-  --ds-secondary-hover: #359a8c;
-  --ds-accent-light: rgba(63, 185, 169, 0.15);
+  --ds-brand-academic: #0F3446;
+  --ds-brand-gold: #C4A052;
+  --ds-brand-teal: #27A588;
+
+  --ds-primary: #1a4a5e;
+  --ds-primary-dark: #0F3446;
+  --ds-secondary: #27A588;
+  --ds-secondary-hover: #1f8a72;
+  --ds-accent: #C4A052;
+  --ds-accent-light: rgba(39, 165, 136, 0.15);
+
+  --ds-primary-legacy: #065d7c;
+  --ds-secondary-legacy: #3fb9a9;
 
   --ds-success: #43a047;
   --ds-danger: #e53935;
