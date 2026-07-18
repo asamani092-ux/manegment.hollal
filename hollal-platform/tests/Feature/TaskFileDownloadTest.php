@@ -87,8 +87,8 @@ class TaskFileDownloadTest extends TestCase
 
     public function test_user_with_tasks_view_permission_can_download_task_attachment(): void
     {
-        Permission::findByName('tasks.view', 'web');
-        $this->outsider->givePermissionTo('tasks.view');
+        Permission::findByName('esnad.tasks.view', 'web');
+        $this->outsider->givePermissionTo('esnad.tasks.view');
 
         $response = $this->actingAs($this->outsider)->get(route('tasks.files.download', [
             'task' => $this->task,

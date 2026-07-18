@@ -39,7 +39,7 @@ class HorizontalAccessTest extends TestCase
         $this->assignee = User::factory()->create(['phone' => '0502222222']);
         $this->outsider = User::factory()->create(['phone' => '0503333333']);
 
-        $this->outsider->givePermissionTo(['tasks.view', 'projects.view']);
+        $this->outsider->givePermissionTo(['esnad.tasks.view', 'projects.view']);
 
         $this->task = Task::factory()->create([
             'assigned_by' => $this->assigner->id,

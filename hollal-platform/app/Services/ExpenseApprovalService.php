@@ -76,8 +76,8 @@ class ExpenseApprovalService
 
         return match ($expense->current_approval_stage) {
             self::STAGE_DEPARTMENT_MANAGER => $this->isDepartmentManager($user, $expense),
-            self::STAGE_EXECUTIVE => $user->hasRole('Executive Manager') && $user->can('expenses.approve'),
-            self::STAGE_FINANCE => $user->can('expenses.pay'),
+            self::STAGE_EXECUTIVE => $user->hasRole('Executive Manager') && $user->can('finance.expenses.approve'),
+            self::STAGE_FINANCE => $user->can('finance.expenses.pay'),
             default => false,
         };
     }
@@ -189,10 +189,10 @@ class ExpenseApprovalService
                 $expense->requester?->manager,
             ])->filter(),
             self::STAGE_EXECUTIVE => User::role('Executive Manager')
-                ->permission('expenses.approve')
+                ->permission('finance.expenses.approve')
                 ->where('is_active', true)
                 ->get(),
-            self::STAGE_FINANCE => User::permission('expenses.pay')
+            self::STAGE_FINANCE => User::permission('finance.expenses.pay')
                 ->where('is_active', true)
                 ->get(),
             default => collect(),

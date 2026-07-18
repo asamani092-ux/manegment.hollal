@@ -28,10 +28,10 @@ class TaskAssigneeNotesTest extends TestCase
         $this->seed(PermissionSeeder::class);
 
         $this->assigner = User::factory()->create(['phone' => '0501111111']);
-        $this->assigner->givePermissionTo(['tasks.view', 'tasks.create', 'tasks.update', 'tasks.delete']);
+        $this->assigner->givePermissionTo(['esnad.tasks.view', 'esnad.tasks.create', 'esnad.tasks.update', 'esnad.tasks.delete']);
 
         $this->assignee = User::factory()->create(['phone' => '0502222222']);
-        $this->assignee->givePermissionTo(['tasks.view']);
+        $this->assignee->givePermissionTo(['esnad.tasks.view']);
 
         $this->task = Task::factory()->create([
             'title' => 'مهمة للمُنفّذ',

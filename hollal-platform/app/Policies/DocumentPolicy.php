@@ -84,7 +84,7 @@ class DocumentPolicy
     protected function isManager(User $user): bool
     {
         return $user->subordinates()->exists()
-            || $user->can('salaries.manage')
-            || $user->can('departments.manage');
+            || $user->can('hr.salaries.manage')
+            || $user->can('structure.departments.manage');
     }
 }

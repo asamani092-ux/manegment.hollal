@@ -72,15 +72,15 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         ->name('projects.show');
 
     Route::get('/tasks', TasksIndex::class)
-        ->middleware('permission:tasks.view')
+        ->middleware('permission:esnad.tasks.view')
         ->name('tasks.index');
 
     Route::get('/expenses', ExpensesIndex::class)
-        ->middleware('permission:expenses.view|expenses.create|expenses.approve|expenses.pay')
+        ->middleware('permission:finance.expenses.view|finance.expenses.create|finance.expenses.approve|finance.expenses.pay')
         ->name('expenses.index');
 
     Route::get('/payroll', PayrollIndex::class)
-        ->middleware('permission:salaries.view')
+        ->middleware('permission:hr.salaries.view')
         ->name('payroll.index');
 
     Route::get('/documents', DocumentsIndex::class)
@@ -104,7 +104,7 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         ->name('meetings.minutes');
 
     Route::get('/departments', DepartmentsIndex::class)
-        ->middleware('permission:departments.view')
+        ->middleware('permission:structure.departments.view')
         ->name('departments.index');
 
     Route::get('/settings/roles', RolesIndex::class)
@@ -116,11 +116,11 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         ->name('settings.expenses');
 
     Route::get('/users', UsersIndex::class)
-        ->middleware('permission:users.view')
+        ->middleware('permission:hr.employees.view')
         ->name('users.index');
 
     Route::get('/contracts', ContractsIndex::class)
-        ->middleware('permission:contracts.view')
+        ->middleware('permission:partnerships.contracts.view')
         ->name('contracts.index');
 
     Route::get('/reports', ReportsIndex::class)

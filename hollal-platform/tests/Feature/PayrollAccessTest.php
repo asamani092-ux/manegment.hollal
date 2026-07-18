@@ -36,7 +36,7 @@ class PayrollAccessTest extends TestCase
             'phone' => '0505555555',
             'must_change_password' => false,
         ]);
-        $user->givePermissionTo('salaries.view');
+        $user->givePermissionTo('hr.salaries.view');
 
         $response = $this->actingAs($user)->get(route('payroll.index'));
 

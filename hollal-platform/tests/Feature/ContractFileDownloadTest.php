@@ -29,7 +29,7 @@ class ContractFileDownloadTest extends TestCase
         $employee = User::factory()->create(['phone' => '0509999999']);
 
         $this->hrUser = User::factory()->create(['phone' => '0501111111', 'must_change_password' => false]);
-        $this->hrUser->givePermissionTo(['contracts.view']);
+        $this->hrUser->givePermissionTo(['partnerships.contracts.view']);
 
         $this->outsider = User::factory()->create(['phone' => '0502222222', 'must_change_password' => false]);
 

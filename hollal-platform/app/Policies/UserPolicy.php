@@ -11,16 +11,16 @@ class UserPolicy
 {
     public function view(User $actor, User $target): bool
     {
-        return $actor->id === $target->id || $actor->can('users.view');
+        return $actor->id === $target->id || $actor->can('hr.employees.view');
     }
 
     public function update(User $actor, User $target): bool
     {
-        return $actor->can('users.update');
+        return $actor->can('hr.employees.update');
     }
 
     public function delete(User $actor, User $target): bool
     {
-        return $actor->can('users.delete') && $actor->id !== $target->id;
+        return $actor->can('hr.employees.delete') && $actor->id !== $target->id;
     }
 }

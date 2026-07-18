@@ -11,7 +11,7 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * Payroll — monthly salaries, CRUD gated by salaries.manage.
+ * Payroll — monthly salaries, CRUD gated by hr.salaries.manage.
  * Time: O(n) per page | Space: O(n).
  */
 class PayrollIndex extends Component

@@ -38,7 +38,7 @@ class ExpenseApprovalChainTest extends TestCase
         $this->seed(RoleSeeder::class);
 
         $this->deptManager = User::factory()->create(['phone' => '0501000001', 'must_change_password' => false]);
-        $this->deptManager->givePermissionTo('expenses.approve');
+        $this->deptManager->givePermissionTo('finance.expenses.approve');
 
         $this->requester = User::factory()->create([
             'phone' => '0501000002',

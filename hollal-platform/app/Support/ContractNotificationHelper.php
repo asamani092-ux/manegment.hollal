@@ -10,7 +10,7 @@ class ContractNotificationHelper
     /**
      * HR recipients for contract expiry alerts:
      * 1. Users with the "HR" Spatie role
-     * 2. Users with contracts.manage or users.view (HR oversight permissions)
+     * 2. Users with partnerships.contracts.manage or hr.employees.view (HR oversight permissions)
      * Departments have no head_id in schema, so department heads are not used.
      * Time: O(u) users | Space: O(u).
      *
@@ -22,7 +22,7 @@ class ContractNotificationHelper
             ? User::role('HR')->get(['id', 'name', 'email'])
             : collect();
 
-        $byPermission = User::permission(['contracts.manage', 'users.view'])
+        $byPermission = User::permission(['partnerships.contracts.manage', 'hr.employees.view'])
             ->get(['id', 'name', 'email']);
 
         return $byRole->merge($byPermission)->unique('id')->values();

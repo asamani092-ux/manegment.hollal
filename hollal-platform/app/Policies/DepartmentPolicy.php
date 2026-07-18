@@ -12,16 +12,16 @@ class DepartmentPolicy
 {
     public function view(User $user, Department $department): bool
     {
-        return $user->can('departments.view');
+        return $user->can('structure.departments.view');
     }
 
     public function update(User $user, Department $department): bool
     {
-        return $user->can('departments.update');
+        return $user->can('structure.departments.update');
     }
 
     public function delete(User $user, Department $department): bool
     {
-        return $user->can('departments.delete');
+        return $user->can('structure.departments.delete');
     }
 }

@@ -114,7 +114,7 @@ class MeetingMinutes extends Component
     public function convertToTask(int $itemId): void
     {
         $this->authorize('update', $this->meeting);
-        $this->authorize('tasks.create');
+        $this->authorize('esnad.tasks.create');
 
         $item = MeetingItem::where('meeting_id', $this->meeting->id)->findOrFail($itemId);
 

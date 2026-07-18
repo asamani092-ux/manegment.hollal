@@ -63,8 +63,8 @@ class Document extends Model
                 })
                 ->orWhere(function (Builder $managers) use ($user) {
                     if ($user->subordinates()->exists()
-                        || $user->can('salaries.manage')
-                        || $user->can('departments.manage')) {
+                        || $user->can('hr.salaries.manage')
+                        || $user->can('structure.departments.manage')) {
                         $managers->where('confidentiality', 'managers');
                     }
                 });

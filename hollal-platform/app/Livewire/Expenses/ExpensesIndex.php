@@ -72,7 +72,7 @@ class ExpensesIndex extends Component
     {
         $this->authorize('viewAny', ExpenseRequest::class);
 
-        if ($this->activeTab === 'all' && ! auth()->user()->can('expenses.view')) {
+        if ($this->activeTab === 'all' && ! auth()->user()->can('finance.expenses.view')) {
             $this->activeTab = 'my';
         }
     }
@@ -80,7 +80,7 @@ class ExpensesIndex extends Component
     public function setTab(string $tab): void
     {
         if ($tab === 'all') {
-            $this->authorize('expenses.view');
+            $this->authorize('finance.expenses.view');
         }
 
         $this->activeTab = $tab;
@@ -337,7 +337,7 @@ class ExpensesIndex extends Component
     public function render(): View
     {
         $userId = auth()->id();
-        $canViewAll = auth()->user()->can('expenses.view');
+        $canViewAll = auth()->user()->can('finance.expenses.view');
 
         return view('livewire.expenses.expenses-index', [
             'myExpenses' => $this->expenseQuery($userId, 'my')->paginate(8, pageName: 'myExpensesPage'),

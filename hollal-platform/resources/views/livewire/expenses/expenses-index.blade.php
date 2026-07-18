@@ -29,7 +29,7 @@
 
     <x-ds-page-header
         title="المصروفات"
-        :show-button="auth()->user()->can('expenses.create')"
+        :show-button="auth()->user()->can('finance.expenses.create')"
         button-label="طلب مصروف"
         button-icon="fa-plus"
         wire:click="openExpenseCreate"

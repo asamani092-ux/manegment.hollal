@@ -42,12 +42,12 @@ class UsersIndex extends Component
 
     public function mount(): void
     {
-        $this->authorize('users.view');
+        $this->authorize('hr.employees.view');
     }
 
     public function openCreateModal(): void
     {
-        $this->authorize('users.create');
+        $this->authorize('hr.employees.create');
         $this->viewOnly = false;
         $this->resetForm();
         $this->showModal = true;
@@ -94,7 +94,7 @@ class UsersIndex extends Component
             $user = User::findOrFail($this->userId);
             $this->authorize('update', $user);
         } else {
-            $this->authorize('users.create');
+            $this->authorize('hr.employees.create');
         }
 
         $rules = [

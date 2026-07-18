@@ -48,7 +48,7 @@ class ExpenseRequestTest extends TestCase
         $this->finance->assignRole('Finance');
 
         $this->viewer = User::factory()->create(['phone' => '0505555555', 'must_change_password' => false]);
-        $this->viewer->givePermissionTo(['expenses.view']);
+        $this->viewer->givePermissionTo(['finance.expenses.view']);
     }
 
     public function test_user_can_create_and_submit_expense_to_pending(): void

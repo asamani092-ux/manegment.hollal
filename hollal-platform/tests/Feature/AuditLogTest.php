@@ -64,7 +64,7 @@ class AuditLogTest extends TestCase
         Livewire::actingAs($admin)
             ->test(RolesIndex::class)
             ->call('openEditModal', $role->id)
-            ->set('selectedPermissions', ['dashboard.view', 'tasks.view'])
+            ->set('selectedPermissions', ['dashboard.view', 'esnad.tasks.view'])
             ->call('save')
             ->assertHasNoErrors();
 
@@ -81,7 +81,7 @@ class AuditLogTest extends TestCase
         Storage::fake('local');
 
         $user = User::factory()->create(['must_change_password' => false]);
-        $user->givePermissionTo(['tasks.view', 'tasks.create']);
+        $user->givePermissionTo(['esnad.tasks.view', 'esnad.tasks.create']);
 
         $task = \App\Models\Task::factory()->create([
             'assigned_by' => $user->id,

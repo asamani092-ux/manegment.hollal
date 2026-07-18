@@ -5,7 +5,7 @@
 
     <x-ds-page-header
         title="الرواتب"
-        :show-button="auth()->user()->can('salaries.manage')"
+        :show-button="auth()->user()->can('hr.salaries.manage')"
         button-label="راتب جديد"
         button-icon="fa-plus"
         wire:click="openCreate"
@@ -47,9 +47,9 @@
                     <td>{{ $transferLabels[$payroll->transfer_status] ?? $payroll->transfer_status }}</td>
                     <td>
                         <x-ds-action-icons
-                            :show-view="auth()->user()->can('salaries.view')"
-                            :show-edit="auth()->user()->can('salaries.manage')"
-                            :show-delete="auth()->user()->can('salaries.manage')"
+                            :show-view="auth()->user()->can('hr.salaries.view')"
+                            :show-edit="auth()->user()->can('hr.salaries.manage')"
+                            :show-delete="auth()->user()->can('hr.salaries.manage')"
                             :view-action="'openView('.$payroll->id.')'"
                             :edit-action="'openEdit('.$payroll->id.')'"
                             :delete-action="'delete('.$payroll->id.')'"

@@ -1,7 +1,7 @@
 <x-ds-page>
     <x-ds-page-header
         title="الأقسام"
-        :show-button="auth()->user()->can('departments.create')"
+        :show-button="auth()->user()->can('structure.departments.create')"
         button-label="قسم جديد"
         button-icon="fa-plus"
         wire:click="openCreate"
@@ -30,8 +30,8 @@
                     <td>
                         <x-ds-action-icons
                             :show-view="true"
-                            :show-edit="auth()->user()->can('departments.update')"
-                            :show-delete="auth()->user()->can('departments.delete')"
+                            :show-edit="auth()->user()->can('structure.departments.update')"
+                            :show-delete="auth()->user()->can('structure.departments.delete')"
                             :view-action="'openView('.$department->id.')'"
                             :edit-action="'openEdit('.$department->id.')'"
                             :delete-action="'delete('.$department->id.')'"

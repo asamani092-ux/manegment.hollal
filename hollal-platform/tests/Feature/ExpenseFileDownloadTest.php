@@ -28,7 +28,7 @@ class ExpenseFileDownloadTest extends TestCase
         Storage::fake('local');
 
         $this->requester = User::factory()->create(['phone' => '0501111111', 'must_change_password' => false]);
-        $this->requester->givePermissionTo(['expenses.create']);
+        $this->requester->givePermissionTo(['finance.expenses.create']);
 
         $this->outsider = User::factory()->create(['phone' => '0502222222', 'must_change_password' => false]);
 

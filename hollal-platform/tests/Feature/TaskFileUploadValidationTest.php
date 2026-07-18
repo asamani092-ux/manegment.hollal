@@ -27,7 +27,7 @@ class TaskFileUploadValidationTest extends TestCase
         Storage::fake('local');
 
         $this->assigner = User::factory()->create(['phone' => '0501111111']);
-        $this->assigner->givePermissionTo(['tasks.view', 'tasks.create']);
+        $this->assigner->givePermissionTo(['esnad.tasks.view', 'esnad.tasks.create']);
 
         $this->assignee = User::factory()->create(['phone' => '0502222222']);
     }

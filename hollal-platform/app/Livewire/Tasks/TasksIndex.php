@@ -69,7 +69,7 @@ class TasksIndex extends Component
 
     public function mount(): void
     {
-        $this->authorize('tasks.view');
+        $this->authorize('esnad.tasks.view');
         $this->taskNotes = collect();
     }
 
@@ -87,7 +87,7 @@ class TasksIndex extends Component
 
     public function openTaskCreate(): void
     {
-        $this->authorize('tasks.create');
+        $this->authorize('esnad.tasks.create');
         $this->resetTaskForm();
         $this->showTaskModal = true;
     }
@@ -124,7 +124,7 @@ class TasksIndex extends Component
             $task = Task::findOrFail($this->taskId);
             $this->authorize('update', $task);
         } else {
-            $this->authorize('tasks.create');
+            $this->authorize('esnad.tasks.create');
         }
 
         $rules = [

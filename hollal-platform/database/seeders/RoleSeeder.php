@@ -8,27 +8,28 @@ use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Creates Super Admin and operational roles with explicit least-privilege permissions.
- * Run after PermissionSeeder.
+ * Run after PermissionSeeder. Permission names follow the hierarchical
+ * tab.section.action convention (00-B2).
  */
 class RoleSeeder extends Seeder
 {
     /** @var list<string> */
     private const GENERAL_MANAGER_PERMISSIONS = [
         'dashboard.view',
-        'users.view',
+        'hr.employees.view',
         'roles.view',
-        'departments.view',
+        'structure.departments.view',
         'projects.view',
         'partnerships.view',
-        'tasks.view',
+        'esnad.tasks.view',
         'meetings.view',
-        'expenses.view',
-        'expenses.approve',
-        'expenses.pay',
-        'salaries.view',
+        'finance.expenses.view',
+        'finance.expenses.approve',
+        'finance.expenses.pay',
+        'hr.salaries.view',
         'documents.view',
-        'contracts.view',
-        'contracts.manage',
+        'partnerships.contracts.view',
+        'partnerships.contracts.manage',
         'reports.view',
     ];
 
@@ -39,17 +40,17 @@ class RoleSeeder extends Seeder
         'projects.create',
         'projects.update',
         'projects.delete',
-        'tasks.view',
-        'tasks.create',
-        'tasks.update',
-        'tasks.delete',
+        'esnad.tasks.view',
+        'esnad.tasks.create',
+        'esnad.tasks.update',
+        'esnad.tasks.delete',
         'meetings.view',
         'meetings.create',
         'meetings.update',
         'meetings.delete',
-        'users.view',
-        'expenses.view',
-        'expenses.approve',
+        'hr.employees.view',
+        'finance.expenses.view',
+        'finance.expenses.approve',
         'reports.view',
         'documents.view',
         'documents.create',
@@ -60,40 +61,57 @@ class RoleSeeder extends Seeder
         'dashboard.view',
         'projects.view',
         'projects.update',
-        'tasks.view',
-        'tasks.create',
-        'tasks.update',
-        'tasks.delete',
+        'esnad.tasks.view',
+        'esnad.tasks.create',
+        'esnad.tasks.update',
+        'esnad.tasks.delete',
         'meetings.view',
         'meetings.create',
         'documents.view',
         'documents.create',
-        'expenses.view',
-        'expenses.create',
+        'finance.expenses.view',
+        'finance.expenses.create',
     ];
 
     /** @var list<string> */
     private const FINANCE_PERMISSIONS = [
         'dashboard.view',
-        'expenses.view',
-        'expenses.create',
-        'expenses.approve',
-        'expenses.pay',
-        'salaries.view',
-        'salaries.manage',
-        'contracts.view',
+        'finance.expenses.view',
+        'finance.expenses.create',
+        'finance.expenses.approve',
+        'finance.expenses.pay',
+        'hr.salaries.view',
+        'hr.salaries.manage',
+        'partnerships.contracts.view',
         'reports.view',
     ];
 
     /** @var list<string> */
     private const EMPLOYEE_PERMISSIONS = [
         'dashboard.view',
-        'tasks.view',
-        'tasks.create',
+        'esnad.tasks.view',
+        'esnad.tasks.create',
         'meetings.view',
         'documents.view',
-        'expenses.view',
-        'expenses.create',
+        'finance.expenses.view',
+        'finance.expenses.create',
+        'projects.view',
+    ];
+
+    /**
+     * Role #7 — مدير الشراكات (Partnerships Manager): partnerships.* + projects.view.
+     *
+     * @var list<string>
+     */
+    private const PARTNERSHIPS_MANAGER_PERMISSIONS = [
+        'dashboard.view',
+        'partnerships.view',
+        'partnerships.create',
+        'partnerships.update',
+        'partnerships.delete',
+        'partnerships.contracts.view',
+        'partnerships.contracts.create',
+        'partnerships.contracts.manage',
         'projects.view',
     ];
 
@@ -109,6 +127,8 @@ class RoleSeeder extends Seeder
         $this->syncRole('Project Manager', self::PROJECT_MANAGER_PERMISSIONS);
         $this->syncRole('Finance', self::FINANCE_PERMISSIONS);
         $this->syncRole('Employee', self::EMPLOYEE_PERMISSIONS);
+        // مدير الشراكات (#7)
+        $this->syncRole('Partnerships Manager', self::PARTNERSHIPS_MANAGER_PERMISSIONS);
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
     }

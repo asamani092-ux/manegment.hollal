@@ -16,13 +16,13 @@ return [
             'label' => 'الفريق',
             'route' => 'users.index',
             'icon' => 'fa-users',
-            'permission' => 'users.view',
+            'permission' => 'hr.employees.view',
         ],
         [
             'label' => 'إسناد',
             'route' => 'tasks.index',
             'icon' => 'fa-tasks',
-            'permission' => 'tasks.view',
+            'permission' => 'esnad.tasks.view',
         ],
         [
             'label' => 'الاجتماعات',
@@ -34,7 +34,7 @@ return [
             'label' => 'المالية',
             'route' => 'expenses.index',
             'icon' => 'fa-money-bill-wave',
-            'permission' => 'expenses.view',
+            'permission' => 'finance.expenses.view',
         ],
         [
             'label' => 'المشاريع',
@@ -55,7 +55,7 @@ return [
             'label' => 'العقود',
             'route' => 'contracts.index',
             'icon' => 'fa-file-contract',
-            'permission' => 'contracts.view',
+            'permission' => 'partnerships.contracts.view',
         ],
         [
             'label' => 'التقارير',
@@ -67,13 +67,13 @@ return [
             'label' => 'الأقسام',
             'route' => 'departments.index',
             'icon' => 'fa-sitemap',
-            'permission' => 'departments.view',
+            'permission' => 'structure.departments.view',
         ],
         [
             'label' => 'الرواتب',
             'route' => 'payroll.index',
             'icon' => 'fa-wallet',
-            'permission' => 'salaries.view',
+            'permission' => 'hr.salaries.view',
         ],
         [
             'label' => 'الأدوار والصلاحيات',

@@ -4,7 +4,7 @@
     @endphp
     <x-ds-page-header
         title="الفريق / المستخدمون"
-        :show-button="auth()->user()->can('users.create')"
+        :show-button="auth()->user()->can('hr.employees.create')"
         button-label="إضافة مستخدم"
         button-icon="fa-user-plus"
         wire:click="openCreateModal"
@@ -43,8 +43,8 @@
                 <td>
                     <x-ds-action-icons
                         :show-view="true"
-                        :show-edit="auth()->user()->can('users.update')"
-                        :show-delete="auth()->user()->can('users.delete')"
+                        :show-edit="auth()->user()->can('hr.employees.update')"
+                        :show-delete="auth()->user()->can('hr.employees.delete')"
                         :view-action="'openViewModal('.$user->id.')'"
                         :edit-action="'openEditModal('.$user->id.')'"
                         :delete-action="'delete('.$user->id.')'"

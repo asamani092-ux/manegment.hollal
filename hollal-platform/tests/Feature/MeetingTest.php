@@ -35,7 +35,7 @@ class MeetingTest extends TestCase
             'meetings.create',
             'meetings.update',
             'meetings.delete',
-            'tasks.create',
+            'esnad.tasks.create',
         ]);
     }
 

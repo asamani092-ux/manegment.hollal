@@ -50,7 +50,7 @@
         <span>الحالة: {{ $itemStatusLabels[$item->status] ?? $item->status }}</span>
       </div>
       <div class="ds-task-card-actions">
-        @if ($item->decision && ! $item->task_id && auth()->user()->can('update', $meeting) && auth()->user()->can('tasks.create'))
+        @if ($item->decision && ! $item->task_id && auth()->user()->can('update', $meeting) && auth()->user()->can('esnad.tasks.create'))
           <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="convertToTask({{ $item->id }})">
             تحويل إلى مهمة
           </button>

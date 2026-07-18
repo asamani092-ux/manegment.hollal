@@ -12,7 +12,7 @@ class TaskPolicy
 {
     public function view(User $user, Task $task): bool
     {
-        return $this->isParticipant($user, $task) || $user->can('tasks.view');
+        return $this->isParticipant($user, $task) || $user->can('esnad.tasks.view');
     }
 
     public function update(User $user, Task $task): bool
@@ -21,7 +21,7 @@ class TaskPolicy
             return false;
         }
 
-        return $user->id === $task->assigned_by || $user->can('tasks.update');
+        return $user->id === $task->assigned_by || $user->can('esnad.tasks.update');
     }
 
     public function delete(User $user, Task $task): bool
@@ -30,7 +30,7 @@ class TaskPolicy
             return false;
         }
 
-        return $user->id === $task->assigned_by || $user->can('tasks.delete');
+        return $user->id === $task->assigned_by || $user->can('esnad.tasks.delete');
     }
 
     public function addNote(User $user, Task $task): bool

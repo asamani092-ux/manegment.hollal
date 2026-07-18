@@ -67,7 +67,7 @@ class DashboardIndex extends Component
             ]);
         }
 
-        if ($user->can('expenses.approve')) {
+        if ($user->can('finance.expenses.approve')) {
             ExpenseRequest::query()
                 ->select(['id', 'type', 'amount', 'requester_id', 'project_id'])
                 ->where('status', 'pending')
@@ -133,7 +133,7 @@ class DashboardIndex extends Component
                     });
             })
             ->where(function (Builder $query) use ($user, $scopeUserIds) {
-                if ($user->can('tasks.view')) {
+                if ($user->can('esnad.tasks.view')) {
                     $query->whereIn('assigned_to', $scopeUserIds);
 
                     return;
@@ -237,7 +237,7 @@ class DashboardIndex extends Component
 
     protected function canViewFinance(User $user): bool
     {
-        return $user->can('expenses.view') || $user->can('expenses.approve');
+        return $user->can('finance.expenses.view') || $user->can('finance.expenses.approve');
     }
 
     protected function monthSpend(User $user): float

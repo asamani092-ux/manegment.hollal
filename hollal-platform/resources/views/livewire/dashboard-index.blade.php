@@ -89,7 +89,7 @@
                 @empty
                     <p class="ds-text-muted">لا مهام مستحقة اليوم</p>
                 @endforelse
-                @can('tasks.view')
+                @can('esnad.tasks.view')
                     <a href="{{ route('tasks.index') }}" class="ds-link">عرض كل المهام</a>
                 @endcan
             </div>
