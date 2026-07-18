@@ -22,6 +22,7 @@ use App\Livewire\Reports\ReportsIndex;
 use App\Livewire\Settings\ExpenseSettingsIndex;
 use App\Livewire\Settings\MailSettingsIndex;
 use App\Livewire\Settings\RolesIndex;
+use App\Livewire\Settings\SettingsIndex;
 use App\Livewire\Tasks\TasksIndex;
 use App\Livewire\Users\UsersIndex;
 use Illuminate\Support\Facades\Route;
@@ -119,6 +120,10 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/settings/notifications', MailSettingsIndex::class)
         ->middleware('permission:settings.notifications.manage')
         ->name('settings.notifications');
+
+    Route::get('/settings', SettingsIndex::class)
+        ->middleware('permission:settings.manage')
+        ->name('settings.index');
 
     Route::get('/users', UsersIndex::class)
         ->middleware('permission:hr.employees.view')
