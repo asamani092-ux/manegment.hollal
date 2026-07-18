@@ -20,6 +20,10 @@ class Project extends Model
 
     protected $fillable = [
         'name',
+        'partnership_id',
+        'program_id',
+        'kind',
+        'launch_date',
         'manager_id',
         'start_date',
         'end_date',
@@ -37,6 +41,7 @@ class Project extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'launch_date' => 'date',
             'budget' => 'decimal:2',
         ];
     }
@@ -45,6 +50,22 @@ class Project extends Model
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    /**
+     * Forward link to the owning partnership (00-B4 reversed relation).
+     *
+     * @return BelongsTo<Partnership, $this>
+     */
+    public function partnership(): BelongsTo
+    {
+        return $this->belongsTo(Partnership::class);
+    }
+
+    /** @return BelongsTo<Program, $this> */
+    public function program(): BelongsTo
+    {
+        return $this->belongsTo(Program::class);
     }
 
     /** @return BelongsToMany<User, $this> */

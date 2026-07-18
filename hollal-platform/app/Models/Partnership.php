@@ -14,6 +14,8 @@ class Partnership extends Model
     use SoftDeletes;
 
     protected $fillable = [
+        'organization_id',
+        'stage',
         'entity_name',
         'contact_person',
         'contact_phone',
@@ -40,5 +42,11 @@ class Partnership extends Model
     public function project(): BelongsTo
     {
         return $this->belongsTo(Project::class);
+    }
+
+    /** @return BelongsTo<Organization, $this> */
+    public function organization(): BelongsTo
+    {
+        return $this->belongsTo(Organization::class);
     }
 }
