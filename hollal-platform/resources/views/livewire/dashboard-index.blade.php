@@ -18,11 +18,34 @@
 
     <x-ds-page-header title="الرئيسية" />
 
+    @if ($attendanceEnabled || $dutiesFileUrl)
+        <section class="ds-section ds-section-spaced">
+            <div class="ds-page-toolbar">
+                @if ($attendanceEnabled)
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="checkIn">
+                        <i class="fas fa-right-to-bracket" aria-hidden="true"></i>
+                        تسجيل حضور
+                    </button>
+                    <button type="button" class="ds-btn ds-btn-outline" wire:click="checkOut">
+                        <i class="fas fa-right-from-bracket" aria-hidden="true"></i>
+                        تسجيل انصراف
+                    </button>
+                @endif
+                @if ($dutiesFileUrl)
+                    <a href="{{ $dutiesFileUrl }}" class="ds-btn ds-btn-outline">
+                        <i class="fas fa-file-lines" aria-hidden="true"></i>
+                        ملف المهام الرسمي
+                    </a>
+                @endif
+            </div>
+        </section>
+    @endif
+
     @if ($showActionSection)
         <section class="ds-section ds-alert-warning ds-alert-spaced">
             <h2 class="ds-section-title">
                 <i class="fas fa-bell ds-section-icon"></i>
-                يحتاج إجراءك
+                يحتاج تدخلك
             </h2>
             <div>
                 @foreach ($actionItems as $item)

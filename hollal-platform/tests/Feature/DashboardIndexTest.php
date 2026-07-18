@@ -94,7 +94,7 @@ class DashboardIndexTest extends TestCase
 
         Livewire::actingAs($manager)
             ->test(DashboardIndex::class)
-            ->assertSee('يحتاج إجراءك')
+            ->assertSee('يحتاج تدخلك')
             ->assertSee('مهمة متأخرة: مهمة متأخرة للفريق');
     }
 
@@ -118,7 +118,7 @@ class DashboardIndexTest extends TestCase
 
         Livewire::actingAs($employee)
             ->test(DashboardIndex::class)
-            ->assertDontSee('يحتاج إجراءك')
+            ->assertDontSee('يحتاج تدخلك')
             ->assertDontSee('مهمة زميل متأخرة');
     }
 
@@ -134,7 +134,7 @@ class DashboardIndexTest extends TestCase
 
         Livewire::actingAs($approver)
             ->test(DashboardIndex::class)
-            ->assertSee('يحتاج إجراءك')
+            ->assertSee('يحتاج تدخلك')
             ->assertSee('مصروف بانتظار الموافقة: تشغيلي');
     }
 

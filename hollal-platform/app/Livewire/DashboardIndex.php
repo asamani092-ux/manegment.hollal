@@ -29,6 +29,24 @@ class DashboardIndex extends Component
         $this->authorize('dashboard.view');
     }
 
+    /**
+     * 00-B5 — check-in placeholder. Visible only for attendance-enabled users;
+     * timestamp persistence and full logic are wired in 01-B4.
+     */
+    public function checkIn(): void
+    {
+        abort_unless((bool) auth()->user()->attendance_enabled, 403);
+
+        $this->dispatch('toast', type: 'info', message: 'تم تسجيل الحضور — سيُفعَّل الاحتساب الكامل مع برنامج الحضور');
+    }
+
+    public function checkOut(): void
+    {
+        abort_unless((bool) auth()->user()->attendance_enabled, 403);
+
+        $this->dispatch('toast', type: 'info', message: 'تم تسجيل الانصراف — سيُفعَّل الاحتساب الكامل مع برنامج الحضور');
+    }
+
     public function render(): View
     {
         /** @var User $user */
@@ -49,6 +67,8 @@ class DashboardIndex extends Component
             'myTasksToday' => $this->myTasksToday($user),
             'myOpenTasks' => $this->myOpenTasks($user),
             'myUpcomingMeetings' => $this->myUpcomingMeetings($user),
+            'attendanceEnabled' => (bool) $user->attendance_enabled,
+            'dutiesFileUrl' => $this->officialDutiesFileUrl(),
         ])->layout('layouts.app', ['title' => 'الرئيسية']);
     }
 
@@ -310,5 +330,18 @@ class DashboardIndex extends Component
             ->orderBy('scheduled_at')
             ->limit(5)
             ->get();
+    }
+
+    /**
+     * 00-B5 — link slot for the published official duties file. Populated once
+     * 07-B1 publishes a duties document; null (slot hidden) until then.
+     */
+    protected function officialDutiesFileUrl(): ?string
+    {
+        if (! Schema::hasColumn('documents', 'is_duties_file')) {
+            return null;
+        }
+
+        return null;
     }
 }
