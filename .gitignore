@@ -20,3 +20,7 @@ hollal-platform/public/build
 hollal-platform/storage/*.key
 hollal-platform/database/*.sqlite
 hollal-platform/database/database.sqlite
+# LeanCTX local caches and session artifacts
+.lean-ctx/
+lean-ctx.local/
+stats.json
