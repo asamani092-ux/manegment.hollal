@@ -54,6 +54,8 @@ class PermissionSeeder extends Seeder
         'finance.custodies.view',
         'finance.custodies.approve',
         'finance.custodies.disburse',
+        'finance.revenues.view',
+        'finance.revenues.manage',
         'documents.view',
         'documents.create',
         'reports.view',

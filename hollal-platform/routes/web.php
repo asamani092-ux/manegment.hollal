@@ -10,6 +10,7 @@ use App\Http\Controllers\TaskFileDownloadController;
 use App\Livewire\Contracts\ContractsIndex;
 use App\Livewire\Documents\DocumentsIndex;
 use App\Livewire\Expenses\ExpensesIndex;
+use App\Livewire\Finance\FinancialDocumentsIndex;
 use App\Livewire\DashboardIndex;
 use App\Livewire\Hr\PayrollRunsIndex;
 use App\Livewire\Hr\PayScalesIndex;
@@ -164,6 +165,10 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/payroll-runs', PayrollRunsIndex::class)
         ->middleware('permission:hr.salaries.view')
         ->name('payroll-runs.index');
+
+    Route::get('/financial-documents', FinancialDocumentsIndex::class)
+        ->middleware('permission:finance.revenues.view')
+        ->name('financial-documents.index');
 
     Route::get('/duties/download', DutiesFileDownloadController::class)
         ->name('duties.download');

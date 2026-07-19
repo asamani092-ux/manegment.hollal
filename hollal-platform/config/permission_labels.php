@@ -55,6 +55,8 @@ return [
         'finance.custodies.view' => 'عرض العُهد',
         'finance.custodies.approve' => 'اعتماد العُهد',
         'finance.custodies.disburse' => 'صرف وتسوية العُهد',
+        'finance.revenues.view' => 'عرض الإيرادات',
+        'finance.revenues.manage' => 'إدارة الإيرادات',
 
         'documents.view' => 'عرض المستندات',
         'documents.create' => 'رفع مستند',
