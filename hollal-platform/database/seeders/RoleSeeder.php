@@ -91,6 +91,8 @@ class RoleSeeder extends Seeder
         'finance.custodies.disburse',
         'finance.revenues.view',
         'finance.revenues.manage',
+        'finance.assets.view',
+        'finance.assets.manage',
         'hr.salaries.view',
         'hr.salaries.manage',
         'partnerships.contracts.view',
