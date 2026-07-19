@@ -4,6 +4,7 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\ContractFileDownloadController;
 use App\Http\Controllers\DocumentDownloadController;
+use App\Http\Controllers\DutiesFileDownloadController;
 use App\Http\Controllers\ExpenseFileDownloadController;
 use App\Http\Controllers\TaskFileDownloadController;
 use App\Livewire\Contracts\ContractsIndex;
@@ -143,6 +144,9 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/payroll-runs', PayrollRunsIndex::class)
         ->middleware('permission:hr.salaries.view')
         ->name('payroll-runs.index');
+
+    Route::get('/duties/download', DutiesFileDownloadController::class)
+        ->name('duties.download');
 
     Route::get('/contracts', ContractsIndex::class)
         ->middleware('permission:partnerships.contracts.view')

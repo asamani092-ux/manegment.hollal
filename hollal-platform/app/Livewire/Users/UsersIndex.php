@@ -147,6 +147,11 @@ class UsersIndex extends Component
         $user = User::updateOrCreate(['id' => $this->userId], $data);
         $user->syncRoles([$this->roleName]);
 
+        // 01-B5 — auto-generate onboarding tasks for a newly added employee.
+        if ($user->wasRecentlyCreated) {
+            app(\App\Services\OnboardingService::class)->generateTasks($user, auth()->user());
+        }
+
         $this->showModal = false;
         $this->resetForm();
         $this->dispatch('toast', type: 'success', message: 'تم حفظ المستخدم بنجاح');

@@ -342,10 +342,12 @@ class DashboardIndex extends Component
      */
     protected function officialDutiesFileUrl(): ?string
     {
-        if (! Schema::hasColumn('documents', 'is_duties_file')) {
+        if (! Schema::hasTable('official_duties_documents')) {
             return null;
         }
 
-        return null;
+        return \App\Models\OfficialDutiesDocument::latestPublished()
+            ? route('duties.download')
+            : null;
     }
 }
