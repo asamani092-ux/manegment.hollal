@@ -41,6 +41,8 @@ class Task extends Model
         'template_item_id',
         'parent_task_id',
         'recurring_template_id',
+        'entity_visible',
+        'role_label',
     ];
 
     /** @var list<string> valid triple-evaluation ratings */
@@ -52,6 +54,7 @@ class Task extends Model
             'due_date' => 'datetime',
             'read_at' => 'datetime',
             'completed_at' => 'datetime',
+            'entity_visible' => 'boolean',
         ];
     }
 

@@ -88,6 +88,10 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         ->middleware('permission:projects.view')
         ->name('projects.index');
 
+    Route::get('/projects/{project}/execution', \App\Livewire\Projects\ProjectExecution::class)
+        ->middleware('permission:projects.view')
+        ->name('projects.execution');
+
     Route::get('/projects/{project}', ProjectShow::class)
         ->middleware('permission:projects.view')
         ->name('projects.show');
