@@ -29,6 +29,28 @@ class DashboardIndex extends Component
         $this->authorize('dashboard.view');
     }
 
+    /**
+     * 00-B5 — check-in placeholder. Visible only for attendance-enabled users;
+     * timestamp persistence and full logic are wired in 01-B4.
+     */
+    public function checkIn(): void
+    {
+        abort_unless((bool) auth()->user()->attendance_enabled, 403);
+
+        app(\App\Services\AttendanceService::class)->checkIn(auth()->user());
+
+        $this->dispatch('toast', type: 'success', message: 'تم تسجيل الحضور');
+    }
+
+    public function checkOut(): void
+    {
+        abort_unless((bool) auth()->user()->attendance_enabled, 403);
+
+        app(\App\Services\AttendanceService::class)->checkOut(auth()->user());
+
+        $this->dispatch('toast', type: 'success', message: 'تم تسجيل الانصراف');
+    }
+
     public function render(): View
     {
         /** @var User $user */
@@ -49,6 +71,8 @@ class DashboardIndex extends Component
             'myTasksToday' => $this->myTasksToday($user),
             'myOpenTasks' => $this->myOpenTasks($user),
             'myUpcomingMeetings' => $this->myUpcomingMeetings($user),
+            'attendanceEnabled' => (bool) $user->attendance_enabled,
+            'dutiesFileUrl' => $this->officialDutiesFileUrl(),
         ])->layout('layouts.app', ['title' => 'الرئيسية']);
     }
 
@@ -67,7 +91,7 @@ class DashboardIndex extends Component
             ]);
         }
 
-        if ($user->can('expenses.approve')) {
+        if ($user->can('finance.expenses.approve')) {
             ExpenseRequest::query()
                 ->select(['id', 'type', 'amount', 'requester_id', 'project_id'])
                 ->where('status', 'pending')
@@ -95,6 +119,21 @@ class DashboardIndex extends Component
                     'label' => 'قرار متأخر: '.$item->topic,
                     'url' => route('meetings.minutes', $item->meeting_id),
                     'meta' => ($item->meeting?->title ?? '—').' — '.$item->due_date?->format('Y-m-d'),
+                ]);
+            });
+
+        MeetingItem::query()
+            ->stale((int) \App\Support\Setting::get('notifications.decision_stale_days', 30))
+            ->where('responsible_id', $user->id)
+            ->with('meeting:id,title')
+            ->limit(10)
+            ->get()
+            ->each(function (MeetingItem $item) use ($items) {
+                $items->push([
+                    'kind' => 'stale_decision',
+                    'label' => 'قرار متأخر (عمره '.$item->ageInDays().' يومًا): '.$item->topic,
+                    'url' => route('meetings.minutes', $item->meeting_id),
+                    'meta' => $item->meeting?->title ?? '—',
                 ]);
             });
 
@@ -133,7 +172,7 @@ class DashboardIndex extends Component
                     });
             })
             ->where(function (Builder $query) use ($user, $scopeUserIds) {
-                if ($user->can('tasks.view')) {
+                if ($user->can('esnad.tasks.view')) {
                     $query->whereIn('assigned_to', $scopeUserIds);
 
                     return;
@@ -237,7 +276,7 @@ class DashboardIndex extends Component
 
     protected function canViewFinance(User $user): bool
     {
-        return $user->can('expenses.view') || $user->can('expenses.approve');
+        return $user->can('finance.expenses.view') || $user->can('finance.expenses.approve');
     }
 
     protected function monthSpend(User $user): float
@@ -310,5 +349,20 @@ class DashboardIndex extends Component
             ->orderBy('scheduled_at')
             ->limit(5)
             ->get();
+    }
+
+    /**
+     * 00-B5 — link slot for the published official duties file. Populated once
+     * 07-B1 publishes a duties document; null (slot hidden) until then.
+     */
+    protected function officialDutiesFileUrl(): ?string
+    {
+        if (! Schema::hasTable('official_duties_documents')) {
+            return null;
+        }
+
+        return \App\Models\OfficialDutiesDocument::latestPublished()
+            ? route('duties.download')
+            : null;
     }
 }

@@ -15,6 +15,8 @@ class MeetingItem extends Model
     protected $fillable = [
         'meeting_id',
         'topic',
+        'item_kind',
+        'proposed_by',
         'discussion_summary',
         'decision',
         'responsible_id',
@@ -28,6 +30,25 @@ class MeetingItem extends Model
         return [
             'due_date' => 'date',
         ];
+    }
+
+    /**
+     * 03-B2 — open decisions older than $days (stale). Age is measured from
+     * creation.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<MeetingItem>  $query
+     */
+    public function scopeStale(\Illuminate\Database\Eloquent\Builder $query, int $days = 30): void
+    {
+        $query->whereNotNull('decision')
+            ->where('decision', '!=', '')
+            ->where('status', '!=', 'done')
+            ->where('created_at', '<', now()->subDays($days));
+    }
+
+    public function ageInDays(): int
+    {
+        return (int) $this->created_at?->diffInDays(now());
     }
 
     /** @return BelongsTo<Meeting, $this> */

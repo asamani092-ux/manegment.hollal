@@ -67,6 +67,19 @@ class MeetingMinutes extends Component
         $this->showItemModal = true;
     }
 
+    public function approveMinutes(): void
+    {
+        $this->authorize('update', $this->meeting);
+
+        try {
+            app(\App\Services\MeetingService::class)->approveMinutes($this->meeting, auth()->user());
+            $this->meeting->refresh();
+            $this->dispatch('toast', type: 'success', message: 'تم اعتماد المحضر');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
     public function saveItem(): void
     {
         if ($this->itemViewOnly) {
@@ -74,6 +87,12 @@ class MeetingMinutes extends Component
         }
 
         $this->authorize('update', $this->meeting);
+
+        if ($this->meeting->isApproved()) {
+            $this->dispatch('toast', type: 'error', message: 'المحضر معتمد ولا يمكن تعديله (استخدم مسار التعديل)');
+
+            return;
+        }
 
         $this->validate([
             'topic' => 'required|string|max:255',
@@ -114,7 +133,13 @@ class MeetingMinutes extends Component
     public function convertToTask(int $itemId): void
     {
         $this->authorize('update', $this->meeting);
-        $this->authorize('tasks.create');
+        $this->authorize('esnad.tasks.create');
+
+        if (! $this->meeting->isApproved()) {
+            $this->dispatch('toast', type: 'error', message: 'لا يمكن تحويل القرارات إلى مهام قبل اعتماد المحضر');
+
+            return;
+        }
 
         $item = MeetingItem::where('meeting_id', $this->meeting->id)->findOrFail($itemId);
 

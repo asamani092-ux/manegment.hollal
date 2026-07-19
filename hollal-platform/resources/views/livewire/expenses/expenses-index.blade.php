@@ -29,7 +29,7 @@
 
     <x-ds-page-header
         title="المصروفات"
-        :show-button="auth()->user()->can('expenses.create')"
+        :show-button="auth()->user()->can('finance.expenses.create')"
         button-label="طلب مصروف"
         button-icon="fa-plus"
         wire:click="openExpenseCreate"
@@ -289,13 +289,39 @@
                                 @endforeach
                             </select>
                         </x-ds-form-group>
+                        <x-ds-form-group label="القسم" :error="$errors->first('department_id')">
+                            <select class="ds-input" wire:model="department_id" @disabled($expenseViewOnly)>
+                                <option value="">— بدون —</option>
+                                @foreach ($departments as $dept)
+                                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                                @endforeach
+                            </select>
+                        </x-ds-form-group>
+                        <x-ds-form-group label="تصنيف المصروف" :error="$errors->first('category_id')">
+                            <select class="ds-input" wire:model="category_id" @disabled($expenseViewOnly)>
+                                <option value="">— اختر التصنيف —</option>
+                                @foreach ($categories as $cat)
+                                    <option value="{{ $cat->id }}">{{ $cat->name_ar }}</option>
+                                @endforeach
+                            </select>
+                        </x-ds-form-group>
                     </div>
+
+                    @if ($companyTaxNumberMissing)
+                        <div class="ds-alert-warning">
+                            تذكير: يجب إدخال الرقم الضريبي في بيانات الشركة قبل إصدار المستندات الرسمية
+                        </div>
+                    @endif
                     <x-ds-form-group label="السبب" :error="$errors->first('reason')">
                         <textarea class="ds-input" rows="3" wire:model="reason" @disabled($expenseViewOnly)></textarea>
                     </x-ds-form-group>
 
                     @if (! $expenseViewOnly)
-                        <x-ds-form-group label="المرفق" :error="$errors->first('attachment')">
+                        <x-ds-form-group label="الفاتورة / المستند الرسمي" :error="$errors->first('officialDocument')">
+                            <input type="file" class="ds-input" wire:model="officialDocument" accept=".pdf,.jpg,.jpeg,.png">
+                            <div wire:loading wire:target="officialDocument" class="ds-text-muted">جاري الرفع...</div>
+                        </x-ds-form-group>
+                        <x-ds-form-group label="المرفق (صورة الإثبات)" :error="$errors->first('attachment')">
                             <input type="file" class="ds-input" wire:model="attachment" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
                             <div wire:loading wire:target="attachment" class="ds-text-muted">جاري الرفع...</div>
                         </x-ds-form-group>

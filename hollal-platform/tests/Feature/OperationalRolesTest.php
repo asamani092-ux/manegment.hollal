@@ -64,6 +64,8 @@ class OperationalRolesTest extends TestCase
                 'expenses.index',
                 'projects.index',
                 'documents.index',
+                'documents.templates',
+                'documents.policies',
                 'reports.index',
             ],
             $this->visibleNavRoutes($user)

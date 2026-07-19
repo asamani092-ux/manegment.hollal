@@ -25,9 +25,41 @@ class DocumentPolicy
         return $user->can('documents.create');
     }
 
+    public function update(User $user, Document $document): bool
+    {
+        if ($document->is_auto_archived) {
+            return false; // 03-B2 — archived minutes/reports are read-only
+        }
+
+        if ($document->is_policy) {
+            return $user->can('documents.policies.manage');
+        }
+
+        return $user->id === $document->uploader_id
+            || $user->can('documents.create')
+            || $user->can('documents.manage-versions');
+    }
+
     public function delete(User $user, Document $document): bool
     {
+        if ($document->is_auto_archived) {
+            return false; // 03-B2 — archived minutes/reports cannot be deleted
+        }
+
+        if ($document->is_policy) {
+            return $user->can('documents.policies.manage');
+        }
+
         return $user->id === $document->uploader_id || $user->can('documents.create');
+    }
+
+    public function manageVersions(User $user, Document $document): bool
+    {
+        if ($document->is_auto_archived) {
+            return false;
+        }
+
+        return $user->can('documents.manage-versions') || $this->update($user, $document);
     }
 
     public function download(User $user, Document $document): bool
@@ -84,7 +116,8 @@ class DocumentPolicy
     protected function isManager(User $user): bool
     {
         return $user->subordinates()->exists()
-            || $user->can('salaries.manage')
-            || $user->can('departments.manage');
+            || $user->can('hr.salaries.manage')
+            || $user->can('structure.manage')
+            || $user->can('structure.departments.update');
     }
 }

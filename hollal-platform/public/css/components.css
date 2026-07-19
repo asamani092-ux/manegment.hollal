@@ -1148,3 +1148,39 @@
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 1rem;
 }
+
+/* 05-B2 — partnerships pipeline board */
+.ds-kanban {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.ds-kanban-column {
+  background: var(--ds-bg);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  padding: 0.75rem;
+}
+
+.ds-kanban-title {
+  font-size: 0.9375rem;
+  margin-bottom: 0.75rem;
+  color: var(--ds-text-muted);
+}
+
+.ds-kanban-card {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  padding: 0.625rem;
+  margin-bottom: 0.625rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+/* 05-B5 — partner portal journey */
+.ds-portal-steps {
+  display: grid;
+  gap: 0.75rem;
+}

@@ -29,7 +29,7 @@ class ContractExpiringTest extends TestCase
         $this->seed(PermissionSeeder::class);
 
         $this->hrManager = User::factory()->create(['phone' => '0502222201']);
-        $this->hrManager->givePermissionTo('contracts.manage');
+        $this->hrManager->givePermissionTo('partnerships.contracts.manage');
 
         $this->employee = User::factory()->create(['phone' => '0502222202']);
     }

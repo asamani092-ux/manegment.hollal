@@ -35,7 +35,7 @@ class MeetingTest extends TestCase
             'meetings.create',
             'meetings.update',
             'meetings.delete',
-            'tasks.create',
+            'esnad.tasks.create',
         ]);
     }
 
@@ -110,7 +110,8 @@ class MeetingTest extends TestCase
     public function test_decision_can_be_converted_to_task(): void
     {
         $responsible = User::factory()->create(['phone' => '0505555555']);
-        $meeting = Meeting::factory()->create(['chair_id' => $this->admin->id]);
+        // 03-B1 — decision conversion requires an approved محضر.
+        $meeting = Meeting::factory()->create(['chair_id' => $this->admin->id, 'approval_status' => 'معتمد']);
         $item = MeetingItem::factory()->create([
             'meeting_id' => $meeting->id,
             'topic' => 'مناقشة الميزانية',

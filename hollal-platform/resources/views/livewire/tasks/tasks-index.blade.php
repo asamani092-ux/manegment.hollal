@@ -12,7 +12,7 @@
 
     <x-ds-page-header
         title="إسناد المهام"
-        :show-button="auth()->user()->can('tasks.create')"
+        :show-button="auth()->user()->can('esnad.tasks.create')"
         button-label="إسناد مهمة"
         button-icon="fa-plus"
         wire:click="openTaskCreate"

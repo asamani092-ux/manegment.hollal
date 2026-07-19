@@ -69,7 +69,7 @@ class TasksIndex extends Component
 
     public function mount(): void
     {
-        $this->authorize('tasks.view');
+        $this->authorize('esnad.tasks.view');
         $this->taskNotes = collect();
     }
 
@@ -87,7 +87,7 @@ class TasksIndex extends Component
 
     public function openTaskCreate(): void
     {
-        $this->authorize('tasks.create');
+        $this->authorize('esnad.tasks.create');
         $this->resetTaskForm();
         $this->showTaskModal = true;
     }
@@ -124,7 +124,7 @@ class TasksIndex extends Component
             $task = Task::findOrFail($this->taskId);
             $this->authorize('update', $task);
         } else {
-            $this->authorize('tasks.create');
+            $this->authorize('esnad.tasks.create');
         }
 
         $rules = [
@@ -180,6 +180,11 @@ class TasksIndex extends Component
         } else {
             $task = Task::create($data);
             User::find($task->assigned_to)?->notify(new TaskAssigned($task));
+
+            // 02-B3 — non-blocking overload warning shown to the assigner.
+            if (app(\App\Services\WorkloadService::class)->isOverloaded((int) $task->assigned_to)) {
+                $this->dispatch('toast', type: 'warning', message: 'تنبيه: عبء عمل المُسند إليه مرتفع');
+            }
         }
 
         $this->closeTaskModal();

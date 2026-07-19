@@ -129,4 +129,90 @@ tar -czf private-$(date +%F).tar.gz storage/app/private
 
 ---
 
-*آخر تحديث: يوليو 2026 — Batch 4 (Part J)*
+## 10. Hostinger — الإطلاق (13-B1)
+
+> نوع الخطة النهائي بانتظار قرار عبدالله. الخطوات أدناه تنطبق على Business / Cloud
+> (SSH + cron + PHP 8.3). خطة Shared بلا SSH تتطلب رفع `vendor/` جاهزًا وتشغيل
+> الأوامر عبر hPanel → Advanced → Cron Jobs.
+
+### 10.1 تجهيز البيئة
+
+1. hPanel → Websites → Manage → **PHP Configuration**: PHP **8.3**، وتفعيل
+   `bcmath, ctype, curl, dom, fileinfo, gd, mbstring, openssl, pdo_mysql, tokenizer, xml, zip`.
+2. hPanel → **Databases → MySQL**: أنشئ قاعدة `hollal_prod` ومستخدمًا خاصًا بها.
+3. hPanel → **SSL**: فعّل Let's Encrypt وأجبر HTTPS.
+4. اجعل **document root** للنطاق يشير إلى `hollal-platform/public` (وليس جذر المستودع).
+
+### 10.2 النشر
+
+```bash
+cd ~/domains/<domain>/hollal-platform
+git pull origin main
+composer install --no-dev --optimize-autoloader
+npm ci && npm run build
+php artisan migrate --force
+php artisan db:seed --class=PermissionSeeder --force
+php artisan db:seed --class=RoleSeeder --force
+php artisan db:seed --class=PlatformSettingsSeeder --force
+php artisan db:seed --class=PlanTemplateSeeder --force
+php artisan config:cache && php artisan route:cache && php artisan view:cache
+php artisan storage:link
+```
+
+### 10.3 `.env` الإنتاج (المفاتيح الحرجة)
+
+```env
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://<domain>
+DB_CONNECTION=mysql
+DB_DATABASE=hollal_prod
+QUEUE_CONNECTION=database
+SESSION_DRIVER=database
+MAIL_MAILER=smtp
+```
+
+> إعدادات SMTP التشغيلية تُدار من داخل المنصة (`/settings/notifications`)، وتُطبَّق
+> على الـ mailer عند الإقلاع عبر `AppServiceProvider::applyMailSettings()`.
+
+### 10.4 Cron و Queue على Hostinger
+
+hPanel → Advanced → **Cron Jobs**:
+
+```
+* * * * * cd ~/domains/<domain>/hollal-platform && php artisan schedule:run >> /dev/null 2>&1
+```
+
+عامل الطابور (Business/Cloud عبر SSH أو cron حارس):
+
+```
+* * * * * cd ~/domains/<domain>/hollal-platform && php artisan queue:work --stop-when-empty --tries=3 >> storage/logs/queue.log 2>&1
+```
+
+المهام المجدولة الفعلية في `routes/console.php`: تنبيهات المهام والعقود، التقرير
+الأسبوعي، العمل الإضافي الشهري، المهام المتكررة، **تنبيهات الموازنة (04-B6)**،
+**مراجعة السياسات (07-B1)**، **توليد المشاريع المعلقة (06B-B1)**.
+
+### 10.5 النسخ الاحتياطي والاستعادة
+
+- نسخة يدوية من داخل المنصة: `BackupService::run()` (تُسجَّل في `audit_logs`
+  وتحدّث `backup.last_run_at`).
+- نسخة الخادم اليومية: راجع القسم 7 أعلاه.
+- **اختبار الاستعادة إلزامي قبل الإطلاق** — القسم 8.
+
+### 10.6 قائمة تحقق الإطلاق
+
+- [ ] `APP_DEBUG=false` و`APP_ENV=production`
+- [ ] HTTPS مفروض + شهادة سارية
+- [ ] `php artisan migrate --force` نُفِّذت بلا أخطاء
+- [ ] البذور الأربع (صلاحيات/أدوار/إعدادات/قوالب الخطط) نُفِّذت
+- [ ] cron يعمل (`schedule:run` كل دقيقة)
+- [ ] عامل الطابور يعمل وتصل الإشعارات
+- [ ] SMTP الإنتاج مضبوط ورسالة اختبار وصلت
+- [ ] نسخة احتياطية + **اختبار استعادة** ناجح
+- [ ] وضع الصيانة (11-B1) يعمل ويُرفع من `/settings`
+- [ ] `php artisan test` كامل أخضر على الفرع المنشور
+
+---
+
+*آخر تحديث: يوليو 2026 — 13-B1 (Hostinger go-live)*

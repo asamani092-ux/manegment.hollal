@@ -19,11 +19,36 @@ class Document extends Model
     protected $fillable = [
         'title',
         'category',
+        'source_type',
+        'source_id',
+        'is_auto_archived',
         'project_id',
         'confidentiality',
         'uploader_id',
         'path',
+        'is_policy',
+        'review_date',
+        'review_alert_sent_at',
+        'current_version',
     ];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return [
+            'is_auto_archived' => 'boolean',
+            'is_policy' => 'boolean',
+            'review_date' => 'date',
+            'review_alert_sent_at' => 'datetime',
+            'current_version' => 'integer',
+        ];
+    }
+
+    /** 07-B1 @return \Illuminate\Database\Eloquent\Relations\HasMany<DocumentVersion, $this> */
+    public function versions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(DocumentVersion::class)->orderByDesc('version');
+    }
 
     /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
@@ -63,8 +88,8 @@ class Document extends Model
                 })
                 ->orWhere(function (Builder $managers) use ($user) {
                     if ($user->subordinates()->exists()
-                        || $user->can('salaries.manage')
-                        || $user->can('departments.manage')) {
+                        || $user->can('hr.salaries.manage')
+                        || $user->can('structure.departments.manage')) {
                         $managers->where('confidentiality', 'managers');
                     }
                 });

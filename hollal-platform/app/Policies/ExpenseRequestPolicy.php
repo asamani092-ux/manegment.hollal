@@ -15,38 +15,38 @@ class ExpenseRequestPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->can('expenses.view')
-            || $user->can('expenses.create')
-            || $user->can('expenses.approve')
-            || $user->can('expenses.pay');
+        return $user->can('finance.expenses.view')
+            || $user->can('finance.expenses.create')
+            || $user->can('finance.expenses.approve')
+            || $user->can('finance.expenses.pay');
     }
 
     public function view(User $user, ExpenseRequest $expenseRequest): bool
     {
         return $user->id === $expenseRequest->requester_id
-            || $user->can('expenses.view')
-            || $user->can('expenses.approve')
-            || $user->can('expenses.pay')
+            || $user->can('finance.expenses.view')
+            || $user->can('finance.expenses.approve')
+            || $user->can('finance.expenses.pay')
             || $this->approvalService->canApprove($user, $expenseRequest);
     }
 
     public function create(User $user): bool
     {
-        return $user->can('expenses.create');
+        return $user->can('finance.expenses.create');
     }
 
     public function update(User $user, ExpenseRequest $expenseRequest): bool
     {
         return $user->id === $expenseRequest->requester_id
             && $expenseRequest->status === 'draft'
-            && $user->can('expenses.create');
+            && $user->can('finance.expenses.create');
     }
 
     public function delete(User $user, ExpenseRequest $expenseRequest): bool
     {
         return $user->id === $expenseRequest->requester_id
             && $expenseRequest->status === 'draft'
-            && $user->can('expenses.create');
+            && $user->can('finance.expenses.create');
     }
 
     public function submit(User $user, ExpenseRequest $expenseRequest): bool
@@ -66,7 +66,7 @@ class ExpenseRequestPolicy
 
     public function pay(User $user, ExpenseRequest $expenseRequest): bool
     {
-        return $user->can('expenses.pay')
+        return $user->can('finance.expenses.pay')
             && $expenseRequest->status === 'approved'
             && $expenseRequest->paid_ready_at !== null;
     }

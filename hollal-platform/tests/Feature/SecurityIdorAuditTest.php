@@ -117,7 +117,7 @@ class SecurityIdorAuditTest extends TestCase
 
     public function test_employee_cannot_edit_payroll_record_via_livewire(): void
     {
-        $this->employee->givePermissionTo('salaries.view');
+        $this->employee->givePermissionTo('hr.salaries.view');
 
         $payroll = Payroll::factory()->create();
 

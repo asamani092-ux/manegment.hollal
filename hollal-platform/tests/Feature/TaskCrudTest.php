@@ -25,7 +25,7 @@ class TaskCrudTest extends TestCase
         $this->seed(PermissionSeeder::class);
 
         $this->assigner = User::factory()->create(['phone' => '0501111111']);
-        $this->assigner->givePermissionTo(['tasks.view', 'tasks.create', 'tasks.update', 'tasks.delete']);
+        $this->assigner->givePermissionTo(['esnad.tasks.view', 'esnad.tasks.create', 'esnad.tasks.update', 'esnad.tasks.delete']);
 
         $this->assignee = User::factory()->create(['phone' => '0502222222']);
     }

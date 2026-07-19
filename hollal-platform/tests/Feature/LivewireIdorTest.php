@@ -38,8 +38,8 @@ class LivewireIdorTest extends TestCase
 
         $this->employee = User::factory()->create(['phone' => '0501000001', 'must_change_password' => false]);
         $this->employee->givePermissionTo([
-            'tasks.view', 'expenses.create', 'meetings.view', 'users.view',
-            'departments.view', 'roles.view', 'salaries.view', 'documents.view',
+            'esnad.tasks.view', 'finance.expenses.create', 'meetings.view', 'hr.employees.view',
+            'structure.departments.view', 'roles.view', 'hr.salaries.view', 'documents.view',
         ]);
 
         $this->otherUser = User::factory()->create(['phone' => '0501000002', 'must_change_password' => false]);

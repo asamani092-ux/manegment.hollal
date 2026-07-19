@@ -10,6 +10,7 @@ use Illuminate\Notifications\Notification;
 class TaskOverdue extends Notification implements ShouldQueue
 {
     use Queueable;
+    use \App\Notifications\Concerns\SendsToPreferredChannels;
 
     public function __construct(
         public Task $task,
@@ -19,7 +20,7 @@ class TaskOverdue extends Notification implements ShouldQueue
     /** @return array<int, string> */
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return $this->preferredChannels($notifiable);
     }
 
     /** @return array<string, mixed> */

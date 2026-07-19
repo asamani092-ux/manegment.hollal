@@ -38,7 +38,7 @@ class ExpenseApprovalChainTest extends TestCase
         $this->seed(RoleSeeder::class);
 
         $this->deptManager = User::factory()->create(['phone' => '0501000001', 'must_change_password' => false]);
-        $this->deptManager->givePermissionTo('expenses.approve');
+        $this->deptManager->givePermissionTo('finance.expenses.approve');
 
         $this->requester = User::factory()->create([
             'phone' => '0501000002',
@@ -160,6 +160,8 @@ class ExpenseApprovalChainTest extends TestCase
             ->set('reason', 'إيصال مصور')
             ->set('priority', 'high')
             ->set('payment_method', 'pos')
+            ->set('category_id', \App\Models\ExpenseCategory::create(['name_ar' => 'عام'])->id)
+            ->set('project_id', \App\Models\Project::factory()->create()->id)
             ->set('cameraAttachment', UploadedFile::fake()->create('receipt.jpg', 100, 'image/jpeg'))
             ->call('saveExpense', false)
             ->assertHasNoErrors();

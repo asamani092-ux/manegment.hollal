@@ -27,7 +27,7 @@ class FileDownloadRateLimitTest extends TestCase
         Storage::fake('local');
 
         $this->user = User::factory()->create(['must_change_password' => false]);
-        $this->user->givePermissionTo(['tasks.view', 'tasks.create']);
+        $this->user->givePermissionTo(['esnad.tasks.view', 'esnad.tasks.create']);
 
         $this->task = Task::factory()->create([
             'assigned_by' => $this->user->id,

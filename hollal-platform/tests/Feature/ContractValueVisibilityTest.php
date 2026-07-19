@@ -28,10 +28,10 @@ class ContractValueVisibilityTest extends TestCase
         $employee = User::factory()->create(['phone' => '0503333301']);
 
         $this->hrUser = User::factory()->create(['phone' => '0503333302']);
-        $this->hrUser->givePermissionTo(['contracts.view', 'contracts.create']);
+        $this->hrUser->givePermissionTo(['partnerships.contracts.view', 'partnerships.contracts.create']);
 
         $this->financeUser = User::factory()->create(['phone' => '0503333303']);
-        $this->financeUser->givePermissionTo(['contracts.view', 'expenses.view']);
+        $this->financeUser->givePermissionTo(['partnerships.contracts.view', 'finance.expenses.view']);
 
         $this->contract = Contract::factory()->create([
             'employee_id' => $employee->id,

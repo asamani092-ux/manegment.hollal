@@ -32,7 +32,7 @@ class DepartmentsIndex extends Component
 
     public function mount(): void
     {
-        $this->authorize('departments.view');
+        $this->authorize('structure.departments.view');
     }
 
     public function updatingSearch(): void
@@ -42,7 +42,7 @@ class DepartmentsIndex extends Component
 
     public function openCreate(): void
     {
-        $this->authorize('departments.create');
+        $this->authorize('structure.departments.create');
         $this->resetForm();
         $this->showModal = true;
     }
@@ -79,7 +79,7 @@ class DepartmentsIndex extends Component
             $department = Department::findOrFail($this->departmentId);
             $this->authorize('update', $department);
         } else {
-            $this->authorize('departments.create');
+            $this->authorize('structure.departments.create');
         }
 
         $this->validate([

@@ -32,14 +32,81 @@ class Task extends Model
         'submission_note',
         'attachment_path',
         'submitted_file',
+        'required_evidence',
+        'self_rating',
+        'pm_rating',
+        'final_rating',
+        'final_notes',
+        'completed_at',
+        'template_item_id',
+        'parent_task_id',
+        'recurring_template_id',
+        'entity_visible',
+        'role_label',
     ];
+
+    /** @var list<string> valid triple-evaluation ratings */
+    public const RATINGS = ['متميز', 'متوسط', 'مقبول', 'متأخر'];
 
     protected function casts(): array
     {
         return [
             'due_date' => 'datetime',
             'read_at' => 'datetime',
+            'completed_at' => 'datetime',
+            'entity_visible' => 'boolean',
         ];
+    }
+
+    /** @return BelongsTo<Task, $this> */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Task::class, 'parent_task_id');
+    }
+
+    /** @return HasMany<Task, $this> */
+    public function children(): HasMany
+    {
+        return $this->hasMany(Task::class, 'parent_task_id');
+    }
+
+    /** @return HasMany<TaskStatusLog, $this> */
+    public function statusLogs(): HasMany
+    {
+        return $this->hasMany(TaskStatusLog::class);
+    }
+
+    /**
+     * 02-B2 — tasks assigned to the manager's direct reports (manager_id tree).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Task>  $query
+     */
+    public function scopeTeamOf(\Illuminate\Database\Eloquent\Builder $query, User $manager): void
+    {
+        $subordinateIds = User::query()->where('manager_id', $manager->id)->pluck('id');
+        $query->whereIn('assigned_to', $subordinateIds);
+    }
+
+    /** @param \Illuminate\Database\Eloquent\Builder<Task> $query */
+    public function scopeOverdue(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $query->whereNotIn('status', ['completed'])
+            ->where(function (\Illuminate\Database\Eloquent\Builder $inner) {
+                $inner->where('status', 'overdue')
+                    ->orWhere(function (\Illuminate\Database\Eloquent\Builder $q) {
+                        $q->whereNotNull('due_date')->where('due_date', '<', now());
+                    });
+            });
+    }
+
+    /**
+     * 02-B2 — «بانتظار اعتمادي»: tasks awaiting the given assigner's approval.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Task>  $query
+     */
+    public function scopePendingApprovalFor(\Illuminate\Database\Eloquent\Builder $query, User $assigner): void
+    {
+        $query->where('status', 'pending_review')->where('assigned_by', $assigner->id);
     }
 
     /** @return BelongsTo<User, $this> */

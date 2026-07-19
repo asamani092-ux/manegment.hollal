@@ -33,7 +33,7 @@ class TaskNotificationTest extends TestCase
 
         $this->manager = User::factory()->create(['phone' => '0503333333']);
         $this->assigner = User::factory()->create(['phone' => '0501111111']);
-        $this->assigner->givePermissionTo(['tasks.view', 'tasks.create', 'tasks.update', 'tasks.delete']);
+        $this->assigner->givePermissionTo(['esnad.tasks.view', 'esnad.tasks.create', 'esnad.tasks.update', 'esnad.tasks.delete']);
 
         $this->assignee = User::factory()->create([
             'phone' => '0502222222',

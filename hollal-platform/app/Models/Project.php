@@ -20,6 +20,10 @@ class Project extends Model
 
     protected $fillable = [
         'name',
+        'partnership_id',
+        'program_id',
+        'kind',
+        'launch_date',
         'manager_id',
         'start_date',
         'end_date',
@@ -30,6 +34,15 @@ class Project extends Model
         'required_outputs',
         'final_outputs',
         'current_phase',
+        'hollal_template_version_id',
+        'entity_template_version_id',
+        'generated_from_request_id',
+        'lesson_learned',
+        'final_report_path',
+        'final_report_approved_at',
+        'delivered_at',
+        'closed_at',
+        'closed_by',
     ];
 
     protected function casts(): array
@@ -37,7 +50,11 @@ class Project extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'launch_date' => 'date',
             'budget' => 'decimal:2',
+            'final_report_approved_at' => 'datetime',
+            'delivered_at' => 'datetime',
+            'closed_at' => 'datetime',
         ];
     }
 
@@ -45,6 +62,22 @@ class Project extends Model
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    /**
+     * Forward link to the owning partnership (00-B4 reversed relation).
+     *
+     * @return BelongsTo<Partnership, $this>
+     */
+    public function partnership(): BelongsTo
+    {
+        return $this->belongsTo(Partnership::class);
+    }
+
+    /** @return BelongsTo<Program, $this> */
+    public function program(): BelongsTo
+    {
+        return $this->belongsTo(Program::class);
     }
 
     /** @return BelongsToMany<User, $this> */
@@ -97,5 +130,40 @@ class Project extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(Document::class);
+    }
+
+    /** 06B-B3 @return HasMany<ProjectVisit, $this> */
+    public function visits(): HasMany
+    {
+        return $this->hasMany(ProjectVisit::class);
+    }
+
+    /** 06B-B3 @return HasMany<Consultation, $this> */
+    public function consultations(): HasMany
+    {
+        return $this->hasMany(Consultation::class);
+    }
+
+    /** 06B-B4 @return HasMany<BeneficiaryGroup, $this> */
+    public function beneficiaryGroups(): HasMany
+    {
+        return $this->hasMany(BeneficiaryGroup::class);
+    }
+
+    /** 06B-B4 @return HasMany<MeasurementResponse, $this> */
+    public function measurementResponses(): HasMany
+    {
+        return $this->hasMany(MeasurementResponse::class);
+    }
+
+    /** 06B-B2 @return HasMany<ProjectEntityMember, $this> */
+    public function entityMembers(): HasMany
+    {
+        return $this->hasMany(ProjectEntityMember::class);
+    }
+
+    public function isClosed(): bool
+    {
+        return $this->closed_at !== null;
     }
 }

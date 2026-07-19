@@ -29,7 +29,7 @@ class DashboardIndexTest extends TestCase
     public function test_employee_sees_my_workspace_without_finance_metric(): void
     {
         $employee = User::factory()->create(['must_change_password' => false]);
-        $employee->givePermissionTo(['dashboard.view', 'tasks.view']);
+        $employee->givePermissionTo(['dashboard.view', 'esnad.tasks.view']);
 
         Task::factory()->create([
             'title' => 'مهمة اليوم',
@@ -61,7 +61,7 @@ class DashboardIndexTest extends TestCase
     public function test_finance_user_sees_month_spend_metric(): void
     {
         $financeUser = User::factory()->create(['must_change_password' => false]);
-        $financeUser->givePermissionTo(['dashboard.view', 'expenses.view']);
+        $financeUser->givePermissionTo(['dashboard.view', 'finance.expenses.view']);
 
         ExpenseRequest::factory()->approved()->create([
             'amount' => 1500,
@@ -77,7 +77,7 @@ class DashboardIndexTest extends TestCase
     public function test_manager_sees_subordinate_overdue_task_in_action_section(): void
     {
         $manager = User::factory()->create(['must_change_password' => false]);
-        $manager->givePermissionTo(['dashboard.view', 'tasks.view']);
+        $manager->givePermissionTo(['dashboard.view', 'esnad.tasks.view']);
 
         $report = User::factory()->create([
             'manager_id' => $manager->id,
@@ -94,7 +94,7 @@ class DashboardIndexTest extends TestCase
 
         Livewire::actingAs($manager)
             ->test(DashboardIndex::class)
-            ->assertSee('يحتاج إجراءك')
+            ->assertSee('يحتاج تدخلك')
             ->assertSee('مهمة متأخرة: مهمة متأخرة للفريق');
     }
 
@@ -105,7 +105,7 @@ class DashboardIndexTest extends TestCase
             'manager_id' => $manager->id,
             'must_change_password' => false,
         ]);
-        $employee->givePermissionTo(['dashboard.view', 'tasks.view']);
+        $employee->givePermissionTo(['dashboard.view', 'esnad.tasks.view']);
 
         $peer = User::factory()->create(['manager_id' => $manager->id]);
 
@@ -118,14 +118,14 @@ class DashboardIndexTest extends TestCase
 
         Livewire::actingAs($employee)
             ->test(DashboardIndex::class)
-            ->assertDontSee('يحتاج إجراءك')
+            ->assertDontSee('يحتاج تدخلك')
             ->assertDontSee('مهمة زميل متأخرة');
     }
 
     public function test_approver_sees_pending_expense_in_action_section(): void
     {
         $approver = User::factory()->create(['must_change_password' => false]);
-        $approver->givePermissionTo(['dashboard.view', 'expenses.approve']);
+        $approver->givePermissionTo(['dashboard.view', 'finance.expenses.approve']);
 
         ExpenseRequest::factory()->pending()->create([
             'type' => 'تشغيلي',
@@ -134,7 +134,7 @@ class DashboardIndexTest extends TestCase
 
         Livewire::actingAs($approver)
             ->test(DashboardIndex::class)
-            ->assertSee('يحتاج إجراءك')
+            ->assertSee('يحتاج تدخلك')
             ->assertSee('مصروف بانتظار الموافقة: تشغيلي');
     }
 

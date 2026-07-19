@@ -4,12 +4,18 @@ use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\ContractFileDownloadController;
 use App\Http\Controllers\DocumentDownloadController;
+use App\Http\Controllers\DutiesFileDownloadController;
 use App\Http\Controllers\ExpenseFileDownloadController;
 use App\Http\Controllers\TaskFileDownloadController;
 use App\Livewire\Contracts\ContractsIndex;
 use App\Livewire\Documents\DocumentsIndex;
 use App\Livewire\Expenses\ExpensesIndex;
+use App\Livewire\Finance\BudgetsBoard;
+use App\Livewire\Finance\FinancialDocumentsIndex;
+use App\Livewire\Finance\FinancialReportsIndex;
 use App\Livewire\DashboardIndex;
+use App\Livewire\Hr\PayrollRunsIndex;
+use App\Livewire\Hr\PayScalesIndex;
 use App\Livewire\Departments\DepartmentsIndex;
 use App\Livewire\Meetings\MeetingMinutes;
 use App\Livewire\Meetings\MeetingsIndex;
@@ -20,14 +26,29 @@ use App\Livewire\Projects\ProjectShow;
 use App\Livewire\Projects\ProjectsIndex;
 use App\Livewire\Reports\ReportsIndex;
 use App\Livewire\Settings\ExpenseSettingsIndex;
+use App\Livewire\Settings\MailSettingsIndex;
 use App\Livewire\Settings\RolesIndex;
+use App\Livewire\Settings\SettingsIndex;
+use App\Livewire\Tasks\RecurringTasksIndex;
+use App\Livewire\Tasks\TasksCalendar;
 use App\Livewire\Tasks\TasksIndex;
+use App\Livewire\Tasks\TeamTasksIndex;
+use App\Livewire\Tasks\WorkloadBoard;
+use App\Livewire\Users\EmployeeProfileShow;
 use App\Livewire\Users\UsersIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('login'));
 
 Route::get('/partnership/guest/{token}', PartnershipGuestView::class)->name('partnership.guest');
+
+// 05-B5 — the unique partner link portal: token-scoped, rate-limited, fully logged.
+Route::middleware('throttle:portal')->group(function () {
+    Route::get('/portal/{token}', \App\Livewire\Partnerships\PartnerPortal::class)->name('partner.portal');
+
+    Route::get('/portal/{token}/contracts/{contract}/pdf', \App\Http\Controllers\PartnerPortalContractPdfController::class)
+        ->name('partner.portal.contract.pdf');
+});
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
@@ -43,7 +64,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/change-password', [ChangePasswordController::class, 'changePassword'])->name('password.change.update');
 });
 
-Route::middleware(['auth', 'password.changed'])->group(function () {
+Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function () {
     Route::middleware('throttle:files')->group(function () {
         Route::get('/files/tasks/{task}/{type}', TaskFileDownloadController::class)
             ->whereIn('type', ['attachment', 'submitted'])
@@ -67,25 +88,53 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         ->middleware('permission:projects.view')
         ->name('projects.index');
 
+    Route::get('/projects/{project}/execution', \App\Livewire\Projects\ProjectExecution::class)
+        ->middleware('permission:projects.view')
+        ->name('projects.execution');
+
     Route::get('/projects/{project}', ProjectShow::class)
         ->middleware('permission:projects.view')
         ->name('projects.show');
 
     Route::get('/tasks', TasksIndex::class)
-        ->middleware('permission:tasks.view')
+        ->middleware('permission:esnad.tasks.view')
         ->name('tasks.index');
 
+    Route::get('/team-tasks', TeamTasksIndex::class)
+        ->middleware('permission:esnad.tasks.view')
+        ->name('team-tasks.index');
+
+    Route::get('/tasks-calendar', TasksCalendar::class)
+        ->middleware('permission:esnad.tasks.view')
+        ->name('tasks-calendar.index');
+
+    Route::get('/recurring-tasks', RecurringTasksIndex::class)
+        ->middleware('permission:esnad.tasks.create')
+        ->name('recurring-tasks.index');
+
+    Route::get('/workload-board', WorkloadBoard::class)
+        ->middleware('permission:esnad.tasks.team.view')
+        ->name('workload-board.index');
+
     Route::get('/expenses', ExpensesIndex::class)
-        ->middleware('permission:expenses.view|expenses.create|expenses.approve|expenses.pay')
+        ->middleware('permission:finance.expenses.view|finance.expenses.create|finance.expenses.approve|finance.expenses.pay')
         ->name('expenses.index');
 
     Route::get('/payroll', PayrollIndex::class)
-        ->middleware('permission:salaries.view')
+        ->middleware('permission:hr.salaries.view')
         ->name('payroll.index');
 
     Route::get('/documents', DocumentsIndex::class)
         ->middleware('permission:documents.view')
         ->name('documents.index');
+
+    Route::get('/documents/templates', \App\Livewire\Documents\DocumentTemplatesIndex::class)
+        ->middleware('permission:documents.view|documents.templates.manage')
+        ->name('documents.templates');
+
+    Route::get('/documents/policies', \App\Livewire\Documents\DocumentPoliciesIndex::class)
+        ->middleware('permission:documents.policies.manage')
+        ->name('documents.policies');
 
     Route::get('/meetings', MeetingsIndex::class)
         ->middleware('permission:meetings.view')
@@ -104,8 +153,16 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         ->name('meetings.minutes');
 
     Route::get('/departments', DepartmentsIndex::class)
-        ->middleware('permission:departments.view')
+        ->middleware('permission:structure.departments.view')
         ->name('departments.index');
+
+    Route::get('/settings/grants', \App\Livewire\Settings\GrantsIndex::class)
+        ->middleware('permission:roles.view')
+        ->name('settings.grants');
+
+    Route::get('/structure/org-tree', \App\Livewire\Structure\OrgTreeIndex::class)
+        ->middleware('permission:structure.view|structure.departments.view|structure.manage')
+        ->name('structure.org-tree');
 
     Route::get('/settings/roles', RolesIndex::class)
         ->middleware('permission:roles.view')
@@ -115,13 +172,104 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         ->middleware('permission:settings.manage')
         ->name('settings.expenses');
 
+    Route::get('/settings/notifications', MailSettingsIndex::class)
+        ->middleware('permission:settings.notifications.manage')
+        ->name('settings.notifications');
+
+    Route::get('/settings', SettingsIndex::class)
+        ->middleware('permission:settings.manage|settings.general.manage|settings.finance.manage|settings.backup.manage')
+        ->name('settings.index');
+
     Route::get('/users', UsersIndex::class)
-        ->middleware('permission:users.view')
+        ->middleware('permission:hr.employees.view')
         ->name('users.index');
 
+    Route::get('/users/{user}/profile', EmployeeProfileShow::class)
+        ->middleware('permission:hr.employees.view')
+        ->name('users.profile');
+
+    Route::get('/pay-scales', PayScalesIndex::class)
+        ->middleware('permission:hr.salaries.manage')
+        ->name('pay-scales.index');
+
+    Route::get('/payroll-runs', PayrollRunsIndex::class)
+        ->middleware('permission:hr.salaries.view')
+        ->name('payroll-runs.index');
+
+    Route::get('/financial-documents', FinancialDocumentsIndex::class)
+        ->middleware('permission:finance.revenues.view')
+        ->name('financial-documents.index');
+
+    Route::get('/organizations', \App\Livewire\Partnerships\OrganizationsIndex::class)
+        ->middleware('permission:partnerships.organizations.view')
+        ->name('organizations.index');
+
+    Route::get('/organizations/{organization}', \App\Livewire\Partnerships\OrganizationShow::class)
+        ->middleware('permission:partnerships.organizations.view')
+        ->name('organizations.show');
+
+    Route::get('/partnerships/pipeline', \App\Livewire\Partnerships\PartnershipsPipeline::class)
+        ->middleware('permission:partnerships.pipeline.view')
+        ->name('partnerships.pipeline');
+
+    Route::get('/partnerships/{partnership}', \App\Livewire\Partnerships\PartnershipShow::class)
+        ->middleware('permission:partnerships.pipeline.view')
+        ->name('partnerships.show');
+
+    Route::get('/quotes/{quote}/pdf', \App\Http\Controllers\QuotePdfController::class)
+        ->middleware('permission:partnerships.quotes.view')
+        ->name('quotes.pdf');
+
+    Route::get('/programs', \App\Livewire\Programs\ProgramsIndex::class)
+        ->middleware('permission:projects.programs.view')
+        ->name('programs.index');
+
+    Route::get('/plan-templates', \App\Livewire\Programs\PlanTemplateEditor::class)
+        ->middleware('permission:projects.templates.manage')
+        ->name('plan-templates.index');
+
+    Route::get('/programs/{program}', \App\Livewire\Programs\ProgramShow::class)
+        ->middleware('permission:projects.programs.view')
+        ->name('programs.show');
+
+    Route::get('/files/programs/{programFile}', \App\Http\Controllers\ProgramFileDownloadController::class)
+        ->middleware(['permission:projects.programs.view', 'throttle:files'])
+        ->name('programs.files.download');
+
+    Route::get('/tax-invoices/{taxInvoice}/pdf', \App\Http\Controllers\TaxInvoicePdfController::class)
+        ->middleware('permission:finance.tax_invoices.view')
+        ->name('tax-invoices.pdf');
+
+    Route::get('/tax-invoices', \App\Livewire\Finance\TaxInvoicesIndex::class)
+        ->middleware('permission:finance.tax_invoices.view')
+        ->name('tax-invoices.index');
+
+    Route::get('/budgets', BudgetsBoard::class)
+        ->middleware('permission:finance.budgets.view')
+        ->name('budgets.index');
+
+    Route::get('/financial-reports/pdf', \App\Http\Controllers\FinancialReportPdfController::class)
+        ->middleware('permission:finance.reports.view')
+        ->name('financial-reports.pdf');
+
+    Route::get('/financial-reports', FinancialReportsIndex::class)
+        ->middleware('permission:finance.reports.view')
+        ->name('financial-reports.index');
+
+    Route::get('/duties/download', DutiesFileDownloadController::class)
+        ->name('duties.download');
+
     Route::get('/contracts', ContractsIndex::class)
-        ->middleware('permission:contracts.view')
+        ->middleware('permission:partnerships.contracts.view')
         ->name('contracts.index');
+
+    Route::get('/reports/center', \App\Livewire\Reports\ReportsCenter::class)
+        ->middleware('permission:reports.view|reports.monthly.view|reports.projects.view|reports.impact.view|reports.kpis.view')
+        ->name('reports.center');
+
+    Route::get('/reports/audit-log', \App\Livewire\Reports\AuditLogIndex::class)
+        ->middleware('permission:reports.audit-log.view')
+        ->name('reports.audit-log');
 
     Route::get('/reports', ReportsIndex::class)
         ->middleware('permission:reports.view')
