@@ -64,7 +64,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/change-password', [ChangePasswordController::class, 'changePassword'])->name('password.change.update');
 });
 
-Route::middleware(['auth', 'password.changed'])->group(function () {
+Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function () {
     Route::middleware('throttle:files')->group(function () {
         Route::get('/files/tasks/{task}/{type}', TaskFileDownloadController::class)
             ->whereIn('type', ['attachment', 'submitted'])
@@ -147,6 +147,14 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/departments', DepartmentsIndex::class)
         ->middleware('permission:structure.departments.view')
         ->name('departments.index');
+
+    Route::get('/settings/grants', \App\Livewire\Settings\GrantsIndex::class)
+        ->middleware('permission:roles.view')
+        ->name('settings.grants');
+
+    Route::get('/structure/org-tree', \App\Livewire\Structure\OrgTreeIndex::class)
+        ->middleware('permission:structure.departments.view')
+        ->name('structure.org-tree');
 
     Route::get('/settings/roles', RolesIndex::class)
         ->middleware('permission:roles.view')

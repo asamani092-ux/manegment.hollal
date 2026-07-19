@@ -33,6 +33,12 @@ class User extends Authenticatable
         return $this->hasOne(EmployeeProfile::class);
     }
 
+    /** 09-B1 @return \Illuminate\Database\Eloquent\Relations\BelongsTo<OrgUnit, $this> */
+    public function orgUnit(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    {
+        return $this->belongsTo(OrgUnit::class, 'org_unit_id');
+    }
+
     /** @return HasMany<SalaryComponent, $this> */
     public function salaryComponents(): HasMany
     {

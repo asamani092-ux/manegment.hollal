@@ -37,6 +37,15 @@ class PlatformSettingsSeeder extends Seeder
         ['hr.overtime_monthly_days', '0', 'integer', 'أيام العمل الإضافي الشهرية'],
         ['attendance.workload_threshold', '10', 'integer', 'حد عبء العمل'],
         ['links.default_expiry_days', '7', 'integer', 'مدة صلاحية الروابط الافتراضية (أيام)'],
+        // 11-B1 — remaining sections
+        ['links.max_active_per_partnership', '1', 'integer', 'أقصى عدد روابط فعّالة لكل شراكة'],
+        ['aging.task_stale_days', '7', 'integer', 'ركود المهمة (أيام)'],
+        ['aging.project_stale_days', '21', 'integer', 'ركود المشروع (أيام)'],
+        ['attendance.monthly_working_days', '22', 'integer', 'أيام الدوام الشهرية'],
+        ['maintenance.enabled', '0', 'boolean', 'وضع الصيانة'],
+        ['maintenance.message', 'المنصة تحت الصيانة مؤقتًا', 'string', 'رسالة وضع الصيانة'],
+        ['backup.last_run_at', null, 'string', 'آخر نسخة احتياطية'],
+        ['backup.retention_days', '30', 'integer', 'مدة الاحتفاظ بالنسخ الاحتياطية (أيام)'],
     ];
 
     public function run(): void
