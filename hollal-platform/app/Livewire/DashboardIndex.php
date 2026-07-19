@@ -37,14 +37,18 @@ class DashboardIndex extends Component
     {
         abort_unless((bool) auth()->user()->attendance_enabled, 403);
 
-        $this->dispatch('toast', type: 'info', message: 'تم تسجيل الحضور — سيُفعَّل الاحتساب الكامل مع برنامج الحضور');
+        app(\App\Services\AttendanceService::class)->checkIn(auth()->user());
+
+        $this->dispatch('toast', type: 'success', message: 'تم تسجيل الحضور');
     }
 
     public function checkOut(): void
     {
         abort_unless((bool) auth()->user()->attendance_enabled, 403);
 
-        $this->dispatch('toast', type: 'info', message: 'تم تسجيل الانصراف — سيُفعَّل الاحتساب الكامل مع برنامج الحضور');
+        app(\App\Services\AttendanceService::class)->checkOut(auth()->user());
+
+        $this->dispatch('toast', type: 'success', message: 'تم تسجيل الانصراف');
     }
 
     public function render(): View
