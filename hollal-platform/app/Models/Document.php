@@ -26,12 +26,28 @@ class Document extends Model
         'confidentiality',
         'uploader_id',
         'path',
+        'is_policy',
+        'review_date',
+        'review_alert_sent_at',
+        'current_version',
     ];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['is_auto_archived' => 'boolean'];
+        return [
+            'is_auto_archived' => 'boolean',
+            'is_policy' => 'boolean',
+            'review_date' => 'date',
+            'review_alert_sent_at' => 'datetime',
+            'current_version' => 'integer',
+        ];
+    }
+
+    /** 07-B1 @return \Illuminate\Database\Eloquent\Relations\HasMany<DocumentVersion, $this> */
+    public function versions(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(DocumentVersion::class)->orderByDesc('version');
     }
 
     /** @return BelongsTo<Project, $this> */

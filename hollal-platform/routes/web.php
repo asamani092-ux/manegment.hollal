@@ -247,6 +247,14 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         ->middleware('permission:partnerships.contracts.view')
         ->name('contracts.index');
 
+    Route::get('/reports/center', \App\Livewire\Reports\ReportsCenter::class)
+        ->middleware('permission:reports.view')
+        ->name('reports.center');
+
+    Route::get('/reports/audit-log', \App\Livewire\Reports\AuditLogIndex::class)
+        ->middleware('permission:reports.view')
+        ->name('reports.audit-log');
+
     Route::get('/reports', ReportsIndex::class)
         ->middleware('permission:reports.view')
         ->name('reports.index');
