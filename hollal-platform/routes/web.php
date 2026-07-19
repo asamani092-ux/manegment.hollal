@@ -172,6 +172,14 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         ->middleware('permission:finance.revenues.view')
         ->name('financial-documents.index');
 
+    Route::get('/tax-invoices/{taxInvoice}/pdf', \App\Http\Controllers\TaxInvoicePdfController::class)
+        ->middleware('permission:finance.tax_invoices.view')
+        ->name('tax-invoices.pdf');
+
+    Route::get('/tax-invoices', \App\Livewire\Finance\TaxInvoicesIndex::class)
+        ->middleware('permission:finance.tax_invoices.view')
+        ->name('tax-invoices.index');
+
     Route::get('/budgets', BudgetsBoard::class)
         ->middleware('permission:finance.budgets.view')
         ->name('budgets.index');

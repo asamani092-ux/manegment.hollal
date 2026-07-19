@@ -61,6 +61,8 @@ return [
         'finance.assets.manage' => 'إدارة الأصول',
         'finance.budgets.view' => 'عرض الموازنات',
         'finance.reports.view' => 'عرض التقارير المالية',
+        'finance.tax_invoices.view' => 'عرض الفواتير الضريبية',
+        'finance.tax_invoices.issue' => 'إصدار الفواتير والإشعارات الضريبية',
 
         'documents.view' => 'عرض المستندات',
         'documents.create' => 'رفع مستند',

@@ -97,6 +97,8 @@ class RoleSeeder extends Seeder
         'finance.assets.manage',
         'finance.budgets.view',
         'finance.reports.view',
+        'finance.tax_invoices.view',
+        'finance.tax_invoices.issue',
         'hr.salaries.view',
         'hr.salaries.manage',
         'partnerships.contracts.view',
