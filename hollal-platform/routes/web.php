@@ -27,6 +27,7 @@ use App\Livewire\Settings\MailSettingsIndex;
 use App\Livewire\Settings\RolesIndex;
 use App\Livewire\Settings\SettingsIndex;
 use App\Livewire\Tasks\TasksIndex;
+use App\Livewire\Tasks\TeamTasksIndex;
 use App\Livewire\Users\EmployeeProfileShow;
 use App\Livewire\Users\UsersIndex;
 use Illuminate\Support\Facades\Route;
@@ -80,6 +81,10 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/tasks', TasksIndex::class)
         ->middleware('permission:esnad.tasks.view')
         ->name('tasks.index');
+
+    Route::get('/team-tasks', TeamTasksIndex::class)
+        ->middleware('permission:esnad.tasks.view')
+        ->name('team-tasks.index');
 
     Route::get('/expenses', ExpensesIndex::class)
         ->middleware('permission:finance.expenses.view|finance.expenses.create|finance.expenses.approve|finance.expenses.pay')

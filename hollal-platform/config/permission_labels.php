@@ -36,6 +36,7 @@ return [
         'partnerships.contracts.manage' => 'إدارة العقود',
 
         'esnad.tasks.view' => 'عرض المهام',
+        'esnad.tasks.team.view' => 'عرض مهام الفريق',
         'esnad.tasks.create' => 'إنشاء مهمة',
         'esnad.tasks.update' => 'تعديل مهمة',
         'esnad.tasks.delete' => 'حذف مهمة',

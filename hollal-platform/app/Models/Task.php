@@ -72,6 +72,39 @@ class Task extends Model
         return $this->hasMany(TaskStatusLog::class);
     }
 
+    /**
+     * 02-B2 — tasks assigned to the manager's direct reports (manager_id tree).
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Task>  $query
+     */
+    public function scopeTeamOf(\Illuminate\Database\Eloquent\Builder $query, User $manager): void
+    {
+        $subordinateIds = User::query()->where('manager_id', $manager->id)->pluck('id');
+        $query->whereIn('assigned_to', $subordinateIds);
+    }
+
+    /** @param \Illuminate\Database\Eloquent\Builder<Task> $query */
+    public function scopeOverdue(\Illuminate\Database\Eloquent\Builder $query): void
+    {
+        $query->whereNotIn('status', ['completed'])
+            ->where(function (\Illuminate\Database\Eloquent\Builder $inner) {
+                $inner->where('status', 'overdue')
+                    ->orWhere(function (\Illuminate\Database\Eloquent\Builder $q) {
+                        $q->whereNotNull('due_date')->where('due_date', '<', now());
+                    });
+            });
+    }
+
+    /**
+     * 02-B2 — «بانتظار اعتمادي»: tasks awaiting the given assigner's approval.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<Task>  $query
+     */
+    public function scopePendingApprovalFor(\Illuminate\Database\Eloquent\Builder $query, User $assigner): void
+    {
+        $query->where('status', 'pending_review')->where('assigned_by', $assigner->id);
+    }
+
     /** @return BelongsTo<User, $this> */
     public function assigner(): BelongsTo
     {

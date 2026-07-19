@@ -37,6 +37,7 @@ class PermissionSeeder extends Seeder
         'partnerships.contracts.create',
         'partnerships.contracts.manage',
         'esnad.tasks.view',
+        'esnad.tasks.team.view',
         'esnad.tasks.create',
         'esnad.tasks.update',
         'esnad.tasks.delete',
