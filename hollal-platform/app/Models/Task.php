@@ -32,14 +32,44 @@ class Task extends Model
         'submission_note',
         'attachment_path',
         'submitted_file',
+        'required_evidence',
+        'self_rating',
+        'pm_rating',
+        'final_rating',
+        'final_notes',
+        'completed_at',
+        'template_item_id',
+        'parent_task_id',
     ];
+
+    /** @var list<string> valid triple-evaluation ratings */
+    public const RATINGS = ['متميز', 'متوسط', 'مقبول', 'متأخر'];
 
     protected function casts(): array
     {
         return [
             'due_date' => 'datetime',
             'read_at' => 'datetime',
+            'completed_at' => 'datetime',
         ];
+    }
+
+    /** @return BelongsTo<Task, $this> */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(Task::class, 'parent_task_id');
+    }
+
+    /** @return HasMany<Task, $this> */
+    public function children(): HasMany
+    {
+        return $this->hasMany(Task::class, 'parent_task_id');
+    }
+
+    /** @return HasMany<TaskStatusLog, $this> */
+    public function statusLogs(): HasMany
+    {
+        return $this->hasMany(TaskStatusLog::class);
     }
 
     /** @return BelongsTo<User, $this> */
