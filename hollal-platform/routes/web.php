@@ -10,6 +10,7 @@ use App\Livewire\Contracts\ContractsIndex;
 use App\Livewire\Documents\DocumentsIndex;
 use App\Livewire\Expenses\ExpensesIndex;
 use App\Livewire\DashboardIndex;
+use App\Livewire\Hr\PayrollRunsIndex;
 use App\Livewire\Hr\PayScalesIndex;
 use App\Livewire\Departments\DepartmentsIndex;
 use App\Livewire\Meetings\MeetingMinutes;
@@ -138,6 +139,10 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/pay-scales', PayScalesIndex::class)
         ->middleware('permission:hr.salaries.manage')
         ->name('pay-scales.index');
+
+    Route::get('/payroll-runs', PayrollRunsIndex::class)
+        ->middleware('permission:hr.salaries.view')
+        ->name('payroll-runs.index');
 
     Route::get('/contracts', ContractsIndex::class)
         ->middleware('permission:partnerships.contracts.view')
