@@ -40,9 +40,25 @@ class UsersIndex extends Component
 
     public string $roleName = '';
 
+    // 01-B1 — directory search / filters / view toggle.
+    public string $search = '';
+
+    public ?int $filterDepartment = null;
+
+    public string $filterStatus = '';
+
+    public string $filterType = '';
+
+    public string $viewMode = 'cards';
+
     public function mount(): void
     {
         $this->authorize('hr.employees.view');
+    }
+
+    public function toggleView(): void
+    {
+        $this->viewMode = $this->viewMode === 'cards' ? 'table' : 'cards';
     }
 
     public function openCreateModal(): void
@@ -169,11 +185,21 @@ class UsersIndex extends Component
     {
         return view('livewire.users.users-index', [
             'users' => User::query()
-                ->select(['id', 'name', 'email', 'department_id', 'is_active'])
+                ->select(['id', 'name', 'email', 'department_id', 'is_active', 'employment_status'])
                 ->with([
                     'roles:id,name',
                     'department:id,name',
+                    'profile:id,user_id,job_title,employment_type',
                 ])
+                ->when($this->search !== '', function ($query) {
+                    $query->where(function ($inner) {
+                        $inner->where('name', 'like', '%'.$this->search.'%')
+                            ->orWhere('email', 'like', '%'.$this->search.'%');
+                    });
+                })
+                ->when($this->filterDepartment, fn ($query) => $query->where('department_id', $this->filterDepartment))
+                ->when($this->filterStatus !== '', fn ($query) => $query->where('employment_status', $this->filterStatus))
+                ->when($this->filterType !== '', fn ($query) => $query->whereHas('profile', fn ($p) => $p->where('employment_type', $this->filterType)))
                 ->orderBy('name')
                 ->get(),
             'departments' => Department::orderBy('name')->get(['id', 'name']),

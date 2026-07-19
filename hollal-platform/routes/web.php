@@ -24,6 +24,7 @@ use App\Livewire\Settings\MailSettingsIndex;
 use App\Livewire\Settings\RolesIndex;
 use App\Livewire\Settings\SettingsIndex;
 use App\Livewire\Tasks\TasksIndex;
+use App\Livewire\Users\EmployeeProfileShow;
 use App\Livewire\Users\UsersIndex;
 use Illuminate\Support\Facades\Route;
 
@@ -128,6 +129,10 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/users', UsersIndex::class)
         ->middleware('permission:hr.employees.view')
         ->name('users.index');
+
+    Route::get('/users/{user}/profile', EmployeeProfileShow::class)
+        ->middleware('permission:hr.employees.view')
+        ->name('users.profile');
 
     Route::get('/contracts', ContractsIndex::class)
         ->middleware('permission:partnerships.contracts.view')

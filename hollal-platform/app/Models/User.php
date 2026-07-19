@@ -14,12 +14,39 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'phone', 'password', 'must_change_password', 'department_id', 'manager_id', 'is_active', 'attendance_enabled'])]
+#[Fillable(['name', 'email', 'phone', 'password', 'must_change_password', 'department_id', 'manager_id', 'is_active', 'attendance_enabled', 'employment_status'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, HasRoles, Notifiable, SoftDeletes;
+
+    public const STATUS_ACTIVE = 'نشط';
+
+    public const STATUS_FROZEN = 'مجمد';
+
+    public const STATUS_TERMINATED = 'منتهية_علاقته';
+
+    /** @return HasOne<EmployeeProfile, $this> */
+    public function profile(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(EmployeeProfile::class);
+    }
+
+    /**
+     * 01-B1 — transition employment status, keeping the is_active login gate in
+     * sync. منتهية_علاقته is reachable only through offboarding (01-B5).
+     */
+    public function transitionStatus(string $status, bool $viaOffboarding = false): void
+    {
+        if ($status === self::STATUS_TERMINATED && ! $viaOffboarding) {
+            throw new \InvalidArgumentException('إنهاء العلاقة يتم عبر مسار إنهاء الخدمة فقط.');
+        }
+
+        $this->employment_status = $status;
+        $this->is_active = $status === self::STATUS_ACTIVE;
+        $this->save();
+    }
 
     /** @return BelongsTo<Department, $this> */
     public function department(): BelongsTo
