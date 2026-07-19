@@ -52,6 +52,9 @@ return [
         'finance.expenses.pay' => 'تنفيذ الدفع',
         'finance.payroll.view' => 'عرض مسيّرات الرواتب',
         'finance.payroll.approve' => 'اعتماد وتنفيذ الرواتب',
+        'finance.custodies.view' => 'عرض العُهد',
+        'finance.custodies.approve' => 'اعتماد العُهد',
+        'finance.custodies.disburse' => 'صرف وتسوية العُهد',
 
         'documents.view' => 'عرض المستندات',
         'documents.create' => 'رفع مستند',
