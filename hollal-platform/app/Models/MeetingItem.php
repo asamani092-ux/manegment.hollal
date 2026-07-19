@@ -15,6 +15,8 @@ class MeetingItem extends Model
     protected $fillable = [
         'meeting_id',
         'topic',
+        'item_kind',
+        'proposed_by',
         'discussion_summary',
         'decision',
         'responsible_id',
