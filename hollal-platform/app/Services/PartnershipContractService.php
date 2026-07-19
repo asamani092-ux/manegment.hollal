@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AuditLog;
 use App\Models\CompanyProfile;
 use App\Models\Partnership;
 use App\Models\PartnershipContract;
@@ -14,10 +15,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * 05-B4 — contracts. The signed copy is uploaded (download → sign → upload),
- * stored on the private disk and fingerprinted with a SHA-256 hash. «تعاقد»
- * needs that confirmed signed copy plus, when required, a confirmed first
- * payment — and only then does the partnership move to stage 6.
+ * 05-B4 + amendments Q2 — contracts: e-sign inside the partner link
+ * (canvas → SVG/PNG page in PDF) alongside manual upload. SHA-256 fingerprint.
  */
 class PartnershipContractService
 {
@@ -66,14 +65,14 @@ class PartnershipContractService
     }
 
     /**
-     * Fallback signing path (the approved one): the partner downloads, signs,
-     * stamps and uploads. The stored hash fingerprints the uploaded copy.
+     * Manual upload path: partner downloads, signs, stamps and uploads.
      */
     public function uploadSignedCopy(
         PartnershipContract $contract,
         UploadedFile $file,
         string $signatureName,
         ?string $device = null,
+        ?string $signaturePosition = null,
     ): PartnershipContract {
         $path = $file->store('contracts/'.$contract->id.'/signed', 'local');
         $hash = hash('sha256', (string) Storage::disk('local')->get($path));
@@ -82,12 +81,152 @@ class PartnershipContractService
             'signed_pdf_path' => $path,
             'signed_pdf_hash' => $hash,
             'signature_name' => $signatureName,
+            'signature_position' => $signaturePosition,
+            'signature_method' => PartnershipContract::METHOD_MANUAL_UPLOAD,
             'signature_device' => $device,
             'signed_at' => now(),
             'status' => PartnershipContract::STATUS_SIGNED,
         ])->save();
 
+        $this->auditSignature($contract, PartnershipContract::METHOD_MANUAL_UPLOAD);
+
         return $contract;
+    }
+
+    /**
+     * In-link e-signature: SVG (or PNG data-URL) → last PDF page + SHA-256.
+     * Time: O(size of PDF) | Space: O(size of PDF)
+     */
+    public function signElectronically(
+        PartnershipContract $contract,
+        string $signatureSvg,
+        string $signatureName,
+        string $signaturePosition,
+        ?string $device = null,
+    ): PartnershipContract {
+        if (trim($signatureSvg) === '') {
+            throw new \InvalidArgumentException('التوقيع فارغ');
+        }
+
+        $normalizedSvg = $this->normalizeSignatureSvg($signatureSvg);
+        $imagePath = 'contracts/'.$contract->id.'/signature.svg';
+        Storage::disk('local')->put($imagePath, $normalizedSvg);
+
+        $pngDataUri = null;
+        if (preg_match('/xlink:href="(data:image\/png;base64,[^"]+)"/', $normalizedSvg, $m) === 1) {
+            $pngDataUri = $m[1];
+        } elseif (str_starts_with(trim($signatureSvg), 'data:image/png;base64,')) {
+            $pngDataUri = trim($signatureSvg);
+        }
+
+        $pdfBinary = $this->renderCombinedSignedPdf(
+            $contract,
+            extension_loaded('gd') ? $pngDataUri : null,
+            $signatureName,
+            $signaturePosition,
+            $device,
+        );
+
+        $pdfPath = 'contracts/'.$contract->id.'/signed/e-sign-'.now()->format('YmdHis').'.pdf';
+        Storage::disk('local')->put($pdfPath, $pdfBinary);
+        $hash = hash('sha256', $pdfBinary);
+
+        $contract->forceFill([
+            'signed_pdf_path' => $pdfPath,
+            'signed_pdf_hash' => $hash,
+            'signature_image_path' => $imagePath,
+            'signature_name' => $signatureName,
+            'signature_position' => $signaturePosition,
+            'signature_method' => PartnershipContract::METHOD_IN_LINK,
+            'signature_device' => $device,
+            'signed_at' => now(),
+            'status' => PartnershipContract::STATUS_SIGNED,
+        ])->save();
+
+        $this->auditSignature($contract, PartnershipContract::METHOD_IN_LINK);
+
+        return $contract;
+    }
+
+    private function auditSignature(PartnershipContract $contract, string $method): void
+    {
+        AuditLog::create([
+            'actor_id' => null,
+            'action' => 'partnership_contract.signed',
+            'target_type' => PartnershipContract::class,
+            'target_id' => $contract->id,
+            'ip_address' => request()->ip(),
+            'metadata' => [
+                'method' => $method,
+                'partnership_id' => $contract->partnership_id,
+                'signature_name' => $contract->signature_name,
+                'hash' => $contract->signed_pdf_hash,
+            ],
+            'created_at' => now(),
+        ]);
+    }
+
+    private function normalizeSignatureSvg(string $input): string
+    {
+        $trimmed = trim($input);
+
+        if (str_starts_with($trimmed, 'data:image/png;base64,')) {
+            $png = base64_decode(substr($trimmed, strlen('data:image/png;base64,')), true) ?: '';
+            $b64 = base64_encode($png);
+
+            return '<?xml version="1.0" encoding="UTF-8"?>'
+                .'<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="400" height="160">'
+                .'<image width="400" height="160" xlink:href="data:image/png;base64,'.$b64.'"/>'
+                .'</svg>';
+        }
+
+        if (str_contains($trimmed, '<svg')) {
+            return $trimmed;
+        }
+
+        throw new \InvalidArgumentException('صيغة التوقيع غير صالحة');
+    }
+
+    private function renderCombinedSignedPdf(
+        PartnershipContract $contract,
+        ?string $pngDataUri,
+        string $signatureName,
+        string $signaturePosition,
+        ?string $device,
+    ): string {
+        $contract->loadMissing(['schedule', 'quote.items', 'partnership.organization']);
+        $company = CompanyProfile::current();
+
+        $scheduleRows = '';
+        foreach ($contract->schedule as $row) {
+            $scheduleRows .= '<tr><td>'.e((string) $row->label).'</td><td>'
+                .number_format((float) $row->amount, 2).'</td><td>'
+                .e($row->due_on->format('Y-m-d')).'</td></tr>';
+        }
+
+        $html = '<div dir="rtl" style="font-family: dejavu sans;">'
+            .'<h2>عقد شراكة رقم '.(int) $contract->id.'</h2>'
+            .'<p>'.e($company->name).' — الرقم الضريبي: '.e((string) $company->tax_number).'</p>'
+            .'<p>الجهة: '.e($contract->partnership->organization?->name ?? $contract->partnership->entity_name ?? '—').'</p>'
+            .'<p>القيمة الإجمالية: '.number_format((float) $contract->total_value, 2).'</p>'
+            .'<h3>جدول الدفعات</h3>'
+            .'<table border="1" cellspacing="0" cellpadding="4" width="100%">'
+            .'<thead><tr><th>الدفعة</th><th>المبلغ</th><th>تاريخ الاستحقاق</th></tr></thead>'
+            .'<tbody>'.$scheduleRows.'</tbody></table>'
+            .'<p>التزامات حلل: '.e((string) $contract->hollal_commitments).'</p>'
+            .'<p>التزامات الجهة: '.e((string) $contract->partner_commitments).'</p>'
+            .'<div style="page-break-before: always;">'
+            .'<h2>صفحة التوقيع الإلكتروني</h2>'
+            .'<p>اسم الموقّع: '.e($signatureName).'</p>'
+            .'<p>الصفة: '.e($signaturePosition).'</p>'
+            .'<p>الوقت: '.e(now()->timezone('Asia/Riyadh')->format('Y-m-d H:i:s')).'</p>'
+            .'<p>الجهاز: '.e((string) $device).'</p>'
+            .($pngDataUri !== null
+                ? '<p>التوقيع:</p><img src="'.$pngDataUri.'" width="320" height="120" alt="توقيع"/>'
+                : '<p>التوقيع محفوظ إلكترونيًا (ملف SVG على القرص الخاص).</p>')
+            .'</div></div>';
+
+        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'dejavu sans')->output();
     }
 
     /**

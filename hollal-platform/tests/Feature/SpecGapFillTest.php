@@ -136,6 +136,23 @@ class SpecGapFillTest extends TestCase
         $this->assertSame(40, $employee->profile?->weekly_hours);
     }
 
+    public function test_overtime_gate_dropdown_on_salary_tab(): void
+    {
+        $hr = User::factory()->create(['must_change_password' => false]);
+        $hr->givePermissionTo(['hr.employees.view', 'hr.salaries.view', 'hr.salaries.manage']);
+
+        $employee = User::factory()->create(['must_change_password' => false]);
+
+        Livewire::actingAs($hr)
+            ->test(EmployeeProfileShow::class, ['user' => $employee])
+            ->call('setTab', 'salary')
+            ->set('overtimeGate', 'مفتوح')
+            ->call('saveOvertimeGate')
+            ->assertHasNoErrors();
+
+        $this->assertTrue((bool) $employee->fresh()->profile?->overtime_unlocked);
+    }
+
     public function test_audit_log_route_requires_dedicated_permission(): void
     {
         $user = User::factory()->create(['must_change_password' => false]);

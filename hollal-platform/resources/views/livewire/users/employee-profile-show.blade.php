@@ -83,6 +83,28 @@
                 @endcan
             @elseif ($activeTab === 'salary')
                 <p class="ds-text-muted">مكوّنات الراتب وسلم الرواتب تُعرض هنا (تُبنى في 01-B2).</p>
+                <dl class="ds-detail-grid">
+                    <div>
+                        <dt>الساعات الإضافية</dt>
+                        <dd>{{ $user->profile?->overtime_unlocked ? 'مفتوح' : 'مقفل' }}</dd>
+                    </div>
+                    <div>
+                        <dt>قيمة ساعة الإضافي</dt>
+                        <dd class="ds-ltr-num">{{ $user->profile?->overtime_hour_value ?? '0' }}</dd>
+                    </div>
+                </dl>
+                @if ($canManageOvertime)
+                    <section class="ds-section">
+                        <h3 class="ds-section-title">فتح الساعات الإضافية</h3>
+                        <x-ds-form-group label="حالة الإضافي" :error="$errors->first('overtimeGate')">
+                            <select class="ds-input" wire:model="overtimeGate">
+                                <option value="مقفل">مقفل</option>
+                                <option value="مفتوح">مفتوح</option>
+                            </select>
+                        </x-ds-form-group>
+                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveOvertimeGate">حفظ</button>
+                    </section>
+                @endif
             @elseif ($activeTab === 'contracts')
                 <p class="ds-text-muted">عقود الموظف.</p>
             @elseif ($activeTab === 'tasks')

@@ -60,6 +60,10 @@ class PayrollRunService
     {
         $this->assertEditable($item->run);
 
+        if (! $item->employee->profile?->overtime_unlocked) {
+            throw new \InvalidArgumentException('الساعات الإضافية مقفلة لهذا الموظف — افتحها من الملف الوظيفي أولاً');
+        }
+
         $hourValue = (float) ($item->employee->profile?->overtime_hour_value ?? 0);
 
         $item->overtime_hours = $hours;

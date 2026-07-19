@@ -27,12 +27,16 @@ class EmployeeProfileShow extends Component
 
     public string $weeklyHours = '';
 
+    /** مقفل|مفتوح — قائمة منسدلة لفتح الساعات الإضافية */
+    public string $overtimeGate = 'مقفل';
+
     public function mount(User $user): void
     {
         $this->authorize('hr.employees.view');
         $this->userId = $user->id;
         $this->attendanceEnabled = (bool) $user->attendance_enabled;
         $this->weeklyHours = (string) ($user->profile?->weekly_hours ?? '');
+        $this->overtimeGate = $user->profile?->overtime_unlocked ? 'مفتوح' : 'مقفل';
     }
 
     public function setTab(string $tab): void
@@ -77,6 +81,30 @@ class EmployeeProfileShow extends Component
         $this->dispatch('ds-toast', message: 'حُفظت إعدادات الحضور');
     }
 
+    /**
+     * Amendments Q1 — فتح/قفل الساعات الإضافية من القائمة المنسدلة.
+     * Time: O(1) | Space: O(1)
+     */
+    public function saveOvertimeGate(): void
+    {
+        $this->authorize('hr.salaries.manage');
+
+        $this->validate([
+            'overtimeGate' => 'required|in:مقفل,مفتوح',
+        ]);
+
+        $user = User::findOrFail($this->userId);
+        $profile = EmployeeProfile::query()->firstOrCreate(
+            ['user_id' => $user->id],
+            ['job_title' => $user->name],
+        );
+        $profile->setOvertimeUnlocked($this->overtimeGate === 'مفتوح');
+
+        $this->dispatch('ds-toast', message: $this->overtimeGate === 'مفتوح'
+            ? 'فُتحت الساعات الإضافية لهذا الموظف'
+            : 'أُقفلت الساعات الإضافية لهذا الموظف');
+    }
+
     private function logSalaryAccess(): void
     {
         ProfileAccessLog::create([
@@ -95,6 +123,7 @@ class EmployeeProfileShow extends Component
         return view('livewire.users.employee-profile-show', [
             'user' => $user,
             'canViewSalary' => $this->canViewSalary(),
+            'canManageOvertime' => auth()->user()->can('hr.salaries.manage'),
         ])->layout('layouts.app', ['title' => 'الملف الوظيفي — '.$user->name]);
     }
 }

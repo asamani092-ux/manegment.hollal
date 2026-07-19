@@ -25,11 +25,16 @@ class PartnershipContract extends Model
 
     public const STATUS_CANCELLED = 'ملغى';
 
+    public const METHOD_IN_LINK = 'داخل_الرابط';
+
+    public const METHOD_MANUAL_UPLOAD = 'رفع_يدوي';
+
     /** @var list<string> */
     protected $fillable = [
         'partnership_id', 'quote_id', 'status', 'starts_on', 'ends_on',
         'hollal_commitments', 'partner_commitments', 'total_value', 'requires_first_payment',
         'unsigned_pdf_path', 'signed_pdf_path', 'signed_pdf_hash', 'signature_name',
+        'signature_method', 'signature_position', 'signature_image_path',
         'signature_device', 'signed_at', 'confirmed_by', 'confirmed_at',
     ];
 

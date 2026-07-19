@@ -416,6 +416,35 @@ class PartnershipModuleTest extends TestCase
         ]);
     }
 
+    public function test_portal_electronic_signature_embeds_hash_and_method(): void
+    {
+        $contract = $this->contract();
+        $link = app(PartnerPortalService::class)->issue($contract->partnership);
+
+        // 1×1 PNG
+        $png = base64_encode(base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
+
+        Livewire::test(PartnerPortal::class, ['token' => $link->token])
+            ->set('signatureName', 'أحمد الجهة')
+            ->set('signaturePosition', 'مدير تنفيذي')
+            ->set('signaturePadData', 'data:image/png;base64,'.$png)
+            ->call('signElectronically', $contract->id)
+            ->assertHasNoErrors();
+
+        $contract->refresh();
+        $this->assertSame(PartnershipContract::STATUS_SIGNED, $contract->status);
+        $this->assertSame(PartnershipContract::METHOD_IN_LINK, $contract->signature_method);
+        $this->assertSame(64, strlen((string) $contract->signed_pdf_hash));
+        Storage::disk('local')->assertExists($contract->signed_pdf_path);
+        $this->assertDatabaseHas('partner_portal_activities', [
+            'action' => 'portal.contract_signed_electronically',
+        ]);
+        $this->assertDatabaseHas('audit_logs', [
+            'action' => 'partnership_contract.signed',
+            'target_id' => $contract->id,
+        ]);
+    }
+
     public function test_portal_can_upload_signed_contract_for_its_partnership_only(): void
     {
         $contract = $this->contract();

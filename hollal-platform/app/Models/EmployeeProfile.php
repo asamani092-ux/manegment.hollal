@@ -38,7 +38,18 @@ class EmployeeProfile extends Model
      */
     public function unlockOvertime(): void
     {
-        $this->update(['overtime_unlocked' => true]);
+        $this->setOvertimeUnlocked(true);
+    }
+
+    public function lockOvertime(): void
+    {
+        $this->setOvertimeUnlocked(false);
+    }
+
+    /** Amendments Q1 — قائمة منسدلة داخل المنصة. Time: O(1) */
+    public function setOvertimeUnlocked(bool $unlocked): void
+    {
+        $this->update(['overtime_unlocked' => $unlocked]);
     }
 
     /** @return BelongsTo<User, $this> */

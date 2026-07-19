@@ -83,7 +83,8 @@ class PayrollRunTest extends TestCase
 
     public function test_overtime_amount_is_hours_times_hour_value(): void
     {
-        $this->employeeWithSalary(5000, 0, 0, overtimeValue: 50);
+        $employee = $this->employeeWithSalary(5000, 0, 0, overtimeValue: 50);
+        $employee->profile->unlockOvertime();
         $run = app(PayrollRunService::class)->generate('2026-07');
         $item = $run->items->first();
 
@@ -116,7 +117,8 @@ class PayrollRunTest extends TestCase
 
     public function test_amounts_cannot_be_edited_after_submission(): void
     {
-        $this->employeeWithSalary(5000, 0, 0, overtimeValue: 50);
+        $employee = $this->employeeWithSalary(5000, 0, 0, overtimeValue: 50);
+        $employee->profile->unlockOvertime();
         $hr = User::factory()->create();
 
         $run = app(PayrollRunService::class)->generate('2026-07');
@@ -124,5 +126,14 @@ class PayrollRunTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         app(PayrollRunService::class)->setOvertime($run->items->first(), 5);
+    }
+
+    public function test_overtime_blocked_while_locked_on_profile(): void
+    {
+        $this->employeeWithSalary(5000, 0, 0, overtimeValue: 50);
+        $run = app(PayrollRunService::class)->generate('2026-07');
+
+        $this->expectException(\InvalidArgumentException::class);
+        app(PayrollRunService::class)->setOvertime($run->items->first(), 2);
     }
 }

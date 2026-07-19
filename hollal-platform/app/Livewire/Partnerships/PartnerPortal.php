@@ -47,6 +47,11 @@ class PartnerPortal extends Component
 
     public string $signatureName = '';
 
+    public string $signaturePosition = '';
+
+    /** data:image/png;base64,... من لوحة التوقيع */
+    public string $signaturePadData = '';
+
     public function mount(string $token): void
     {
         $link = app(PartnerPortalService::class)->resolve($token);
@@ -137,6 +142,7 @@ class PartnerPortal extends Component
         $this->validate([
             'signedContract' => 'required|file|max:10240|mimes:pdf',
             'signatureName' => 'required|string|max:255',
+            'signaturePosition' => 'nullable|string|max:255',
         ]);
 
         $contract = $this->scopedContract($contractId);
@@ -146,13 +152,45 @@ class PartnerPortal extends Component
             $this->signedContract,
             $this->signatureName,
             request()->userAgent(),
+            $this->signaturePosition !== '' ? $this->signaturePosition : null,
         );
 
         $this->signedContract = null;
         $this->signatureName = '';
+        $this->signaturePosition = '';
         $this->log('portal.contract_uploaded', ['contract_id' => $contract->id]);
 
         $this->dispatch('ds-toast', message: 'تم رفع النسخة الموقعة — بانتظار تأكيد مدير الشراكات');
+    }
+
+    /**
+     * Amendments Q2 — توقيع إلكتروني داخل الرابط (لوحة + اسم + صفة).
+     * Time: O(PDF) | Space: O(PDF)
+     */
+    public function signElectronically(int $contractId): void
+    {
+        $this->validate([
+            'signaturePadData' => 'required|string|min:32',
+            'signatureName' => 'required|string|max:255',
+            'signaturePosition' => 'required|string|max:255',
+        ]);
+
+        $contract = $this->scopedContract($contractId);
+
+        app(PartnershipContractService::class)->signElectronically(
+            $contract,
+            $this->signaturePadData,
+            $this->signatureName,
+            $this->signaturePosition,
+            request()->userAgent(),
+        );
+
+        $this->signaturePadData = '';
+        $this->signatureName = '';
+        $this->signaturePosition = '';
+        $this->log('portal.contract_signed_electronically', ['contract_id' => $contract->id]);
+
+        $this->dispatch('ds-toast', message: 'تم التوقيع الإلكتروني — بانتظار تأكيد مدير الشراكات');
     }
 
     public function render(): View

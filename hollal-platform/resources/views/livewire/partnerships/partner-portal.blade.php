@@ -68,11 +68,63 @@
                 </a>
 
                 @if ($contract->signed_pdf_path)
-                    <p class="ds-text-muted">تم رفع نسخة موقعة — الحالة: {{ $contract->status }}</p>
+                    <p class="ds-text-muted">
+                        تم التوقيع ({{ $contract->signature_method ?? '—' }}) — الحالة: {{ $contract->status }}
+                    </p>
                 @else
                     <x-ds-form-group label="اسم الموقّع" :error="$errors->first('signatureName')">
                         <input type="text" class="ds-input" wire:model="signatureName">
                     </x-ds-form-group>
+                    <x-ds-form-group label="الصفة" :error="$errors->first('signaturePosition')">
+                        <input type="text" class="ds-input" wire:model="signaturePosition">
+                    </x-ds-form-group>
+
+                    <div class="ds-section"
+                         x-data="{
+                            drawing: false,
+                            initPad() {
+                                const c = this.$refs.pad;
+                                const ctx = c.getContext('2d');
+                                ctx.strokeStyle = '#0F3446';
+                                ctx.lineWidth = 2;
+                                ctx.lineCap = 'round';
+                                const pos = (e) => {
+                                    const r = c.getBoundingClientRect();
+                                    const src = e.touches ? e.touches[0] : e;
+                                    return { x: src.clientX - r.left, y: src.clientY - r.top };
+                                };
+                                const start = (e) => { e.preventDefault(); this.drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
+                                const move = (e) => { if (!this.drawing) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
+                                const end = () => { this.drawing = false; };
+                                c.addEventListener('mousedown', start);
+                                c.addEventListener('mousemove', move);
+                                c.addEventListener('mouseup', end);
+                                c.addEventListener('mouseleave', end);
+                                c.addEventListener('touchstart', start, { passive: false });
+                                c.addEventListener('touchmove', move, { passive: false });
+                                c.addEventListener('touchend', end);
+                            },
+                            clear() {
+                                const c = this.$refs.pad;
+                                c.getContext('2d').clearRect(0, 0, c.width, c.height);
+                                $wire.set('signaturePadData', '');
+                            },
+                            submitEsign() {
+                                $wire.set('signaturePadData', this.$refs.pad.toDataURL('image/png'));
+                                $wire.signElectronically({{ $contract->id }});
+                            }
+                         }"
+                         x-init="initPad()">
+                        <h3 class="ds-section-title">التوقيع الإلكتروني داخل الرابط</h3>
+                        <canvas x-ref="pad" width="400" height="160" class="ds-input" style="touch-action: none; background: #E7EEF1; max-width: 100%;" wire:ignore></canvas>
+                        @error('signaturePadData') <small class="ds-error">{{ $message }}</small> @enderror
+                        <div class="ds-filter-bar">
+                            <button type="button" class="ds-btn" @click="clear()">مسح اللوحة</button>
+                            <button type="button" class="ds-btn ds-btn-primary" @click="submitEsign()">اعتماد التوقيع الإلكتروني</button>
+                        </div>
+                    </div>
+
+                    <h3 class="ds-section-title">أو الرفع اليدوي</h3>
                     <x-ds-form-group label="رفع النسخة الموقعة (PDF)" :error="$errors->first('signedContract')">
                         <input type="file" class="ds-input" wire:model="signedContract" accept="application/pdf">
                     </x-ds-form-group>
