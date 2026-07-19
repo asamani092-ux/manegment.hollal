@@ -20,12 +20,23 @@ class PayrollRun extends Model
     public const STATUS_RETURNED = 'معاد_للتصحيح';
 
     /** @var list<string> */
-    protected $fillable = ['month', 'status', 'submitted_by', 'submitted_at', 'notes'];
+    protected $fillable = [
+        'month', 'status', 'submitted_by', 'submitted_at',
+        'finance_approved_by', 'finance_approved_at', 'notes',
+    ];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['submitted_at' => 'datetime'];
+        return [
+            'submitted_at' => 'datetime',
+            'finance_approved_at' => 'datetime',
+        ];
+    }
+
+    public function isFinanceApproved(): bool
+    {
+        return $this->finance_approved_at !== null;
     }
 
     /**

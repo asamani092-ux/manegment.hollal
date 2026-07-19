@@ -83,6 +83,8 @@ class RoleSeeder extends Seeder
         'finance.expenses.create',
         'finance.expenses.approve',
         'finance.expenses.pay',
+        'finance.payroll.view',
+        'finance.payroll.approve',
         'hr.salaries.view',
         'hr.salaries.manage',
         'partnerships.contracts.view',

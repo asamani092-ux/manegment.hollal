@@ -55,6 +55,18 @@ class PayrollRunsIndex extends Component
         }
     }
 
+    public function financeApprove(int $runId): void
+    {
+        $this->authorize('finance.payroll.approve');
+
+        try {
+            app(PayrollRunService::class)->financeApprove(PayrollRun::findOrFail($runId), auth()->user());
+            $this->dispatch('toast', type: 'success', message: 'تم الاعتماد المالي — يمكن الآن تنفيذ الصرف');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
     public function render(): View
     {
         return view('livewire.hr.payroll-runs-index', [

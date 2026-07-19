@@ -50,6 +50,8 @@ return [
         'finance.expenses.create' => 'إنشاء طلب مصروف',
         'finance.expenses.approve' => 'اعتماد المصروفات',
         'finance.expenses.pay' => 'تنفيذ الدفع',
+        'finance.payroll.view' => 'عرض مسيّرات الرواتب',
+        'finance.payroll.approve' => 'اعتماد وتنفيذ الرواتب',
 
         'documents.view' => 'عرض المستندات',
         'documents.create' => 'رفع مستند',

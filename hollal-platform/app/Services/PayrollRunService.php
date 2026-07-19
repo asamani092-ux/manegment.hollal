@@ -6,6 +6,7 @@ use App\Models\PayrollRun;
 use App\Models\PayrollRunItem;
 use App\Models\SalaryComponent;
 use App\Models\User;
+use App\Notifications\PayrollExecuted;
 use App\Notifications\PayrollReturnedToHr;
 use App\Notifications\PayrollSubmittedToFinance;
 use Illuminate\Support\Carbon;
@@ -98,6 +99,54 @@ class PayrollRunService
         Notification::send(User::role('Finance')->get(), new PayrollSubmittedToFinance($run));
 
         return $run;
+    }
+
+    /**
+     * 04-B2 — finance approves the submitted run before executing rows.
+     */
+    public function financeApprove(PayrollRun $run, User $financeUser): PayrollRun
+    {
+        if ($run->status !== PayrollRun::STATUS_SUBMITTED) {
+            throw new \InvalidArgumentException('لا يمكن الاعتماد المالي إلا لمسيّر مرفوع للمالية.');
+        }
+
+        $run->update([
+            'finance_approved_by' => $financeUser->id,
+            'finance_approved_at' => now(),
+        ]);
+
+        return $run;
+    }
+
+    /**
+     * 04-B2 — execute a single row (transfer reference/date + proof). Amounts are
+     * never touched. When every row is executed, the run becomes منفذ and HR is
+     * notified.
+     */
+    public function executeItem(PayrollRunItem $item, string $reference, string $date, ?string $proofFile = null): PayrollRunItem
+    {
+        $run = $item->run;
+
+        if ($run->status !== PayrollRun::STATUS_SUBMITTED || ! $run->isFinanceApproved()) {
+            throw new \InvalidArgumentException('يلزم الاعتماد المالي قبل تنفيذ الرواتب.');
+        }
+
+        $item->update([
+            'transfer_reference' => $reference,
+            'transfer_date' => $date,
+            'proof_file' => $proofFile,
+            'executed_at' => now(),
+        ]);
+
+        $pending = $run->items()->whereNull('executed_at')->count();
+        if ($pending === 0) {
+            $run->update(['status' => PayrollRun::STATUS_EXECUTED]);
+            if ($run->submitter) {
+                $run->submitter->notify(new PayrollExecuted($run));
+            }
+        }
+
+        return $item;
     }
 
     public function returnForCorrection(PayrollRun $run, string $note): PayrollRun

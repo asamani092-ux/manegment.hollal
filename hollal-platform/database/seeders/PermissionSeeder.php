@@ -49,6 +49,8 @@ class PermissionSeeder extends Seeder
         'finance.expenses.create',
         'finance.expenses.approve',
         'finance.expenses.pay',
+        'finance.payroll.view',
+        'finance.payroll.approve',
         'documents.view',
         'documents.create',
         'reports.view',

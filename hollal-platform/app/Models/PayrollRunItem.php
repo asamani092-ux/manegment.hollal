@@ -11,6 +11,7 @@ class PayrollRunItem extends Model
     protected $fillable = [
         'payroll_run_id', 'employee_id', 'base', 'allowances', 'deductions',
         'overtime_hours', 'overtime_amount', 'variables', 'gross', 'net',
+        'transfer_reference', 'transfer_date', 'proof_file', 'executed_at',
     ];
 
     /** @return array<string, string> */
@@ -25,6 +26,8 @@ class PayrollRunItem extends Model
             'gross' => 'decimal:2',
             'net' => 'decimal:2',
             'variables' => 'array',
+            'transfer_date' => 'date',
+            'executed_at' => 'datetime',
         ];
     }
 
