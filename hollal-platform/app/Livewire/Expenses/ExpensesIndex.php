@@ -54,6 +54,14 @@ class ExpensesIndex extends Component
 
     public ?int $project_id = null;
 
+    public ?int $category_id = null;
+
+    public ?int $department_id = null;
+
+    public ?TemporaryUploadedFile $officialDocument = null;
+
+    public ?string $existingOfficialDocPath = null;
+
     public ?TemporaryUploadedFile $attachment = null;
 
     public ?TemporaryUploadedFile $cameraAttachment = null;
@@ -159,9 +167,16 @@ class ExpensesIndex extends Component
             'reason' => 'required|string',
             'priority' => 'required|in:low,normal,high,urgent',
             'payment_method' => 'required|in:transfer,pos,cheque,other',
-            'project_id' => 'nullable|exists:projects,id',
+            'category_id' => 'required|exists:expense_categories,id',
+            'project_id' => 'nullable|required_without:department_id|exists:projects,id',
+            'department_id' => 'nullable|required_without:project_id|exists:departments,id',
+            'officialDocument' => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png',
             'attachment' => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
             'cameraAttachment' => 'nullable|file|max:5120|mimes:jpg,jpeg,png',
+        ], [
+            'category_id.required' => 'يجب اختيار تصنيف المصروف',
+            'project_id.required_without' => 'يجب تحديد المشروع أو القسم',
+            'department_id.required_without' => 'يجب تحديد القسم أو المشروع',
         ]);
 
         $data = [
@@ -172,11 +187,17 @@ class ExpensesIndex extends Component
             'priority' => $this->priority,
             'payment_method' => $this->payment_method,
             'project_id' => $this->project_id,
+            'department_id' => $this->department_id,
+            'category_id' => $this->category_id,
             'status' => 'draft',
         ];
 
         if ($this->attachment) {
             $data['attachment'] = $this->attachment->store('expenses', 'local');
+        }
+
+        if ($this->officialDocument) {
+            $data['official_document_path'] = $this->officialDocument->store('expenses/official', 'local');
         }
 
         if ($isEdit) {
@@ -294,7 +315,10 @@ class ExpensesIndex extends Component
         $this->priority = $expense->priority ?? 'normal';
         $this->payment_method = $expense->payment_method;
         $this->project_id = $expense->project_id;
+        $this->department_id = $expense->department_id;
+        $this->category_id = $expense->category_id;
         $this->existingAttachmentPath = $expense->attachment;
+        $this->existingOfficialDocPath = $expense->official_document_path;
     }
 
     protected function resetExpenseForm(): void
@@ -307,6 +331,10 @@ class ExpensesIndex extends Component
         $this->priority = 'normal';
         $this->payment_method = 'transfer';
         $this->project_id = null;
+        $this->department_id = null;
+        $this->category_id = null;
+        $this->officialDocument = null;
+        $this->existingOfficialDocPath = null;
         $this->attachment = null;
         $this->cameraAttachment = null;
         $this->existingAttachmentPath = null;
@@ -345,6 +373,9 @@ class ExpensesIndex extends Component
                 ? $this->expenseQuery($userId, 'all')->paginate(8, pageName: 'allExpensesPage')
                 : null,
             'projects' => Project::orderBy('name')->get(['id', 'name']),
+            'categories' => \App\Models\ExpenseCategory::active()->orderBy('name_ar')->get(['id', 'name_ar']),
+            'departments' => \App\Models\Department::orderBy('name')->get(['id', 'name']),
+            'companyTaxNumberMissing' => blank(\App\Support\Setting::get('company.tax_number')),
             'statusOptions' => ExpenseRequest::STATUSES,
             'canViewAll' => $canViewAll,
             'canManageSettings' => auth()->user()->can('settings.manage'),

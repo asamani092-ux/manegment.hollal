@@ -63,6 +63,8 @@ class ExpenseRequestTest extends TestCase
             ->set('reason', 'شراء مستلزمات')
             ->set('payment_method', 'transfer')
             ->set('priority', 'normal')
+            ->set('category_id', \App\Models\ExpenseCategory::create(['name_ar' => 'عام'])->id)
+            ->set('project_id', \App\Models\Project::factory()->create()->id)
             ->call('saveExpense', true)
             ->assertHasNoErrors();
 
