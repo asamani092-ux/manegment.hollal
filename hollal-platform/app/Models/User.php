@@ -33,6 +33,12 @@ class User extends Authenticatable
         return $this->hasOne(EmployeeProfile::class);
     }
 
+    /** @return HasMany<SalaryComponent, $this> */
+    public function salaryComponents(): HasMany
+    {
+        return $this->hasMany(SalaryComponent::class, 'employee_id');
+    }
+
     /**
      * 01-B1 — transition employment status, keeping the is_active login gate in
      * sync. منتهية_علاقته is reachable only through offboarding (01-B5).

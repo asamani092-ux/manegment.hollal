@@ -14,8 +14,8 @@ class EmployeeProfile extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'user_id', 'job_title', 'employment_type', 'hire_date', 'national_id',
-        'birth_date', 'gender', 'marital_status', 'address',
+        'user_id', 'job_title', 'employment_type', 'overtime_hour_value', 'hire_date',
+        'national_id', 'birth_date', 'gender', 'marital_status', 'address',
         'emergency_contact_name', 'emergency_contact_phone', 'notes',
     ];
 
@@ -25,6 +25,7 @@ class EmployeeProfile extends Model
         return [
             'hire_date' => 'date',
             'birth_date' => 'date',
+            'overtime_hour_value' => 'decimal:2',
         ];
     }
 
