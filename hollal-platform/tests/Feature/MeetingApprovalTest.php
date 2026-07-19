@@ -24,6 +24,7 @@ class MeetingApprovalTest extends TestCase
     {
         parent::setUp();
         $this->seed(PermissionSeeder::class);
+        \Illuminate\Support\Facades\Storage::fake('local');
     }
 
     private function chairUser(): User

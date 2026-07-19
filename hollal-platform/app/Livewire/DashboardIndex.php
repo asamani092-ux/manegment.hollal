@@ -122,6 +122,21 @@ class DashboardIndex extends Component
                 ]);
             });
 
+        MeetingItem::query()
+            ->stale((int) \App\Support\Setting::get('notifications.decision_stale_days', 30))
+            ->where('responsible_id', $user->id)
+            ->with('meeting:id,title')
+            ->limit(10)
+            ->get()
+            ->each(function (MeetingItem $item) use ($items) {
+                $items->push([
+                    'kind' => 'stale_decision',
+                    'label' => 'قرار متأخر (عمره '.$item->ageInDays().' يومًا): '.$item->topic,
+                    'url' => route('meetings.minutes', $item->meeting_id),
+                    'meta' => $item->meeting?->title ?? '—',
+                ]);
+            });
+
         if ($user->can('partnerships.view')) {
             $this->expiringPartnershipsQuery()
                 ->with('project:id,name')

@@ -19,11 +19,20 @@ class Document extends Model
     protected $fillable = [
         'title',
         'category',
+        'source_type',
+        'source_id',
+        'is_auto_archived',
         'project_id',
         'confidentiality',
         'uploader_id',
         'path',
     ];
+
+    /** @return array<string, string> */
+    protected function casts(): array
+    {
+        return ['is_auto_archived' => 'boolean'];
+    }
 
     /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo

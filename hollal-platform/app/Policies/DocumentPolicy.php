@@ -25,8 +25,21 @@ class DocumentPolicy
         return $user->can('documents.create');
     }
 
+    public function update(User $user, Document $document): bool
+    {
+        if ($document->is_auto_archived) {
+            return false; // 03-B2 — archived minutes/reports are read-only
+        }
+
+        return $user->id === $document->uploader_id || $user->can('documents.create');
+    }
+
     public function delete(User $user, Document $document): bool
     {
+        if ($document->is_auto_archived) {
+            return false; // 03-B2 — archived minutes/reports cannot be deleted
+        }
+
         return $user->id === $document->uploader_id || $user->can('documents.create');
     }
 

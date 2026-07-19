@@ -2,10 +2,12 @@
 
 namespace App\Services;
 
+use App\Models\Document;
 use App\Models\Meeting;
 use App\Models\MeetingAmendment;
 use App\Models\MeetingItem;
 use App\Models\User;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * 03-B1 — meeting minutes approval cycle and amendments. Once approved, minutes
@@ -26,7 +28,34 @@ class MeetingService
             'approved_at' => now(),
         ]);
 
+        $this->archiveMinutes($meeting, $chair);
+
         return $meeting;
+    }
+
+    /**
+     * 03-B2 — auto-generate the minutes PDF and store it as a read-only,
+     * source-linked archived document.
+     */
+    private function archiveMinutes(Meeting $meeting, User $chair): void
+    {
+        $pdf = app(MeetingMinutesPdfService::class)->output($meeting);
+
+        $path = 'meetings/'.now()->format('Y/m').'/'.$meeting->id.'-minutes.pdf';
+        Storage::disk('local')->put($path, $pdf);
+
+        $document = Document::create([
+            'title' => 'محضر اجتماع: '.$meeting->title,
+            'category' => 'محاضر_الاجتماعات',
+            'source_type' => 'meeting',
+            'source_id' => $meeting->id,
+            'is_auto_archived' => true,
+            'confidentiality' => 'department',
+            'uploader_id' => $chair->id,
+            'path' => $path,
+        ]);
+
+        $meeting->update(['archived_document_id' => $document->id]);
     }
 
     /**
