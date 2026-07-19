@@ -68,6 +68,11 @@ class TaskLifecycleService
             'completed_at' => now(),
         ]);
 
+        // 02-B3 — completing a recurring instance spins up the next one.
+        if ($task->recurring_template_id !== null) {
+            app(RecurringTaskService::class)->onInstanceCompleted($task);
+        }
+
         return $task;
     }
 

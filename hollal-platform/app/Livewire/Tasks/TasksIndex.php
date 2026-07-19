@@ -180,6 +180,11 @@ class TasksIndex extends Component
         } else {
             $task = Task::create($data);
             User::find($task->assigned_to)?->notify(new TaskAssigned($task));
+
+            // 02-B3 — non-blocking overload warning shown to the assigner.
+            if (app(\App\Services\WorkloadService::class)->isOverloaded((int) $task->assigned_to)) {
+                $this->dispatch('toast', type: 'warning', message: 'تنبيه: عبء عمل المُسند إليه مرتفع');
+            }
         }
 
         $this->closeTaskModal();

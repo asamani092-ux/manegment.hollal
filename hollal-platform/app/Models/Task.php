@@ -40,6 +40,7 @@ class Task extends Model
         'completed_at',
         'template_item_id',
         'parent_task_id',
+        'recurring_template_id',
     ];
 
     /** @var list<string> valid triple-evaluation ratings */

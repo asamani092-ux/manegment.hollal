@@ -26,8 +26,11 @@ use App\Livewire\Settings\ExpenseSettingsIndex;
 use App\Livewire\Settings\MailSettingsIndex;
 use App\Livewire\Settings\RolesIndex;
 use App\Livewire\Settings\SettingsIndex;
+use App\Livewire\Tasks\RecurringTasksIndex;
+use App\Livewire\Tasks\TasksCalendar;
 use App\Livewire\Tasks\TasksIndex;
 use App\Livewire\Tasks\TeamTasksIndex;
+use App\Livewire\Tasks\WorkloadBoard;
 use App\Livewire\Users\EmployeeProfileShow;
 use App\Livewire\Users\UsersIndex;
 use Illuminate\Support\Facades\Route;
@@ -85,6 +88,18 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/team-tasks', TeamTasksIndex::class)
         ->middleware('permission:esnad.tasks.view')
         ->name('team-tasks.index');
+
+    Route::get('/tasks-calendar', TasksCalendar::class)
+        ->middleware('permission:esnad.tasks.view')
+        ->name('tasks-calendar.index');
+
+    Route::get('/recurring-tasks', RecurringTasksIndex::class)
+        ->middleware('permission:esnad.tasks.create')
+        ->name('recurring-tasks.index');
+
+    Route::get('/workload-board', WorkloadBoard::class)
+        ->middleware('permission:esnad.tasks.team.view')
+        ->name('workload-board.index');
 
     Route::get('/expenses', ExpensesIndex::class)
         ->middleware('permission:finance.expenses.view|finance.expenses.create|finance.expenses.approve|finance.expenses.pay')

@@ -13,3 +13,4 @@ Schedule::command('tasks:notify-overdue')->hourly();
 Schedule::command('contracts:notify-expiring')->dailyAt('08:30');
 Schedule::command('reports:generate-weekly')->weeklyOn(4, '16:00');
 Schedule::command('attendance:apply-monthly-overtime')->monthlyOn(1, '00:10');
+Schedule::command('tasks:generate-recurring')->dailyAt('01:00');
