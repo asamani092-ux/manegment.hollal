@@ -27,6 +27,11 @@ class AppServiceProvider extends ServiceProvider
             return Limit::perMinute(30)->by($request->user()?->id ?: $request->ip());
         });
 
+        // 05-B5 — the partner portal is public (token-only), so it is rate-limited by IP.
+        RateLimiter::for('portal', function (Request $request) {
+            return Limit::perMinute(20)->by($request->ip());
+        });
+
         $this->applyMailSettings();
     }
 

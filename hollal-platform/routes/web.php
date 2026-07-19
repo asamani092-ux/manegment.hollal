@@ -42,6 +42,14 @@ Route::get('/', fn () => redirect()->route('login'));
 
 Route::get('/partnership/guest/{token}', PartnershipGuestView::class)->name('partnership.guest');
 
+// 05-B5 — the unique partner link portal: token-scoped, rate-limited, fully logged.
+Route::middleware('throttle:portal')->group(function () {
+    Route::get('/portal/{token}', \App\Livewire\Partnerships\PartnerPortal::class)->name('partner.portal');
+
+    Route::get('/portal/{token}/contracts/{contract}/pdf', \App\Http\Controllers\PartnerPortalContractPdfController::class)
+        ->name('partner.portal.contract.pdf');
+});
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);
@@ -171,6 +179,26 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/financial-documents', FinancialDocumentsIndex::class)
         ->middleware('permission:finance.revenues.view')
         ->name('financial-documents.index');
+
+    Route::get('/organizations', \App\Livewire\Partnerships\OrganizationsIndex::class)
+        ->middleware('permission:partnerships.organizations.view')
+        ->name('organizations.index');
+
+    Route::get('/organizations/{organization}', \App\Livewire\Partnerships\OrganizationShow::class)
+        ->middleware('permission:partnerships.organizations.view')
+        ->name('organizations.show');
+
+    Route::get('/partnerships/pipeline', \App\Livewire\Partnerships\PartnershipsPipeline::class)
+        ->middleware('permission:partnerships.pipeline.view')
+        ->name('partnerships.pipeline');
+
+    Route::get('/partnerships/{partnership}', \App\Livewire\Partnerships\PartnershipShow::class)
+        ->middleware('permission:partnerships.pipeline.view')
+        ->name('partnerships.show');
+
+    Route::get('/quotes/{quote}/pdf', \App\Http\Controllers\QuotePdfController::class)
+        ->middleware('permission:partnerships.quotes.view')
+        ->name('quotes.pdf');
 
     Route::get('/programs', \App\Livewire\Programs\ProgramsIndex::class)
         ->middleware('permission:projects.programs.view')
