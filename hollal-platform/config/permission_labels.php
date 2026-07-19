@@ -59,6 +59,8 @@ return [
         'finance.revenues.manage' => 'إدارة الإيرادات',
         'finance.assets.view' => 'عرض الأصول',
         'finance.assets.manage' => 'إدارة الأصول',
+        'finance.budgets.view' => 'عرض الموازنات',
+        'finance.reports.view' => 'عرض التقارير المالية',
 
         'documents.view' => 'عرض المستندات',
         'documents.create' => 'رفع مستند',

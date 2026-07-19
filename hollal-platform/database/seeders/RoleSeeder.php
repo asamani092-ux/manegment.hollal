@@ -31,6 +31,8 @@ class RoleSeeder extends Seeder
         'documents.view',
         'partnerships.contracts.view',
         'partnerships.contracts.manage',
+        'finance.budgets.view',
+        'finance.reports.view',
         'reports.view',
     ];
 
@@ -93,6 +95,8 @@ class RoleSeeder extends Seeder
         'finance.revenues.manage',
         'finance.assets.view',
         'finance.assets.manage',
+        'finance.budgets.view',
+        'finance.reports.view',
         'hr.salaries.view',
         'hr.salaries.manage',
         'partnerships.contracts.view',

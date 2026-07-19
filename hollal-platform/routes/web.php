@@ -10,7 +10,9 @@ use App\Http\Controllers\TaskFileDownloadController;
 use App\Livewire\Contracts\ContractsIndex;
 use App\Livewire\Documents\DocumentsIndex;
 use App\Livewire\Expenses\ExpensesIndex;
+use App\Livewire\Finance\BudgetsBoard;
 use App\Livewire\Finance\FinancialDocumentsIndex;
+use App\Livewire\Finance\FinancialReportsIndex;
 use App\Livewire\DashboardIndex;
 use App\Livewire\Hr\PayrollRunsIndex;
 use App\Livewire\Hr\PayScalesIndex;
@@ -169,6 +171,18 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('/financial-documents', FinancialDocumentsIndex::class)
         ->middleware('permission:finance.revenues.view')
         ->name('financial-documents.index');
+
+    Route::get('/budgets', BudgetsBoard::class)
+        ->middleware('permission:finance.budgets.view')
+        ->name('budgets.index');
+
+    Route::get('/financial-reports/pdf', \App\Http\Controllers\FinancialReportPdfController::class)
+        ->middleware('permission:finance.reports.view')
+        ->name('financial-reports.pdf');
+
+    Route::get('/financial-reports', FinancialReportsIndex::class)
+        ->middleware('permission:finance.reports.view')
+        ->name('financial-reports.index');
 
     Route::get('/duties/download', DutiesFileDownloadController::class)
         ->name('duties.download');
