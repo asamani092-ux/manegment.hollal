@@ -172,6 +172,22 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         ->middleware('permission:finance.revenues.view')
         ->name('financial-documents.index');
 
+    Route::get('/programs', \App\Livewire\Programs\ProgramsIndex::class)
+        ->middleware('permission:projects.programs.view')
+        ->name('programs.index');
+
+    Route::get('/plan-templates', \App\Livewire\Programs\PlanTemplateEditor::class)
+        ->middleware('permission:projects.templates.manage')
+        ->name('plan-templates.index');
+
+    Route::get('/programs/{program}', \App\Livewire\Programs\ProgramShow::class)
+        ->middleware('permission:projects.programs.view')
+        ->name('programs.show');
+
+    Route::get('/files/programs/{programFile}', \App\Http\Controllers\ProgramFileDownloadController::class)
+        ->middleware(['permission:projects.programs.view', 'throttle:files'])
+        ->name('programs.files.download');
+
     Route::get('/tax-invoices/{taxInvoice}/pdf', \App\Http\Controllers\TaxInvoicePdfController::class)
         ->middleware('permission:finance.tax_invoices.view')
         ->name('tax-invoices.pdf');
