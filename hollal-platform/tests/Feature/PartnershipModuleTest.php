@@ -416,6 +416,37 @@ class PartnershipModuleTest extends TestCase
         ]);
     }
 
+    public function test_portal_can_upload_signed_contract_for_its_partnership_only(): void
+    {
+        $contract = $this->contract();
+        $other = $this->contract();
+        $link = app(PartnerPortalService::class)->issue($contract->partnership);
+
+        Livewire::test(PartnerPortal::class, ['token' => $link->token])
+            ->set('signatureName', 'ممثل الجهة')
+            ->set('signedContract', UploadedFile::fake()->create('signed.pdf', 30, 'application/pdf'))
+            ->call('uploadSignedContract', $contract->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame(PartnershipContract::STATUS_SIGNED, $contract->fresh()->status);
+        $this->assertDatabaseHas('partner_portal_activities', [
+            'partnership_id' => $contract->partnership_id,
+            'action' => 'portal.contract_uploaded',
+        ]);
+
+        try {
+            Livewire::test(PartnerPortal::class, ['token' => $link->token])
+                ->set('signatureName', 'ممثل الجهة')
+                ->set('signedContract', UploadedFile::fake()->create('other.pdf', 30, 'application/pdf'))
+                ->call('uploadSignedContract', $other->id);
+            $this->fail('token must not upload another partnership contract');
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
+            $this->assertTrue(true);
+        }
+
+        $this->assertNull($other->fresh()->signed_pdf_path);
+    }
+
     // ------------------------------------------------------------ 05-B6
 
     public function test_double_confirmation_does_not_duplicate_revenue(): void

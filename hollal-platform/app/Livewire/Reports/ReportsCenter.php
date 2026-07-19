@@ -28,14 +28,31 @@ class ReportsCenter extends Component
 
     public function mount(): void
     {
-        $this->authorize('reports.view');
+        abort_unless($this->canAccessCenter(), 403);
         $this->month = now()->format('Y-m');
+    }
+
+    public function setTab(string $tab): void
+    {
+        $permission = match ($tab) {
+            'project' => 'reports.projects.view',
+            'impact' => 'reports.impact.view',
+            'kpi' => 'reports.kpis.view',
+            default => 'reports.monthly.view',
+        };
+
+        abort_unless(
+            auth()->user()->can($permission) || auth()->user()->can('reports.view'),
+            403
+        );
+
+        $this->tab = $tab;
     }
 
     /** Freeze the currently displayed report. */
     public function takeSnapshot(): void
     {
-        $this->authorize('reports.view');
+        abort_unless($this->canAccessCenter(), 403);
 
         $service = app(ReportCenterService::class);
 
@@ -79,19 +96,72 @@ class ReportsCenter extends Component
         $this->dispatch('ds-toast', message: 'حُفظت لقطة التقرير (غير قابلة للتعديل)');
     }
 
+    public function exportCsv(): mixed
+    {
+        abort_unless(auth()->user()->can('reports.export'), 403);
+
+        $service = app(ReportCenterService::class);
+        $month = preg_match('/^\d{4}-\d{2}$/', $this->month) === 1 ? $this->month : now()->format('Y-m');
+        $payload = match ($this->tab) {
+            'project' => $this->projectId
+                ? $service->projectDashboard(Project::findOrFail($this->projectId))
+                : [],
+            'impact' => $service->impact($this->organizationId ? Organization::find($this->organizationId) : null),
+            'kpi' => $service->kpis(),
+            default => $service->monthly($month),
+        };
+
+        \App\Models\AuditLog::create([
+            'actor_id' => auth()->id(),
+            'action' => 'report.exported',
+            'target_type' => ReportSnapshot::class,
+            'target_id' => null,
+            'ip_address' => request()->ip(),
+            'metadata' => ['tab' => $this->tab, 'month' => $month],
+            'created_at' => now(),
+        ]);
+
+        return response()->streamDownload(function () use ($payload) {
+            $handle = fopen('php://output', 'w');
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, ['المفتاح', 'القيمة']);
+            foreach ($payload as $key => $value) {
+                fputcsv($handle, [(string) $key, is_scalar($value) ? (string) $value : json_encode($value, JSON_UNESCAPED_UNICODE)]);
+            }
+            fclose($handle);
+        }, 'report-'.$this->tab.'-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     public function render(): View
     {
         $service = app(ReportCenterService::class);
         $month = preg_match('/^\d{4}-\d{2}$/', $this->month) === 1 ? $this->month : now()->format('Y-m');
+        $user = auth()->user();
 
         return view('livewire.reports.reports-center', [
-            'monthly' => $service->monthly($month),
-            'projectReport' => $this->projectId ? $service->projectDashboard(Project::findOrFail($this->projectId)) : null,
-            'impact' => $service->impact($this->organizationId ? Organization::find($this->organizationId) : null),
-            'kpis' => $service->kpis(),
+            'monthly' => ($user->can('reports.monthly.view') || $user->can('reports.view'))
+                ? $service->monthly($month) : null,
+            'projectReport' => ($user->can('reports.projects.view') || $user->can('reports.view')) && $this->projectId
+                ? $service->projectDashboard(Project::findOrFail($this->projectId)) : null,
+            'impact' => ($user->can('reports.impact.view') || $user->can('reports.view'))
+                ? $service->impact($this->organizationId ? Organization::find($this->organizationId) : null) : null,
+            'kpis' => ($user->can('reports.kpis.view') || $user->can('reports.view'))
+                ? $service->kpis() : null,
             'projects' => Project::orderBy('name')->get(['id', 'name']),
             'organizations' => Organization::orderBy('name')->get(['id', 'name']),
             'snapshots' => ReportSnapshot::orderByDesc('id')->limit(25)->get(),
+            'canExport' => $user->can('reports.export'),
         ])->layout('layouts.app', ['title' => 'مركز التقارير']);
+    }
+
+    private function canAccessCenter(): bool
+    {
+        $user = auth()->user();
+
+        return $user->can('reports.view')
+            || $user->can('reports.monthly.view')
+            || $user->can('reports.projects.view')
+            || $user->can('reports.impact.view')
+            || $user->can('reports.kpis.view');
     }
 }

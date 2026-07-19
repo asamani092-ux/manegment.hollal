@@ -42,7 +42,20 @@ class DocumentsAndReportsTest extends TestCase
     private function reader(): User
     {
         $user = User::factory()->create(['must_change_password' => false]);
-        $user->givePermissionTo(['reports.view', 'documents.view', 'documents.create']);
+        $user->givePermissionTo([
+            'reports.view',
+            'reports.monthly.view',
+            'reports.projects.view',
+            'reports.impact.view',
+            'reports.kpis.view',
+            'reports.audit-log.view',
+            'reports.export',
+            'documents.view',
+            'documents.create',
+            'documents.manage-versions',
+            'documents.templates.manage',
+            'documents.policies.manage',
+        ]);
 
         return $user;
     }

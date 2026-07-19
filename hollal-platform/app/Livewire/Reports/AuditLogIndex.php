@@ -29,7 +29,7 @@ class AuditLogIndex extends Component
 
     public function mount(): void
     {
-        $this->authorize('reports.view');
+        abort_unless(auth()->user()->can('reports.audit-log.view'), 403);
     }
 
     public function updatingActionFilter(): void
@@ -48,12 +48,25 @@ class AuditLogIndex extends Component
             ->orderByDesc('id');
     }
 
-    /** CSV export of the filtered view — a read, never a write. */
+    /** CSV export — requires reports.export; every export is audited. */
     public function export()
     {
-        $this->authorize('reports.view');
+        abort_unless(
+            auth()->user()->can('reports.audit-log.view') && auth()->user()->can('reports.export'),
+            403
+        );
 
         $rows = $this->query()->with('actor')->limit(5000)->get();
+
+        AuditLog::create([
+            'actor_id' => auth()->id(),
+            'action' => 'audit_log.exported',
+            'target_type' => AuditLog::class,
+            'target_id' => null,
+            'ip_address' => request()->ip(),
+            'metadata' => ['rows' => $rows->count()],
+            'created_at' => now(),
+        ]);
 
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');

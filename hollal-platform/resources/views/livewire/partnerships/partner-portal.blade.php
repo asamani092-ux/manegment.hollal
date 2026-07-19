@@ -67,6 +67,20 @@
                     تنزيل العقد
                 </a>
 
+                @if ($contract->signed_pdf_path)
+                    <p class="ds-text-muted">تم رفع نسخة موقعة — الحالة: {{ $contract->status }}</p>
+                @else
+                    <x-ds-form-group label="اسم الموقّع" :error="$errors->first('signatureName')">
+                        <input type="text" class="ds-input" wire:model="signatureName">
+                    </x-ds-form-group>
+                    <x-ds-form-group label="رفع النسخة الموقعة (PDF)" :error="$errors->first('signedContract')">
+                        <input type="file" class="ds-input" wire:model="signedContract" accept="application/pdf">
+                    </x-ds-form-group>
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="uploadSignedContract({{ $contract->id }})">
+                        رفع العقد الموقع
+                    </button>
+                @endif
+
                 <x-ds-table>
                     <x-slot:head>
                         <tr><th>الدفعة</th><th>المبلغ</th><th>الاستحقاق</th><th>تسجيل</th></tr>

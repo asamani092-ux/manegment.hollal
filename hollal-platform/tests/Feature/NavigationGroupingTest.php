@@ -56,8 +56,8 @@ class NavigationGroupingTest extends TestCase
         $this->assertArrayHasKey('primary', $nav);
         $this->assertArrayHasKey('secondary', $nav);
         $this->assertCount(5, $nav['primary']);
-        $this->assertCount(6, $nav['secondary']);
-        $this->assertCount(12, NavigationHelper::allItems());
+        $this->assertCount(8, $nav['secondary']);
+        $this->assertCount(14, NavigationHelper::allItems());
     }
 
     public function test_secondary_module_routes_reachable_for_general_manager(): void

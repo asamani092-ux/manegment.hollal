@@ -64,7 +64,23 @@
                     <div><dt>نوع التوظيف</dt><dd>{{ $user->profile?->employment_type ?? '—' }}</dd></div>
                     <div><dt>تاريخ المباشرة</dt><dd>{{ $user->profile?->hire_date?->format('Y-m-d') ?? '—' }}</dd></div>
                     <div><dt>القسم</dt><dd>{{ $user->department?->name ?? '—' }}</dd></div>
+                    <div><dt>الساعات الأساسية أسبوعيًا</dt><dd class="ds-ltr-num">{{ $user->profile?->weekly_hours ?? '—' }}</dd></div>
+                    <div><dt>برنامج الحضور</dt><dd>{{ $user->attendance_enabled ? 'مفعّل' : 'متوقّف' }}</dd></div>
                 </dl>
+
+                @can('hr.employees.update')
+                    <section class="ds-section">
+                        <h3 class="ds-section-title">إعدادات الحضور</h3>
+                        <label class="ds-checkbox">
+                            <input type="checkbox" wire:model="attendanceEnabled">
+                            تفعيل برنامج الحضور لهذا الموظف
+                        </label>
+                        <x-ds-form-group label="الساعات الأساسية الأسبوعية" :error="$errors->first('weeklyHours')">
+                            <input type="number" class="ds-input ds-ltr-num" wire:model="weeklyHours" min="1" max="80">
+                        </x-ds-form-group>
+                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveAttendanceSettings">حفظ</button>
+                    </section>
+                @endcan
             @elseif ($activeTab === 'salary')
                 <p class="ds-text-muted">مكوّنات الراتب وسلم الرواتب تُعرض هنا (تُبنى في 01-B2).</p>
             @elseif ($activeTab === 'contracts')

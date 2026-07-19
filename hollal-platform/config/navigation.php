@@ -52,6 +52,18 @@ return [
             'permission' => 'documents.view',
         ],
         [
+            'label' => 'نماذج المستندات',
+            'route' => 'documents.templates',
+            'icon' => 'fa-file-alt',
+            'permission' => 'documents.templates.manage',
+        ],
+        [
+            'label' => 'السياسات والمهام',
+            'route' => 'documents.policies',
+            'icon' => 'fa-balance-scale',
+            'permission' => 'documents.policies.manage',
+        ],
+        [
             'label' => 'العقود',
             'route' => 'contracts.index',
             'icon' => 'fa-file-contract',

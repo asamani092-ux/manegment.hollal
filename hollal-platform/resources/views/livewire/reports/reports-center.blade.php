@@ -2,14 +2,17 @@
     <x-ds-page-header title="مركز التقارير الموحّد" />
 
     <section class="ds-section ds-filter-bar">
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'monthly')">التقرير الشهري</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'project')">لوحة المشروع</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'impact')">الأثر</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'kpi')">مؤشرات الأداء</button>
+        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('monthly')">التقرير الشهري</button>
+        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('project')">لوحة المشروع</button>
+        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('impact')">الأثر</button>
+        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('kpi')">مؤشرات الأداء</button>
         <button type="button" class="ds-btn ds-btn-primary" wire:click="takeSnapshot">حفظ لقطة</button>
+        @if ($canExport)
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="exportCsv">تصدير CSV</button>
+        @endif
     </section>
 
-    @if ($tab === 'monthly')
+    @if ($tab === 'monthly' && $monthly)
         <section class="ds-section ds-filter-bar">
             <input type="month" class="ds-input" wire:model.live="month" dir="ltr">
         </section>
@@ -62,7 +65,7 @@
         @endif
     @endif
 
-    @if ($tab === 'impact')
+    @if ($tab === 'impact' && $impact)
         <section class="ds-section ds-filter-bar">
             <select class="ds-input" wire:model.live="organizationId">
                 <option value="">كل الجهات</option>
@@ -91,7 +94,7 @@
         </x-ds-table>
     @endif
 
-    @if ($tab === 'kpi')
+    @if ($tab === 'kpi' && $kpis)
         <x-ds-table>
             <x-slot:head><tr><th>المؤشر</th><th>القيمة</th></tr></x-slot:head>
             <tr><td>نسبة إنجاز المهام</td><td class="ds-ltr-num">{{ number_format($kpis['task_completion_percent'], 2) }}%</td></tr>

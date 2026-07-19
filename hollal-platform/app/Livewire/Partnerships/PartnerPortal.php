@@ -4,10 +4,12 @@ namespace App\Livewire\Partnerships;
 
 use App\Models\ContractPaymentSchedule;
 use App\Models\PartnerLink;
+use App\Models\PartnershipContract;
 use App\Models\PartnershipPayment;
 use App\Models\Program;
 use App\Models\Quote;
 use App\Services\PartnerPortalService;
+use App\Services\PartnershipContractService;
 use App\Services\PartnershipPaymentService;
 use App\Services\QuoteService;
 use Illuminate\Contracts\View\View;
@@ -42,6 +44,8 @@ class PartnerPortal extends Component
     public $paymentProof;
 
     public $signedContract;
+
+    public string $signatureName = '';
 
     public function mount(string $token): void
     {
@@ -124,6 +128,33 @@ class PartnerPortal extends Component
         $this->dispatch('ds-toast', message: 'سُجلت الدفعة بانتظار تأكيد المالية');
     }
 
+    /**
+     * Spec-05 §4–5 — الجهة تنزّل العقد ثم ترفع النسخة الموقعة عبر الرابط.
+     * Time: O(1) | Space: O(1)
+     */
+    public function uploadSignedContract(int $contractId): void
+    {
+        $this->validate([
+            'signedContract' => 'required|file|max:10240|mimes:pdf',
+            'signatureName' => 'required|string|max:255',
+        ]);
+
+        $contract = $this->scopedContract($contractId);
+
+        app(PartnershipContractService::class)->uploadSignedCopy(
+            $contract,
+            $this->signedContract,
+            $this->signatureName,
+            request()->userAgent(),
+        );
+
+        $this->signedContract = null;
+        $this->signatureName = '';
+        $this->log('portal.contract_uploaded', ['contract_id' => $contract->id]);
+
+        $this->dispatch('ds-toast', message: 'تم رفع النسخة الموقعة — بانتظار تأكيد مدير الشراكات');
+    }
+
     public function render(): View
     {
         $partnership = $this->link->partnership()->with([
@@ -157,5 +188,12 @@ class PartnerPortal extends Component
         return ContractPaymentSchedule::query()
             ->whereHas('contract', fn ($q) => $q->where('partnership_id', $this->link->partnership_id))
             ->findOrFail($scheduleId);
+    }
+
+    private function scopedContract(int $contractId): PartnershipContract
+    {
+        return PartnershipContract::query()
+            ->where('partnership_id', $this->link->partnership_id)
+            ->findOrFail($contractId);
     }
 }

@@ -128,6 +128,14 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:documents.view')
         ->name('documents.index');
 
+    Route::get('/documents/templates', \App\Livewire\Documents\DocumentTemplatesIndex::class)
+        ->middleware('permission:documents.view|documents.templates.manage')
+        ->name('documents.templates');
+
+    Route::get('/documents/policies', \App\Livewire\Documents\DocumentPoliciesIndex::class)
+        ->middleware('permission:documents.policies.manage')
+        ->name('documents.policies');
+
     Route::get('/meetings', MeetingsIndex::class)
         ->middleware('permission:meetings.view')
         ->name('meetings.index');
@@ -153,7 +161,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('settings.grants');
 
     Route::get('/structure/org-tree', \App\Livewire\Structure\OrgTreeIndex::class)
-        ->middleware('permission:structure.departments.view')
+        ->middleware('permission:structure.view|structure.departments.view|structure.manage')
         ->name('structure.org-tree');
 
     Route::get('/settings/roles', RolesIndex::class)
@@ -169,7 +177,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('settings.notifications');
 
     Route::get('/settings', SettingsIndex::class)
-        ->middleware('permission:settings.manage')
+        ->middleware('permission:settings.manage|settings.general.manage|settings.finance.manage|settings.backup.manage')
         ->name('settings.index');
 
     Route::get('/users', UsersIndex::class)
@@ -256,11 +264,11 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('contracts.index');
 
     Route::get('/reports/center', \App\Livewire\Reports\ReportsCenter::class)
-        ->middleware('permission:reports.view')
+        ->middleware('permission:reports.view|reports.monthly.view|reports.projects.view|reports.impact.view|reports.kpis.view')
         ->name('reports.center');
 
     Route::get('/reports/audit-log', \App\Livewire\Reports\AuditLogIndex::class)
-        ->middleware('permission:reports.view')
+        ->middleware('permission:reports.audit-log.view')
         ->name('reports.audit-log');
 
     Route::get('/reports', ReportsIndex::class)

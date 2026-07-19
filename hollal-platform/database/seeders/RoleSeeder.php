@@ -18,6 +18,7 @@ class RoleSeeder extends Seeder
         'dashboard.view',
         'hr.employees.view',
         'roles.view',
+        'structure.view',
         'structure.departments.view',
         'projects.view',
         'partnerships.view',
@@ -29,11 +30,20 @@ class RoleSeeder extends Seeder
         'finance.expenses.pay',
         'hr.salaries.view',
         'documents.view',
+        'documents.templates.manage',
+        'documents.policies.manage',
         'partnerships.contracts.view',
         'partnerships.contracts.manage',
         'finance.budgets.view',
         'finance.reports.view',
         'reports.view',
+        'reports.weekly.view',
+        'reports.monthly.view',
+        'reports.projects.view',
+        'reports.impact.view',
+        'reports.kpis.view',
+        'reports.audit-log.view',
+        'reports.export',
     ];
 
     /** @var list<string> */
@@ -67,8 +77,20 @@ class RoleSeeder extends Seeder
         'finance.custodies.view',
         'finance.custodies.approve',
         'reports.view',
+        'reports.weekly.view',
+        'reports.monthly.view',
+        'reports.projects.view',
+        'reports.impact.view',
+        'reports.export',
         'documents.view',
         'documents.create',
+        'documents.manage-versions',
+        'documents.templates.manage',
+        'documents.policies.manage',
+        'structure.view',
+        'structure.manage',
+        'structure.positions.manage',
+        'structure.committees.manage',
     ];
 
     /** @var list<string> */
@@ -120,6 +142,8 @@ class RoleSeeder extends Seeder
         'hr.salaries.manage',
         'partnerships.contracts.view',
         'reports.view',
+        'reports.monthly.view',
+        'reports.export',
     ];
 
     /** @var list<string> */

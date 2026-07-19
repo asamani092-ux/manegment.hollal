@@ -3,10 +3,13 @@
 namespace App\Services;
 
 use App\Models\Document;
+use App\Models\DocumentTemplate;
 use App\Models\DocumentVersion;
+use App\Models\OfficialDutiesDocument;
 use App\Models\User;
 use App\Notifications\PolicyReviewDue;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -72,7 +75,10 @@ class DocumentLibraryService
         $alerted = [];
 
         foreach ($this->policiesDueForReview() as $policy) {
-            $recipients = User::permission('documents.create')->get();
+            $recipients = User::permission('documents.policies.manage')->get();
+            if ($recipients->isEmpty()) {
+                $recipients = User::permission('documents.create')->get();
+            }
 
             foreach ($recipients as $recipient) {
                 $recipient->notify(new PolicyReviewDue($policy));
@@ -83,5 +89,62 @@ class DocumentLibraryService
         }
 
         return $alerted;
+    }
+
+    /** مكتبة النماذج — رفع قالب معتمد. Time: O(1) */
+    public function storeTemplate(
+        string $title,
+        string $path,
+        ?string $category = null,
+        ?string $description = null,
+        ?User $uploader = null,
+    ): DocumentTemplate {
+        return DocumentTemplate::create([
+            'title' => $title,
+            'category' => $category,
+            'path' => $path,
+            'description' => $description,
+            'uploaded_by' => $uploader?->id,
+        ]);
+    }
+
+    /** تعليم مستند كسياسة مع تاريخ مراجعة. Time: O(1) */
+    public function markAsPolicy(Document $document, ?string $reviewDate = null): Document
+    {
+        $document->forceFill([
+            'is_policy' => true,
+            'review_date' => $reviewDate,
+            'review_alert_sent_at' => null,
+        ])->save();
+
+        return $document->fresh();
+    }
+
+    /**
+     * نشر ملف مهام رسمي جديد (إصدار تراكمي). Time: O(1)
+     */
+    public function publishDutiesFile(UploadedFile $file, User $publisher): OfficialDutiesDocument
+    {
+        $next = (int) OfficialDutiesDocument::query()->max('version') + 1;
+        $path = $file->store('official-duties', 'local');
+
+        return OfficialDutiesDocument::create([
+            'version' => $next,
+            'file_path' => $path,
+            'published_at' => now(),
+            'published_by' => $publisher->id,
+        ]);
+    }
+
+    /** نسخة مستند جديدة على القرص الخاص. Time: O(1) */
+    public function storeNewVersionFromUpload(
+        Document $document,
+        UploadedFile $file,
+        ?string $note = null,
+        ?User $uploader = null,
+    ): DocumentVersion {
+        $path = $file->store('documents/'.$document->id.'/versions', 'local');
+
+        return $this->addVersion($document, $path, $note, $uploader);
     }
 }

@@ -17,10 +17,14 @@ return [
         'roles.update' => 'تعديل دور',
         'roles.delete' => 'حذف دور',
 
+        'structure.view' => 'عرض الهيكل التنظيمي',
+        'structure.manage' => 'إدارة الهيكل التنظيمي',
         'structure.departments.view' => 'عرض الأقسام',
         'structure.departments.create' => 'إنشاء قسم',
         'structure.departments.update' => 'تعديل قسم',
         'structure.departments.delete' => 'حذف قسم',
+        'structure.positions.manage' => 'إدارة بطاقات الوظائف',
+        'structure.committees.manage' => 'إدارة اللجان',
 
         'projects.view' => 'عرض المشاريع',
         'projects.create' => 'إنشاء مشروع',
@@ -89,10 +93,23 @@ return [
 
         'documents.view' => 'عرض المستندات',
         'documents.create' => 'رفع مستند',
+        'documents.manage-versions' => 'إدارة نسخ المستندات',
+        'documents.templates.manage' => 'إدارة مكتبة نماذج المستندات',
+        'documents.policies.manage' => 'إدارة السياسات واللوائح',
 
         'reports.view' => 'عرض التقارير',
+        'reports.weekly.view' => 'عرض التقرير الأسبوعي',
+        'reports.monthly.view' => 'عرض التقرير الشهري',
+        'reports.projects.view' => 'عرض تقارير المشاريع',
+        'reports.impact.view' => 'عرض تقرير الأثر',
+        'reports.kpis.view' => 'عرض مؤشرات الأداء',
+        'reports.audit-log.view' => 'عرض سجل النشاط',
+        'reports.export' => 'تصدير التقارير',
 
         'settings.manage' => 'إدارة إعدادات النظام',
+        'settings.general.manage' => 'إدارة الإعدادات العامة',
+        'settings.finance.manage' => 'إدارة إعدادات المالية',
+        'settings.backup.manage' => 'إدارة النسخ الاحتياطي',
         'settings.notifications.manage' => 'إدارة إعدادات الإشعارات والبريد',
     ],
 
