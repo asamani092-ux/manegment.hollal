@@ -17,6 +17,7 @@ class RoleSeeder extends Seeder
     private const GENERAL_MANAGER_PERMISSIONS = [
         'dashboard.view',
         'hr.employees.view',
+        'hr.employees.update',
         'roles.view',
         'structure.view',
         'structure.departments.view',
@@ -156,6 +157,7 @@ class RoleSeeder extends Seeder
         'finance.expenses.view',
         'finance.expenses.create',
         'projects.view',
+        'hr.employees.view',
     ];
 
     /**

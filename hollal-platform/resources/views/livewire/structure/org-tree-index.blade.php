@@ -54,7 +54,7 @@
                     <select class="ds-input" wire:model="transferUnitId">
                         <option value="">—</option>
                         @foreach ($units as $unit)
-                            <option value="{{ $unit->id }}">{{ $unit->name }} ({{ $unit->level }})</option>
+                            <option value="{{ $unit->id }}">{{ $unit->name }} ({{ $unit->level }})</option>{{-- المستوى عربي من OrgUnit --}}
                         @endforeach
                     </select>
                 </x-ds-form-group>

@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             PlatformSettingsSeeder::class,
             PlanTemplateSeeder::class,
             AdminUserSeeder::class,
+            DemoTrialSeeder::class,
         ]);
     }
 }

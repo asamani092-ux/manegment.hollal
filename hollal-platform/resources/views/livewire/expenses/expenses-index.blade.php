@@ -28,21 +28,12 @@
     @endphp
 
     <x-ds-page-header
-        title="المصروفات"
+        title="طلبات الصرف المالي"
         :show-button="auth()->user()->can('finance.expenses.create')"
-        button-label="طلب مصروف"
+        button-label="طلب صرف مالي"
         button-icon="fa-plus"
         wire:click="openExpenseCreate"
     />
-
-    @if ($canManageSettings)
-        <div class="ds-page-toolbar">
-            <a href="{{ route('settings.expenses') }}" class="ds-btn ds-btn-outline ds-btn-sm">
-                <i class="fas fa-cog" aria-hidden="true"></i>
-                إعدادات سلسلة الاعتماد
-            </a>
-        </div>
-    @endif
 
     <div class="ds-page-toolbar">
         <div class="ds-toolbar-actions">

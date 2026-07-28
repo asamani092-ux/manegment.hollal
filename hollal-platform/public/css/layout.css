@@ -421,6 +421,26 @@
   flex-shrink: 0;
 }
 
+.ds-sidebar-group {
+  margin-top: 0.5rem;
+  padding-top: 0.35rem;
+  border-top: 1px solid var(--ds-border);
+}
+
+.ds-sidebar-group:first-of-type {
+  border-top: none;
+  margin-top: 0.25rem;
+}
+
+.ds-sidebar-group-label {
+  padding: 0.4rem 1rem 0.25rem;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--ds-primary);
+  text-transform: none;
+}
+
 .ds-sidebar-more {
   border-top: 1px solid var(--ds-border);
   margin-top: 0.5rem;

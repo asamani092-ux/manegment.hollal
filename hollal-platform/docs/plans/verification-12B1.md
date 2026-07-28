@@ -77,4 +77,19 @@
 
 ---
 
-*آخر تحديث: يوليو 2026 — 12-B1*
+## 5. إعادة مطابقة UAT (2026-07-20)
+
+| الفجوة | الإصلاح |
+|--------|---------|
+| «المزيد» يخفي الأدوات | `config/navigation.php` مسطح |
+| عهد/أصول/إيرادات | Livewire + routes |
+| اعتماد المحضر | زر في `meeting-minutes.blade.php` |
+| طلب صرف مالي | تسمية + تحقق مبسّط |
+| سلسلة الاعتماد | رابط في `settings-index` فقط |
+| «يحتاج تدخلك» فارغ | `DemoTrialSeeder` في `DatabaseSeeder` |
+
+**الاختبارات:** 417 passed · `NavigationDiscoverabilityTest` + `SpecRematchWave0Test`
+
+---
+
+*آخر تحديث: يوليو 2026 — 12-B1 + rematch*

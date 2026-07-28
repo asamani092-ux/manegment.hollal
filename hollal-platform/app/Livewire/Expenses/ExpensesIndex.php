@@ -165,18 +165,16 @@ class ExpensesIndex extends Component
             'type' => 'required|in:operational,travel,supplies,other',
             'amount' => 'required|numeric|min:0.01',
             'reason' => 'required|string',
-            'priority' => 'required|in:low,normal,high,urgent',
-            'payment_method' => 'required|in:transfer,pos,cheque,other',
             'category_id' => 'required|exists:expense_categories,id',
-            'project_id' => 'nullable|required_without:department_id|exists:projects,id',
-            'department_id' => 'nullable|required_without:project_id|exists:departments,id',
+            'priority' => 'nullable|in:low,normal,high,urgent',
+            'payment_method' => 'nullable|in:transfer,pos,cheque,other',
+            'project_id' => 'nullable|exists:projects,id',
+            'department_id' => 'nullable|exists:departments,id',
             'officialDocument' => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png',
             'attachment' => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
             'cameraAttachment' => 'nullable|file|max:5120|mimes:jpg,jpeg,png',
         ], [
-            'category_id.required' => 'يجب اختيار تصنيف المصروف',
-            'project_id.required_without' => 'يجب تحديد المشروع أو القسم',
-            'department_id.required_without' => 'يجب تحديد القسم أو المشروع',
+            'category_id.required' => 'يجب اختيار تصنيف الصرف',
         ]);
 
         $data = [
@@ -184,8 +182,8 @@ class ExpensesIndex extends Component
             'type' => $this->type,
             'amount' => $this->amount,
             'reason' => $this->reason,
-            'priority' => $this->priority,
-            'payment_method' => $this->payment_method,
+            'priority' => $this->priority ?: 'normal',
+            'payment_method' => $this->payment_method ?: 'transfer',
             'project_id' => $this->project_id,
             'department_id' => $this->department_id,
             'category_id' => $this->category_id,
@@ -378,7 +376,6 @@ class ExpensesIndex extends Component
             'companyTaxNumberMissing' => blank(\App\Support\Setting::get('company.tax_number')),
             'statusOptions' => ExpenseRequest::STATUSES,
             'canViewAll' => $canViewAll,
-            'canManageSettings' => auth()->user()->can('settings.manage'),
-        ])->layout('layouts.app', ['title' => 'المصروفات']);
+        ])->layout('layouts.app', ['title' => 'طلبات الصرف المالي']);
     }
 }

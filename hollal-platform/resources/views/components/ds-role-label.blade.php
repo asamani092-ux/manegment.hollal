@@ -8,6 +8,8 @@
         'Project Manager' => 'مدير مشروع',
         'Finance' => 'المالية',
         'Employee' => 'موظف',
+        'Partnerships Manager' => 'مدير الشراكات',
+        'HR Manager' => 'مدير الموارد البشرية',
     ];
 @endphp
 

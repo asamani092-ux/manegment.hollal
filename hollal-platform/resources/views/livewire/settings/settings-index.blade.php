@@ -39,6 +39,19 @@
             </section>
         @endforeach
 
+        @if (auth()->user()->can('settings.manage'))
+            <section class="ds-section ds-section-spaced">
+                <h2 class="ds-section-title">
+                    <i class="fas fa-link ds-section-icon"></i>
+                    إعدادات مرتبطة
+                </h2>
+                <ul class="ds-link-list">
+                    <li><a href="{{ route('settings.expenses') }}" class="ds-link">سلسلة اعتماد طلبات الصرف</a></li>
+                    <li><a href="{{ route('settings.notifications') }}" class="ds-link">إعدادات البريد والإشعارات</a></li>
+                </ul>
+            </section>
+        @endif
+
         <div class="ds-page-toolbar">
             <button type="submit" class="ds-btn ds-btn-primary">
                 <i class="fas fa-save" aria-hidden="true"></i>

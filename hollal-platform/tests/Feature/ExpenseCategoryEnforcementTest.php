@@ -46,7 +46,7 @@ class ExpenseCategoryEnforcementTest extends TestCase
             ->assertHasErrors('category_id');
     }
 
-    public function test_department_or_project_is_required(): void
+    public function test_department_and_project_are_optional(): void
     {
         $category = ExpenseCategory::create(['name_ar' => 'ضيافة']);
 
@@ -56,8 +56,10 @@ class ExpenseCategoryEnforcementTest extends TestCase
             ->set('amount', '100')
             ->set('reason', 'مصروف')
             ->set('category_id', $category->id)
+            ->set('project_id', null)
+            ->set('department_id', null)
             ->call('saveExpense')
-            ->assertHasErrors('project_id');
+            ->assertHasNoErrors();
     }
 
     public function test_valid_expense_saves(): void

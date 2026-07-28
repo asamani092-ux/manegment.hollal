@@ -144,6 +144,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:meetings.view')
         ->name('meetings.open-decisions');
 
+    Route::get('/meetings/archive', \App\Livewire\Meetings\MeetingsArchiveIndex::class)
+        ->middleware('permission:meetings.view|documents.view')
+        ->name('meetings.archive');
+
     Route::get('/meetings/{meeting}/minutes/pdf', \App\Http\Controllers\MeetingMinutesPdfController::class)
         ->middleware('permission:meetings.view')
         ->name('meetings.minutes.pdf');
@@ -187,6 +191,42 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/users/{user}/profile', EmployeeProfileShow::class)
         ->middleware('permission:hr.employees.view')
         ->name('users.profile');
+
+    Route::get('/attendance', \App\Livewire\Hr\AttendanceIndex::class)
+        ->middleware('permission:hr.employees.view')
+        ->name('attendance.index');
+
+    Route::get('/evaluations', \App\Livewire\Hr\EvaluationsIndex::class)
+        ->middleware('permission:hr.employees.view')
+        ->name('evaluations.index');
+
+    Route::get('/responsibilities', \App\Livewire\Hr\ResponsibilitiesIndex::class)
+        ->middleware('permission:hr.employees.update')
+        ->name('responsibilities.index');
+
+    Route::get('/hr-lifecycle', \App\Livewire\Hr\HrLifecycleIndex::class)
+        ->middleware('permission:hr.employees.update')
+        ->name('hr-lifecycle.index');
+
+    Route::get('/visits', \App\Livewire\Projects\VisitsIndex::class)
+        ->middleware('permission:projects.visits.view')
+        ->name('visits.index');
+
+    Route::get('/measurement', \App\Livewire\Projects\MeasurementIndex::class)
+        ->middleware('permission:projects.measurement.view')
+        ->name('measurement.index');
+
+    Route::get('/structure/jobs', \App\Livewire\Structure\JobsIndex::class)
+        ->middleware('permission:structure.positions.manage|structure.view')
+        ->name('structure.jobs');
+
+    Route::get('/structure/committees', \App\Livewire\Structure\CommitteesIndex::class)
+        ->middleware('permission:structure.committees.manage|structure.view')
+        ->name('structure.committees');
+
+    Route::get('/documents/versions', \App\Livewire\Documents\DocumentVersionsIndex::class)
+        ->middleware('permission:documents.manage-versions|documents.view')
+        ->name('documents.versions');
 
     Route::get('/pay-scales', PayScalesIndex::class)
         ->middleware('permission:hr.salaries.manage')
@@ -255,6 +295,18 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/financial-reports', FinancialReportsIndex::class)
         ->middleware('permission:finance.reports.view')
         ->name('financial-reports.index');
+
+    Route::get('/custodies', \App\Livewire\Finance\CustodiesIndex::class)
+        ->middleware('permission:finance.custodies.view|finance.custodies.approve|finance.custodies.disburse')
+        ->name('custodies.index');
+
+    Route::get('/assets', \App\Livewire\Finance\AssetsIndex::class)
+        ->middleware('permission:finance.assets.view|finance.assets.manage')
+        ->name('assets.index');
+
+    Route::get('/revenues', \App\Livewire\Finance\RevenuesIndex::class)
+        ->middleware('permission:finance.revenues.view|finance.revenues.manage')
+        ->name('revenues.index');
 
     Route::get('/duties/download', DutiesFileDownloadController::class)
         ->name('duties.download');

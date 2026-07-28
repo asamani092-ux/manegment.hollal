@@ -135,7 +135,7 @@ class DashboardIndexTest extends TestCase
         Livewire::actingAs($approver)
             ->test(DashboardIndex::class)
             ->assertSee('يحتاج تدخلك')
-            ->assertSee('مصروف بانتظار الموافقة: تشغيلي');
+            ->assertSee('طلب صرف بانتظار الموافقة');
     }
 
     public function test_dashboard_route_renders_livewire_component(): void

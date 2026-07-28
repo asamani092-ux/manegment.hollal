@@ -40,13 +40,13 @@
         <div class="ds-task-cards ds-task-cards-mobile">
             @forelse ($myTasks as $task)
                 <article class="ds-task-card" wire:key="my-card-{{ $task->id }}">
+                    @include('livewire.tasks.partials.status-badge', ['status' => $task->status])
                     <h3 class="ds-task-card-title">{{ $task->title }}</h3>
                     <div class="ds-task-card-meta">
                         <span>{{ $task->project?->name ?? 'بدون مشروع' }}</span>
                         <span>{{ $priorityLabels[$task->priority] ?? $task->priority }}</span>
                         <span>{{ $task->due_date?->format('Y-m-d') ?? '—' }}</span>
                     </div>
-                    @include('livewire.tasks.partials.status-badge', ['status' => $task->status])
                     <p class="ds-text-muted">من: {{ $task->assigner?->name ?? '—' }}</p>
                     <div class="ds-task-card-actions">
                         <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openTaskView({{ $task->id }})">عرض</button>
@@ -94,12 +94,12 @@
         <div class="ds-task-cards ds-task-cards-mobile">
             @forelse ($assignedByMe as $task)
                 <article class="ds-task-card" wire:key="delegated-card-{{ $task->id }}">
+                    @include('livewire.tasks.partials.status-badge', ['status' => $task->status])
                     <h3 class="ds-task-card-title">{{ $task->title }}</h3>
                     <div class="ds-task-card-meta">
                         <span>إلى: {{ $task->assignee?->name ?? '—' }}</span>
                         <span>{{ $task->project?->name ?? '—' }}</span>
                     </div>
-                    @include('livewire.tasks.partials.status-badge', ['status' => $task->status])
                     <div class="ds-task-card-actions">
                         <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openTaskView({{ $task->id }})">عرض</button>
                         @can('update', $task)
