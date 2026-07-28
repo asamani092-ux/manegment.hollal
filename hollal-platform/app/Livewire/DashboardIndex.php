@@ -2,7 +2,9 @@
 
 namespace App\Livewire;
 
+use App\Models\Custody;
 use App\Models\ExpenseRequest;
+use App\Models\PayrollRun;
 use App\Models\Meeting;
 use App\Models\MeetingItem;
 use App\Models\Partnership;
@@ -100,14 +102,72 @@ class DashboardIndex extends Component
                 ->limit(10)
                 ->get()
                 ->each(function (ExpenseRequest $expense) use ($items) {
+                    $typeLabels = [
+                        'operational' => 'تشغيلي',
+                        'travel' => 'سفر',
+                        'supplies' => 'مستلزمات',
+                        'other' => 'أخرى',
+                    ];
                     $items->push([
                         'kind' => 'expense_pending',
-                        'label' => 'مصروف بانتظار الموافقة: '.$expense->type,
+                        'label' => 'طلب صرف بانتظار الموافقة: '.($typeLabels[$expense->type] ?? $expense->type),
                         'url' => route('expenses.index'),
                         'meta' => number_format((float) $expense->amount, 2).' ر.س — '.$expense->requester?->name,
                     ]);
                 });
         }
+
+        if ($user->can('finance.payroll.approve')) {
+            PayrollRun::query()
+                ->select(['id', 'month', 'status'])
+                ->where('status', PayrollRun::STATUS_SUBMITTED)
+                ->latest('month')
+                ->limit(5)
+                ->get()
+                ->each(function (PayrollRun $run) use ($items) {
+                    $items->push([
+                        'kind' => 'payroll_pending',
+                        'label' => 'مسيّر رواتب بانتظار المالية: '.$run->month,
+                        'url' => route('payroll-runs.index'),
+                        'meta' => $run->status,
+                    ]);
+                });
+        }
+
+        if ($user->can('finance.custodies.approve')) {
+            Custody::query()
+                ->select(['id', 'amount', 'employee_id', 'status'])
+                ->where('status', Custody::STATUS_REQUESTED)
+                ->with('employee:id,name')
+                ->latest()
+                ->limit(5)
+                ->get()
+                ->each(function (Custody $custody) use ($items) {
+                    $items->push([
+                        'kind' => 'custody_pending',
+                        'label' => 'عهدة بانتظار الاعتماد: '.number_format((float) $custody->amount, 2).' ر.س',
+                        'url' => route('custodies.index'),
+                        'meta' => $custody->employee?->name ?? '—',
+                    ]);
+                });
+        }
+
+        Meeting::query()
+            ->select(['id', 'title', 'chair_id', 'approval_status'])
+            ->where('chair_id', $user->id)
+            ->where('approval_status', '!=', Meeting::APPROVAL_APPROVED)
+            ->whereHas('items')
+            ->latest('scheduled_at')
+            ->limit(5)
+            ->get()
+            ->each(function (Meeting $meeting) use ($items) {
+                $items->push([
+                    'kind' => 'minutes_pending',
+                    'label' => 'محضر بانتظار الاعتماد: '.$meeting->title,
+                    'url' => route('meetings.minutes', $meeting->id),
+                    'meta' => null,
+                ]);
+            });
 
         $this->pastDueDecisionsQuery($user)
             ->with(['meeting:id,title', 'responsible:id,name'])

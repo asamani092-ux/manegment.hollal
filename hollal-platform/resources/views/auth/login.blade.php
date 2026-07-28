@@ -25,9 +25,11 @@
                 <input type="password" id="password" name="password" class="ds-input"
                        placeholder="••••••••" required autocomplete="current-password">
             </x-ds-form-group>
-            <div class="ds-form-group ds-inline-checkbox-row">
-                <input type="checkbox" id="remember" name="remember" value="1">
-                <label for="remember">تذكرني</label>
+            <div class="ds-form-group">
+                <label class="ds-checkbox-label" for="remember">
+                    <input type="checkbox" id="remember" name="remember" value="1">
+                    <span>تذكرني</span>
+                </label>
             </div>
             <button type="submit" class="ds-btn ds-btn-primary ds-login-button ds-btn-block">
                 <i class="fas fa-sign-in-alt"></i> دخول

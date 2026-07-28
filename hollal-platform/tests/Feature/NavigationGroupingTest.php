@@ -21,7 +21,7 @@ class NavigationGroupingTest extends TestCase
         $this->seed(RoleSeeder::class);
     }
 
-    public function test_sidebar_renders_primary_and_secondary_groups(): void
+    public function test_sidebar_renders_flat_navigation_without_more_group(): void
     {
         $user = User::factory()->create(['must_change_password' => false]);
         $user->assignRole('General Manager');
@@ -30,10 +30,9 @@ class NavigationGroupingTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('الفريق', false);
-        $response->assertSee('إسناد', false);
-        $response->assertSee('المزيد', false);
-        $response->assertSee('المستندات', false);
-        $response->assertSee('ds-sidebar-more', false);
+        $response->assertSee('طلبات الصرف', false);
+        $response->assertDontSee('المزيد', false);
+        $response->assertDontSee('id="ds-sidebar-more"', false);
     }
 
     public function test_secondary_entries_hidden_without_permission(): void
@@ -45,8 +44,8 @@ class NavigationGroupingTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('الرواتب', false);
-        $response->assertDontSee('الأدوار والصلاحيات', false);
-        $response->assertSee('إسناد', false);
+        $response->assertDontSee('الإعدادات', false);
+        $response->assertSee('المهام', false);
     }
 
     public function test_navigation_helper_flattens_all_groups(): void
@@ -54,21 +53,18 @@ class NavigationGroupingTest extends TestCase
         $nav = config('navigation');
 
         $this->assertArrayHasKey('primary', $nav);
-        $this->assertArrayHasKey('secondary', $nav);
-        $this->assertCount(5, $nav['primary']);
-        $this->assertCount(8, $nav['secondary']);
-        $this->assertCount(14, NavigationHelper::allItems());
+        $this->assertSame([], $nav['secondary']);
+        $this->assertGreaterThan(30, count($nav['primary']));
+        $this->assertSame(count($nav['primary']) + 1, count(NavigationHelper::allItems()));
     }
 
-    public function test_secondary_module_routes_reachable_for_general_manager(): void
+    public function test_finance_routes_reachable_for_finance_role(): void
     {
         $user = User::factory()->create(['must_change_password' => false]);
-        $user->assignRole('General Manager');
+        $user->assignRole('Finance');
 
-        foreach (config('navigation.secondary') as $item) {
-            $this->actingAs($user)
-                ->get(route($item['route']))
-                ->assertOk();
+        foreach (['custodies.index', 'assets.index', 'revenues.index', 'tax-invoices.index'] as $route) {
+            $this->actingAs($user)->get(route($route))->assertOk();
         }
     }
 }

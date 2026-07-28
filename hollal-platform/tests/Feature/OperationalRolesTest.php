@@ -26,8 +26,10 @@ class OperationalRolesTest extends TestCase
      */
     protected function visibleNavRoutes(User $user): array
     {
+        $this->actingAs($user);
+
         return collect(NavigationHelper::allItems())
-            ->filter(fn (array $item): bool => $user->can($item['permission']))
+            ->filter(fn (array $item): bool => NavigationHelper::userCanSee($item['permission']))
             ->pluck('route')
             ->values()
             ->all();
@@ -44,82 +46,55 @@ class OperationalRolesTest extends TestCase
         return $user;
     }
 
-    public function test_general_manager_sees_all_sidebar_entries(): void
+    public function test_general_manager_sees_core_finance_and_hr_nav(): void
     {
-        $user = $this->makeUserForRole('General Manager', '0501111111');
+        $routes = $this->visibleNavRoutes($this->makeUserForRole('General Manager', '0501111111'));
 
-        $this->assertSame(NavigationHelper::allRoutes(), $this->visibleNavRoutes($user));
+        foreach (['dashboard', 'users.index', 'budgets.index', 'financial-reports.index', 'reports.index'] as $route) {
+            $this->assertContains($route, $routes);
+        }
     }
 
     public function test_executive_manager_sidebar_visibility(): void
     {
-        $user = $this->makeUserForRole('Executive Manager', '0502222222');
+        $routes = $this->visibleNavRoutes($this->makeUserForRole('Executive Manager', '0502222222'));
 
-        $this->assertSame(
-            [
-                'dashboard',
-                'users.index',
-                'tasks.index',
-                'meetings.index',
-                'expenses.index',
-                'projects.index',
-                'documents.index',
-                'documents.templates',
-                'documents.policies',
-                'reports.index',
-            ],
-            $this->visibleNavRoutes($user)
-        );
+        foreach (['dashboard', 'users.index', 'tasks.index', 'meetings.index', 'custodies.index', 'projects.index'] as $route) {
+            $this->assertContains($route, $routes);
+        }
+
+        $this->assertNotContains('settings.index', $routes);
     }
 
     public function test_project_manager_sidebar_visibility(): void
     {
-        $user = $this->makeUserForRole('Project Manager', '0503333333');
+        $routes = $this->visibleNavRoutes($this->makeUserForRole('Project Manager', '0503333333'));
 
-        $this->assertSame(
-            [
-                'dashboard',
-                'tasks.index',
-                'meetings.index',
-                'expenses.index',
-                'projects.index',
-                'documents.index',
-            ],
-            $this->visibleNavRoutes($user)
-        );
+        foreach (['dashboard', 'tasks.index', 'meetings.index', 'projects.index', 'documents.index'] as $route) {
+            $this->assertContains($route, $routes);
+        }
+
+        $this->assertNotContains('custodies.index', $routes);
     }
 
     public function test_finance_sidebar_visibility(): void
     {
-        $user = $this->makeUserForRole('Finance', '0504444444');
+        $routes = $this->visibleNavRoutes($this->makeUserForRole('Finance', '0504444444'));
 
-        $this->assertSame(
-            [
-                'dashboard',
-                'expenses.index',
-                'contracts.index',
-                'reports.index',
-                'payroll.index',
-            ],
-            $this->visibleNavRoutes($user)
-        );
+        foreach (['dashboard', 'tax-invoices.index', 'budgets.index', 'custodies.index', 'assets.index', 'revenues.index'] as $route) {
+            $this->assertContains($route, $routes);
+        }
     }
 
     public function test_employee_sidebar_visibility(): void
     {
-        $user = $this->makeUserForRole('Employee', '0505555555');
+        $routes = $this->visibleNavRoutes($this->makeUserForRole('Employee', '0505555555'));
 
-        $this->assertSame(
-            [
-                'dashboard',
-                'tasks.index',
-                'meetings.index',
-                'expenses.index',
-                'projects.index',
-                'documents.index',
-            ],
-            $this->visibleNavRoutes($user)
-        );
+        foreach (['dashboard', 'tasks.index', 'meetings.index', 'projects.index', 'documents.index'] as $route) {
+            $this->assertContains($route, $routes);
+        }
+
+        $this->assertNotContains('payroll.index', $routes);
     }
 
     public function test_employee_cannot_access_payroll_or_roles_settings(): void

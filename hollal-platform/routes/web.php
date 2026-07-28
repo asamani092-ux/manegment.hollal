@@ -256,6 +256,18 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:finance.reports.view')
         ->name('financial-reports.index');
 
+    Route::get('/custodies', \App\Livewire\Finance\CustodiesIndex::class)
+        ->middleware('permission:finance.custodies.view|finance.custodies.approve|finance.custodies.disburse')
+        ->name('custodies.index');
+
+    Route::get('/assets', \App\Livewire\Finance\AssetsIndex::class)
+        ->middleware('permission:finance.assets.view|finance.assets.manage')
+        ->name('assets.index');
+
+    Route::get('/revenues', \App\Livewire\Finance\RevenuesIndex::class)
+        ->middleware('permission:finance.revenues.view|finance.revenues.manage')
+        ->name('revenues.index');
+
     Route::get('/duties/download', DutiesFileDownloadController::class)
         ->name('duties.download');
 

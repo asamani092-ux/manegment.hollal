@@ -778,14 +778,26 @@
 }
 
 .ds-task-card {
+  position: relative;
   background: var(--ds-card);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius);
   padding: 1rem;
+  padding-top: 1.75rem;
   box-shadow: var(--ds-shadow-sm);
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
+}
+
+.ds-task-card-status {
+  position: absolute;
+  top: 0.55rem;
+  left: 0.55rem;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  padding: 0.15rem 0.55rem;
+  line-height: 1.3;
 }
 
 .ds-task-card-title {
@@ -1183,4 +1195,30 @@
 .ds-portal-steps {
   display: grid;
   gap: 0.75rem;
+}
+
+.ds-link-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+@media print {
+  .ds-no-print,
+  .ds-sidebar,
+  .ds-topbar,
+  .ds-task-card-actions,
+  .ds-modal-overlay {
+    display: none !important;
+  }
+
+  .ds-printable-minutes {
+    padding: 0;
+  }
+
+  body {
+    background: #fff;
+  }
 }

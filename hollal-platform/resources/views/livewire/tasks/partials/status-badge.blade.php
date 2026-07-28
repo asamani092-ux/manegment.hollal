@@ -15,4 +15,4 @@
         'overdue' => 'متأخرة',
     ];
 @endphp
-<span class="ds-badge {{ $class }}">{{ $labels[$status] ?? $status }}</span>
+<span class="ds-badge ds-task-card-status {{ $class }}">{{ $labels[$status] ?? $status }}</span>

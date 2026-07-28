@@ -1,9 +1,9 @@
-<x-ds-page>
+<x-ds-page class="ds-printable-minutes">
   @php
     $itemStatusLabels = ['open' => 'مفتوح', 'in_progress' => 'قيد التنفيذ', 'done' => 'منجز'];
   @endphp
 
-  <div class="ds-page-toolbar">
+  <div class="ds-page-toolbar ds-no-print">
     <div>
       <a href="{{ route('meetings.index') }}" class="ds-link">العودة للاجتماعات</a>
       <h1 class="ds-page-title">{{ $meeting->title }}</h1>
@@ -11,14 +11,30 @@
       @if ($meeting->agenda)
         <p class="ds-text-muted">{{ $meeting->agenda }}</p>
       @endif
+      @if ($meeting->isApproved())
+        <span class="ds-badge ds-badge-success">محضر معتمد — {{ $meeting->approved_at?->format('Y-m-d') }}</span>
+      @endif
     </div>
     <div class="ds-toolbar-actions">
+      @if (! $meeting->isApproved())
+        @can('update', $meeting)
+          <button type="button" class="ds-btn ds-btn-teal" wire:click="approveMinutes" wire:loading.attr="disabled" wire:confirm="اعتماد المحضر؟ لن يُسمح بالتعديل المباشر بعد الاعتماد.">
+            <i class="fas fa-check-circle" aria-hidden="true"></i>
+            <span wire:loading.remove wire:target="approveMinutes">اعتماد المحضر</span>
+            <span wire:loading wire:target="approveMinutes">جاري الاعتماد…</span>
+          </button>
+        @endcan
+      @endif
       @can('downloadPdf', $meeting)
+        <button type="button" class="ds-btn ds-btn-outline" onclick="window.print()">
+          <i class="fas fa-print" aria-hidden="true"></i>
+          طباعة
+        </button>
         <a href="{{ route('meetings.minutes.pdf', $meeting) }}" class="ds-btn ds-btn-outline" target="_blank" rel="noopener">
           <svg class="ds-icon ds-icon-sm" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
           </svg>
-          طباعة المحضر PDF
+          حفظ PDF
         </a>
         <button type="button" class="ds-btn ds-btn-outline" wire:click="sendMinutesByEmail" wire:loading.attr="disabled">
           <svg class="ds-icon ds-icon-sm" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
@@ -28,9 +44,11 @@
         </button>
       @endcan
       @can('update', $meeting)
-        <button type="button" class="ds-btn ds-btn-primary" wire:click="openItemCreate">
-          <i class="fas fa-plus" aria-hidden="true"></i> بند جديد
-        </button>
+        @if (! $meeting->isApproved())
+          <button type="button" class="ds-btn ds-btn-primary" wire:click="openItemCreate">
+            <i class="fas fa-plus" aria-hidden="true"></i> بند جديد
+          </button>
+        @endif
       @endcan
     </div>
   </div>
@@ -50,7 +68,7 @@
         <span>الحالة: {{ $itemStatusLabels[$item->status] ?? $item->status }}</span>
       </div>
       <div class="ds-task-card-actions">
-        @if ($item->decision && ! $item->task_id && auth()->user()->can('update', $meeting) && auth()->user()->can('esnad.tasks.create'))
+        @if ($item->decision && ! $item->task_id && $meeting->isApproved() && auth()->user()->can('update', $meeting) && auth()->user()->can('esnad.tasks.create'))
           <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="convertToTask({{ $item->id }})">
             تحويل إلى مهمة
           </button>
