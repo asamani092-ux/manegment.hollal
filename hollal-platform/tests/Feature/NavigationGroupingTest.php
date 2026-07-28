@@ -21,7 +21,7 @@ class NavigationGroupingTest extends TestCase
         $this->seed(RoleSeeder::class);
     }
 
-    public function test_sidebar_renders_flat_navigation_without_more_group(): void
+    public function test_sidebar_renders_grouped_navigation_without_more_group(): void
     {
         $user = User::factory()->create(['must_change_password' => false]);
         $user->assignRole('General Manager');
@@ -29,7 +29,7 @@ class NavigationGroupingTest extends TestCase
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertSee('الفريق', false);
+        $response->assertSee('الموارد البشرية', false);
         $response->assertSee('طلبات الصرف', false);
         $response->assertDontSee('المزيد', false);
         $response->assertDontSee('id="ds-sidebar-more"', false);
@@ -43,8 +43,7 @@ class NavigationGroupingTest extends TestCase
         $response = $this->actingAs($user)->get(route('dashboard'));
 
         $response->assertOk();
-        $response->assertDontSee('الرواتب', false);
-        $response->assertDontSee('الإعدادات', false);
+        $response->assertDontSee('إعدادات المنصة', false);
         $response->assertSee('المهام', false);
     }
 
@@ -52,10 +51,10 @@ class NavigationGroupingTest extends TestCase
     {
         $nav = config('navigation');
 
-        $this->assertArrayHasKey('primary', $nav);
+        $this->assertArrayHasKey('groups', $nav);
         $this->assertSame([], $nav['secondary']);
-        $this->assertGreaterThan(30, count($nav['primary']));
-        $this->assertSame(count($nav['primary']) + 1, count(NavigationHelper::allItems()));
+        $this->assertCount(11, $nav['groups']);
+        $this->assertGreaterThan(30, count(NavigationHelper::allItems()));
     }
 
     public function test_finance_routes_reachable_for_finance_role(): void

@@ -23,6 +23,7 @@ class NavigationDiscoverabilityTest extends TestCase
     public function test_flat_navigation_has_no_secondary_items(): void
     {
         $this->assertSame([], config('navigation.secondary'));
+        $this->assertNotEmpty(config('navigation.groups'));
     }
 
     public function test_finance_routes_are_registered_in_navigation(): void
