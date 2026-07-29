@@ -17,7 +17,7 @@ class EmployeeProfile extends Model
         'user_id', 'job_title', 'employment_type', 'overtime_hour_value', 'weekly_hours',
         'overtime_unlocked', 'overtime_days_this_month', 'hire_date',
         'national_id', 'birth_date', 'gender', 'marital_status', 'address',
-        'emergency_contact_name', 'emergency_contact_phone', 'notes',
+        'emergency_contact_name', 'emergency_contact_phone', 'notes', 'annual_leave_balance',
     ];
 
     /** @return array<string, string> */
@@ -30,6 +30,7 @@ class EmployeeProfile extends Model
             'weekly_hours' => 'integer',
             'overtime_unlocked' => 'boolean',
             'overtime_days_this_month' => 'integer',
+            'annual_leave_balance' => 'integer',
         ];
     }
 

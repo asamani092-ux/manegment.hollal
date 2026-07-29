@@ -196,6 +196,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:hr.employees.view')
         ->name('attendance.index');
 
+    Route::get('/leaves', \App\Livewire\Hr\LeavesIndex::class)
+        ->middleware('permission:hr.leaves.request|hr.leaves.approve|hr.leaves.view-all|hr.employees.view')
+        ->name('leaves.index');
+
     Route::get('/evaluations', \App\Livewire\Hr\EvaluationsIndex::class)
         ->middleware('permission:hr.employees.view')
         ->name('evaluations.index');

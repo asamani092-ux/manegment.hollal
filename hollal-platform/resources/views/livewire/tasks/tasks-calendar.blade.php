@@ -5,17 +5,31 @@
         <input type="month" class="ds-input" wire:model.live="month" dir="ltr">
     </section>
 
-    @forelse ($tasksByDay as $day => $tasks)
+    @php
+        $days = collect($tasksByDay->keys() ?? [])
+            ->merge(array_keys($leavesByDay ?? []))
+            ->unique()
+            ->sort()
+            ->values();
+    @endphp
+
+    @forelse ($days as $day)
         <section class="ds-section ds-section-spaced" wire:key="day-{{ $day }}">
             <h3 class="ds-section-heading">{{ $day }}</h3>
-            @foreach ($tasks as $task)
+            @foreach (($tasksByDay[$day] ?? []) as $task)
                 <div class="ds-stat-mini" wire:key="cal-task-{{ $task->id }}">
                     <strong>{{ $task->title }}</strong>
                     <span class="ds-text-muted">{{ $task->assignee?->name ?? '—' }} — {{ $task->status }}</span>
                 </div>
             @endforeach
+            @foreach (($leavesByDay[$day] ?? []) as $leave)
+                <div class="ds-stat-mini" wire:key="cal-leave-{{ $leave->id }}-{{ $day }}">
+                    <strong>إجازة — {{ $leave->type }}</strong>
+                    <span class="ds-text-muted">{{ $leave->employee?->name ?? '—' }}</span>
+                </div>
+            @endforeach
         </section>
     @empty
-        <p class="ds-text-muted">لا مهام مجدولة في هذا الشهر</p>
+        <p class="ds-text-muted">لا مهام أو إجازات معتمدة في هذا الشهر</p>
     @endforelse
 </x-ds-page>

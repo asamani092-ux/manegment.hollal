@@ -18,6 +18,9 @@ class RoleSeeder extends Seeder
         'dashboard.view',
         'hr.employees.view',
         'hr.employees.update',
+        'hr.leaves.request',
+        'hr.leaves.approve',
+        'hr.leaves.view-all',
         'roles.view',
         'structure.view',
         'structure.departments.view',
@@ -73,6 +76,7 @@ class RoleSeeder extends Seeder
         'meetings.update',
         'meetings.delete',
         'hr.employees.view',
+        'hr.leaves.approve',
         'finance.expenses.view',
         'finance.expenses.approve',
         'finance.custodies.view',
@@ -158,6 +162,7 @@ class RoleSeeder extends Seeder
         'finance.expenses.create',
         'projects.view',
         'hr.employees.view',
+        'hr.leaves.request',
     ];
 
     /**

@@ -37,7 +37,7 @@
                             <button type="button" class="ds-btn ds-btn-sm" wire:click="openQuoteModal({{ $quote->id }})">نسخة معدّلة</button>
                         @endcan
                         @can('partnerships.contracts.create')
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="openContractModal({{ $quote->id }})">إنشاء عقد</button>
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="openContractModal({{ $quote->id }})">إنشاء عقد شراكة</button>
                         @endcan
                     </td>
                 </tr>
@@ -47,9 +47,9 @@
         </x-ds-table>
     </section>
 
-    {{-- 05-B4 العقود --}}
+    {{-- 05-B4 عقد الشراكة --}}
     <section class="ds-section">
-        <h2 class="ds-section-title">العقود</h2>
+        <h2 class="ds-section-title">عقد الشراكة</h2>
         @foreach ($partnership->partnershipContracts as $contract)
             <div class="ds-kanban-card" wire:key="contract-{{ $contract->id }}">
                 <p>عقد #{{ $contract->id }} — الحالة: <strong>{{ $contract->status }}</strong></p>
@@ -102,7 +102,7 @@
             </div>
         @endforeach
         @if ($partnership->partnershipContracts->isEmpty())
-            <p class="ds-text-muted">لا توجد عقود</p>
+            <p class="ds-text-muted">لا يوجد عقد شراكة</p>
         @endif
     </section>
 
@@ -230,7 +230,7 @@
     </x-ds-modal>
 
     <x-ds-modal :show="$showContractModal" size="lg">
-        <x-slot:header><h2>إنشاء عقد</h2></x-slot:header>
+        <x-slot:header><h2>إنشاء عقد شراكة</h2></x-slot:header>
 
         @foreach ($scheduleRows as $index => $row)
             <div class="ds-form-row" wire:key="schedule-row-{{ $index }}">

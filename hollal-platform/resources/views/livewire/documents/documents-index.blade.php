@@ -11,6 +11,11 @@
         wire:click="openUpload"
     />
 
+    <p class="ds-mb-3">
+        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.versions') }}">إدارة النسخ</a>
+        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.templates') }}">مكتبة القوالب</a>
+        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.policies') }}">السياسات</a>
+    </p>
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label">بحث</label>

@@ -11,6 +11,9 @@ return [
         'hr.employees.delete' => 'حذف موظف',
         'hr.salaries.view' => 'عرض الرواتب',
         'hr.salaries.manage' => 'إدارة الرواتب',
+        'hr.leaves.request' => 'تقديم طلب إجازة',
+        'hr.leaves.approve' => 'اعتماد الإجازات',
+        'hr.leaves.view-all' => 'عرض كل الإجازات',
 
         'roles.view' => 'عرض الأدوار',
         'roles.create' => 'إنشاء دور',
