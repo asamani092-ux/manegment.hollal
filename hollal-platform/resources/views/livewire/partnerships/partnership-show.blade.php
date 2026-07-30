@@ -56,7 +56,7 @@
                 <p>القيمة: <span class="ds-ltr-num">{{ number_format((float) $contract->total_value, 2) }}</span></p>
                 <p>يشترط الدفعة الأولى: {{ $contract->requires_first_payment ? 'نعم' : 'لا' }}</p>
                 @if ($contract->signed_pdf_hash)
-                    <p class="ds-text-muted" dir="ltr">hash: {{ Str::limit($contract->signed_pdf_hash, 24) }}</p>
+                    <p class="ds-text-muted" dir="ltr">بصمة الملف: {{ Str::limit($contract->signed_pdf_hash, 24) }}</p>
                 @endif
 
                 <x-ds-table>
