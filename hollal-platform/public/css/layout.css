@@ -433,12 +433,91 @@
 }
 
 .ds-sidebar-group-label {
-  padding: 0.4rem 1rem 0.25rem;
+  width: 100%;
+  padding: 0.45rem 1rem 0.35rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--ds-font-primary);
   font-size: 0.6875rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   color: var(--ds-primary);
   text-transform: none;
+  text-align: right;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.ds-sidebar-group-label:hover {
+  background: var(--ds-accent-light);
+}
+
+.ds-sidebar-group.is-active > .ds-sidebar-group-label {
+  color: var(--ds-secondary);
+}
+
+.ds-sidebar-group-chevron {
+  margin-right: auto;
+  font-size: 0.625rem;
+  transition: transform 0.2s ease;
+}
+
+.ds-sidebar-group.is-open > .ds-sidebar-group-label .ds-sidebar-group-chevron {
+  transform: rotate(180deg);
+}
+
+.ds-sidebar-group-items {
+  display: none;
+}
+
+.ds-sidebar-group.is-open > .ds-sidebar-group-items {
+  display: block;
+}
+
+/* display:flex على العنصر يتغلّب على قاعدة [hidden] الافتراضية */
+.ds-sidebar-item[hidden],
+.ds-sidebar-group[hidden] {
+  display: none;
+}
+
+.ds-sidebar-search {
+  position: relative;
+  padding: 0 0.75rem 0.6rem;
+}
+
+.ds-sidebar-search-icon {
+  position: absolute;
+  top: 50%;
+  right: 1.35rem;
+  transform: translateY(-60%);
+  font-size: 0.75rem;
+  color: var(--ds-text-muted);
+  pointer-events: none;
+}
+
+.ds-sidebar-search-input {
+  width: 100%;
+  padding: 0.45rem 2rem 0.45rem 0.6rem;
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-xs);
+  background: var(--ds-bg);
+  color: var(--ds-text);
+  font-family: var(--ds-font-primary);
+  font-size: 0.8125rem;
+}
+
+.ds-sidebar-search-input:focus {
+  outline: none;
+  border-color: var(--ds-secondary);
+}
+
+.ds-sidebar-no-results {
+  padding: 0.75rem 1rem;
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--ds-text-muted);
 }
 
 .ds-sidebar-more {

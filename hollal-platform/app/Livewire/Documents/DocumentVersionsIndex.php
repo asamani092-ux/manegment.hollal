@@ -28,6 +28,26 @@ class DocumentVersionsIndex extends Component
 
     public ?TemporaryUploadedFile $uploadFile = null;
 
+    public string $search = '';
+
+    public ?int $documentFilter = null;
+
+    /** @var array<string, array<string, string|null>> */
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'documentFilter' => ['except' => null],
+    ];
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDocumentFilter(): void
+    {
+        $this->resetPage();
+    }
+
     public function mount(): void
     {
         abort_unless(
@@ -94,6 +114,11 @@ class DocumentVersionsIndex extends Component
                 ->select(['id', 'document_id', 'version', 'change_note', 'uploaded_by', 'created_at'])
                 ->with(['document:id,title'])
                 ->whereHas('document', fn ($q) => $q->visibleTo($user))
+                ->when($this->documentFilter, fn ($q) => $q->where('document_id', $this->documentFilter))
+                ->when($this->search, fn ($q) => $q->whereHas(
+                    'document',
+                    fn ($d) => $d->where('title', 'like', '%'.$this->search.'%')
+                ))
                 ->latest()
                 ->paginate(20),
             'documents' => Document::query()

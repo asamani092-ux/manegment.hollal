@@ -3,6 +3,7 @@
 namespace App\Livewire\Projects;
 
 use App\Models\MeasurementForm;
+use App\Models\Program;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -12,9 +13,29 @@ class MeasurementIndex extends Component
 {
     use WithPagination;
 
+    public string $programFilter = '';
+
+    public string $kindFilter = '';
+
+    /** @var array<string, array<string, string>> */
+    protected $queryString = [
+        'programFilter' => ['except' => ''],
+        'kindFilter' => ['except' => ''],
+    ];
+
     public function mount(): void
     {
         abort_unless(auth()->user()->can('projects.measurement.view'), 403);
+    }
+
+    public function updatingProgramFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingKindFilter(): void
+    {
+        $this->resetPage();
     }
 
     public function render(): View
@@ -23,8 +44,15 @@ class MeasurementIndex extends Component
             'forms' => MeasurementForm::query()
                 ->select(['id', 'program_id', 'title', 'kind', 'created_at'])
                 ->with('program:id,name')
+                ->when($this->programFilter, fn ($q) => $q->where('program_id', $this->programFilter))
+                ->when($this->kindFilter, fn ($q) => $q->where('kind', $this->kindFilter))
                 ->latest()
                 ->paginate(20),
+            'programs' => Program::orderBy('name')->get(['id', 'name']),
+            'kindOptions' => [
+                MeasurementForm::KIND_TEST,
+                MeasurementForm::KIND_SATISFACTION,
+            ],
         ]);
     }
 }

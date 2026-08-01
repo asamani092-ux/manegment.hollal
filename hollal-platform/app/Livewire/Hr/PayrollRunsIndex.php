@@ -8,6 +8,7 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
+use Livewire\WithPagination;
 
 /**
  * 01-B3 — payroll runs: generate for a month, review, submit to finance.
@@ -15,8 +16,28 @@ use Livewire\Component;
 class PayrollRunsIndex extends Component
 {
     use AuthorizesRequests;
+    use WithPagination;
 
     public string $month = '';
+
+    public string $statusFilter = '';
+
+    public string $monthFilter = '';
+
+    protected $queryString = [
+        'statusFilter' => ['except' => ''],
+        'monthFilter' => ['except' => ''],
+    ];
+
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingMonthFilter(): void
+    {
+        $this->resetPage();
+    }
 
     public function mount(): void
     {
@@ -72,8 +93,16 @@ class PayrollRunsIndex extends Component
         return view('livewire.hr.payroll-runs-index', [
             'runs' => PayrollRun::withCount('items')
                 ->withSum('items', 'net')
+                ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+                ->when($this->monthFilter, fn ($q) => $q->where('month', $this->monthFilter))
                 ->latest('month')
-                ->get(),
+                ->paginate(10),
+            'statusOptions' => [
+                PayrollRun::STATUS_DRAFT,
+                PayrollRun::STATUS_SUBMITTED,
+                PayrollRun::STATUS_EXECUTED,
+                PayrollRun::STATUS_RETURNED,
+            ],
         ])->layout('layouts.app', ['title' => 'مسيّرات الرواتب']);
     }
 }

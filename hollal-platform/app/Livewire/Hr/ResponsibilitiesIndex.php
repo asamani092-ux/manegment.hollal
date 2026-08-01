@@ -24,6 +24,26 @@ class ResponsibilitiesIndex extends Component
 
     public int $order = 1;
 
+    public string $search = '';
+
+    public bool $activeOnly = false;
+
+    /** @var array<string, array<string, string|bool>> */
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'activeOnly' => ['except' => false],
+    ];
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingActiveOnly(): void
+    {
+        $this->resetPage();
+    }
+
     public function mount(): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
@@ -31,6 +51,7 @@ class ResponsibilitiesIndex extends Component
 
     public function openForm(): void
     {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
         $this->reset(['body']);
         $this->order = 1;
         $this->showForm = true;
@@ -38,6 +59,8 @@ class ResponsibilitiesIndex extends Component
 
     public function save(): void
     {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
         $this->validate([
             'employee_id' => 'required|exists:users,id',
             'body' => 'required|string|min:3|max:500',
@@ -57,6 +80,8 @@ class ResponsibilitiesIndex extends Component
 
     public function deactivate(int $id): void
     {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
         $item = Responsibility::findOrFail($id);
         $item->update(['is_active' => false]);
         $this->dispatch('toast', type: 'success', message: 'تم إيقاف البند');
@@ -68,6 +93,11 @@ class ResponsibilitiesIndex extends Component
             'items' => Responsibility::query()
                 ->select(['id', 'employee_id', 'body', 'order', 'is_active'])
                 ->with('employee:id,name')
+                ->when($this->activeOnly, fn ($q) => $q->where('is_active', true))
+                ->when($this->search, fn ($q) => $q->whereHas(
+                    'employee',
+                    fn ($e) => $e->where('name', 'like', '%'.$this->search.'%')
+                ))
                 ->orderBy('employee_id')
                 ->orderBy('order')
                 ->paginate(20),

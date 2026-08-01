@@ -23,6 +23,34 @@ class EvaluationsIndex extends Component
 
     public string $period = '';
 
+    public string $statusFilter = '';
+
+    public string $periodFilter = '';
+
+    public string $search = '';
+
+    /** @var array<string, array<string, string>> */
+    protected $queryString = [
+        'statusFilter' => ['except' => ''],
+        'periodFilter' => ['except' => ''],
+        'search' => ['except' => ''],
+    ];
+
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingPeriodFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
     public function mount(): void
     {
         abort_unless(auth()->user()->can('hr.employees.view'), 403);
@@ -80,6 +108,12 @@ class EvaluationsIndex extends Component
         $query = PeriodicEvaluation::query()
             ->select(['id', 'employee_id', 'period', 'evaluator_id', 'status', 'created_at'])
             ->with(['employee:id,name', 'evaluator:id,name'])
+            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->periodFilter, fn ($q) => $q->where('period', $this->periodFilter))
+            ->when($this->search, fn ($q) => $q->whereHas(
+                'employee',
+                fn ($e) => $e->where('name', 'like', '%'.$this->search.'%')
+            ))
             ->latest();
 
         if (! auth()->user()->can('hr.employees.update')) {
@@ -91,6 +125,7 @@ class EvaluationsIndex extends Component
 
         return view('livewire.hr.evaluations-index', [
             'evaluations' => $query->paginate(15),
+            'periods' => PeriodicEvaluation::query()->distinct()->orderByDesc('period')->pluck('period'),
             'employees' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'canManage' => auth()->user()->can('hr.employees.update'),
         ]);

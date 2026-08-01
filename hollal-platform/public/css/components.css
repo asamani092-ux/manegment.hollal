@@ -104,6 +104,15 @@
   height: 18px;
 }
 
+/* ── Spacing utilities (referenced by list screens) ── */
+.ds-mb-3 {
+  margin-bottom: 1rem;
+}
+
+.ds-mt-3 {
+  margin-top: 1rem;
+}
+
 /* ── Cards ── */
 .ds-card,
 .ds-login-card {

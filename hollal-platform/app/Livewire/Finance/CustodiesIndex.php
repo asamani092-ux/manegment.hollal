@@ -27,6 +27,25 @@ class CustodiesIndex extends Component
 
     public ?int $employee_id = null;
 
+    public string $statusFilter = '';
+
+    public string $search = '';
+
+    protected $queryString = [
+        'statusFilter' => ['except' => ''],
+        'search' => ['except' => ''],
+    ];
+
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
     public function mount(): void
     {
         abort_unless(
@@ -92,6 +111,11 @@ class CustodiesIndex extends Component
         $query = Custody::query()
             ->select(['id', 'employee_id', 'amount', 'purpose', 'status', 'due_date', 'created_at'])
             ->with('employee:id,name')
+            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->search, fn ($q) => $q->whereHas(
+                'employee',
+                fn ($e) => $e->where('name', 'like', '%'.$this->search.'%')
+            ))
             ->latest();
 
         if (! auth()->user()->can('finance.custodies.view') && auth()->user()->can('finance.custodies.approve')) {
@@ -103,6 +127,13 @@ class CustodiesIndex extends Component
         return view('livewire.finance.custodies-index', [
             'custodies' => $query->paginate(10),
             'employees' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'statusOptions' => [
+                Custody::STATUS_REQUESTED,
+                Custody::STATUS_APPROVED,
+                Custody::STATUS_DISBURSED,
+                Custody::STATUS_SETTLING,
+                Custody::STATUS_CLOSED,
+            ],
             'canApprove' => auth()->user()->can('finance.custodies.approve'),
             'canDisburse' => auth()->user()->can('finance.custodies.disburse'),
         ])->layout('layouts.app', ['title' => 'العهد']);

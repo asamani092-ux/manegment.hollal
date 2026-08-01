@@ -171,6 +171,20 @@ class PreTrialHardeningTest extends TestCase
             ->assertDontSee('مستند إداري سري');
     }
 
+    public function test_sidebar_groups_are_collapsible_and_searchable(): void
+    {
+        $admin = User::factory()->create(['must_change_password' => false]);
+        $admin->assignRole('Super Admin');
+
+        $this->actingAs($admin)
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('id="ds-nav-search"', false)
+            ->assertSee('ds-sidebar-group-label', false)
+            ->assertSee('aria-expanded', false)
+            ->assertSee('data-nav-group', false);
+    }
+
     public function test_user_cannot_offboard_self(): void
     {
         $admin = User::factory()->create(['must_change_password' => false]);

@@ -27,6 +27,34 @@ class LeavesIndex extends Component
 
     public string $reason = '';
 
+    public string $statusFilter = '';
+
+    public string $typeFilter = '';
+
+    public string $search = '';
+
+    /** @var array<string, array<string, string>> */
+    protected $queryString = [
+        'statusFilter' => ['except' => ''],
+        'typeFilter' => ['except' => ''],
+        'search' => ['except' => ''],
+    ];
+
+    public function updatingStatusFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingTypeFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
     public function mount(): void
     {
         abort_unless(
@@ -132,6 +160,12 @@ class LeavesIndex extends Component
         $query = LeaveRequest::query()
             ->select(['id', 'employee_id', 'type', 'from_date', 'to_date', 'days_count', 'reason', 'status', 'approver_id', 'created_at'])
             ->with(['employee:id,name,manager_id', 'approver:id,name'])
+            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+            ->when($this->typeFilter, fn ($q) => $q->where('type', $this->typeFilter))
+            ->when($this->search, fn ($q) => $q->whereHas(
+                'employee',
+                fn ($e) => $e->where('name', 'like', '%'.$this->search.'%')
+            ))
             ->latest();
 
         if ($user->can('hr.leaves.view-all') || $user->can('hr.employees.update')) {

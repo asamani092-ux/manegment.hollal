@@ -34,6 +34,25 @@ class AssetsIndex extends Component
 
     public string $handover_reason = '';
 
+    public string $search = '';
+
+    public string $conditionFilter = '';
+
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'conditionFilter' => ['except' => ''],
+    ];
+
+    public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingConditionFilter(): void
+    {
+        $this->resetPage();
+    }
+
     public function mount(): void
     {
         abort_unless(
@@ -92,10 +111,21 @@ class AssetsIndex extends Component
             'assets' => Asset::query()
                 ->select(['id', 'code', 'name_ar', 'condition', 'current_holder_id', 'holder_since', 'can_be_custody'])
                 ->with('currentHolder:id,name')
+                ->when($this->search, fn ($q) => $q->where(
+                    fn ($w) => $w->where('name_ar', 'like', '%'.$this->search.'%')
+                        ->orWhere('code', 'like', '%'.$this->search.'%')
+                ))
+                ->when($this->conditionFilter, fn ($q) => $q->where('condition', $this->conditionFilter))
                 ->orderBy('code')
                 ->paginate(10),
             'categories' => AssetCategory::orderBy('name_ar')->get(['id', 'name_ar']),
             'employees' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'conditionOptions' => [
+                Asset::CONDITION_GOOD,
+                Asset::CONDITION_MAINTENANCE,
+                Asset::CONDITION_DAMAGED,
+                Asset::CONDITION_RETIRED,
+            ],
             'canManage' => auth()->user()->can('finance.assets.manage'),
         ])->layout('layouts.app', ['title' => 'الأصول']);
     }

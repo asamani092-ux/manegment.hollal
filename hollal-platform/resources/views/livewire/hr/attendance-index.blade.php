@@ -2,11 +2,11 @@
     <x-ds-page-header title="الحضور والإجازات" :show-button="false" />
 
     @if ($attendanceEnabled)
-        <div class="ds-card ds-mb-3" style="padding:1rem;display:flex;gap:0.5rem;flex-wrap:wrap">
+        <div class="ds-card ds-mb-3 ds-toolbar-actions">
             <button type="button" class="ds-btn ds-btn-primary" wire:click="checkIn">تسجيل حضور</button>
             <button type="button" class="ds-btn ds-btn-outline" wire:click="checkOut">تسجيل انصراف</button>
         </div>
-        <div class="ds-card ds-mb-3" style="padding:1rem">
+        <div class="ds-card ds-mb-3">
             <x-ds-form-group label="نوع الإقرار">
                 <select class="ds-input" wire:model="type">
                     <option value="حضور">حضور</option>
@@ -22,14 +22,41 @@
         </div>
     @endif
 
+    <div class="ds-filters-row">
+        <div class="ds-filter-field">
+            <label class="ds-label" for="att-type">النوع</label>
+            <select id="att-type" class="ds-input" wire:model.live="typeFilter">
+                <option value="">— الكل —</option>
+                <option value="حضور">حضور</option>
+                <option value="عن بعد">عن بعد</option>
+                <option value="تكليف خارجي">تكليف خارجي</option>
+                <option value="انقطاع">انقطاع</option>
+            </select>
+        </div>
+        <div class="ds-filter-field">
+            <label class="ds-label" for="att-from">من تاريخ</label>
+            <input id="att-from" type="date" class="ds-input" wire:model.live="dateFrom">
+        </div>
+        <div class="ds-filter-field">
+            <label class="ds-label" for="att-to">إلى تاريخ</label>
+            <input id="att-to" type="date" class="ds-input" wire:model.live="dateTo">
+        </div>
+        @if ($canViewAll)
+            <div class="ds-filter-field">
+                <label class="ds-label" for="att-search">الموظف</label>
+                <input id="att-search" type="search" class="ds-input" wire:model.live.debounce.400ms="search" placeholder="ابحث بالاسم…">
+            </div>
+        @endif
+    </div>
+
     <x-ds-table>
         <x-slot:head>
             <tr>
-                <th>الموظف</th>
-                <th>التاريخ</th>
-                <th>النوع</th>
-                <th>حضور</th>
-                <th>انصراف</th>
+                <th scope="col">الموظف</th>
+                <th scope="col">التاريخ</th>
+                <th scope="col">النوع</th>
+                <th scope="col">حضور</th>
+                <th scope="col">انصراف</th>
             </tr>
         </x-slot:head>
         @forelse ($records as $record)
@@ -41,7 +68,7 @@
                 <td class="ds-ltr-num">{{ $record->check_out_at?->format('H:i') ?? '—' }}</td>
             </tr>
         @empty
-            <tr><td colspan="5" class="ds-table-empty">لا توجد سجلات حضور</td></tr>
+            <tr><td colspan="5"><x-ds-empty-state message="لا توجد سجلات حضور" icon="fa-clock" /></td></tr>
         @endforelse
     </x-ds-table>
     {{ $records->links() }}

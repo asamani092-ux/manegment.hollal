@@ -4,23 +4,23 @@
     <x-ds-table>
         <x-slot:head>
             <tr>
-                <th>الموظف</th>
-                <th>الجوال</th>
-                <th>الحالة الوظيفية</th>
-                <th>موانع الإنهاء</th>
-                <th>إجراءات</th>
+                <th scope="col">الموظف</th>
+                <th scope="col">الجوال</th>
+                <th scope="col">الحالة الوظيفية</th>
+                <th scope="col">موانع الإنهاء</th>
+                <th scope="col">إجراءات</th>
             </tr>
         </x-slot:head>
         @forelse ($users as $user)
             <tr wire:key="life-{{ $user->id }}">
                 <td>{{ $user->name }}</td>
                 <td class="ds-ltr-num">{{ $user->phone }}</td>
-                <td>{{ $user->employment_status ?? 'نشط' }}</td>
+                <td><x-ds-status-badge :status="$user->employment_status ?? 'نشط'" /></td>
                 <td>
                     @if (($holds[$user->id] ?? []) === [])
-                        لا يوجد
+                        <span class="ds-text-muted">لا يوجد</span>
                     @else
-                        {{ implode('، ', $holds[$user->id]) }}
+                        <span class="ds-badge ds-badge-warning">{{ implode('، ', $holds[$user->id]) }}</span>
                     @endif
                 </td>
                 <td>
@@ -34,7 +34,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5" class="ds-table-empty">لا يوجد عاملون</td></tr>
+            <tr><td colspan="5"><x-ds-empty-state message="لا يوجد عاملون" icon="fa-user-gear" /></td></tr>
         @endforelse
     </x-ds-table>
     {{ $users->links() }}
