@@ -25,11 +25,23 @@ class TasksCalendar extends Component
         $this->month = now()->format('Y-m');
     }
 
+    /** الشهر يصل من الواجهة، فأي قيمة غير Y-m ترتد إلى الشهر الحالي بدل رمي استثناء. */
+    private function resolveMonthStart(): Carbon
+    {
+        try {
+            return Carbon::createFromFormat('Y-m', $this->month)->startOfMonth();
+        } catch (\Throwable) {
+            $this->month = now()->format('Y-m');
+
+            return now()->startOfMonth();
+        }
+    }
+
     public function render(): View
     {
         /** @var User $user */
         $user = auth()->user();
-        $start = Carbon::createFromFormat('Y-m', $this->month)->startOfMonth();
+        $start = $this->resolveMonthStart();
         $end = $start->copy()->endOfMonth();
 
         $scopeIds = collect([$user->id]);

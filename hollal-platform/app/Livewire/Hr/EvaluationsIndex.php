@@ -41,8 +41,21 @@ class EvaluationsIndex extends Component
 
         $this->validate([
             'employee_id' => 'required|exists:users,id',
-            'period' => 'required|string|max:20',
+            'period' => 'required|string|max:20|regex:/^\d{4}-Q[1-4]$/',
+        ], [
+            'period.regex' => 'صيغة الفترة يجب أن تكون مثل 2026-Q3.',
         ]);
+
+        $exists = PeriodicEvaluation::query()
+            ->where('employee_id', $this->employee_id)
+            ->where('period', $this->period)
+            ->exists();
+
+        if ($exists) {
+            $this->addError('period', 'يوجد تقييم لهذا الموظف في الفترة نفسها.');
+
+            return;
+        }
 
         app(EvaluationService::class)->create(
             User::findOrFail($this->employee_id),

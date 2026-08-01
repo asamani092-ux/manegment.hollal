@@ -3,7 +3,6 @@
 namespace App\Livewire\Hr;
 
 use App\Models\AttendanceRecord;
-use App\Models\User;
 use App\Services\AttendanceService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
@@ -52,15 +51,15 @@ class AttendanceIndex extends Component
         ]);
 
         $user = auth()->user();
-        abort_unless($user->attendance_enabled ?? true, 403);
+        abort_unless($user->attendance_enabled ?? false, 403);
 
+        // الإقرار يوثّق نوع اليوم فقط ولا يعبث بوقت الحضور الفعلي المسجَّل.
         AttendanceRecord::updateOrCreate(
             ['employee_id' => $user->id, 'date' => today()],
             [
                 'type' => $this->type,
                 'notes' => $this->notes ?: null,
                 'declared_by' => $user->id,
-                'check_in_at' => now(),
             ]
         );
 

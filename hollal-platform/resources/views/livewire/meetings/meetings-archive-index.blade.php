@@ -13,9 +13,11 @@
             <tr wire:key="arch-{{ $meeting->id }}">
                 <td>{{ $meeting->title }}</td>
                 <td class="ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d') }}</td>
-                <td>{{ $meeting->approval_status }}</td>
+                <td><span class="ds-badge ds-badge-success">{{ $meeting->approval_status }}</span></td>
                 <td>
-                    <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes', $meeting) }}">المحضر</a>
+                    @can('meetings.view')
+                        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes', $meeting) }}">المحضر</a>
+                    @endcan
                 </td>
             </tr>
         @empty

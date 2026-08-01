@@ -1,7 +1,7 @@
 <x-ds-page>
     <x-ds-page-header
         title="الإجازات"
-        :show-button="true"
+        :show-button="$canRequest"
         button-label="طلب إجازة"
         button-icon="fa-plus"
         wire:click="openForm"
@@ -28,9 +28,15 @@
                 <td class="ds-ltr-num">{{ $leave->from_date?->format('Y-m-d') }}</td>
                 <td class="ds-ltr-num">{{ $leave->to_date?->format('Y-m-d') }}</td>
                 <td class="ds-ltr-num">{{ $leave->days_count }}</td>
-                <td><span class="ds-badge">{{ $leave->status }}</span></td>
                 <td>
-                    @if ($canApprove && $leave->status === \App\Models\LeaveRequest::STATUS_SUBMITTED)
+                    <span class="ds-badge ds-badge-{{ match ($leave->status) {
+                        \App\Models\LeaveRequest::STATUS_APPROVED => 'success',
+                        \App\Models\LeaveRequest::STATUS_REJECTED => 'danger',
+                        default => 'pending',
+                    } }}">{{ $leave->status }}</span>
+                </td>
+                <td>
+                    @if ($canApprove && $leave->employee_id !== auth()->id() && $leave->status === \App\Models\LeaveRequest::STATUS_SUBMITTED)
                         <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="approve({{ $leave->id }})">اعتماد</button>
                         <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="reject({{ $leave->id }})">رفض</button>
                     @endif

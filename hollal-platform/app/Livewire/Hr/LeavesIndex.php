@@ -40,11 +40,7 @@ class LeavesIndex extends Component
 
     public function openForm(): void
     {
-        abort_unless(
-            auth()->user()->can('hr.leaves.request')
-            || auth()->user()->can('hr.employees.view'),
-            403
-        );
+        abort_unless(auth()->user()->can('hr.leaves.request'), 403);
         $this->reset(['type', 'from_date', 'to_date', 'reason']);
         $this->type = LeaveRequest::TYPE_ANNUAL;
         $this->showForm = true;
@@ -52,11 +48,7 @@ class LeavesIndex extends Component
 
     public function submitLeave(): void
     {
-        abort_unless(
-            auth()->user()->can('hr.leaves.request')
-            || auth()->user()->can('hr.employees.view'),
-            403
-        );
+        abort_unless(auth()->user()->can('hr.leaves.request'), 403);
 
         $this->validate([
             'type' => 'required|in:سنوية,مرضية,استثنائية',
@@ -123,6 +115,10 @@ class LeavesIndex extends Component
     private function assertCanDecide(LeaveRequest $leave): void
     {
         $user = auth()->user();
+
+        // لا يعتمد أحد إجازته حتى لو كان مسؤول الموارد.
+        abort_if($leave->employee_id === $user->id, 403);
+
         if ($user->can('hr.leaves.view-all') || $user->can('hr.employees.update')) {
             return;
         }
@@ -156,6 +152,7 @@ class LeavesIndex extends Component
             'leaves' => $query->paginate(20),
             'balance' => $balance,
             'canApprove' => $user->can('hr.leaves.approve') || $user->can('hr.employees.update'),
+            'canRequest' => $user->can('hr.leaves.request'),
         ]);
     }
 }

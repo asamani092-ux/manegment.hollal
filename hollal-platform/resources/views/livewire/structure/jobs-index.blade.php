@@ -6,7 +6,7 @@
                 <th>المسمى</th>
                 <th>المستوى</th>
                 <th>الوحدة الأب</th>
-                <th>الحالة</th>
+                <th>المسؤول المباشر</th>
                 <th></th>
             </tr>
         </x-slot:head>
@@ -15,7 +15,7 @@
                 <td>{{ $job->name }}</td>
                 <td>{{ $job->level }}</td>
                 <td>{{ $job->parent?->name ?? '—' }}</td>
-                <td>{{ $job->is_active ? 'نشطة' : 'موقوفة' }}</td>
+                <td>{{ $job->manager?->name ?? '—' }}</td>
                 <td><a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.org-tree') }}">الهيكل</a></td>
             </tr>
         @empty

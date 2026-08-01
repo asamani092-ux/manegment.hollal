@@ -25,9 +25,9 @@ class JobsIndex extends Component
     {
         return view('livewire.structure.jobs-index', [
             'jobs' => OrgUnit::query()
-                ->select(['id', 'name', 'level', 'parent_id', 'is_active'])
+                ->select(['id', 'name', 'level', 'parent_id', 'manager_id', 'job_purpose'])
                 ->where('level', OrgUnit::LEVEL_JOB)
-                ->with('parent:id,name')
+                ->with(['parent:id,name', 'manager:id,name'])
                 ->orderBy('name')
                 ->paginate(20),
         ]);

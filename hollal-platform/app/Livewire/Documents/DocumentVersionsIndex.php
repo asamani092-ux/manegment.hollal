@@ -62,7 +62,12 @@ class DocumentVersionsIndex extends Component
             'uploadFile' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
         ]);
 
-        $document = Document::findOrFail($this->document_id);
+        $user = auth()->user();
+        $document = Document::query()
+            ->visibleTo($user)
+            ->whereKey($this->document_id)
+            ->firstOrFail();
+
         $previousCount = $document->versions()->count();
 
         app(DocumentLibraryService::class)->storeNewVersionFromUpload(
@@ -82,15 +87,22 @@ class DocumentVersionsIndex extends Component
 
     public function render(): View
     {
+        $user = auth()->user();
+
         return view('livewire.documents.document-versions-index', [
             'versions' => DocumentVersion::query()
                 ->select(['id', 'document_id', 'version', 'change_note', 'uploaded_by', 'created_at'])
                 ->with(['document:id,title'])
+                ->whereHas('document', fn ($q) => $q->visibleTo($user))
                 ->latest()
                 ->paginate(20),
-            'documents' => Document::query()->orderBy('title')->get(['id', 'title']),
-            'canUpload' => auth()->user()->can('documents.manage-versions')
-                || auth()->user()->can('documents.create'),
+            'documents' => Document::query()
+                ->visibleTo($user)
+                ->orderBy('title')
+                ->limit(200)
+                ->get(['id', 'title']),
+            'canUpload' => $user->can('documents.manage-versions')
+                || $user->can('documents.create'),
         ]);
     }
 }

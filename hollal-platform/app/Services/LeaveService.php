@@ -36,10 +36,29 @@ class LeaveService
 
         $days = (int) $fromDate->diffInDays($toDate) + 1;
 
+        $overlaps = LeaveRequest::query()
+            ->where('employee_id', $employee->id)
+            ->whereIn('status', [LeaveRequest::STATUS_SUBMITTED, LeaveRequest::STATUS_APPROVED])
+            ->where('from_date', '<=', $toDate)
+            ->where('to_date', '>=', $fromDate)
+            ->exists();
+
+        if ($overlaps) {
+            throw new \RuntimeException('توجد إجازة أخرى متداخلة مع هذه الفترة.');
+        }
+
         if ($type === LeaveRequest::TYPE_ANNUAL) {
             $balance = (int) ($employee->profile?->annual_leave_balance ?? 0);
-            if ($days > $balance) {
-                throw new \RuntimeException('الرصيد السنوي غير كافٍ (المتاح: '.$balance.').');
+
+            // الطلبات المقدمة تحجز رصيدها حتى لا يتجاوزه الموظف بطلبات متتالية.
+            $reserved = (int) LeaveRequest::query()
+                ->where('employee_id', $employee->id)
+                ->where('type', LeaveRequest::TYPE_ANNUAL)
+                ->where('status', LeaveRequest::STATUS_SUBMITTED)
+                ->sum('days_count');
+
+            if ($days > ($balance - $reserved)) {
+                throw new \RuntimeException('الرصيد السنوي غير كافٍ (المتاح: '.max(0, $balance - $reserved).').');
             }
         }
 
@@ -68,11 +87,22 @@ class LeaveService
         }
 
         return DB::transaction(function () use ($leave, $approver) {
+            // قفل الطلب يمنع اعتمادين متزامنين يخصمان الرصيد مرتين.
+            $locked = LeaveRequest::query()->lockForUpdate()->find($leave->id);
+            if (! $locked || ! $locked->isSubmitted()) {
+                throw new \RuntimeException('لا يمكن اعتماد طلب ليس بحالة مقدم.');
+            }
+
             if ($leave->type === LeaveRequest::TYPE_ANNUAL) {
-                $profile = EmployeeProfile::query()->firstOrCreate(
+                EmployeeProfile::query()->firstOrCreate(
                     ['user_id' => $leave->employee_id],
                     ['annual_leave_balance' => 21]
                 );
+
+                $profile = EmployeeProfile::query()
+                    ->where('user_id', $leave->employee_id)
+                    ->lockForUpdate()
+                    ->first();
 
                 if ($leave->days_count > (int) $profile->annual_leave_balance) {
                     throw new \RuntimeException('الرصيد السنوي غير كافٍ للاعتماد.');

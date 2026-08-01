@@ -491,6 +491,24 @@
   color: var(--ds-error);
 }
 
+.ds-badge-info {
+  background: rgba(59, 130, 246, 0.15);
+  color: #7fb0ff;
+  border: 1px solid rgba(59, 130, 246, 0.28);
+}
+
+.ds-badge-warning {
+  background: rgba(234, 145, 45, 0.18);
+  color: #f0b27a;
+  border: 1px solid rgba(234, 145, 45, 0.3);
+}
+
+.ds-badge-muted {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--ds-text-muted);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
 /* ── Tables ── */
 .ds-table-wrap {
   overflow-x: auto;
