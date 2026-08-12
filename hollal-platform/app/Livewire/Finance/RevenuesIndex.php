@@ -27,6 +27,33 @@ class RevenuesIndex extends Component
 
     public string $received_at = '';
 
+    public string $sourceFilter = '';
+
+    public string $dateFrom = '';
+
+    public string $dateTo = '';
+
+    protected $queryString = [
+        'sourceFilter' => ['except' => ''],
+        'dateFrom' => ['except' => ''],
+        'dateTo' => ['except' => ''],
+    ];
+
+    public function updatingSourceFilter(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDateFrom(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingDateTo(): void
+    {
+        $this->resetPage();
+    }
+
     public function mount(): void
     {
         abort_unless(
@@ -67,9 +94,16 @@ class RevenuesIndex extends Component
         return view('livewire.finance.revenues-index', [
             'revenues' => Revenue::query()
                 ->select(['id', 'source_type', 'amount', 'received_at', 'status', 'created_at'])
+                ->when($this->sourceFilter, fn ($q) => $q->where('source_type', $this->sourceFilter))
+                ->when($this->dateFrom, fn ($q) => $q->whereDate('received_at', '>=', $this->dateFrom))
+                ->when($this->dateTo, fn ($q) => $q->whereDate('received_at', '<=', $this->dateTo))
                 ->latest()
                 ->paginate(10),
             'categories' => RevenueCategory::orderBy('name_ar')->get(['id', 'name_ar']),
+            'sourceOptions' => [
+                Revenue::SOURCE_PARTNERSHIP,
+                Revenue::SOURCE_MANUAL,
+            ],
             'canManage' => auth()->user()->can('finance.revenues.manage'),
         ])->layout('layouts.app', ['title' => 'الإيرادات']);
     }

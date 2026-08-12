@@ -13,6 +13,13 @@ return [
             'icon' => 'fa-home',
             'permission' => 'dashboard.view',
         ],
+        [
+            'label' => 'تقييم الأدوات (UAT)',
+            'route' => 'uat.tools',
+            'icon' => 'fa-clipboard-check',
+            'permission' => 'dashboard.view',
+            'uat_only' => true,
+        ],
     ],
 
     'groups' => [
@@ -23,9 +30,11 @@ return [
                 ['label' => 'عقود العاملين', 'route' => 'contracts.index', 'icon' => 'fa-file-signature', 'permission' => 'hr.employees.view'],
                 ['label' => 'سلم الرواتب', 'route' => 'pay-scales.index', 'icon' => 'fa-layer-group', 'permission' => 'hr.salaries.manage'],
                 ['label' => 'مسيّرات الرواتب', 'route' => 'payroll-runs.index', 'icon' => 'fa-file-invoice-dollar', 'permission' => 'hr.salaries.view'],
+                ['label' => 'الرواتب الشهرية', 'route' => 'payroll.index', 'icon' => 'fa-money-check-dollar', 'permission' => 'hr.salaries.view'],
                 ['label' => 'التقييم الدوري', 'route' => 'evaluations.index', 'icon' => 'fa-star-half-alt', 'permission' => 'hr.employees.view'],
                 ['label' => 'المسؤوليات', 'route' => 'responsibilities.index', 'icon' => 'fa-clipboard-list', 'permission' => 'hr.employees.update'],
-                ['label' => 'الحضور والإجازات', 'route' => 'attendance.index', 'icon' => 'fa-user-clock', 'permission' => 'hr.employees.view'],
+                ['label' => 'الحضور', 'route' => 'attendance.index', 'icon' => 'fa-user-clock', 'permission' => 'hr.employees.view'],
+                ['label' => 'الإجازات', 'route' => 'leaves.index', 'icon' => 'fa-umbrella-beach', 'permission' => 'hr.leaves.request|hr.leaves.approve|hr.leaves.view-all|hr.employees.view'],
                 ['label' => 'التهيئة وإنهاء العلاقة', 'route' => 'hr-lifecycle.index', 'icon' => 'fa-user-slash', 'permission' => 'hr.employees.update'],
             ],
         ],
@@ -65,7 +74,6 @@ return [
             'items' => [
                 ['label' => 'الجهات الشريكة', 'route' => 'organizations.index', 'icon' => 'fa-building', 'permission' => 'partnerships.organizations.view'],
                 ['label' => 'رحلة الشراكات', 'route' => 'partnerships.pipeline', 'icon' => 'fa-stream', 'permission' => 'partnerships.pipeline.view'],
-                ['label' => 'عقود الشراكة', 'route' => 'partnerships.pipeline', 'icon' => 'fa-file-contract', 'permission' => 'partnerships.contracts.view'],
             ],
         ],
         [

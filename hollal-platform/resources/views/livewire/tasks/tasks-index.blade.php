@@ -45,7 +45,7 @@
                     <div class="ds-task-card-meta">
                         <span>{{ $task->project?->name ?? 'بدون مشروع' }}</span>
                         <span>{{ $priorityLabels[$task->priority] ?? $task->priority }}</span>
-                        <span>{{ $task->due_date?->format('Y-m-d') ?? '—' }}</span>
+                        <span class="ds-ltr-num">{{ $task->due_date?->format('Y-m-d') ?? '—' }}</span>
                     </div>
                     <p class="ds-text-muted">من: {{ $task->assigner?->name ?? '—' }}</p>
                     <div class="ds-task-card-actions">
@@ -64,12 +64,12 @@
             <x-ds-table>
                 <x-slot:head>
                     <tr>
-                        <th>العنوان</th>
-                        <th>المشروع</th>
-                        <th>الأولوية</th>
-                        <th>الحالة</th>
-                        <th>الاستحقاق</th>
-                        <th>إجراءات</th>
+                        <th scope="col">العنوان</th>
+                        <th scope="col">المشروع</th>
+                        <th scope="col">الأولوية</th>
+                        <th scope="col">الحالة</th>
+                        <th scope="col">الاستحقاق</th>
+                        <th scope="col">إجراءات</th>
                     </tr>
                 </x-slot:head>
                 @foreach ($myTasks as $task)

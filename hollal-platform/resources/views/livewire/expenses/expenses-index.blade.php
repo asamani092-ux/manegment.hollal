@@ -103,23 +103,23 @@
             <x-ds-table>
                 <x-slot:head>
                     <tr>
-                        <th>النوع</th>
-                        <th>المبلغ</th>
-                        <th>الأولوية</th>
-                        <th>المشروع</th>
-                        <th>الحالة</th>
-                        <th>التاريخ</th>
-                        <th>إجراءات</th>
+                        <th scope="col">النوع</th>
+                        <th scope="col">المبلغ</th>
+                        <th scope="col">الأولوية</th>
+                        <th scope="col">المشروع</th>
+                        <th scope="col">الحالة</th>
+                        <th scope="col">التاريخ</th>
+                        <th scope="col">إجراءات</th>
                     </tr>
                 </x-slot:head>
                 @forelse ($myExpenses as $expense)
                     <tr wire:key="my-expense-{{ $expense->id }}">
                         <td>{{ $typeLabels[$expense->type] ?? $expense->type }}</td>
-                        <td>{{ number_format((float) $expense->amount, 2) }}</td>
+                        <td class="ds-ltr-num">{{ number_format((float) $expense->amount, 2) }}</td>
                         <td>{{ $priorityLabels[$expense->priority] ?? $expense->priority }}</td>
                         <td>{{ $expense->project?->name ?? '—' }}</td>
-                        <td>{{ $statusLabels[$expense->status] ?? $expense->status }}</td>
-                        <td>{{ $expense->created_at?->format('Y-m-d') ?? '—' }}</td>
+                        <td><x-ds-status-badge :status="$statusLabels[$expense->status] ?? $expense->status" /></td>
+                        <td class="ds-ltr-num">{{ $expense->created_at?->format('Y-m-d') ?? '—' }}</td>
                         <td>
                             <div class="ds-toolbar-actions">
                                 <x-ds-action-icons
@@ -178,23 +178,23 @@
             <x-ds-table>
                 <x-slot:head>
                     <tr>
-                        <th>مقدم الطلب</th>
-                        <th>النوع</th>
-                        <th>المبلغ</th>
-                        <th>الأولوية</th>
-                        <th>المشروع</th>
-                        <th>الحالة</th>
-                        <th>إجراءات</th>
+                        <th scope="col">مقدم الطلب</th>
+                        <th scope="col">النوع</th>
+                        <th scope="col">المبلغ</th>
+                        <th scope="col">الأولوية</th>
+                        <th scope="col">المشروع</th>
+                        <th scope="col">الحالة</th>
+                        <th scope="col">إجراءات</th>
                     </tr>
                 </x-slot:head>
                 @forelse ($allExpenses as $expense)
                     <tr wire:key="all-expense-{{ $expense->id }}">
                         <td>{{ $expense->requester?->name ?? '—' }}</td>
                         <td>{{ $typeLabels[$expense->type] ?? $expense->type }}</td>
-                        <td>{{ number_format((float) $expense->amount, 2) }}</td>
+                        <td class="ds-ltr-num">{{ number_format((float) $expense->amount, 2) }}</td>
                         <td>{{ $priorityLabels[$expense->priority] ?? $expense->priority }}</td>
                         <td>{{ $expense->project?->name ?? '—' }}</td>
-                        <td>{{ $statusLabels[$expense->status] ?? $expense->status }}</td>
+                        <td><x-ds-status-badge :status="$statusLabels[$expense->status] ?? $expense->status" /></td>
                         <td>
                             <div class="ds-toolbar-actions">
                                 <x-ds-action-icons

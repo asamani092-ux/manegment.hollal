@@ -1,18 +1,9 @@
 <x-ds-page>
     <x-ds-page-header title="مسيّرات الرواتب" />
 
-    @php
-        $statusClasses = [
-            'مسودة' => 'ds-badge-pending',
-            'مرفوع_للمالية' => 'ds-badge-info',
-            'منفذ' => 'ds-badge-success',
-            'معاد_للتصحيح' => 'ds-badge-warning',
-        ];
-    @endphp
-
     @can('hr.salaries.manage')
         <section class="ds-section ds-filter-bar">
-            <input type="month" class="ds-input" wire:model="month" dir="ltr">
+            <input type="month" class="ds-input" wire:model="month" dir="ltr" aria-label="شهر المسيّر">
             <button type="button" class="ds-btn ds-btn-primary" wire:click="generate">
                 <i class="fas fa-gears" aria-hidden="true"></i> توليد مسيّر الشهر
             </button>
@@ -20,23 +11,39 @@
         </section>
     @endcan
 
+    <div class="ds-filters-row">
+        <div class="ds-filter-field">
+            <label class="ds-label" for="run-status">الحالة</label>
+            <select id="run-status" class="ds-input" wire:model.live="statusFilter">
+                <option value="">— الكل —</option>
+                @foreach ($statusOptions as $opt)
+                    <option value="{{ $opt }}">{{ $opt }}</option>
+                @endforeach
+            </select>
+        </div>
+        <div class="ds-filter-field">
+            <label class="ds-label" for="run-month">الشهر</label>
+            <input id="run-month" type="month" class="ds-input" wire:model.live="monthFilter" dir="ltr">
+        </div>
+    </div>
+
     <x-ds-table>
         <x-slot:head>
             <tr>
-                <th>الشهر</th>
-                <th>عدد الموظفين</th>
-                <th>إجمالي الصافي</th>
-                <th>الحالة</th>
-                <th>إجراءات</th>
+                <th scope="col">الشهر</th>
+                <th scope="col">عدد الموظفين</th>
+                <th scope="col">إجمالي الصافي</th>
+                <th scope="col">الحالة</th>
+                <th scope="col">إجراءات</th>
             </tr>
         </x-slot:head>
         @forelse ($runs as $run)
             <tr wire:key="run-{{ $run->id }}">
-                <td dir="ltr">{{ $run->month }}</td>
-                <td>{{ $run->items_count }}</td>
-                <td>{{ number_format((float) $run->items_sum_net, 2) }} ر.س</td>
+                <td dir="ltr" class="ds-ltr-num">{{ $run->month }}</td>
+                <td class="ds-ltr-num">{{ $run->items_count }}</td>
+                <td class="ds-ltr-num">{{ number_format((float) $run->items_sum_net, 2) }} ر.س</td>
                 <td>
-                    <span class="ds-badge {{ $statusClasses[$run->status] ?? '' }}">{{ $run->status }}</span>
+                    <x-ds-status-badge :status="$run->status" />
                 </td>
                 <td>
                     @can('hr.salaries.manage')
@@ -48,8 +55,10 @@
             </tr>
         @empty
             <tr>
-                <td colspan="5" class="ds-text-muted ds-table-empty">لا توجد مسيّرات</td>
+                <td colspan="5"><x-ds-empty-state message="لا توجد مسيّرات" icon="fa-money-check-dollar" /></td>
             </tr>
         @endforelse
     </x-ds-table>
+
+    {{ $runs->links() }}
 </x-ds-page>

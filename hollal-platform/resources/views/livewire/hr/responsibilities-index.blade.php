@@ -7,14 +7,28 @@
         wire:click="openForm"
     />
 
+    <div class="ds-filters-row">
+        <div class="ds-filter-field">
+            <label class="ds-label" for="resp-search">الموظف</label>
+            <input id="resp-search" type="search" class="ds-input" wire:model.live.debounce.400ms="search" placeholder="ابحث بالاسم…">
+        </div>
+        <div class="ds-filter-field">
+            <label class="ds-label" for="resp-active">الحالة</label>
+            <select id="resp-active" class="ds-input" wire:model.live="activeOnly">
+                <option value="0">— الكل —</option>
+                <option value="1">النشطة فقط</option>
+            </select>
+        </div>
+    </div>
+
     <x-ds-table>
         <x-slot:head>
             <tr>
-                <th>الموظف</th>
-                <th>البند</th>
-                <th>الترتيب</th>
-                <th>الحالة</th>
-                <th>إجراءات</th>
+                <th scope="col">الموظف</th>
+                <th scope="col">البند</th>
+                <th scope="col">الترتيب</th>
+                <th scope="col">الحالة</th>
+                <th scope="col">إجراءات</th>
             </tr>
         </x-slot:head>
         @forelse ($items as $item)
@@ -22,7 +36,7 @@
                 <td>{{ $item->employee?->name ?? '—' }}</td>
                 <td>{{ $item->body }}</td>
                 <td class="ds-ltr-num">{{ $item->order }}</td>
-                <td>{{ $item->is_active ? 'نشط' : 'موقوف' }}</td>
+                <td><x-ds-status-badge :status="$item->is_active ? 'نشط' : 'موقوفة'" /></td>
                 <td>
                     @if ($item->is_active)
                         <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="deactivate({{ $item->id }})">إيقاف</button>
@@ -30,36 +44,26 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5" class="ds-table-empty">لا توجد مسؤوليات</td></tr>
+            <tr><td colspan="5"><x-ds-empty-state message="لا توجد مسؤوليات" icon="fa-list-check" /></td></tr>
         @endforelse
     </x-ds-table>
     {{ $items->links() }}
 
-    @if ($showForm)
-        <div class="ds-modal-overlay" wire:click.self="$set('showForm', false)">
-            <div class="ds-modal" role="dialog" dir="rtl">
-                <div class="ds-modal-header">
-                    <h3>بند مسؤولية</h3>
-                    <button type="button" class="ds-modal-close" wire:click="$set('showForm', false)">&times;</button>
-                </div>
-                <div class="ds-modal-body">
-                    <x-ds-form-group label="الموظف" :error="$errors->first('employee_id')">
-                        <select class="ds-input" wire:model="employee_id">
-                            <option value="">—</option>
-                            @foreach ($employees as $employee)
-                                <option value="{{ $employee->id }}">{{ $employee->name }}</option>
-                            @endforeach
-                        </select>
-                    </x-ds-form-group>
-                    <x-ds-form-group label="البند" :error="$errors->first('body')">
-                        <textarea class="ds-input" wire:model="body" rows="3"></textarea>
-                    </x-ds-form-group>
-                    <x-ds-form-group label="الترتيب" :error="$errors->first('order')">
-                        <input type="number" class="ds-input" wire:model="order" min="1" max="20">
-                    </x-ds-form-group>
-                    <button type="button" class="ds-btn ds-btn-primary" wire:click="save">حفظ</button>
-                </div>
-            </div>
-        </div>
-    @endif
+    <x-ds-modal :show="$showForm" title="بند مسؤولية" close-action="$set('showForm', false)">
+        <x-ds-form-group label="الموظف" :error="$errors->first('employee_id')">
+            <select class="ds-input" wire:model="employee_id">
+                <option value="">—</option>
+                @foreach ($employees as $employee)
+                    <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+        <x-ds-form-group label="البند" :error="$errors->first('body')">
+            <textarea class="ds-input" wire:model="body" rows="3"></textarea>
+        </x-ds-form-group>
+        <x-ds-form-group label="الترتيب" :error="$errors->first('order')">
+            <input type="number" class="ds-input" wire:model="order" min="1" max="20">
+        </x-ds-form-group>
+        <button type="button" class="ds-btn ds-btn-primary" wire:click="save">حفظ</button>
+    </x-ds-modal>
 </x-ds-page>

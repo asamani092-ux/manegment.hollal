@@ -48,8 +48,57 @@ class OffboardingService
         return $holds;
     }
 
+    /**
+     * Batched variant of holds() for list screens — 2 queries total instead of 2×n.
+     * Time: O(n) | Space: O(n).
+     *
+     * @param  list<int>  $employeeIds
+     * @return array<int, list<string>>
+     */
+    public function holdsForMany(array $employeeIds): array
+    {
+        $result = array_fill_keys($employeeIds, []);
+
+        if ($employeeIds === []) {
+            return $result;
+        }
+
+        if (Schema::hasTable('custodies')) {
+            $rows = DB::table('custodies')
+                ->selectRaw('employee_id, COUNT(*) as aggregate')
+                ->whereIn('employee_id', $employeeIds)
+                ->whereNotIn('status', ['مغلقة'])
+                ->whereNull('deleted_at')
+                ->groupBy('employee_id')
+                ->pluck('aggregate', 'employee_id');
+
+            foreach ($rows as $employeeId => $count) {
+                $result[(int) $employeeId][] = 'يوجد عهد مالية مفتوحة ('.$count.')';
+            }
+        }
+
+        if (Schema::hasTable('assets')) {
+            $rows = DB::table('assets')
+                ->selectRaw('current_holder_id, COUNT(*) as aggregate')
+                ->whereIn('current_holder_id', $employeeIds)
+                ->whereNull('deleted_at')
+                ->groupBy('current_holder_id')
+                ->pluck('aggregate', 'current_holder_id');
+
+            foreach ($rows as $employeeId => $count) {
+                $result[(int) $employeeId][] = 'يوجد أصول بعهدة الموظف ('.$count.')';
+            }
+        }
+
+        return $result;
+    }
+
     public function offboard(User $employee, User $actor): void
     {
+        if ($employee->employment_status === User::STATUS_TERMINATED) {
+            throw new \RuntimeException('علاقة الموظف منتهية بالفعل.');
+        }
+
         $holds = $this->holds($employee);
 
         if ($holds !== []) {

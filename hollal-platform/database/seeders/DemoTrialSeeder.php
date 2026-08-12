@@ -8,6 +8,7 @@ use App\Models\ExpenseCategory;
 use App\Models\ExpenseRequest;
 use App\Models\Meeting;
 use App\Models\MeetingItem;
+use App\Models\OrgUnit;
 use App\Models\PayrollRun;
 use App\Models\Task;
 use App\Models\User;
@@ -85,5 +86,38 @@ class DemoTrialSeeder extends Seeder
             'submitted_by' => $manager?->id,
             'submitted_at' => now(),
         ]);
+
+        // Attendance actions abort unless the flag is on; UAT needs the button live.
+        User::whereIn('phone', ['0500000000', '0501111111', '0502222222', '0505555555'])
+            ->update(['attendance_enabled' => true]);
+
+        $this->call([
+            DemoHrSeeder::class,
+            DemoFinanceSeeder::class,
+            DemoPartnershipsProjectsSeeder::class,
+            DemoDocsStructureSeeder::class,
+            DemoOpsSeeder::class,
+        ]);
+
+        $this->attachDemoUsersToJobCards();
+    }
+
+    /** Org tree shows a member count only when users point at a وظيفة node. */
+    protected function attachDemoUsersToJobCards(): void
+    {
+        $jobCards = OrgUnit::where('level', OrgUnit::LEVEL_JOB)
+            ->orderBy('id')
+            ->pluck('id')
+            ->all();
+
+        if ($jobCards === []) {
+            return;
+        }
+
+        $users = User::whereNull('org_unit_id')->orderBy('id')->get(['id']);
+
+        foreach ($users as $index => $user) {
+            $user->forceFill(['org_unit_id' => $jobCards[$index % count($jobCards)]])->save();
+        }
     }
 }

@@ -37,7 +37,7 @@
                             <button type="button" class="ds-btn ds-btn-sm" wire:click="openQuoteModal({{ $quote->id }})">نسخة معدّلة</button>
                         @endcan
                         @can('partnerships.contracts.create')
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="openContractModal({{ $quote->id }})">إنشاء عقد</button>
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="openContractModal({{ $quote->id }})">إنشاء عقد شراكة</button>
                         @endcan
                     </td>
                 </tr>
@@ -47,16 +47,16 @@
         </x-ds-table>
     </section>
 
-    {{-- 05-B4 العقود --}}
+    {{-- 05-B4 عقد الشراكة --}}
     <section class="ds-section">
-        <h2 class="ds-section-title">العقود</h2>
+        <h2 class="ds-section-title">عقد الشراكة</h2>
         @foreach ($partnership->partnershipContracts as $contract)
             <div class="ds-kanban-card" wire:key="contract-{{ $contract->id }}">
                 <p>عقد #{{ $contract->id }} — الحالة: <strong>{{ $contract->status }}</strong></p>
                 <p>القيمة: <span class="ds-ltr-num">{{ number_format((float) $contract->total_value, 2) }}</span></p>
                 <p>يشترط الدفعة الأولى: {{ $contract->requires_first_payment ? 'نعم' : 'لا' }}</p>
                 @if ($contract->signed_pdf_hash)
-                    <p class="ds-text-muted" dir="ltr">hash: {{ Str::limit($contract->signed_pdf_hash, 24) }}</p>
+                    <p class="ds-text-muted" dir="ltr">بصمة الملف: {{ Str::limit($contract->signed_pdf_hash, 24) }}</p>
                 @endif
 
                 <x-ds-table>
@@ -102,7 +102,7 @@
             </div>
         @endforeach
         @if ($partnership->partnershipContracts->isEmpty())
-            <p class="ds-text-muted">لا توجد عقود</p>
+            <p class="ds-text-muted">لا يوجد عقد شراكة</p>
         @endif
     </section>
 
@@ -230,7 +230,7 @@
     </x-ds-modal>
 
     <x-ds-modal :show="$showContractModal" size="lg">
-        <x-slot:header><h2>إنشاء عقد</h2></x-slot:header>
+        <x-slot:header><h2>إنشاء عقد شراكة</h2></x-slot:header>
 
         @foreach ($scheduleRows as $index => $row)
             <div class="ds-form-row" wire:key="schedule-row-{{ $index }}">

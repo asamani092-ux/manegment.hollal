@@ -39,6 +39,7 @@ class CompletionUiRoutesTest extends TestCase
 
         foreach ([
             'attendance.index',
+            'leaves.index',
             'evaluations.index',
             'responsibilities.index',
             'hr-lifecycle.index',

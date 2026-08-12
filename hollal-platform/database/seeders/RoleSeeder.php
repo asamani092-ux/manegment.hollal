@@ -18,6 +18,9 @@ class RoleSeeder extends Seeder
         'dashboard.view',
         'hr.employees.view',
         'hr.employees.update',
+        'hr.leaves.request',
+        'hr.leaves.approve',
+        'hr.leaves.view-all',
         'roles.view',
         'structure.view',
         'structure.departments.view',
@@ -73,6 +76,8 @@ class RoleSeeder extends Seeder
         'meetings.update',
         'meetings.delete',
         'hr.employees.view',
+        'hr.leaves.request',
+        'hr.leaves.approve',
         'finance.expenses.view',
         'finance.expenses.approve',
         'finance.custodies.view',
@@ -116,6 +121,7 @@ class RoleSeeder extends Seeder
         'documents.create',
         'finance.expenses.view',
         'finance.expenses.create',
+        'hr.leaves.request',
     ];
 
     /** @var list<string> */
@@ -142,6 +148,7 @@ class RoleSeeder extends Seeder
         'hr.salaries.view',
         'hr.salaries.manage',
         'partnerships.contracts.view',
+        'hr.leaves.request',
         'reports.view',
         'reports.monthly.view',
         'reports.export',
@@ -158,6 +165,7 @@ class RoleSeeder extends Seeder
         'finance.expenses.create',
         'projects.view',
         'hr.employees.view',
+        'hr.leaves.request',
     ];
 
     /**
@@ -189,6 +197,7 @@ class RoleSeeder extends Seeder
         'partnerships.generate',
         'projects.view',
         'projects.programs.view',
+        'hr.leaves.request',
     ];
 
     public function run(): void

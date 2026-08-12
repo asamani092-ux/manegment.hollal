@@ -23,6 +23,9 @@ class HrLifecycleIndex extends Component
 
     public function startOffboarding(int $userId): void
     {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        abort_if($userId === auth()->id(), 403);
+
         $employee = User::findOrFail($userId);
         $service = app(OffboardingService::class);
 
@@ -44,10 +47,7 @@ class HrLifecycleIndex extends Component
             ->orderBy('name')
             ->paginate(15);
 
-        $holds = [];
-        foreach ($users as $user) {
-            $holds[$user->id] = $service->holds($user);
-        }
+        $holds = $service->holdsForMany($users->pluck('id')->all());
 
         return view('livewire.hr.hr-lifecycle-index', [
             'users' => $users,
