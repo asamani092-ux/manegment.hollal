@@ -18,6 +18,13 @@
   white-space: nowrap;
 }
 
+.ds-btn-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
 .ds-btn-primary,
 .ds-login-button {
   background: var(--ds-gradient-brand);

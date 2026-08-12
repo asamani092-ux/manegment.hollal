@@ -13,6 +13,13 @@ return [
             'icon' => 'fa-home',
             'permission' => 'dashboard.view',
         ],
+        [
+            'label' => 'تقييم الأدوات (UAT)',
+            'route' => 'uat.tools',
+            'icon' => 'fa-clipboard-check',
+            'permission' => 'dashboard.view',
+            'uat_only' => true,
+        ],
     ],
 
     'groups' => [
