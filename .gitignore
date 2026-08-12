@@ -7,6 +7,7 @@ Thumbs.db
 .cursor/*
 !.cursor/environment.json
 !.cursor/Dockerfile
+!.cursor/start.sh
 
 # Laravel (hollal-platform)
 hollal-platform/vendor/
