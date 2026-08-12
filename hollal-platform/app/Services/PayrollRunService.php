@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\AttendanceRecord;
 use App\Models\PayrollRun;
 use App\Models\PayrollRunItem;
 use App\Models\SalaryComponent;
@@ -23,7 +24,16 @@ class PayrollRunService
     {
         $monthEnd = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
 
-        return DB::transaction(function () use ($month, $monthEnd) {
+        $monthStart = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+        $attendanceByEmployee = AttendanceRecord::query()
+            ->whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+            ->whereNotNull('check_in_at')
+            ->whereNotNull('check_out_at')
+            ->get(['employee_id', 'check_in_at', 'check_out_at'])
+            ->groupBy('employee_id');
+        $attendanceService = app(AttendanceService::class);
+
+        return DB::transaction(function () use ($month, $monthEnd, $attendanceByEmployee, $attendanceService) {
             $run = PayrollRun::create(['month' => $month, 'status' => PayrollRun::STATUS_DRAFT]);
 
             $employees = User::query()
@@ -38,13 +48,29 @@ class PayrollRunService
                     ->effectiveOn($monthEnd)
                     ->get();
 
+                $isRegular = app(SalaryService::class)->isRegularEmployee($employee);
+                $overtimeHours = 0.0;
+                $overtimeAmount = 0.0;
+                if ($employee->attendance_enabled) {
+                    $overtimeHours = $attendanceService->overtimeHoursForMonth(
+                        $employee,
+                        $month,
+                        $attendanceByEmployee->get($employee->id, collect()),
+                    );
+                    if ($employee->profile?->overtime_unlocked) {
+                        $overtimeAmount = round($overtimeHours * (float) ($employee->profile->overtime_hour_value ?? 0), 2);
+                    }
+                }
+
                 $item = new PayrollRunItem([
                     'employee_id' => $employee->id,
                     'base' => $components->where('type', SalaryComponent::TYPE_BASE)->sum('amount'),
                     'allowances' => $components->where('type', SalaryComponent::TYPE_ALLOWANCE)->sum('amount'),
-                    'deductions' => $components->where('type', SalaryComponent::TYPE_DEDUCTION)->sum('amount'),
-                    'overtime_hours' => 0,
-                    'overtime_amount' => 0,
+                    'deductions' => $isRegular
+                        ? $components->where('type', SalaryComponent::TYPE_DEDUCTION)->sum('amount')
+                        : 0,
+                    'overtime_hours' => $overtimeHours,
+                    'overtime_amount' => $overtimeAmount,
                     'variables' => [],
                 ]);
                 $item->payroll_run_id = $run->id;
@@ -80,6 +106,10 @@ class PayrollRunService
     public function addVariable(PayrollRunItem $item, string $label, string $reason, float $amount, string $kind): PayrollRunItem
     {
         $this->assertEditable($item->run);
+
+        if (trim($reason) === '') {
+            throw new \InvalidArgumentException('سبب البند المتغير إلزامي.');
+        }
 
         $variables = $item->variables ?? [];
         $variables[] = ['label' => $label, 'reason' => $reason, 'amount' => $amount, 'kind' => $kind];

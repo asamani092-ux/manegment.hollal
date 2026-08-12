@@ -9,17 +9,19 @@
 
     <x-ds-table>
         <x-slot:head>
-            <tr>
-                <th>الاسم</th>
-                <th>عدد الدرجات</th>
-                <th>الحالة</th>
-                <th>إجراءات</th>
-            </tr>
+                <tr>
+                    <th>الاسم</th>
+                    <th>عدد الدرجات</th>
+                    <th>عدد الموظفين</th>
+                    <th>الحالة</th>
+                    <th>إجراءات</th>
+                </tr>
         </x-slot:head>
         @forelse ($scales as $scale)
             <tr wire:key="scale-{{ $scale->id }}">
                 <td>{{ $scale->name_ar }}</td>
                 <td>{{ count($scale->grades ?? []) }}</td>
+                <td class="ds-ltr-num">{{ $scale->profiles_count }}</td>
                 <td>
                     <span class="ds-badge {{ $scale->is_active ? 'ds-badge-success' : 'ds-badge-pending' }}">
                         {{ $scale->is_active ? 'مفعّل' : 'معطّل' }}
@@ -31,7 +33,7 @@
             </tr>
         @empty
             <tr>
-                <td colspan="4" class="ds-text-muted ds-table-empty">لا يوجد سلالم رواتب</td>
+                    <td colspan="5" class="ds-text-muted ds-table-empty">لا يوجد سلالم رواتب</td>
             </tr>
         @endforelse
     </x-ds-table>

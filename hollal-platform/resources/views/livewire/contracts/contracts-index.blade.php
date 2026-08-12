@@ -1,11 +1,6 @@
 <x-ds-page>
     @php
-        $statusLabels = [
-            'active' => 'ساري',
-            'expired' => 'منتهٍ',
-            'terminated' => 'مُنهى',
-            'pending' => 'قيد الانتظار',
-        ];
+        $statusLabels = \App\Models\Contract::STATUS_LABELS;
     @endphp
 
     <x-ds-page-header
@@ -54,8 +49,11 @@
                     <td>{{ $statusLabels[$contract->status] ?? $contract->status }}</td>
                     <td>
                         @if ($contract->contract_file)
+                            <a class="ds-link" href="{{ route('contracts.files.download', $contract) }}?inline=1" target="_blank" rel="noopener">
+                                معاينة PDF
+                            </a>
                             <a class="ds-link" href="{{ route('contracts.files.download', $contract) }}">
-                                <i class="fas fa-download"></i> تحميل
+                                تحميل
                             </a>
                         @else
                             <span class="ds-text-muted">—</span>
@@ -71,6 +69,12 @@
                             :delete-action="'delete('.$contract->id.')'"
                             delete-confirm="حذف هذا العقد؟"
                         />
+                        @can('update', $contract)
+                            <div class="ds-toolbar-actions">
+                                <input type="date" class="ds-input" wire:model="renewEndDate" aria-label="تاريخ نهاية التجديد">
+                                <button type="button" class="ds-link" wire:click="renew({{ $contract->id }})">تجديد</button>
+                            </div>
+                        @endcan
                     </td>
                 </tr>
             @empty
@@ -128,6 +132,7 @@
                     @if (! $viewOnly)
                         <x-ds-form-group label="ملف العقد" :error="$errors->first('contractFile')">
                             <input type="file" class="ds-input" wire:model="contractFile" accept=".pdf,.doc,.docx">
+                            <div wire:loading wire:target="contractFile" class="ds-text-muted">جاري رفع الملف…</div>
                             @if ($existingContractFile)
                                 <p class="ds-text-muted ds-mt-sm">ملف محفوظ — رفع ملف جديد لاستبداله</p>
                             @endif

@@ -14,6 +14,8 @@ use Illuminate\Support\Facades\DB;
  */
 class SalaryService
 {
+    public const REGULAR_TYPE = 'دوام_كامل';
+
     public function edit(SalaryComponent $component, array $attributes): SalaryComponent
     {
         return DB::transaction(function () use ($component, $attributes) {
@@ -41,7 +43,7 @@ class SalaryService
             throw new \InvalidArgumentException('الدرجة غير موجودة في سلم الرواتب.');
         }
 
-        return DB::transaction(function () use ($employee, $grade, $gradeLabel) {
+        return DB::transaction(function () use ($employee, $grade, $gradeLabel, $scale) {
             SalaryComponent::query()
                 ->where('employee_id', $employee->id)
                 ->where('type', SalaryComponent::TYPE_BASE)
@@ -50,6 +52,15 @@ class SalaryService
                     'valid_to' => today()->subDay(),
                     'is_active' => false,
                 ]);
+
+            $profile = $employee->profile()->firstOrCreate(
+                ['user_id' => $employee->id],
+                ['job_title' => $employee->name],
+            );
+            $profile->forceFill([
+                'pay_scale_id' => $scale->id,
+                'grade_label' => $gradeLabel,
+            ])->save();
 
             return SalaryComponent::create([
                 'employee_id' => $employee->id,
@@ -60,5 +71,58 @@ class SalaryService
                 'is_active' => true,
             ]);
         });
+    }
+
+    /**
+     * Time: O(1) | Space: O(1)
+     */
+    public function addComponent(User $employee, string $type, string $labelAr, float $amount): SalaryComponent
+    {
+        if ($type === SalaryComponent::TYPE_DEDUCTION && ! $this->isRegularEmployee($employee)) {
+            throw new \InvalidArgumentException('الخصم الثابت متاح للموظف النظامي (دوام كامل) فقط.');
+        }
+
+        return SalaryComponent::create([
+            'employee_id' => $employee->id,
+            'type' => $type,
+            'label_ar' => $labelAr,
+            'amount' => $amount,
+            'valid_from' => today(),
+            'is_active' => true,
+        ]);
+    }
+
+    /**
+     * Monthly salary derived from effective components.
+     * Time: O(c) components | Space: O(1)
+     *
+     * @return array{base: float, allowances: float, deductions: float, monthly: float}
+     */
+    public function monthlyFromComponents(User $employee): array
+    {
+        $components = SalaryComponent::query()
+            ->where('employee_id', $employee->id)
+            ->effectiveOn(today())
+            ->get(['type', 'amount']);
+
+        $base = (float) $components->where('type', SalaryComponent::TYPE_BASE)->sum('amount');
+        $allowances = (float) $components->where('type', SalaryComponent::TYPE_ALLOWANCE)->sum('amount');
+        $deductions = $this->isRegularEmployee($employee)
+            ? (float) $components->where('type', SalaryComponent::TYPE_DEDUCTION)->sum('amount')
+            : 0.0;
+
+        return [
+            'base' => $base,
+            'allowances' => $allowances,
+            'deductions' => $deductions,
+            'monthly' => $base + $allowances - $deductions,
+        ];
+    }
+
+    public function isRegularEmployee(User $employee): bool
+    {
+        $type = $employee->profile?->employment_type;
+
+        return $type === null || $type === self::REGULAR_TYPE;
     }
 }

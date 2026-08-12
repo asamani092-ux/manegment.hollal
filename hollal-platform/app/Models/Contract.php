@@ -19,6 +19,14 @@ class Contract extends Model
     /** @var list<string> */
     public const STATUSES = ['active', 'expired', 'terminated', 'pending'];
 
+    /** @var array<string, string> */
+    public const STATUS_LABELS = [
+        'active' => 'ساري',
+        'expired' => 'منتهي',
+        'terminated' => 'مكتمل',
+        'pending' => 'معلق',
+    ];
+
     protected $fillable = [
         'employee_id',
         'start_date',
@@ -26,6 +34,7 @@ class Contract extends Model
         'value',
         'contract_file',
         'status',
+        'renewal_history',
     ];
 
     protected function casts(): array
@@ -34,7 +43,13 @@ class Contract extends Model
             'start_date' => 'date',
             'end_date' => 'date',
             'value' => 'decimal:2',
+            'renewal_history' => 'array',
         ];
+    }
+
+    public function statusLabel(): string
+    {
+        return self::STATUS_LABELS[$this->status] ?? $this->status;
     }
 
     /** @return BelongsTo<User, $this> */

@@ -72,12 +72,14 @@
                         </span>
                     </td>
                     <td>
+                        @can('hr.employees.update')
+                            <button type="button" class="ds-link" wire:click="openEditModal({{ $user->id }})">تعديل</button>
+                        @endcan
                         <x-ds-action-icons
                             :show-view="true"
-                            :show-edit="auth()->user()->can('hr.employees.update')"
+                            :show-edit="false"
                             :show-delete="auth()->user()->can('hr.employees.delete')"
                             :view-action="'openViewModal('.$user->id.')'"
-                            :edit-action="'openEditModal('.$user->id.')'"
                             :delete-action="'delete('.$user->id.')'"
                             delete-confirm="حذف هذا المستخدم؟"
                         />

@@ -5,6 +5,7 @@ namespace App\Livewire\Contracts;
 use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\Contract;
 use App\Models\User;
+use App\Services\ContractService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Storage;
@@ -43,6 +44,8 @@ class ContractsIndex extends Component
     public ?TemporaryUploadedFile $contractFile = null;
 
     public ?string $existingContractFile = null;
+
+    public string $renewEndDate = '';
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -139,7 +142,11 @@ class ContractsIndex extends Component
 
         $this->showModal = false;
         $this->resetForm();
-        $this->dispatch('toast', type: 'success', message: $isEdit ? 'تم تحديث العقد' : 'تم إنشاء العقد');
+        $message = $isEdit ? 'تم تحديث العقد' : 'تم إنشاء العقد';
+        if ($this->contractFile) {
+            $message .= ' — تم رفع ملف العقد';
+        }
+        $this->dispatch('toast', type: 'success', message: $message);
     }
 
     public function delete(int $id): void
@@ -148,6 +155,27 @@ class ContractsIndex extends Component
         $this->authorize('delete', $contract);
         $contract->delete();
         $this->dispatch('toast', type: 'success', message: 'تم حذف العقد');
+    }
+
+    public function renew(int $id): void
+    {
+        $contract = Contract::findOrFail($id);
+        $this->authorize('update', $contract);
+
+        $this->validate([
+            'renewEndDate' => 'required|date',
+        ]);
+
+        try {
+            app(ContractService::class)->renew($contract, $this->renewEndDate, auth()->user());
+        } catch (\InvalidArgumentException $e) {
+            $this->addError('renewEndDate', $e->getMessage());
+
+            return;
+        }
+
+        $this->renewEndDate = '';
+        $this->dispatch('toast', type: 'success', message: 'مُدّد العقد وسُجّلت فترة التجديد');
     }
 
     public function closeModal(): void
@@ -220,6 +248,7 @@ class ContractsIndex extends Component
                 ->paginate(10),
             'employees' => User::query()->select(['id', 'name'])->orderBy('name')->get(),
             'statusOptions' => Contract::STATUSES,
+            'statusLabels' => Contract::STATUS_LABELS,
             'canViewValue' => $this->canViewValue(),
         ])->layout('layouts.app', ['title' => 'العقود']);
     }

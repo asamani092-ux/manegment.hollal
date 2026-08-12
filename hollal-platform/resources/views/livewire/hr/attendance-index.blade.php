@@ -1,6 +1,12 @@
 <x-ds-page>
     <x-ds-page-header title="الحضور والإجازات" :show-button="false" />
 
+    <p class="ds-text-muted ds-mb-3">إقرار إداري ليوم العمل (حضور / عن بعد / تكليف / انقطاع). لا يُخصم الراتب آليًا منه. الساعات الإضافية تُسحب إلى المسير عند التوليد للموظفين المفعَّل لهم البرنامج من الملف الوظيفي.</p>
+
+    @if (! $attendanceEnabled)
+        <p class="ds-badge ds-badge-warning ds-mb-3">برنامج الحضور غير مفعّل لحسابك. يفعّله مسؤول الموارد من الملف الوظيفي لموظفين محددين.</p>
+    @endif
+
     @if ($attendanceEnabled)
         <div class="ds-card ds-mb-3 ds-toolbar-actions">
             <button type="button" class="ds-btn ds-btn-primary" wire:click="checkIn">تسجيل حضور</button>

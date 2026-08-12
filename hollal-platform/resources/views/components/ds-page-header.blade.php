@@ -17,7 +17,9 @@
         @endif
         <h1 class="ds-page-title">{{ $title }}</h1>
     </div>
-    @if ($showButton && ($buttonPermission === null || auth()->user()->can($buttonPermission)))
+    @if (isset($actions))
+        <div class="ds-toolbar-actions">{{ $actions }}</div>
+    @elseif ($showButton && ($buttonPermission === null || auth()->user()->can($buttonPermission)))
         <button type="button" {{ $attributes->merge(['class' => 'ds-btn ds-btn-primary']) }}>
             <i class="fas {{ $buttonIcon }}"></i> {{ $buttonLabel }}
         </button>

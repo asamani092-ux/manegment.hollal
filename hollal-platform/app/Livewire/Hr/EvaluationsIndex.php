@@ -29,6 +29,13 @@ class EvaluationsIndex extends Component
 
     public string $search = '';
 
+    public ?int $scoringId = null;
+
+    /** @var array<int, array{score: string, note: string}> */
+    public array $scoreInputs = [];
+
+    public string $employeeComment = '';
+
     /** @var array<string, array<string, string>> */
     protected $queryString = [
         'statusFilter' => ['except' => ''],
@@ -103,6 +110,77 @@ class EvaluationsIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'تم نشر التقييم');
     }
 
+    public function openScoring(int $id): void
+    {
+        $evaluation = PeriodicEvaluation::with('employee')->findOrFail($id);
+        abort_unless(
+            auth()->user()->can('hr.employees.update')
+            || $evaluation->evaluator_id === auth()->id()
+            || $evaluation->employee_id === auth()->id(),
+            403
+        );
+
+        $this->scoringId = $id;
+        $this->employeeComment = (string) ($evaluation->employee_comment ?? '');
+        $responsibilities = \App\Models\Responsibility::query()
+            ->where('employee_id', $evaluation->employee_id)
+            ->active()
+            ->orderBy('order')
+            ->get();
+        $existing = $evaluation->scores()->get()->keyBy('responsibility_id');
+        $this->scoreInputs = [];
+        foreach ($responsibilities as $item) {
+            $this->scoreInputs[$item->id] = [
+                'score' => (string) ($existing[$item->id]->score ?? ''),
+                'note' => (string) ($existing[$item->id]->note ?? ''),
+            ];
+        }
+    }
+
+    public function saveScores(): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update') || PeriodicEvaluation::findOrFail($this->scoringId)->evaluator_id === auth()->id(), 403);
+
+        $evaluation = PeriodicEvaluation::findOrFail($this->scoringId);
+        $service = app(EvaluationService::class);
+
+        foreach ($this->scoreInputs as $responsibilityId => $input) {
+            if ($input['score'] === '') {
+                continue;
+            }
+            $this->validate([
+                "scoreInputs.$responsibilityId.score" => 'integer|min:1|max:5',
+                "scoreInputs.$responsibilityId.note" => 'nullable|string|max:500',
+            ]);
+            $service->recordScore(
+                $evaluation,
+                \App\Models\Responsibility::findOrFail($responsibilityId),
+                (int) $input['score'],
+                $input['note'] !== '' ? $input['note'] : null,
+            );
+        }
+
+        $this->dispatch('toast', type: 'success', message: 'حُفظت الدرجات');
+    }
+
+    public function saveComment(): void
+    {
+        $evaluation = PeriodicEvaluation::findOrFail($this->scoringId);
+        abort_unless($evaluation->employee_id === auth()->id(), 403);
+
+        $this->validate(['employeeComment' => 'required|string|max:2000']);
+
+        try {
+            app(EvaluationService::class)->addEmployeeComment($evaluation, $this->employeeComment);
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
+        $this->dispatch('toast', type: 'success', message: 'سُجّل تعليقك');
+    }
+
     public function render(): View
     {
         $query = PeriodicEvaluation::query()
@@ -128,6 +206,16 @@ class EvaluationsIndex extends Component
             'periods' => PeriodicEvaluation::query()->distinct()->orderByDesc('period')->pluck('period'),
             'employees' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'canManage' => auth()->user()->can('hr.employees.update'),
+            'scoringEvaluation' => $this->scoringId
+                ? PeriodicEvaluation::with(['employee:id,name', 'scores'])->find($this->scoringId)
+                : null,
+            'scoringResponsibilities' => $this->scoringId
+                ? \App\Models\Responsibility::query()
+                    ->where('employee_id', PeriodicEvaluation::find($this->scoringId)?->employee_id)
+                    ->active()
+                    ->orderBy('order')
+                    ->get()
+                : collect(),
         ]);
     }
 }
