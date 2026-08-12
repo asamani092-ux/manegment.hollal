@@ -2,7 +2,7 @@
     <x-ds-page-header :title="$organization->name" :back-url="route('organizations.index')" back-label="رجوع" />
 
     <section class="ds-section">
-        <p>النوع: {{ $organization->type ?? '—' }} — المدينة: {{ $organization->city ?? '—' }}</p>
+        <p>النوع: {{ $organization->typeLabel() }} — المدينة: {{ $organization->city ?? '—' }}</p>
         <p>الأدوار: {{ $organization->roles ? implode('، ', $organization->roles) : '—' }}</p>
         <p class="ds-text-muted">{{ $organization->notes }}</p>
     </section>
@@ -56,8 +56,14 @@
             </x-slot:head>
             @forelse ($projects as $project)
                 <tr wire:key="org-project-{{ $project->id }}">
-                    <td>{{ $project->name }}</td>
-                    <td>{{ $project->status ?? '—' }}</td>
+                    <td>
+                        @can('projects.view')
+                            <a class="ds-link" href="{{ route('projects.show', $project->id) }}">{{ $project->name }}</a>
+                        @else
+                            {{ $project->name }}
+                        @endcan
+                    </td>
+                    <td>{{ $project->statusLabel() }}</td>
                 </tr>
             @empty
                 <tr><td colspan="2" class="ds-text-muted ds-table-empty">لا توجد مشاريع</td></tr>

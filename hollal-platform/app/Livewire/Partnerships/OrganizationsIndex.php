@@ -31,6 +31,8 @@ class OrganizationsIndex extends Component
 
     public ?string $type = null;
 
+    public ?string $typeOther = null;
+
     public ?string $city = null;
 
     public ?string $notes = null;
@@ -69,6 +71,7 @@ class OrganizationsIndex extends Component
         $this->editingId = $organization->id;
         $this->name = $organization->name;
         $this->type = $organization->type;
+        $this->typeOther = $organization->type_other;
         $this->city = $organization->city;
         $this->notes = $organization->notes;
         $this->roles = $organization->roles ?? [];
@@ -82,16 +85,26 @@ class OrganizationsIndex extends Component
         $data = $this->validate([
             'name' => 'required|string|max:255',
             'type' => 'nullable|in:'.implode(',', self::TYPES),
+            'typeOther' => 'required_if:type,أخرى|nullable|string|max:100',
             'city' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'roles' => 'array',
             'roles.*' => 'in:'.implode(',', self::ROLES),
-        ], [], ['name' => 'اسم الجهة']);
+        ], [], ['name' => 'اسم الجهة', 'typeOther' => 'النوع الآخر']);
+
+        $payload = [
+            'name' => $data['name'],
+            'type' => $data['type'] ?? null,
+            'type_other' => ($data['type'] ?? null) === 'أخرى' ? $data['typeOther'] : null,
+            'city' => $data['city'] ?? null,
+            'notes' => $data['notes'] ?? null,
+            'roles' => $data['roles'] ?? [],
+        ];
 
         if ($this->editingId) {
-            Organization::findOrFail($this->editingId)->update($data);
+            Organization::findOrFail($this->editingId)->update($payload);
         } else {
-            Organization::create($data);
+            Organization::create($payload);
         }
 
         $this->showModal = false;
@@ -129,6 +142,7 @@ class OrganizationsIndex extends Component
         $this->editingId = null;
         $this->name = '';
         $this->type = null;
+        $this->typeOther = null;
         $this->city = null;
         $this->notes = null;
         $this->roles = [];

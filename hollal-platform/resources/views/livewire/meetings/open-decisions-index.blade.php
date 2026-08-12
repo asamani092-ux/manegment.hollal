@@ -3,11 +3,7 @@
         $itemStatusLabels = ['open' => 'مفتوح', 'in_progress' => 'قيد التنفيذ', 'done' => 'منجز'];
     @endphp
 
-    <x-ds-page-header title="قرارات مفتوحة" />
-
-    <div class="ds-page-toolbar">
-        <a href="{{ route('meetings.index') }}" class="ds-link"><i class="fas fa-arrow-right"></i> العودة للاجتماعات</a>
-    </div>
+    <x-ds-page-header title="قرارات مفتوحة" :back-url="route('meetings.index')" back-label="رجوع" />
 
     <div class="ds-filters-row">
         <div class="ds-filter-field">
@@ -27,6 +23,7 @@
                     <th>تاريخ الاستحقاق</th>
                     <th>الحالة</th>
                     <th>المهمة</th>
+                    <th>إجراءات</th>
                 </tr>
             </x-slot:head>
             @forelse ($decisions as $item)
@@ -48,14 +45,30 @@
                             <span class="ds-text-muted">لم تُحوَّل بعد</span>
                         @endif
                     </td>
+                    <td>
+                        @can('meetings.update')
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="openClose({{ $item->id }})">إغلاق</button>
+                        @endcan
+                    </td>
                 </tr>
             @empty
                 <tr>
-                    <td colspan="7" class="ds-text-muted ds-table-empty">لا توجد قرارات مفتوحة</td>
+                    <td colspan="8" class="ds-text-muted ds-table-empty">لا توجد قرارات مفتوحة</td>
                 </tr>
             @endforelse
         </x-ds-table>
     </div>
 
     {{ $decisions->links() }}
+
+    <x-ds-modal :show="$showCloseModal">
+        <x-slot:header><h2>إغلاق القرار</h2></x-slot:header>
+        <x-ds-form-group label="سبب الإغلاق" :error="$errors->first('closeReason')">
+            <textarea class="ds-input" wire:model="closeReason" rows="3"></textarea>
+        </x-ds-form-group>
+        <x-slot:footer>
+            <button type="button" class="ds-btn" wire:click="$set('showCloseModal', false)">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="closeDecision">إغلاق</button>
+        </x-slot:footer>
+    </x-ds-modal>
 </x-ds-page>

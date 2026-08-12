@@ -130,7 +130,7 @@
                         <th>المشروع</th>
                         <th>الحالة</th>
                         <th>المبلغ</th>
-                        <th>رابط الضيف</th>
+                        <th>بوابة الشريك</th>
                         <th>إجراءات</th>
                     </tr>
                 </x-slot:head>
@@ -141,10 +141,13 @@
                         <td>{{ $partnershipStatusLabels[$partnership->status] ?? $partnership->status }}</td>
                         <td>{{ $partnership->pricing_amount !== null ? number_format((float) $partnership->pricing_amount, 2) : '—' }}</td>
                         <td>
-                            @if ($partnership->magic_link_token && $partnership->token_expires_at?->isFuture())
-                                <a class="ds-link" href="{{ route('partnership.guest', $partnership->magic_link_token) }}" target="_blank" rel="noopener">فتح</a>
+                            @php
+                                $portalLink = $partnership->links->first(fn ($link) => $link->isUsable());
+                            @endphp
+                            @if ($portalLink)
+                                <a class="ds-link" href="{{ route('partner.portal', $portalLink->token) }}" target="_blank" rel="noopener">فتح</a>
                             @else
-                                <span class="ds-text-muted">منتهي</span>
+                                <span class="ds-text-muted">لا يوجد رابط ساري</span>
                             @endif
                         </td>
                         <td>

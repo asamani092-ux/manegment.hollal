@@ -151,3 +151,19 @@
 
 لا دمج `main`.
 
+---
+
+## الدفعة 3 — PART + MEET — `fix/report-round-1`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| PART-1 | نوع «أخرى» يظهر حقل نص حر `type_other` | ReportRound1PartMeetTest |
+| PART-2 | `Project::STATUS_LABELS` + زر رجوع في ملف المشروع وصفحة الجهة | ReportRound1PartMeetTest |
+| PART-3 | قسم «عقد الشراكة» ظاهر بلا شرط مرحلة — لا إعادة بناء | assertSee |
+| PART-4 | بريد للجهة عند نقل المرحلة (سائق log) | Notification::assertSentOnDemand |
+| PART-5 | حُذف `PartnershipGuestView` ومسار الضيف · بوابة الشريك فقط | PartnershipMagicLinkTest |
+| MEET-1 | إغلاق يدوي بسبب · إغلاق تلقائي عند اكتمال المهمة | ReportRound1PartMeetTest + TaskLifecycleTest |
+
+لا دمج `main`.
+
+

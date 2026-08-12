@@ -17,6 +17,12 @@ class OpenDecisionsIndex extends Component
 
     public string $search = '';
 
+    public bool $showCloseModal = false;
+
+    public ?int $closingId = null;
+
+    public string $closeReason = '';
+
     protected $queryString = ['search' => ['except' => '']];
 
     public function mount(): void
@@ -27,6 +33,38 @@ class OpenDecisionsIndex extends Component
     public function updatingSearch(): void
     {
         $this->resetPage();
+    }
+
+    public function openClose(int $id): void
+    {
+        $this->authorize('meetings.update');
+        $this->closingId = $id;
+        $this->closeReason = '';
+        $this->showCloseModal = true;
+    }
+
+    public function closeDecision(): void
+    {
+        $this->authorize('meetings.update');
+
+        $this->validate([
+            'closeReason' => 'required|string|max:255',
+        ], [], ['closeReason' => 'سبب الإغلاق']);
+
+        $item = MeetingItem::query()
+            ->where('status', '!=', 'done')
+            ->findOrFail($this->closingId);
+
+        $item->update([
+            'status' => 'done',
+            'close_reason' => $this->closeReason,
+            'closed_at' => now(),
+        ]);
+
+        $this->showCloseModal = false;
+        $this->closingId = null;
+        $this->closeReason = '';
+        $this->dispatch('ds-toast', message: 'أُغلق القرار');
     }
 
     public function render(): View

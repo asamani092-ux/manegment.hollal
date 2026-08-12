@@ -391,8 +391,11 @@ class ProjectsIndex extends Component
             ->paginate(8, pageName: 'projectsPage');
 
         $partnerships = Partnership::query()
-            ->select(['id', 'entity_name', 'contact_person', 'status', 'project_id', 'magic_link_token', 'token_expires_at', 'pricing_amount'])
-            ->with(['project:id,name'])
+            ->select(['id', 'entity_name', 'contact_person', 'status', 'project_id', 'pricing_amount'])
+            ->with([
+                'project:id,name',
+                'links' => fn ($q) => $q->where('is_revoked', false)->orderByDesc('id'),
+            ])
             ->when($this->partnershipSearch, fn ($q) => $q->where('entity_name', 'like', '%'.$this->partnershipSearch.'%'))
             ->latest()
             ->paginate(8, pageName: 'partnershipsPage');

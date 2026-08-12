@@ -31,7 +31,7 @@
         @forelse ($organizations as $organization)
             <tr wire:key="organization-{{ $organization->id }}">
                 <td><a href="{{ route('organizations.show', $organization->id) }}">{{ $organization->name }}</a></td>
-                <td>{{ $organization->type ?? '—' }}</td>
+                <td>{{ $organization->typeLabel() }}</td>
                 <td>{{ $organization->city ?? '—' }}</td>
                 <td>{{ $organization->roles ? implode('، ', $organization->roles) : '—' }}</td>
                 <td class="ds-ltr-num">{{ $organization->partnerships_count }}</td>
@@ -57,13 +57,19 @@
         </x-ds-form-group>
 
         <x-ds-form-group label="النوع" :error="$errors->first('type')">
-            <select class="ds-input" wire:model="type">
+            <select class="ds-input" wire:model.live="type">
                 <option value="">—</option>
                 @foreach ($types as $option)
                     <option value="{{ $option }}">{{ $option }}</option>
                 @endforeach
             </select>
         </x-ds-form-group>
+
+        @if ($type === 'أخرى')
+            <x-ds-form-group label="تحديد النوع" :error="$errors->first('typeOther')">
+                <input type="text" class="ds-input" wire:model="typeOther" placeholder="اكتب نوع الجهة">
+            </x-ds-form-group>
+        @endif
 
         <x-ds-form-group label="المدينة" :error="$errors->first('city')">
             <input type="text" class="ds-input" wire:model="city">

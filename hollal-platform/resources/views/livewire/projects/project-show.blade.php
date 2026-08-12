@@ -1,6 +1,5 @@
 <x-ds-page>
     @php
-        $statusLabels = ['active' => 'نشط', 'completed' => 'مكتمل', 'on_hold' => 'متوقف'];
         $expenseStatusLabels = [
             'draft' => 'مسودة',
             'pending' => 'قيد المراجعة',
@@ -24,13 +23,8 @@
         ];
     @endphp
 
-    <div class="ds-page-toolbar">
-        <div>
-            <a href="{{ route('projects.index') }}" class="ds-link"><i class="fas fa-arrow-right"></i> العودة للمشاريع</a>
-            <h1 class="ds-page-title">{{ $project->name }}</h1>
-            <p class="ds-text-muted">{{ $statusLabels[$project->status] ?? $project->status }}</p>
-        </div>
-    </div>
+    <x-ds-page-header :title="$project->name" :back-url="route('projects.index')" back-label="رجوع" />
+    <p class="ds-text-muted">{{ $project->statusLabel() }}</p>
 
     <nav class="ds-tabs" aria-label="تبويبات المشروع">
         @foreach ($tabs as $key => $label)

@@ -22,6 +22,8 @@ class MeetingItem extends Model
         'responsible_id',
         'due_date',
         'status',
+        'close_reason',
+        'closed_at',
         'task_id',
     ];
 
@@ -29,6 +31,7 @@ class MeetingItem extends Model
     {
         return [
             'due_date' => 'date',
+            'closed_at' => 'datetime',
         ];
     }
 

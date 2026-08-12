@@ -18,6 +18,13 @@ class Project extends Model
     use HasFactory;
     use SoftDeletes;
 
+    /** @var array<string, string> */
+    public const STATUS_LABELS = [
+        'active' => 'نشط',
+        'completed' => 'مكتمل',
+        'on_hold' => 'متوقف',
+    ];
+
     protected $fillable = [
         'name',
         'partnership_id',
@@ -165,5 +172,10 @@ class Project extends Model
     public function isClosed(): bool
     {
         return $this->closed_at !== null;
+    }
+
+    public function statusLabel(): string
+    {
+        return self::STATUS_LABELS[$this->status] ?? (string) ($this->status ?? '—');
     }
 }

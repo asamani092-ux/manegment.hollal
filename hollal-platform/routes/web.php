@@ -22,7 +22,6 @@ use App\Livewire\Departments\DepartmentsIndex;
 use App\Livewire\Meetings\MeetingMinutes;
 use App\Livewire\Meetings\MeetingsIndex;
 use App\Livewire\Meetings\OpenDecisionsIndex;
-use App\Livewire\Partnerships\PartnershipGuestView;
 use App\Livewire\Payroll\PayrollIndex;
 use App\Livewire\Projects\ProjectShow;
 use App\Livewire\Projects\ProjectsIndex;
@@ -41,8 +40,6 @@ use App\Livewire\Users\UsersIndex;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('login'));
-
-Route::get('/partnership/guest/{token}', PartnershipGuestView::class)->name('partnership.guest');
 
 // 05-B5 — the unique partner link portal: token-scoped, rate-limited, fully logged.
 Route::middleware('throttle:portal')->group(function () {
