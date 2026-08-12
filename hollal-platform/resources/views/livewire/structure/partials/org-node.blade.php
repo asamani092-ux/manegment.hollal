@@ -1,5 +1,5 @@
 {{-- 09-B1 — one node of the org chart, indented by depth. --}}
-<tr wire:key="org-node-{{ $node->id }}">
+<tr wire:key="org-node-{{ $node->id }}" style="border-inline-start: 4px solid {{ $adminColor ?? '#0F3446' }}">
     <td style="padding-inline-start: {{ $depth * 18 }}px">{{ $node->name }}</td>
     <td>{{ $node->level }}</td>
     <td>{{ $node->manager?->name ?? '—' }}</td>
@@ -19,5 +19,5 @@
 </tr>
 
 @foreach ($node->children as $child)
-    @include('livewire.structure.partials.org-node', ['node' => $child, 'depth' => $depth + 1])
+    @include('livewire.structure.partials.org-node', ['node' => $child, 'depth' => $depth + 1, 'adminColor' => $adminColor ?? '#0F3446'])
 @endforeach

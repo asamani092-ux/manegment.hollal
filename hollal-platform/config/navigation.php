@@ -102,8 +102,6 @@ return [
             'items' => [
                 ['label' => 'الأقسام', 'route' => 'departments.index', 'icon' => 'fa-sitemap', 'permission' => 'structure.departments.view'],
                 ['label' => 'الهيكل التنظيمي', 'route' => 'structure.org-tree', 'icon' => 'fa-network-wired', 'permission' => 'structure.view|structure.departments.view|structure.manage'],
-                ['label' => 'الوظائف', 'route' => 'structure.jobs', 'icon' => 'fa-id-badge', 'permission' => 'structure.positions.manage|structure.view'],
-                ['label' => 'اللجان', 'route' => 'structure.committees', 'icon' => 'fa-users-cog', 'permission' => 'structure.committees.manage|structure.view'],
             ],
         ],
         [

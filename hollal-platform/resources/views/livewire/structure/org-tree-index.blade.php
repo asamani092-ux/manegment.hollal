@@ -3,6 +3,7 @@
 
     <section class="ds-section ds-filter-bar">
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'tree')">الشجرة</button>
+        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'jobs')">الوظائف</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'transfers')">النقل</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'committees')">اللجان</button>
         @can('structure.departments.create')
@@ -17,7 +18,11 @@
                     <tr><th>الوحدة</th><th>المستوى</th><th>المسؤول</th><th>الأعضاء</th><th>إجراءات</th></tr>
                 </x-slot:head>
                 @forelse ($tree as $root)
-                    @include('livewire.structure.partials.org-node', ['node' => $root, 'depth' => 0])
+                    @include('livewire.structure.partials.org-node', [
+                        'node' => $root,
+                        'depth' => 0,
+                        'adminColor' => $adminColors[$root->id] ?? '#0F3446',
+                    ])
                 @empty
                     <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا يوجد هيكل بعد</td></tr>
                 @endforelse
@@ -34,6 +39,35 @@
                         <li>{{ $responsibility }}</li>
                     @endforeach
                 </ul>
+            </section>
+        @endif
+    @endif
+
+    @if ($tab === 'jobs')
+        <section class="ds-section">
+            <x-ds-table>
+                <x-slot:head>
+                    <tr><th>الوظيفة</th><th>التابع لـ</th><th>المسؤول</th><th>الغرض</th><th>إجراءات</th></tr>
+                </x-slot:head>
+                @forelse ($jobs as $job)
+                    <tr wire:key="job-{{ $job->id }}">
+                        <td>{{ $job->name }}</td>
+                        <td>{{ $job->parent?->name ?? '—' }}</td>
+                        <td>{{ $job->manager?->name ?? '—' }}</td>
+                        <td>{{ $job->job_purpose ?? '—' }}</td>
+                        <td>
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="viewJobCard({{ $job->id }})">بطاقة الوظيفة</button>
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد وظائف</td></tr>
+                @endforelse
+            </x-ds-table>
+        </section>
+        @if ($jobCard)
+            <section class="ds-section">
+                <h2 class="ds-section-title">بطاقة الوظيفة — {{ $jobCard->name }}</h2>
+                <p>الغرض: {{ $jobCard->job_purpose ?? '—' }}</p>
             </section>
         @endif
     @endif

@@ -24,6 +24,8 @@ class GrantsIndex extends Component
 
     public ?int $roleId = null;
 
+    public string $roleQuery = '';
+
     /** @var list<string> */
     public array $selected = [];
 
@@ -46,6 +48,11 @@ class GrantsIndex extends Component
     public function selectRole(int $roleId): void
     {
         $this->roleId = $roleId;
+        $this->loadRole();
+    }
+
+    public function updatedRoleId(): void
+    {
         $this->loadRole();
     }
 
@@ -135,7 +142,10 @@ class GrantsIndex extends Component
     public function render(): View
     {
         return view('livewire.settings.grants-index', [
-            'roles' => Role::orderBy('id')->get(),
+            'roles' => Role::query()
+                ->orderBy('id')
+                ->when($this->roleQuery !== '', fn ($q) => $q->where('name', 'like', '%'.$this->roleQuery.'%'))
+                ->get(),
             'permissions' => collect(PermissionSeeder::PERMISSIONS)
                 ->groupBy(fn (string $p) => explode('.', $p, 2)[0]),
             'labels' => config('permission_labels.labels'),

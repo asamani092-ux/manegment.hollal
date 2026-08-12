@@ -9,11 +9,14 @@
 
     @if ($tab === 'roles')
         <section class="ds-section ds-filter-bar">
-            @foreach ($roles as $role)
-                <button type="button" class="ds-btn ds-btn-sm" wire:click="selectRole({{ $role->id }})">
-                    <x-ds-role-label :name="$role->name" />
-                </button>
-            @endforeach
+            <x-ds-form-group label="الدور">
+                <input type="search" class="ds-input" wire:model.live.debounce.200ms="roleQuery" placeholder="بحث عن دور...">
+                <select class="ds-input" wire:model.live="roleId">
+                    @foreach ($roles as $role)
+                        <option value="{{ $role->id }}">{{ $role->name }}</option>
+                    @endforeach
+                </select>
+            </x-ds-form-group>
         </section>
 
         <section class="ds-section">

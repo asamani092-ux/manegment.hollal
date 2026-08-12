@@ -38,13 +38,20 @@ class MailSetting extends Model
         return filled($this->host) && filled($this->port) && filled($this->from_address);
     }
 
+    public static function liveSendingEnabled(): bool
+    {
+        return filter_var(config('mail.smtp_live', false), FILTER_VALIDATE_BOOLEAN);
+    }
+
     /**
      * Apply this configuration to the runtime SMTP mailer so both interactive
      * and queued mail use the stored credentials.
+     *
+     * Live SMTP is gated until 13-B1 (`MAIL_SMTP_LIVE=true`). Signature unchanged.
      */
     public function applyToConfig(): void
     {
-        if (! $this->isConfigured()) {
+        if (! self::liveSendingEnabled() || ! $this->isConfigured()) {
             return;
         }
 

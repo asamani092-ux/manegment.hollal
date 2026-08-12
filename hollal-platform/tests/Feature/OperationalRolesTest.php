@@ -103,5 +103,44 @@ class OperationalRolesTest extends TestCase
 
         $this->actingAs($user)->get(route('payroll.index'))->assertForbidden();
         $this->actingAs($user)->get(route('settings.roles'))->assertForbidden();
+        $this->actingAs($user)->get(route('custodies.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('settings.grants'))->assertForbidden();
+    }
+
+    public function test_partnerships_manager_sees_pipeline_not_settings(): void
+    {
+        $routes = $this->visibleNavRoutes($this->makeUserForRole('Partnerships Manager', '0506666666'));
+
+        foreach (['dashboard', 'organizations.index', 'partnerships.pipeline', 'projects.index'] as $route) {
+            $this->assertContains($route, $routes);
+        }
+
+        $this->assertNotContains('settings.index', $routes);
+        $this->assertNotContains('payroll.index', $routes);
+    }
+
+    public function test_finance_cannot_open_roles_or_hr_lifecycle(): void
+    {
+        $user = $this->makeUserForRole('Finance', '0504444444');
+
+        $this->actingAs($user)->get(route('settings.roles'))->assertForbidden();
+        $this->actingAs($user)->get(route('hr-lifecycle.index'))->assertForbidden();
+    }
+
+    public function test_project_manager_cannot_open_payroll_or_smtp(): void
+    {
+        $user = $this->makeUserForRole('Project Manager', '0503333333');
+
+        $this->actingAs($user)->get(route('payroll.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('settings.notifications'))->assertForbidden();
+    }
+
+    public function test_jobs_and_committees_are_not_sidebar_entries(): void
+    {
+        $routes = $this->visibleNavRoutes($this->makeUserForRole('General Manager', '0501111111'));
+
+        $this->assertNotContains('structure.jobs', $routes);
+        $this->assertNotContains('structure.committees', $routes);
+        $this->assertContains('structure.org-tree', $routes);
     }
 }

@@ -1232,6 +1232,33 @@
   gap: 0.5rem;
 }
 
+.ds-field-hint {
+  margin: 0.35rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.ds-profile-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: var(--ds-bg);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius-md);
+}
+
+.ds-profile-head h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.ds-profile-head .ds-text-muted {
+  flex-basis: 100%;
+}
+
 @media print {
   .ds-no-print,
   .ds-sidebar,

@@ -185,5 +185,27 @@
 
 لا دمج `main`.
 
+---
+
+## الدفعة 5 — STRUCT / ROLE / SET / MOB — `fix/report-round-1`
+
+تغيير سلوك عام (التوقيع كما هو): `MailSetting::applyToConfig()` لا يطبّق SMTP إلا إذا `MAIL_SMTP_LIVE=true` (`config('mail.smtp_live')`). الحقول تُحفظ. زر الاختبار مخفي/موقوف حتى النشر (13-B1).
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| STRUCT-1 | `departments.owner_user_id` + اختيار مسؤول القسم | ReportRound1StructSetTest |
+| STRUCT-2 | حُذف «الوظائف» و«اللجان» من التنقّل · تبويبات داخل الهيكل · المسارات بقيت | OperationalRolesTest + OrgTreeIndex |
+| STRUCT-3 | لون مميز لكل إدارة في الشجرة (`border-inline-start`) | org-node + adminColors |
+| STRUCT-4 | `.ds-profile-head` في `components.css` | CSS |
+| ROLE-1 | توسيع صلاحيات الأدوار التشغيلية | OperationalRolesTest |
+| ROLE-2 | قائمة بحث منسدلة بدل أزرار الأدوار في GrantsIndex | ReportRound1StructSetTest |
+| SET-1 | تلميح عربي تحت كل حقل إعدادات (`ds-form-group` hint) | SettingsIndex::helpFor |
+| SET-2 | SMTP حفظ فقط حتى `MAIL_SMTP_LIVE` | ReportRound1StructSetTest + NotificationChannelsTest |
+| MOB-1 | `flex-shrink: 0` لأيقونة الحساب + `inset-inline-end` للقائمة | layout.css |
+| أدوات غير مجرّبة | فتح + CRUD دخان: متكررة · مستندات مالية · قوالب · نسخ · سياسات · إعدادات مالية | ReportRound1ToolsSmokeTest |
+| SMTP إرسال حقيقي | لا يُجرَّب | متعمّد |
+
+لا دمج `main`.
+
 
 

@@ -18,7 +18,7 @@ class OrgTreeIndex extends Component
 {
     use AuthorizesRequests;
 
-    public string $tab = 'tree'; // tree|transfers|committees
+    public string $tab = 'tree'; // tree|jobs|transfers|committees
 
     // unit form
     public bool $showUnitModal = false;
@@ -146,8 +146,10 @@ class OrgTreeIndex extends Component
 
     public function render(): View
     {
+        $tree = app(OrgStructureService::class)->tree();
+
         return view('livewire.structure.org-tree-index', [
-            'tree' => app(OrgStructureService::class)->tree(),
+            'tree' => $tree,
             'transfers' => \App\Models\EmployeeTransfer::with(['employee', 'fromUnit', 'toUnit'])
                 ->orderByDesc('id')->limit(50)->get(),
             'committees' => Committee::with(['chair', 'members'])->orderBy('name')->get(),
@@ -155,6 +157,29 @@ class OrgTreeIndex extends Component
             'units' => OrgUnit::orderBy('name')->get(['id', 'name', 'level']),
             'departments' => Department::orderBy('name')->get(['id', 'name']),
             'jobCard' => $this->viewingJobId ? OrgUnit::find($this->viewingJobId) : null,
+            'jobs' => OrgUnit::query()
+                ->where('level', OrgUnit::LEVEL_JOB)
+                ->with(['parent:id,name', 'manager:id,name'])
+                ->orderBy('name')
+                ->get(['id', 'name', 'parent_id', 'manager_id', 'job_purpose']),
+            'adminColors' => $this->administrationColors($tree),
         ])->layout('layouts.app', ['title' => 'الهيكل التنظيمي']);
+    }
+
+    /**
+     * Distinct color per administration root. Time: O(n) | Space: O(n)
+     *
+     * @param  \Illuminate\Support\Collection<int, OrgUnit>  $tree
+     * @return array<int, string>
+     */
+    private function administrationColors($tree): array
+    {
+        $palette = ['#0F3446', '#1B6B93', '#2D6A4F', '#C45C26', '#6B4C9A', '#8B5A2B'];
+        $colors = [];
+        foreach ($tree as $index => $root) {
+            $colors[$root->id] = $palette[$index % count($palette)];
+        }
+
+        return $colors;
     }
 }

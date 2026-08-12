@@ -1,9 +1,11 @@
 <x-ds-page>
     <x-ds-page-header title="إعدادات الإشعارات والبريد (SMTP)" />
 
+    <p class="ds-text-muted ds-mb-3">تُحفظ الحقول فقط. الإرسال الحقيقي عبر SMTP مؤجّل حتى النشر (يتطلب MAIL_SMTP_LIVE).</p>
+
     <section class="ds-section">
         <form wire:submit="save">
-            <x-ds-form-group label="خادم البريد (Host)" for="mail-host" :error="$errors->first('host')">
+            <x-ds-form-group label="خادم البريد (Host)" for="mail-host" :error="$errors->first('host')" hint="عنوان خادم SMTP مثل smtp.example.com.">
                 <input type="text" id="mail-host" class="ds-input" wire:model="host" dir="ltr"
                        placeholder="smtp.example.com">
             </x-ds-form-group>
@@ -47,10 +49,14 @@
                     <i class="fas fa-save" aria-hidden="true"></i>
                     حفظ الإعدادات
                 </button>
-                <button type="button" class="ds-btn ds-btn-outline" wire:click="sendTest">
-                    <i class="fas fa-paper-plane" aria-hidden="true"></i>
-                    إرسال رسالة اختبار
-                </button>
+                @if (\App\Models\MailSetting::liveSendingEnabled())
+                    <button type="button" class="ds-btn ds-btn-outline" wire:click="sendTest">
+                        <i class="fas fa-paper-plane" aria-hidden="true"></i>
+                        إرسال رسالة اختبار
+                    </button>
+                @else
+                    <span class="ds-text-muted">زر الاختبار معطّل حتى تفعيل الإرسال الحقيقي.</span>
+                @endif
             </div>
         </form>
     </section>

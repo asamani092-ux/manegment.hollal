@@ -89,6 +89,12 @@ class MailSettingsIndex extends Component
     {
         $this->authorize('settings.notifications.manage');
 
+        if (! MailSetting::liveSendingEnabled()) {
+            $this->dispatch('toast', type: 'error', message: 'إرسال SMTP الحقيقي غير مفعّل حتى النشر. الحقول تُحفظ فقط.');
+
+            return;
+        }
+
         $settings = MailSetting::current();
 
         if (! $settings->isConfigured()) {
