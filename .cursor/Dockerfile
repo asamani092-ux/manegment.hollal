@@ -1,11 +1,8 @@
 FROM php:8.3-cli-bookworm
 
 RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
-    libzip-dev \
-    libsqlite3-dev \
-    sqlite3 \
+    git sudo ca-certificates unzip \
+    libzip-dev libonig-dev libsqlite3-dev sqlite3 \
     && docker-php-ext-install pdo_sqlite zip mbstring bcmath \
     && rm -rf /var/lib/apt/lists/*
 
