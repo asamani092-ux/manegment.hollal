@@ -1,5 +1,8 @@
 <x-ds-page>
-    <x-ds-page-header :title="'ملف الشراكة — '.($partnership->organization?->name ?? $partnership->entity_name ?? '#'.$partnership->id)" />
+    <x-ds-page-header
+        :title="'ملف الشراكة — '.($partnership->organization?->name ?? $partnership->entity_name ?? '#'.$partnership->id)"
+        :back-url="route('partnerships.pipeline')"
+        back-label="رجوع" />
 
     <section class="ds-section">
         <p>المرحلة الحالية: <strong>{{ $partnership->stageLabel() }}</strong> — منذ

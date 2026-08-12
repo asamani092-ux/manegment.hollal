@@ -27,7 +27,7 @@ class TaskDueSoon extends Notification implements ShouldQueue
 
         return [
             'message' => 'تستحق المهمة «'.$this->task->title.'» خلال يوم واحد'.($due ? ' ('.$due.')' : ''),
-            'url' => route('tasks.index'),
+            'url' => \App\Support\RecordUrl::task($this->task->id),
             'task_id' => $this->task->id,
         ];
     }

@@ -27,8 +27,7 @@ class ExpenseAwaitingApproval extends Notification implements ShouldQueue
             'message' => 'طلب مصروف جديد بانتظار الموافقة',
             'expense_request_id' => $this->expenseRequest->id,
             'amount' => (string) $this->expenseRequest->amount,
-            'requester_name' => $this->expenseRequest->requester?->name,
-            'project_name' => $this->expenseRequest->project?->name,
+            'url' => \App\Support\RecordUrl::expense($this->expenseRequest->id),
         ];
     }
 }

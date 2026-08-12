@@ -33,11 +33,14 @@ class LeavesIndex extends Component
 
     public string $search = '';
 
+    public ?int $open = null;
+
     /** @var array<string, array<string, string>> */
     protected $queryString = [
         'statusFilter' => ['except' => ''],
         'typeFilter' => ['except' => ''],
         'search' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function updatingStatusFilter(): void
@@ -64,6 +67,10 @@ class LeavesIndex extends Component
             || auth()->user()->can('hr.employees.view'),
             403
         );
+
+        if ($this->open) {
+            $this->search = (string) $this->open;
+        }
     }
 
     public function openForm(): void

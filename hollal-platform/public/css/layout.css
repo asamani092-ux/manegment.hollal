@@ -50,7 +50,7 @@
 }
 
 .ds-sidebar-toggle {
-  display: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 36px;
@@ -576,6 +576,32 @@
   margin-right: var(--ds-sidebar-width);
   padding: 1rem 1.25rem;
   min-width: 0;
+  transition: margin-right 0.25s ease;
+}
+
+@media (min-width: 769px) {
+  .ds-main-layout.is-sidebar-collapsed .ds-sidebar {
+    width: 56px;
+    overflow-x: hidden;
+  }
+
+  .ds-main-layout.is-sidebar-collapsed .ds-sidebar-label,
+  .ds-main-layout.is-sidebar-collapsed .ds-sidebar-group-label span,
+  .ds-main-layout.is-sidebar-collapsed .ds-sidebar-group-chevron,
+  .ds-main-layout.is-sidebar-collapsed .ds-sidebar-search,
+  .ds-main-layout.is-sidebar-collapsed .ds-sidebar-no-results {
+    display: none;
+  }
+
+  .ds-main-layout.is-sidebar-collapsed .ds-content {
+    margin-right: 56px;
+  }
+
+  .ds-main-layout.is-sidebar-collapsed .ds-sidebar-item {
+    justify-content: center;
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
 }
 
 /* ── Login Layout ── */

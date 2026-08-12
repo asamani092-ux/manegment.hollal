@@ -70,10 +70,13 @@ class ExpensesIndex extends Component
 
     public string $rejectionReason = '';
 
+    public ?int $open = null;
+
     protected $queryString = [
         'activeTab' => ['except' => 'my'],
         'statusFilter' => ['except' => ''],
         'projectFilter' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function mount(): void
@@ -82,6 +85,10 @@ class ExpensesIndex extends Component
 
         if ($this->activeTab === 'all' && ! auth()->user()->can('finance.expenses.view')) {
             $this->activeTab = 'my';
+        }
+
+        if ($this->open) {
+            $this->openExpenseView($this->open);
         }
     }
 

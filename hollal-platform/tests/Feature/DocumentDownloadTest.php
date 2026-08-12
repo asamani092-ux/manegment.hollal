@@ -41,6 +41,7 @@ class DocumentDownloadTest extends TestCase
             'uploader_id' => $this->uploader->id,
             'project_id' => $project->id,
             'path' => 'documents/sample.pdf',
+            'title' => 'عقد الشراكة',
             'confidentiality' => 'team',
         ]);
     }
@@ -60,9 +61,12 @@ class DocumentDownloadTest extends TestCase
 
     public function test_uploader_can_download_document(): void
     {
-        $this->actingAs($this->uploader)
-            ->get(route('documents.files.download', $this->document))
-            ->assertOk()
-            ->assertDownload('sample.pdf');
+        $response = $this->actingAs($this->uploader)
+            ->get(route('documents.files.download', $this->document));
+
+        $response->assertOk();
+        $disposition = strtolower((string) $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString("filename*=utf-8''".strtolower(rawurlencode('عقد الشراكة.pdf')), $disposition);
+        $this->assertStringNotContainsString('sample.pdf', $disposition);
     }
 }

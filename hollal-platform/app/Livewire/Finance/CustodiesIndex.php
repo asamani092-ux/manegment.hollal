@@ -31,9 +31,12 @@ class CustodiesIndex extends Component
 
     public string $search = '';
 
+    public ?int $open = null;
+
     protected $queryString = [
         'statusFilter' => ['except' => ''],
         'search' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function updatingStatusFilter(): void
@@ -54,6 +57,10 @@ class CustodiesIndex extends Component
             || auth()->user()->can('finance.custodies.disburse'),
             403
         );
+
+        if ($this->open) {
+            $this->search = (string) $this->open;
+        }
     }
 
     public function openRequestModal(): void

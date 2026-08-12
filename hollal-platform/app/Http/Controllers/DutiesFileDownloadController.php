@@ -20,9 +20,12 @@ class DutiesFileDownloadController extends Controller
             abort(404);
         }
 
+        $filename = 'official-duties-v'.$document->version.'.pdf';
+
         return response()->streamDownload(
             fn () => print(Storage::disk('local')->get($document->file_path)),
-            'official-duties-v'.$document->version.'.pdf',
+            $filename,
+            ['Content-Disposition' => \App\Support\DownloadHeaders::contentDisposition($filename)],
         );
     }
 }

@@ -31,6 +31,10 @@ class TaskFileDownloadController extends Controller
 
         $this->auditFileDownload($type, $task);
 
-        return Storage::disk('local')->download($path);
+        $filename = basename($path);
+
+        return Storage::disk('local')->download($path, $filename, [
+            'Content-Disposition' => \App\Support\DownloadHeaders::contentDisposition($filename),
+        ]);
     }
 }

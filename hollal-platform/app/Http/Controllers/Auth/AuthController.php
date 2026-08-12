@@ -57,7 +57,7 @@ class AuthController extends Controller
 
         $this->auditLog->record('auth.login_success', actor: $request->user());
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->intended(route('dashboard'))->with('success', 'تم تسجيل الدخول بنجاح');
     }
 
     public function logout(Request $request): RedirectResponse

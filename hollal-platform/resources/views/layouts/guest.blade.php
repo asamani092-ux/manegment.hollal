@@ -18,6 +18,7 @@
             @endif
         </div>
     </div>
+    <x-ds-toast />
     @livewireScripts
 </body>
 </html>

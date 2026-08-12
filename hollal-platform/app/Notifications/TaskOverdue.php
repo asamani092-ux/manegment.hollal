@@ -31,7 +31,7 @@ class TaskOverdue extends Notification implements ShouldQueue
 
             return [
                 'message' => 'تنبيه: المهمة «'.$this->task->title.'» متأخرة لأكثر من 48 ساعة للموظف '.$assigneeName,
-                'url' => route('tasks.index'),
+                'url' => \App\Support\RecordUrl::task($this->task->id),
                 'task_id' => $this->task->id,
                 'escalation' => true,
             ];
@@ -39,7 +39,7 @@ class TaskOverdue extends Notification implements ShouldQueue
 
         return [
             'message' => 'المهمة «'.$this->task->title.'» متأخرة عن موعد الاستحقاق',
-            'url' => route('tasks.index'),
+            'url' => \App\Support\RecordUrl::task($this->task->id),
             'task_id' => $this->task->id,
         ];
     }

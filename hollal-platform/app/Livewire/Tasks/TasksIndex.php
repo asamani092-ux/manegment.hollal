@@ -62,15 +62,22 @@ class TasksIndex extends Component
     /** @var \Illuminate\Support\Collection<int, TaskNote> */
     public $taskNotes;
 
+    public ?int $open = null;
+
     protected $queryString = [
         'statusFilter' => ['except' => ''],
         'taskSearch' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function mount(): void
     {
         $this->authorize('esnad.tasks.view');
         $this->taskNotes = collect();
+
+        if ($this->open) {
+            $this->openTaskView($this->open);
+        }
     }
 
     public function updatingStatusFilter(): void

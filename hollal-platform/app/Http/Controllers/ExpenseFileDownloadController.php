@@ -24,6 +24,10 @@ class ExpenseFileDownloadController extends Controller
 
         $this->auditFileDownload('expense_attachment', $expenseRequest);
 
-        return Storage::disk('local')->download($expenseRequest->attachment);
+        $filename = basename($expenseRequest->attachment);
+
+        return Storage::disk('local')->download($expenseRequest->attachment, $filename, [
+            'Content-Disposition' => \App\Support\DownloadHeaders::contentDisposition($filename),
+        ]);
     }
 }

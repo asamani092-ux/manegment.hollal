@@ -96,3 +96,18 @@
 **تسليم نهائي للوكيل الرئيسي:** جاهز بعد جولة عبدالله اليدوية. **لا دمج main** من هذا الفرع حتى المراجعة النهائية.
 
 **ROADMAP (خارج النطاق):** KPI cache · API برامج · واتساب · CSP · ZATCA Phase B · قوالب needs_review
+
+---
+
+## الدفعة 0 — GEN — `fix/report-round-1`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| GEN-1 | المستمع يقبل `toast` و`ds-toast` · toast دخول · زر «جاري تسجيل الدخول» · `<x-ds-toast />` في guest | AuthTest + شاشة الدخول |
+| GEN-2 | روابط عميقة `?open=` للمهمة/الصرف/العهدة/الإجازة + ملف الشراكة | TaskNotificationTest |
+| GEN-3 | زر رجوع في partnership/organization/program show | بصري |
+| GEN-5 / DOC-1 | `DownloadHeaders` + عنوان المستند في التنزيل | DownloadHeadersTest |
+| GEN-6 | طي الشريط على سطح المكتب + `localStorage` | CSS/JS |
+| GEN-7 | نسيت كلمة المرور (جوال/بريد) بسائق log | ForgotPasswordTest |
+
+لا دمج `main`.

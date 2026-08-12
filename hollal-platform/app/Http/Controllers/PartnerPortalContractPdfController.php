@@ -30,9 +30,6 @@ class PartnerPortalContractPdfController extends Controller
 
         $portal->log($link, 'portal.contract_downloaded', ['contract_id' => $model->id], $request->ip());
 
-        return response($contracts->renderPdf($model), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="contract-'.$model->id.'.pdf"',
-        ]);
+        return response($contracts->renderPdf($model), 200, \App\Support\DownloadHeaders::pdf('contract-'.$model->id.'.pdf'));
     }
 }

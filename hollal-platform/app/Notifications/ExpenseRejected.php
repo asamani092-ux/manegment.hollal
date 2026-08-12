@@ -28,7 +28,7 @@ class ExpenseRejected extends Notification implements ShouldQueue
             'expense_request_id' => $this->expenseRequest->id,
             'amount' => (string) $this->expenseRequest->amount,
             'rejection_reason' => $this->expenseRequest->rejection_reason,
-            'approver_name' => $this->expenseRequest->approver?->name,
+            'url' => \App\Support\RecordUrl::expense($this->expenseRequest->id),
         ];
     }
 }

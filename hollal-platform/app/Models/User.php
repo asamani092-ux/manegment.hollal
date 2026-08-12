@@ -138,6 +138,11 @@ class User extends Authenticatable
         return $this->hasMany(ExpenseRequest::class, 'requester_id');
     }
 
+    public function getEmailForPasswordReset(): string
+    {
+        return $this->email ?: (string) $this->phone;
+    }
+
     protected function casts(): array
     {
         return [

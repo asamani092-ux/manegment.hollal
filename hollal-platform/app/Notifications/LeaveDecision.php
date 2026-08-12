@@ -27,7 +27,7 @@ class LeaveDecision extends Notification implements ShouldQueue
             'message' => 'تم '.$this->leaveRequest->status.' طلب إجازتك ('.$this->leaveRequest->type.')',
             'leave_request_id' => $this->leaveRequest->id,
             'status' => $this->leaveRequest->status,
-            'url' => route('leaves.index'),
+            'url' => \App\Support\RecordUrl::leave($this->leaveRequest->id),
         ];
     }
 }

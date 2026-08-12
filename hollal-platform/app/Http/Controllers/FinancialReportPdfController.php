@@ -19,9 +19,6 @@ class FinancialReportPdfController extends Controller
         $month = (string) $request->query('month', now()->format('Y-m'));
         abort_unless(preg_match('/^\d{4}-\d{2}$/', $month) === 1, 404);
 
-        return response($reports->exportMonthlyPdf($month), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="financial-report-'.$month.'.pdf"',
-        ]);
+        return response($reports->exportMonthlyPdf($month), 200, \App\Support\DownloadHeaders::pdf('financial-report-'.$month.'.pdf'));
     }
 }

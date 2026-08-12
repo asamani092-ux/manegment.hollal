@@ -16,9 +16,6 @@ class QuotePdfController extends Controller
     {
         abort_unless($request->user()?->can('partnerships.quotes.view'), 403);
 
-        return response($quotes->renderPdf($quote), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="quote-'.$quote->id.'-v'.$quote->version.'.pdf"',
-        ]);
+        return response($quotes->renderPdf($quote), 200, \App\Support\DownloadHeaders::pdf('quote-'.$quote->id.'-v'.$quote->version.'.pdf'));
     }
 }

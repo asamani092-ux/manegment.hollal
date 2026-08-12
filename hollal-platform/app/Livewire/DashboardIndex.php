@@ -88,7 +88,7 @@ class DashboardIndex extends Component
             $items->push([
                 'kind' => 'overdue_task',
                 'label' => 'مهمة متأخرة: '.$task->title,
-                'url' => route('tasks.index'),
+                'url' => \App\Support\RecordUrl::task($task->id),
                 'meta' => 'المكلف: '.$assigneeName,
             ]);
         }
@@ -111,7 +111,7 @@ class DashboardIndex extends Component
                     $items->push([
                         'kind' => 'expense_pending',
                         'label' => 'طلب صرف بانتظار الموافقة: '.($typeLabels[$expense->type] ?? $expense->type),
-                        'url' => route('expenses.index'),
+                        'url' => \App\Support\RecordUrl::expense($expense->id),
                         'meta' => number_format((float) $expense->amount, 2).' ر.س — '.$expense->requester?->name,
                     ]);
                 });
@@ -146,7 +146,7 @@ class DashboardIndex extends Component
                     $items->push([
                         'kind' => 'custody_pending',
                         'label' => 'عهدة بانتظار الاعتماد: '.number_format((float) $custody->amount, 2).' ر.س',
-                        'url' => route('custodies.index'),
+                        'url' => \App\Support\RecordUrl::custody($custody->id),
                         'meta' => $custody->employee?->name ?? '—',
                     ]);
                 });
@@ -207,7 +207,7 @@ class DashboardIndex extends Component
                     $items->push([
                         'kind' => 'partnership_expiring',
                         'label' => 'شراكة تنتهي قريباً: '.$partnership->entity_name,
-                        'url' => route('projects.index'),
+                        'url' => \App\Support\RecordUrl::partnership($partnership->id),
                         'meta' => 'تاريخ الانتهاء: '.$expiry,
                     ]);
                 });

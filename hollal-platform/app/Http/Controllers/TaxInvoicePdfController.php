@@ -13,9 +13,6 @@ class TaxInvoicePdfController extends Controller
     {
         abort_unless($request->user()?->can('finance.tax_invoices.view'), 403);
 
-        return response($pdf->render($taxInvoice), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="'.$taxInvoice->number.'.pdf"',
-        ]);
+        return response($pdf->render($taxInvoice), 200, \App\Support\DownloadHeaders::pdf($taxInvoice->number.'.pdf'));
     }
 }

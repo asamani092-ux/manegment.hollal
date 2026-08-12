@@ -4,10 +4,19 @@
     'buttonLabel' => 'إضافة',
     'buttonIcon' => 'fa-plus',
     'buttonPermission' => null,
+    'backUrl' => null,
+    'backLabel' => 'رجوع',
 ])
 
 <div class="ds-page-header-bar">
-    <h1 class="ds-page-title">{{ $title }}</h1>
+    <div>
+        @if ($backUrl)
+            <a href="{{ $backUrl }}" class="ds-btn ds-btn-sm" style="margin-bottom: 0.5rem;">
+                <i class="fas fa-arrow-right" aria-hidden="true"></i> {{ $backLabel }}
+            </a>
+        @endif
+        <h1 class="ds-page-title">{{ $title }}</h1>
+    </div>
     @if ($showButton && ($buttonPermission === null || auth()->user()->can($buttonPermission)))
         <button type="button" {{ $attributes->merge(['class' => 'ds-btn ds-btn-primary']) }}>
             <i class="fas {{ $buttonIcon }}"></i> {{ $buttonLabel }}

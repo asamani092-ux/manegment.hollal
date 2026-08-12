@@ -1,5 +1,5 @@
 <x-ds-page>
-    <x-ds-page-header :title="$organization->name" />
+    <x-ds-page-header :title="$organization->name" :back-url="route('organizations.index')" back-label="رجوع" />
 
     <section class="ds-section">
         <p>النوع: {{ $organization->type ?? '—' }} — المدينة: {{ $organization->city ?? '—' }}</p>

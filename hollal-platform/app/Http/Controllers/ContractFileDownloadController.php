@@ -21,6 +21,10 @@ class ContractFileDownloadController extends Controller
 
         $this->auditFileDownload('contract', $contract);
 
-        return Storage::disk('local')->download($contract->contract_file);
+        $filename = basename($contract->contract_file);
+
+        return Storage::disk('local')->download($contract->contract_file, $filename, [
+            'Content-Disposition' => \App\Support\DownloadHeaders::contentDisposition($filename),
+        ]);
     }
 }
