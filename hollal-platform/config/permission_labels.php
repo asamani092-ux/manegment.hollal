@@ -90,6 +90,7 @@ return [
         'finance.assets.view' => 'عرض الأصول',
         'finance.assets.manage' => 'إدارة الأصول',
         'finance.budgets.view' => 'عرض الموازنات',
+        'finance.budgets.manage' => 'اعتماد إضافة للموازنة',
         'finance.reports.view' => 'عرض التقارير المالية',
         'finance.tax_invoices.view' => 'عرض الفواتير الضريبية',
         'finance.tax_invoices.issue' => 'إصدار الفواتير والإشعارات الضريبية',

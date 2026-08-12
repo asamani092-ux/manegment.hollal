@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ExpenseRequest;
 use App\Models\PayrollRunItem;
 use App\Models\Revenue;
+use App\Support\PdfArabic;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
 
@@ -88,14 +89,15 @@ class FinancialReportService
     {
         $report = $this->monthly($month);
 
-        $html = '<div dir="rtl" style="font-family: dejavu sans;">'
-            .'<h2>التقرير المالي الشهري — '.e($month).'</h2>'
-            .'<p>إجمالي المصروفات: '.number_format($report['expenses_total'], 2).'</p>'
-            .'<p>إجمالي الإيرادات: '.number_format($report['revenues_total'], 2).'</p>'
-            .'<p>إجمالي الرواتب: '.number_format($report['payroll_total'], 2).'</p>'
-            .'<p>الصافي: '.number_format($report['net'], 2).'</p>'
-            .'</div>';
+        $html = PdfArabic::header('التقرير المالي الشهري — '.$month)
+            .'<div dir="rtl">'
+            .'<table><thead><tr><th>البند</th><th>المبلغ</th></tr></thead><tbody>'
+            .'<tr><td>إجمالي المصروفات</td><td>'.number_format($report['expenses_total'], 2).'</td></tr>'
+            .'<tr><td>إجمالي الإيرادات</td><td>'.number_format($report['revenues_total'], 2).'</td></tr>'
+            .'<tr><td>إجمالي الرواتب</td><td>'.number_format($report['payroll_total'], 2).'</td></tr>'
+            .'<tr><td><strong>الصافي</strong></td><td><strong>'.number_format($report['net'], 2).'</strong></td></tr>'
+            .'</tbody></table></div>';
 
-        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'dejavu sans')->output();
+        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', PdfArabic::defaultFont())->output();
     }
 }

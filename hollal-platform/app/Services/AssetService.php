@@ -27,7 +27,7 @@ class AssetService
             'name_ar' => $nameAr,
             'category_id' => $categoryId,
             'can_be_custody' => $canBeCustody,
-            'condition' => Asset::CONDITION_GOOD,
+            'condition' => $attributes['condition'] ?? Asset::CONDITION_GOOD,
         ], $attributes));
     }
 

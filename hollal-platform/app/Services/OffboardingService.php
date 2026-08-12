@@ -32,7 +32,7 @@ class OffboardingService
         if (Schema::hasTable('custodies')) {
             $openCustodies = DB::table('custodies')
                 ->where('employee_id', $employee->id)
-                ->whereNotIn('status', ['مغلقة'])
+                ->whereNotIn('status', ['مغلقة', 'مرفوضة'])
                 ->whereNull('deleted_at')
                 ->count();
 
@@ -79,7 +79,7 @@ class OffboardingService
             $rows = DB::table('custodies')
                 ->selectRaw('employee_id, COUNT(*) as aggregate')
                 ->whereIn('employee_id', $employeeIds)
-                ->whereNotIn('status', ['مغلقة'])
+                ->whereNotIn('status', ['مغلقة', 'مرفوضة'])
                 ->whereNull('deleted_at')
                 ->groupBy('employee_id')
                 ->pluck('aggregate', 'employee_id');

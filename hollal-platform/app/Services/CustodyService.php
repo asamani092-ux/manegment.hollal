@@ -34,6 +34,23 @@ class CustodyService
         return $custody;
     }
 
+    public function reject(Custody $custody, User $executive, string $reason): Custody
+    {
+        $this->assertStatus($custody, Custody::STATUS_REQUESTED, 'الرفض');
+
+        if (trim($reason) === '') {
+            throw new \InvalidArgumentException('سبب الرفض إلزامي.');
+        }
+
+        $custody->update([
+            'status' => Custody::STATUS_REJECTED,
+            'rejection_reason' => $reason,
+            'approved_by' => $executive->id,
+        ]);
+
+        return $custody;
+    }
+
     public function disburse(Custody $custody): Custody
     {
         $this->assertStatus($custody, Custody::STATUS_APPROVED, 'الصرف');

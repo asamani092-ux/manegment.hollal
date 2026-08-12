@@ -89,6 +89,7 @@ class PermissionSeeder extends Seeder
         'finance.assets.view',
         'finance.assets.manage',
         'finance.budgets.view',
+        'finance.budgets.manage',
         'finance.reports.view',
         'finance.tax_invoices.view',
         'finance.tax_invoices.issue',

@@ -27,6 +27,10 @@ class CustodiesIndex extends Component
 
     public ?int $employee_id = null;
 
+    public string $rejectReason = '';
+
+    public ?int $rejectingId = null;
+
     public string $statusFilter = '';
 
     public string $search = '';
@@ -105,6 +109,34 @@ class CustodiesIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'تم اعتماد العهدة');
     }
 
+    public function openReject(int $id): void
+    {
+        abort_unless(auth()->user()->can('finance.custodies.approve'), 403);
+        $this->rejectingId = $id;
+        $this->rejectReason = '';
+    }
+
+    public function rejectCustody(): void
+    {
+        abort_unless(auth()->user()->can('finance.custodies.approve'), 403);
+        $this->validate([
+            'rejectingId' => 'required|exists:custodies,id',
+            'rejectReason' => 'required|string|min:3|max:500',
+        ]);
+
+        try {
+            app(CustodyService::class)->reject(Custody::findOrFail($this->rejectingId), auth()->user(), $this->rejectReason);
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
+        $this->rejectingId = null;
+        $this->rejectReason = '';
+        $this->dispatch('toast', type: 'success', message: 'رُفض طلب العهدة');
+    }
+
     public function disburseCustody(int $id): void
     {
         abort_unless(auth()->user()->can('finance.custodies.disburse'), 403);
@@ -116,7 +148,7 @@ class CustodiesIndex extends Component
     public function render(): View
     {
         $query = Custody::query()
-            ->select(['id', 'employee_id', 'amount', 'purpose', 'status', 'due_date', 'created_at'])
+            ->select(['id', 'employee_id', 'amount', 'purpose', 'status', 'due_date', 'rejection_reason', 'created_at'])
             ->with('employee:id,name')
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->search, fn ($q) => $q->whereHas(
@@ -140,6 +172,7 @@ class CustodiesIndex extends Component
                 Custody::STATUS_DISBURSED,
                 Custody::STATUS_SETTLING,
                 Custody::STATUS_CLOSED,
+                Custody::STATUS_REJECTED,
             ],
             'canApprove' => auth()->user()->can('finance.custodies.approve'),
             'canDisburse' => auth()->user()->can('finance.custodies.disburse'),

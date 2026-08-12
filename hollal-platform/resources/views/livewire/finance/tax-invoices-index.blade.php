@@ -50,6 +50,22 @@
     <x-ds-modal :show="$showIssueModal" title="إصدار فاتورة ضريبية" size="lg">
         <x-slot:header><h2>إصدار فاتورة ضريبية</h2></x-slot:header>
 
+        <x-ds-form-group label="العميل" :error="$errors->first('buyerName')">
+            <select class="ds-input" wire:model.live="buyerSource">
+                <option value="جديد">جديد</option>
+                <option value="جهة">من الجهات</option>
+            </select>
+        </x-ds-form-group>
+        @if ($buyerSource === 'جهة')
+            <x-ds-form-group label="الجهة">
+                <select class="ds-input" wire:model.live="organizationId">
+                    <option value="">— اختر جهة —</option>
+                    @foreach ($organizations as $org)
+                        <option value="{{ $org->id }}">{{ $org->name }}@if ($org->tax_number) — {{ $org->tax_number }}@endif</option>
+                    @endforeach
+                </select>
+            </x-ds-form-group>
+        @endif
         <x-ds-form-group label="اسم المشتري" :error="$errors->first('buyerName')">
             <input type="text" class="ds-input" wire:model="buyerName">
         </x-ds-form-group>

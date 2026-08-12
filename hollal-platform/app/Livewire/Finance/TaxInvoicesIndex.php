@@ -3,6 +3,7 @@
 namespace App\Livewire\Finance;
 
 use App\Livewire\Concerns\UsesDsPagination;
+use App\Models\Organization;
 use App\Models\TaxInvoice;
 use App\Models\TaxInvoiceNote;
 use App\Services\TaxInvoiceService;
@@ -29,6 +30,10 @@ class TaxInvoicesIndex extends Component
 
     public ?string $buyerVatNumber = null;
 
+    public string $buyerSource = 'جديد';
+
+    public ?int $organizationId = null;
+
     /** @var list<array{description: string, quantity: string, unit_price: string}> */
     public array $lines = [];
 
@@ -51,8 +56,32 @@ class TaxInvoicesIndex extends Component
         $this->authorize('finance.tax_invoices.issue');
         $this->buyerName = '';
         $this->buyerVatNumber = null;
+        $this->buyerSource = 'جديد';
+        $this->organizationId = null;
         $this->resetLines();
         $this->showIssueModal = true;
+    }
+
+    public function updatedOrganizationId($value): void
+    {
+        if (! $value) {
+            return;
+        }
+        $org = Organization::find($value);
+        if ($org) {
+            $this->buyerName = $org->name;
+            $this->buyerVatNumber = $org->tax_number;
+            $this->buyerSource = 'جهة';
+        }
+    }
+
+    public function updatedBuyerSource($value): void
+    {
+        if ($value === 'جديد') {
+            $this->organizationId = null;
+            $this->buyerName = '';
+            $this->buyerVatNumber = null;
+        }
     }
 
     public function addLine(): void
@@ -94,7 +123,11 @@ class TaxInvoicesIndex extends Component
                 'quantity' => (float) $line['quantity'],
                 'unit_price' => (float) $line['unit_price'],
             ], $this->lines),
-            buyer: ['name' => $this->buyerName, 'vat_number' => $this->buyerVatNumber],
+            buyer: [
+                'name' => $this->buyerName,
+                'vat_number' => $this->buyerVatNumber,
+                'organization_id' => $this->organizationId,
+            ],
             issuer: auth()->user(),
         );
 
@@ -146,6 +179,7 @@ class TaxInvoicesIndex extends Component
                 ->orderByDesc('sequence')
                 ->paginate(15),
             'mode' => app(TaxInvoiceService::class)->mode(),
+            'organizations' => Organization::query()->orderBy('name')->get(['id', 'name', 'tax_number']),
         ])->layout('layouts.app', ['title' => 'الفواتير الضريبية']);
     }
 

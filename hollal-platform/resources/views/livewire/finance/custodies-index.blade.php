@@ -7,6 +7,8 @@
         wire:click="openRequestModal"
     />
 
+    <p class="ds-text-muted ds-mb-3">المسار: طلب ← اعتماد تنفيذي ← صرف. الرفض يظهر مع السبب ولا يُصرف.</p>
+
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label" for="custody-status">الحالة</label>
@@ -32,10 +34,14 @@
                     <span class="ds-ltr-num">{{ $custody->created_at?->format('Y-m-d') }}</span>
                 </div>
                 <x-ds-status-badge :status="$custody->status" />
+                @if ($custody->status === \App\Models\Custody::STATUS_REJECTED)
+                    <p class="ds-text-muted">سبب الرفض: {{ $custody->rejection_reason }}</p>
+                @endif
                 <p class="ds-text-muted">{{ $custody->purpose }}</p>
                 <div class="ds-task-card-actions">
                     @if ($canApprove && $custody->status === \App\Models\Custody::STATUS_REQUESTED)
                         <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="approveCustody({{ $custody->id }})">اعتماد</button>
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openReject({{ $custody->id }})">رفض</button>
                     @endif
                     @if ($canDisburse && $custody->status === \App\Models\Custody::STATUS_APPROVED)
                         <button type="button" class="ds-btn ds-btn-teal ds-btn-sm" wire:click="disburseCustody({{ $custody->id }})">صرف</button>
@@ -64,11 +70,17 @@
                     <td>{{ $custody->employee?->name ?? '—' }}</td>
                     <td class="ds-ltr-num">{{ number_format((float) $custody->amount, 2) }} ر.س</td>
                     <td>{{ $custody->purpose }}</td>
-                    <td><x-ds-status-badge :status="$custody->status" /></td>
+                    <td>
+                        <x-ds-status-badge :status="$custody->status" />
+                        @if ($custody->rejection_reason)
+                            <div class="ds-text-muted">{{ $custody->rejection_reason }}</div>
+                        @endif
+                    </td>
                     <td class="ds-ltr-num">{{ $custody->created_at?->format('Y-m-d') }}</td>
                     <td>
                         @if ($canApprove && $custody->status === \App\Models\Custody::STATUS_REQUESTED)
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="approveCustody({{ $custody->id }})">اعتماد</button>
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openReject({{ $custody->id }})">رفض</button>
                         @endif
                         @if ($canDisburse && $custody->status === \App\Models\Custody::STATUS_APPROVED)
                             <button type="button" class="ds-btn ds-btn-teal ds-btn-sm" wire:click="disburseCustody({{ $custody->id }})">صرف</button>
@@ -103,6 +115,16 @@
         <x-slot:footer>
             <button type="button" class="ds-btn ds-btn-primary" wire:click="submitRequest">إرسال الطلب</button>
             <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('showRequestModal', false)">إلغاء</button>
+        </x-slot:footer>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$rejectingId !== null" title="رفض طلب العهدة" close-action="$set('rejectingId', null)">
+        <x-ds-form-group label="سبب الرفض" :error="$errors->first('rejectReason')">
+            <textarea class="ds-input" rows="3" wire:model="rejectReason"></textarea>
+        </x-ds-form-group>
+        <x-slot:footer>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="rejectCustody">تأكيد الرفض</button>
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('rejectingId', null)">إلغاء</button>
         </x-slot:footer>
     </x-ds-modal>
 </x-ds-page>

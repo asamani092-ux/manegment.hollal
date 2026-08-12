@@ -21,10 +21,13 @@ class Custody extends Model
 
     public const STATUS_CLOSED = 'مغلقة';
 
+    public const STATUS_REJECTED = 'مرفوضة';
+
     /** @var list<string> */
     protected $fillable = [
         'employee_id', 'amount', 'disbursed_amount', 'returned_amount', 'purpose',
         'category_id', 'project_id', 'requested_by', 'approved_by', 'status', 'due_date',
+        'rejection_reason',
     ];
 
     /** @return array<string, string> */

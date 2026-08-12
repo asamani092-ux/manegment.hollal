@@ -133,3 +133,21 @@
 | إجازات | طلب←إشعار←رصيد قائم (LeaveRequestTest) | تحقق دون أمر منفصل |
 
 لا دمج `main`.
+
+---
+
+## الدفعة 2 — FIN — `fix/report-round-1`
+
+صلاحية جديدة `finance.budgets.manage` للمدير العام فقط (اعتماد إضافة الموازنة). المالية تطلب الإضافة ولا تعتمدها.
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| FIN-2 | رفض عهدة بسبب · حالة `مرفوضة` · نص المسار طلب←اعتماد تنفيذي←صرف | ReportRound1FinTest + CustodyTest |
+| FIN-3 | وصف/فئة/قيمة شراء/موقع/حالة/حامل في نموذج الأصل | ReportRound1FinTest + AssetTest |
+| FIN-4 | مرفق شاهد إيراد · مصدر الموازنة · إضافة باعتماد التنفيذي | ReportRound1FinTest + BudgetAndFinancialReportTest |
+| FIN-5 | قائمة جهة/رقم ضريبي + خيار «جديد» | ReportRound1FinTest + TaxInvoiceTest |
+| FIN-6 | PDF بخط Amiri + شعار + جدول (`PdfArabic`) | ReportRound1FinTest |
+| FIN-1 | تحقق فقط — عرض مزدوج موجود | بدون تغيير |
+
+لا دمج `main`.
+

@@ -11,7 +11,7 @@ class Organization extends Model
     use SoftDeletes;
 
     /** @var list<string> */
-    protected $fillable = ['name', 'type', 'city', 'roles', 'notes'];
+    protected $fillable = ['name', 'type', 'city', 'tax_number', 'roles', 'notes'];
 
     /** @return array<string, string> */
     protected function casts(): array
