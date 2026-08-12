@@ -26,6 +26,12 @@
     <x-ds-page-header :title="$project->name" :back-url="route('projects.index')" back-label="رجوع" />
     <p class="ds-text-muted">{{ $project->statusLabel() }}</p>
 
+    <p class="ds-mb-3">
+        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('projects.execution', $project) }}">التنفيذ</a>
+        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('projects.execution', ['project' => $project, 'tab' => 'visits']) }}">الزيارات</a>
+        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('projects.execution', ['project' => $project, 'tab' => 'measurement']) }}">القياس</a>
+    </p>
+
     <nav class="ds-tabs" aria-label="تبويبات المشروع">
         @foreach ($tabs as $key => $label)
             <button
@@ -68,6 +74,26 @@
                     </div>
                 </div>
             </div>
+
+            @if ($measurement)
+                <div class="ds-card ds-section-spaced">
+                    <h3 class="ds-section-heading">نتائج القياس</h3>
+                    <div class="ds-stat-row">
+                        <div class="ds-stat-mini">
+                            <span class="ds-stat-mini-label">قبلي</span>
+                            <span class="ds-stat-mini-val ds-ltr-num">{{ $measurement['pre_percent'] !== null ? number_format($measurement['pre_percent'], 2).'%' : '—' }}</span>
+                        </div>
+                        <div class="ds-stat-mini">
+                            <span class="ds-stat-mini-label">بعدي</span>
+                            <span class="ds-stat-mini-val ds-ltr-num">{{ $measurement['post_percent'] !== null ? number_format($measurement['post_percent'], 2).'%' : '—' }}</span>
+                        </div>
+                        <div class="ds-stat-mini">
+                            <span class="ds-stat-mini-label">التحسن</span>
+                            <span class="ds-stat-mini-val ds-ltr-num">{{ $measurement['improvement_percent'] !== null ? number_format($measurement['improvement_percent'], 2).'%' : '—' }}</span>
+                        </div>
+                    </div>
+                </div>
+            @endif
 
             @if ($project->idea_goal)
                 <div class="ds-card ds-section-spaced">
@@ -114,6 +140,30 @@
 
     @if ($activeTab === 'files')
         <section class="ds-section-spaced">
+            @can('create', \App\Models\Document::class)
+                <div class="ds-card ds-section-spaced">
+                    <h3 class="ds-section-heading">رفع مرفق للمشروع</h3>
+                    <div class="ds-grid-2">
+                        <x-ds-form-group label="العنوان" :error="$errors->first('docTitle')">
+                            <input type="text" class="ds-input" wire:model="docTitle">
+                        </x-ds-form-group>
+                        <x-ds-form-group label="التصنيف" :error="$errors->first('docCategory')">
+                            <input type="text" class="ds-input" wire:model="docCategory">
+                        </x-ds-form-group>
+                        <x-ds-form-group label="مستوى السرية" :error="$errors->first('docConfidentiality')">
+                            <select class="ds-input" wire:model="docConfidentiality">
+                                <option value="team">الفريق</option>
+                                <option value="department">القسم</option>
+                                <option value="managers">المدراء</option>
+                            </select>
+                        </x-ds-form-group>
+                        <x-ds-form-group label="الملف" :error="$errors->first('docFile')">
+                            <input type="file" class="ds-input" wire:model="docFile">
+                        </x-ds-form-group>
+                    </div>
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="uploadProjectDocument">رفع</button>
+                </div>
+            @endcan
             <x-ds-table>
                 <x-slot:head>
                     <tr>

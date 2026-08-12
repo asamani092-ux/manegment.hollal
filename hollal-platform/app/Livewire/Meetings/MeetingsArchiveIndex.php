@@ -3,6 +3,8 @@
 namespace App\Livewire\Meetings;
 
 use App\Models\Meeting;
+use App\Models\MeetingAmendment;
+use App\Services\MeetingService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
@@ -15,6 +17,12 @@ class MeetingsArchiveIndex extends Component
     public string $search = '';
 
     public string $month = '';
+
+    public bool $showAmendModal = false;
+
+    public ?int $amendingMeetingId = null;
+
+    public string $amendNote = '';
 
     /** @var array<string, array<string, string>> */
     protected $queryString = [
@@ -41,12 +49,46 @@ class MeetingsArchiveIndex extends Component
         );
     }
 
+    public function openAmendRequest(int $meetingId): void
+    {
+        abort_unless(auth()->user()->can('meetings.update'), 403);
+        $this->amendingMeetingId = $meetingId;
+        $this->amendNote = '';
+        $this->showAmendModal = true;
+    }
+
+    public function submitAmendRequest(): void
+    {
+        abort_unless(auth()->user()->can('meetings.update'), 403);
+        $this->validate(['amendNote' => 'required|string|max:500'], [], ['amendNote' => 'سبب التعديل']);
+
+        $meeting = Meeting::query()
+            ->where('approval_status', Meeting::APPROVAL_APPROVED)
+            ->findOrFail($this->amendingMeetingId);
+
+        app(MeetingService::class)->requestAmendment($meeting, auth()->user(), $this->amendNote);
+
+        $this->showAmendModal = false;
+        $this->amendingMeetingId = null;
+        $this->amendNote = '';
+        $this->dispatch('ds-toast', message: 'أُرسل طلب التعديل بانتظار الموافقة');
+    }
+
+    public function approveAmendment(int $amendmentId): void
+    {
+        abort_unless(auth()->user()->can('meetings.update'), 403);
+        $amendment = MeetingAmendment::query()->findOrFail($amendmentId);
+        app(MeetingService::class)->approveAmendment($amendment, auth()->user());
+        $this->dispatch('ds-toast', message: 'اعتُمد التعديل ونُشرت نسخة موسومة');
+    }
+
     public function render(): View
     {
         return view('livewire.meetings.meetings-archive-index', [
             'meetings' => Meeting::query()
-                ->select(['id', 'title', 'scheduled_at', 'approval_status', 'updated_at'])
+                ->select(['id', 'title', 'scheduled_at', 'approval_status', 'version', 'updated_at'])
                 ->where('approval_status', Meeting::APPROVAL_APPROVED)
+                ->with(['amendments' => fn ($q) => $q->orderByDesc('id')])
                 ->when($this->search, fn ($q) => $q->where('title', 'like', '%'.$this->search.'%'))
                 ->when(
                     preg_match('/^\d{4}-\d{2}$/', $this->month) === 1,

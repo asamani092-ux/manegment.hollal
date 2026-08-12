@@ -41,6 +41,8 @@ class PlanTemplateEditor extends Component
 
     public ?string $reviewNote = null;
 
+    public bool $showPreview = false;
+
     public function mount(?int $templateId = null): void
     {
         $this->authorize('projects.templates.manage');
@@ -50,6 +52,12 @@ class PlanTemplateEditor extends Component
     public function selectTemplate(int $id): void
     {
         $this->templateId = $id;
+        $this->showPreview = false;
+    }
+
+    public function togglePreview(): void
+    {
+        $this->showPreview = ! $this->showPreview;
     }
 
     public function openItemModal(?int $parentId = null): void

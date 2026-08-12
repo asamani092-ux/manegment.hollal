@@ -1,6 +1,11 @@
 <x-ds-page>
     <x-ds-page-header title="مركز التقارير الموحّد" />
 
+    <p class="ds-mb-3">
+        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.index') }}">مستودع المستندات</a>
+        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('reports.index') }}">التقارير الأسبوعية</a>
+    </p>
+
     <section class="ds-section ds-filter-bar">
         <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('monthly')">التقرير الشهري</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('project')">لوحة المشروع</button>

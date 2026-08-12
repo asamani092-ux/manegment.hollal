@@ -1,5 +1,5 @@
 <x-ds-page>
-    <x-ds-page-header :title="$project->name" />
+    <x-ds-page-header :title="$project->name" :back-url="route('projects.show', $project)" back-label="رجوع" />
 
     <section class="ds-section ds-filter-bar">
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'plan')">الخطة والفريق</button>

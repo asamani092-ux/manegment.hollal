@@ -166,4 +166,24 @@
 
 لا دمج `main`.
 
+---
+
+## الدفعة 4 — PROJ / DOC / REP — `fix/report-round-1`
+
+`MeetingService::amend()` بقي كما هو (نسخة معتمدة فورية). أُضيف `requestAmendment` / `approveAmendment` لمسار الطلب←الموافقة.
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| PROJ-2 | رفع مرفق من ملف المشروع مربوط `project_id` | ReportRound1ProjDocRepTest |
+| PROJ-3 | روابط تنفيذ/زيارات/قياس + قبلي/بعدي في النظرة العامة | ReportRound1ProjDocRepTest |
+| PROJ-4 | زر معاينة قالب الخطة | ReportRound1ProjDocRepTest |
+| DOC-2 | مسار طلب←موافقة←نسخة موسومة في أرشيف المحاضر | ReportRound1ProjDocRepTest |
+| REP-1 | خريطة عربية لمفاتيح سجل النشاط مع بقاء الفهارس | AuditLog + DocumentsAndReportsTest |
+| REP-2 | زر طباعة + `@media print` للتقرير الأسبوعي | ReportRound1ProjDocRepTest |
+| REP-3 | رابط متبادل مركز التقارير ↔ المستودع | ReportRound1ProjDocRepTest |
+| PROJ-1 | تحقق فقط — عرض مزدوج موجود | بدون تغيير |
+
+لا دمج `main`.
+
+
 

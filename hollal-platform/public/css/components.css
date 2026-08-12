@@ -1241,8 +1241,15 @@
     display: none !important;
   }
 
-  .ds-printable-minutes {
+  .ds-printable-minutes,
+  .ds-weekly-print {
     padding: 0;
+  }
+
+  .ds-weekly-print .ds-card {
+    break-inside: avoid;
+    box-shadow: none;
+    border: 1px solid #ccc;
   }
 
   body {

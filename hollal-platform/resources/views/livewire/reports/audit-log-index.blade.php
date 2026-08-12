@@ -5,7 +5,7 @@
         <select class="ds-input" wire:model.live="actionFilter">
             <option value="">كل الإجراءات</option>
             @foreach ($actions as $action)
-                <option value="{{ $action }}">{{ $action }}</option>
+                <option value="{{ $action }}">{{ \App\Models\AuditLog::labelFor($action) }}</option>
             @endforeach
         </select>
         <input type="search" class="ds-input" placeholder="المنفّذ" wire:model.live="actorFilter">
@@ -27,7 +27,7 @@
         @forelse ($logs as $log)
             <tr wire:key="audit-{{ $log->id }}">
                 <td dir="ltr">{{ $log->created_at?->format('Y-m-d H:i:s') }}</td>
-                <td>{{ $log->action }}</td>
+                <td>{{ $log->actionLabel() }}</td>
                 <td>{{ $log->actor?->name ?? '—' }}</td>
                 <td dir="ltr">{{ class_basename((string) $log->target_type) }} #{{ $log->target_id ?? '—' }}</td>
                 <td dir="ltr">{{ $log->ip_address ?? '—' }}</td>

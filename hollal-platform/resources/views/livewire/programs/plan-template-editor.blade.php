@@ -28,7 +28,29 @@
             @endif
 
             <button type="button" class="ds-btn" wire:click="openItemModal">إضافة مرحلة (مستوى 1)</button>
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="togglePreview">
+                {{ $showPreview ? 'إخفاء المعاينة' : 'معاينة القالب' }}
+            </button>
         </section>
+
+        @if ($showPreview)
+            <section class="ds-section ds-card">
+                <h3 class="ds-section-title">معاينة الخطة</h3>
+                <ol class="ds-preview-tree">
+                    @forelse ($items as $item)
+                        <li wire:key="preview-{{ $item->id }}" style="padding-inline-start: {{ ($item->level - 1) * 16 }}px">
+                            <strong>{{ $item->title }}</strong>
+                            <span class="ds-text-muted">— مستوى {{ $item->level }} · +{{ $item->start_offset_days }} يوم · {{ $item->duration_days }} يوم</span>
+                            @if ($item->role)
+                                <span class="ds-text-muted"> · {{ $item->role }}</span>
+                            @endif
+                        </li>
+                    @empty
+                        <li class="ds-text-muted">لا توجد بنود للمعاينة</li>
+                    @endforelse
+                </ol>
+            </section>
+        @endif
 
         <x-ds-table>
             <x-slot:head>

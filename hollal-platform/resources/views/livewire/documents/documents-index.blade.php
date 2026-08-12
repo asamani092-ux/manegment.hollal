@@ -15,6 +15,7 @@
         <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.versions') }}">إدارة النسخ</a>
         <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.templates') }}">مكتبة القوالب</a>
         <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.policies') }}">السياسات</a>
+        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('reports.center') }}">مركز التقارير</a>
     </p>
     <div class="ds-filters-row">
         <div class="ds-filter-field">

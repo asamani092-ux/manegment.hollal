@@ -7,9 +7,12 @@ use App\Models\ExpenseRequest;
 use App\Models\Project;
 use App\Models\ProjectUpdate;
 use App\Models\Task;
+use App\Services\MeasurementService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 /**
  * Project detail — tabbed overview, tasks, files, finance, updates.
@@ -18,6 +21,7 @@ use Livewire\Component;
 class ProjectShow extends Component
 {
     use AuthorizesRequests;
+    use WithFileUploads;
 
     public Project $project;
 
@@ -32,6 +36,14 @@ class ProjectShow extends Component
     public string $decision_needed = '';
 
     public ?string $update_date = null;
+
+    public string $docTitle = '';
+
+    public string $docCategory = '';
+
+    public string $docConfidentiality = 'team';
+
+    public ?TemporaryUploadedFile $docFile = null;
 
     protected $queryString = [
         'activeTab' => ['except' => 'overview'],
@@ -78,6 +90,40 @@ class ProjectShow extends Component
         $this->update_date = now()->format('Y-m-d');
         $this->resetValidation();
         $this->dispatch('toast', type: 'success', message: 'تم حفظ التحديث الأسبوعي');
+    }
+
+    public function uploadProjectDocument(): void
+    {
+        $this->authorize('create', Document::class);
+
+        $this->validate([
+            'docTitle' => 'required|string|max:255',
+            'docCategory' => 'required|string|max:100',
+            'docConfidentiality' => 'required|in:team,department,managers',
+            'docFile' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx,xls,xlsx',
+        ], [], [
+            'docTitle' => 'العنوان',
+            'docCategory' => 'التصنيف',
+            'docFile' => 'الملف',
+        ]);
+
+        $path = $this->docFile->store('documents', 'local');
+
+        Document::create([
+            'title' => $this->docTitle,
+            'category' => $this->docCategory,
+            'project_id' => $this->project->id,
+            'confidentiality' => $this->docConfidentiality,
+            'uploader_id' => auth()->id(),
+            'path' => $path,
+        ]);
+
+        $this->docTitle = '';
+        $this->docCategory = '';
+        $this->docConfidentiality = 'team';
+        $this->docFile = null;
+        $this->resetValidation();
+        $this->dispatch('ds-toast', message: 'تم رفع مرفق المشروع');
     }
 
     public function render(): View
@@ -137,6 +183,9 @@ class ProjectShow extends Component
 
         $budget = $this->project->budget !== null ? (float) $this->project->budget : null;
         $remaining = $this->project->remainingBudget();
+        $measurement = $this->activeTab === 'overview'
+            ? app(MeasurementService::class)->results($this->project)
+            : null;
 
         return view('livewire.projects.project-show', [
             'tasks' => $tasks,
@@ -146,6 +195,7 @@ class ProjectShow extends Component
             'actualSpend' => $actualSpend,
             'remaining' => $remaining,
             'completionPercent' => $completionPercent,
+            'measurement' => $measurement,
         ])->layout('layouts.app', ['title' => $this->project->name]);
     }
 }

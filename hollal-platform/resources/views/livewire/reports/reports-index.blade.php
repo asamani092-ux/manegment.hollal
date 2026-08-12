@@ -1,11 +1,14 @@
 <x-ds-page>
     @if ($selectedReport)
+        <div class="ds-weekly-print">
         <x-ds-page-header title="تفاصيل التقرير الأسبوعي" />
 
-        <div class="ds-page-toolbar">
+        <div class="ds-page-toolbar ds-no-print">
             <button type="button" class="ds-link" wire:click="closeReport">
                 <i class="fas fa-arrow-right"></i> العودة للقائمة
             </button>
+            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" onclick="window.print()">طباعة</button>
+            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.index') }}">مستودع المستندات</a>
         </div>
 
         <div class="ds-card ds-mb-lg">
@@ -81,8 +84,14 @@
                 <p class="ds-text-muted">لا قرارات متأخرة</p>
             @endforelse
         </div>
+        </div>
     @else
         <x-ds-page-header title="التقارير الأسبوعية" />
+
+        <p class="ds-mb-3">
+            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('reports.center') }}">مركز التقارير</a>
+            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.index') }}">مستودع المستندات</a>
+        </p>
 
         <div class="ds-table-wrap">
             <x-ds-table>
