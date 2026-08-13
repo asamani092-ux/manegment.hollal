@@ -141,7 +141,9 @@ class ReportRound1ToolsSmokeTest extends TestCase
             ->call('saveVersion')
             ->assertHasNoErrors();
 
-        $this->assertSame(2, $document->fresh()->current_version);
+        $this->assertSame(1, $document->versions()->count());
+        $this->assertNotSame('documents/base.pdf', $document->fresh()->path);
+        $this->assertSame('نسخة دخان', $document->versions()->first()->change_note);
 
         Livewire::actingAs($admin)
             ->test(FinancialDocumentsIndex::class)

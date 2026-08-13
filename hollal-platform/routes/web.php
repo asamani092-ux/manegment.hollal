@@ -87,6 +87,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
             ->name('revenues.files.download');
 
         Route::get('/files/financial-documents/{type}/{id}', FinancialDocumentDownloadController::class)
+            ->middleware('permission:finance.revenues.view')
             ->whereIn('type', ['expense_invoice', 'revenue_document', 'custody_invoice', 'payroll_proof'])
             ->name('financial-documents.files.download');
 

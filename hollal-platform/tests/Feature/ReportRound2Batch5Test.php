@@ -175,9 +175,10 @@ class ReportRound2Batch5Test extends TestCase
 
         $response = $this->actingAs($user)->get(route('documents.files.download', $document));
         $response->assertOk();
-        $disposition = $response->headers->get('Content-Disposition');
-        $this->assertNotNull($disposition);
-        $this->assertStringContainsString("filename*=UTF-8''", $disposition);
+        $disposition = strtolower((string) $response->headers->get('Content-Disposition'));
+        $this->assertNotEmpty($disposition);
+        $this->assertStringContainsString("filename*=utf-8''", $disposition);
+        $this->assertStringContainsString(strtolower(rawurlencode('تقرير شهري تجريبي.txt')), $disposition);
     }
 
     public function test_audit_log_arabic_labels_status_column_and_cached_actions(): void
