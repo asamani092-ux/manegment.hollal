@@ -6,6 +6,7 @@
             'approved' => 'موافق عليه',
             'paid' => 'مدفوع',
             'rejected' => 'مرفوض',
+            'returned' => 'معاد للمراجعة',
         ];
         $typeLabels = [
             'operational' => 'تشغيلي',
@@ -17,6 +18,7 @@
             'transfer' => 'تحويل',
             'pos' => 'نقاط بيع',
             'cheque' => 'شيك',
+            'cash' => 'نقد',
             'other' => 'أخرى',
         ];
         $priorityLabels = [
@@ -34,6 +36,11 @@
         button-icon="fa-plus"
         wire:click="openExpenseCreate"
     />
+
+    <p class="ds-text-muted ds-mb-3">
+        الاعتماد يتطلب أن تكون في المرحلة الصحيحة ولديك صلاحية المرحلة.
+        إن لم يظهر زر الموافقة فأنت لست معتمد هذه المرحلة أو بلا صلاحية.
+    </p>
 
     <div class="ds-page-toolbar">
         <div class="ds-toolbar-actions">
@@ -83,6 +90,9 @@
                             <span class="ds-ltr-num">{{ $expense->created_at?->format('Y-m-d') ?? '—' }}</span>
                         </div>
                         <span class="ds-badge ds-badge-pending">{{ $statusLabels[$expense->status] ?? $expense->status }}</span>
+                        @if ($expense->rejection_reason && in_array($expense->status, ['rejected', 'returned'], true))
+                            <p class="ds-text-muted">السبب: {{ $expense->rejection_reason }}</p>
+                        @endif
                         <p class="ds-text-muted">{{ $expense->project?->name ?? 'بدون مشروع' }}</p>
                         <div class="ds-task-card-actions">
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openExpenseView({{ $expense->id }})">عرض</button>
@@ -118,7 +128,12 @@
                         <td class="ds-ltr-num">{{ number_format((float) $expense->amount, 2) }}</td>
                         <td>{{ $priorityLabels[$expense->priority] ?? $expense->priority }}</td>
                         <td>{{ $expense->project?->name ?? '—' }}</td>
-                        <td><x-ds-status-badge :status="$statusLabels[$expense->status] ?? $expense->status" /></td>
+                        <td>
+                            <x-ds-status-badge :status="$statusLabels[$expense->status] ?? $expense->status" />
+                            @if ($expense->rejection_reason && in_array($expense->status, ['rejected', 'returned'], true))
+                                <div class="ds-text-muted">{{ $expense->rejection_reason }}</div>
+                            @endif
+                        </td>
                         <td class="ds-ltr-num">{{ $expense->created_at?->format('Y-m-d') ?? '—' }}</td>
                         <td>
                             <div class="ds-toolbar-actions">
@@ -162,10 +177,21 @@
                             <span class="ds-ltr-num">{{ number_format((float) $expense->amount, 2) }}</span>
                         </div>
                         <span class="ds-badge ds-badge-pending">{{ $statusLabels[$expense->status] ?? $expense->status }}</span>
+                        @if ($expense->rejection_reason && in_array($expense->status, ['rejected', 'returned'], true))
+                            <p class="ds-text-muted">السبب: {{ $expense->rejection_reason }}</p>
+                        @endif
+                        @if ($hint = $approvalService->cannotApproveReason(auth()->user(), $expense))
+                            <p class="ds-text-muted">{{ $hint }}</p>
+                        @endif
                         <div class="ds-task-card-actions">
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openExpenseView({{ $expense->id }})">عرض</button>
                             @can('approve', $expense)
                                 <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="approveExpense({{ $expense->id }})">موافقة</button>
+                                <button type="button" class="ds-btn ds-btn-sm ds-btn-outline" wire:click="openRejectModal({{ $expense->id }})">رفض</button>
+                                <button type="button" class="ds-btn ds-btn-sm ds-btn-outline" wire:click="openReturnModal({{ $expense->id }})">إعادة للمراجعة</button>
+                            @endcan
+                            @can('pay', $expense)
+                                <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="openPayModal({{ $expense->id }})">تسجيل الدفع</button>
                             @endcan
                         </div>
                     </article>
@@ -194,7 +220,15 @@
                         <td class="ds-ltr-num">{{ number_format((float) $expense->amount, 2) }}</td>
                         <td>{{ $priorityLabels[$expense->priority] ?? $expense->priority }}</td>
                         <td>{{ $expense->project?->name ?? '—' }}</td>
-                        <td><x-ds-status-badge :status="$statusLabels[$expense->status] ?? $expense->status" /></td>
+                        <td>
+                            <x-ds-status-badge :status="$statusLabels[$expense->status] ?? $expense->status" />
+                            @if ($expense->rejection_reason && in_array($expense->status, ['rejected', 'returned'], true))
+                                <div class="ds-text-muted">{{ $expense->rejection_reason }}</div>
+                            @endif
+                            @if ($hint = $approvalService->cannotApproveReason(auth()->user(), $expense))
+                                <div class="ds-text-muted">{{ $hint }}</div>
+                            @endif
+                        </td>
                         <td>
                             <div class="ds-toolbar-actions">
                                 <x-ds-action-icons
@@ -210,9 +244,12 @@
                                     <button type="button" class="ds-btn ds-btn-sm ds-btn-outline" wire:click="openRejectModal({{ $expense->id }})">
                                         رفض
                                     </button>
+                                    <button type="button" class="ds-btn ds-btn-sm ds-btn-outline" wire:click="openReturnModal({{ $expense->id }})">
+                                        إعادة للمراجعة
+                                    </button>
                                 @endcan
                                 @can('pay', $expense)
-                                    <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="markExpensePaid({{ $expense->id }})">
+                                    <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="openPayModal({{ $expense->id }})">
                                         تسجيل الدفع
                                     </button>
                                 @endcan
@@ -363,6 +400,57 @@
                         تأكيد الرفض
                     </button>
                     <button type="button" class="ds-btn ds-btn-outline" wire:click="closeRejectModal">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($showReturnModal)
+        <div class="ds-modal-overlay" wire:click.self="closeReturnModal">
+            <div class="ds-modal" role="dialog">
+                <div class="ds-modal-header">
+                    <h3>إعادة الطلب للمراجعة</h3>
+                    <button type="button" class="ds-modal-close" wire:click="closeReturnModal">&times;</button>
+                </div>
+                <div class="ds-modal-body">
+                    <p class="ds-text-muted">سيتمكن مقدم الطلب من التعديل وإعادة الإرسال.</p>
+                    <x-ds-form-group label="سبب الإعادة" :error="$errors->first('returnReason')">
+                        <textarea class="ds-input" rows="3" wire:model="returnReason" placeholder="أدخل ملاحظات المراجعة..."></textarea>
+                    </x-ds-form-group>
+                </div>
+                <div class="ds-modal-footer">
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="confirmReturnExpense">
+                        تأكيد الإعادة
+                    </button>
+                    <button type="button" class="ds-btn ds-btn-outline" wire:click="closeReturnModal">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($showPayModal && $payExpense)
+        <div class="ds-modal-overlay" wire:click.self="closePayModal">
+            <div class="ds-modal" role="dialog">
+                <div class="ds-modal-header">
+                    <h3>تسجيل الدفع</h3>
+                    <button type="button" class="ds-modal-close" wire:click="closePayModal">&times;</button>
+                </div>
+                <div class="ds-modal-body">
+                    <p class="ds-text-muted">
+                        طريقة الدفع: {{ $paymentLabels[$payExpense->payment_method] ?? $payExpense->payment_method }}
+                        @if ($payExpense->requiresPaymentProof())
+                            — إثبات الدفع إلزامي لغير النقد.
+                        @else
+                            — النقد لا يتطلب إثبات دفع.
+                        @endif
+                    </p>
+                    <x-ds-form-group label="إثبات الدفع" :error="$errors->first('paymentProof')">
+                        <input type="file" class="ds-input" wire:model="paymentProof" accept=".pdf,.jpg,.jpeg,.png">
+                    </x-ds-form-group>
+                </div>
+                <div class="ds-modal-footer">
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="markExpensePaid">تأكيد الدفع</button>
+                    <button type="button" class="ds-btn ds-btn-outline" wire:click="closePayModal">إلغاء</button>
                 </div>
             </div>
         </div>

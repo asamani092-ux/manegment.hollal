@@ -8,6 +8,8 @@ use App\Http\Controllers\ContractFileDownloadController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\DutiesFileDownloadController;
 use App\Http\Controllers\ExpenseFileDownloadController;
+use App\Http\Controllers\FinancialDocumentDownloadController;
+use App\Http\Controllers\RevenueFileDownloadController;
 use App\Http\Controllers\TaskFileDownloadController;
 use App\Livewire\Contracts\ContractsIndex;
 use App\Livewire\Documents\DocumentsIndex;
@@ -79,6 +81,13 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
 
         Route::get('/files/expenses/{expenseRequest}', ExpenseFileDownloadController::class)
             ->name('expenses.files.download');
+
+        Route::get('/files/revenues/{revenue}', RevenueFileDownloadController::class)
+            ->name('revenues.files.download');
+
+        Route::get('/files/financial-documents/{type}/{id}', FinancialDocumentDownloadController::class)
+            ->whereIn('type', ['expense_invoice', 'revenue_document', 'custody_invoice', 'payroll_proof'])
+            ->name('financial-documents.files.download');
 
         Route::get('/files/documents/{document}', DocumentDownloadController::class)
             ->name('documents.files.download');

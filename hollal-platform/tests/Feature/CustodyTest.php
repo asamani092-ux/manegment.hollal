@@ -26,7 +26,7 @@ class CustodyTest extends TestCase
 
         $custody = $service->request($employee, 1000, 'شراء مستلزمات', null, null, null, $employee);
         $service->approve($custody, $executive);
-        $service->disburse($custody);
+        $service->disburse($custody, 'custodies/disbursements/demo-proof.pdf');
 
         $this->assertSame('1000.00', $custody->fresh()->disbursed_amount);
 
@@ -44,7 +44,7 @@ class CustodyTest extends TestCase
 
         $custody = $service->request($employee, 1000, 'عهدة', null, null, null, $employee);
         $service->approve($custody, User::factory()->create());
-        $service->disburse($custody);
+        $service->disburse($custody, 'custodies/disbursements/demo-proof.pdf');
         $service->addSettlementItem($custody, 'بند', 800);
 
         $this->expectException(\RuntimeException::class);
@@ -57,7 +57,7 @@ class CustodyTest extends TestCase
         $service = app(CustodyService::class);
         $custody = $service->request($employee, 500, 'عهدة مفتوحة', null, null, null, $employee);
         $service->approve($custody, User::factory()->create());
-        $service->disburse($custody);
+        $service->disburse($custody, 'custodies/disbursements/demo-proof.pdf');
 
         $holds = app(OffboardingService::class)->holds($employee);
         $this->assertNotEmpty($holds);
@@ -75,7 +75,7 @@ class CustodyTest extends TestCase
         $service = app(CustodyService::class);
         $custody = $service->request($employee, 500, 'عهدة', null, null, null, $employee);
         $service->approve($custody, User::factory()->create());
-        $service->disburse($custody);
+        $service->disburse($custody, 'custodies/disbursements/demo-proof.pdf');
         $service->addSettlementItem($custody, 'بند', 500);
         $service->close($custody);
 

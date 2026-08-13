@@ -25,7 +25,7 @@ class Custody extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'employee_id', 'amount', 'disbursed_amount', 'returned_amount', 'purpose',
+        'employee_id', 'amount', 'disbursed_amount', 'disbursement_proof_path', 'returned_amount', 'purpose',
         'category_id', 'project_id', 'requested_by', 'approved_by', 'status', 'due_date',
         'rejection_reason',
     ];

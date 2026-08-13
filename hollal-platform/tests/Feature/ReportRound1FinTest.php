@@ -56,7 +56,7 @@ class ReportRound1FinTest extends TestCase
         $this->assertSame('الغرض غير واضح', $custody->fresh()->rejection_reason);
 
         $this->expectException(\RuntimeException::class);
-        $service->disburse($custody->fresh());
+        $service->disburse($custody->fresh(), 'custodies/disbursements/blocked.pdf');
     }
 
     public function test_asset_create_stores_extended_fields(): void

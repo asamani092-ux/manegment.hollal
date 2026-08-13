@@ -83,6 +83,8 @@ class RoleSeeder extends Seeder
         'finance.expenses.approve',
         'finance.custodies.view',
         'finance.custodies.approve',
+        'finance.budgets.view',
+        'finance.budgets.manage',
         'reports.view',
         'reports.weekly.view',
         'reports.monthly.view',

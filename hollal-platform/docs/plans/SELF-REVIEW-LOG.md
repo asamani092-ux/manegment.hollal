@@ -223,5 +223,22 @@
 
 لا دمج `main`.
 
+---
+
+## الدفعة 2 — FIN — `fix/report-round-2`
+
+**تعارض موثّق مع spec-04 §5:** المواصفة تقول إن المنصة لا تصدر فواتير ضريبية (تُرفع من نظام فوترة خارجي). Phase A (04-B7 + قرار عبدالله للجولة): المنصة تُصدر فواتير ضريبية سعودية Phase A. نُفّذ Phase A هنا.
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| FN-a صرف | رفض ظاهر موبايل+سطح مكتب · حالة `returned` / معاد للمراجعة مع سبب وإعادة إرسال · إثبات دفع إلزامي لغير النقد (+ نقد) · `canApprove` بصلاحية المرحلة (Super Admin وغيرها) · نص عربي لعدم الاعتماد | ReportRound2FinTest |
+| FN-b عهد | `disbursement_proof_path` + رفع عند الصرف | ReportRound2FinTest + CustodyTest |
+| FN-c إيرادات | حفظ الشاهد + `RevenueFileDownloadController` · إزالة نموذج إضافة الموازنة من الإيرادات (رابط للوحة الموازنات) | ReportRound2FinTest |
+| FN-d فواتير | بائع من CompanyProfile · قائمة جهات+جديد · PDF Amiri + TLV · VAT جهات في DemoPartnerships | ReportRound2FinTest |
+| موازنات | نص مصدر عربي · `finance.budgets.manage` للمدير التنفيذي والمدير العام | RoleSeeder |
+| تقارير/مستندات | شعار CompanyProfile · بذور أدلة + روابط تنزيل | DemoFinanceSeeder |
+
+لا دمج `main`.
+
 
 

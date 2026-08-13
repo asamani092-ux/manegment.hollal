@@ -8,6 +8,8 @@ use App\Services\CustodyService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
@@ -17,6 +19,7 @@ use Livewire\WithPagination;
 class CustodiesIndex extends Component
 {
     use AuthorizesRequests;
+    use WithFileUploads;
     use WithPagination;
 
     public bool $showRequestModal = false;
@@ -30,6 +33,10 @@ class CustodiesIndex extends Component
     public string $rejectReason = '';
 
     public ?int $rejectingId = null;
+
+    public ?int $disbursingId = null;
+
+    public ?TemporaryUploadedFile $disbursementProof = null;
 
     public string $statusFilter = '';
 
@@ -133,11 +140,35 @@ class CustodiesIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'رُفض طلب العهدة');
     }
 
-    public function disburseCustody(int $id): void
+    public function openDisburse(int $id): void
     {
         abort_unless(auth()->user()->can('finance.custodies.disburse'), 403);
-        $custody = Custody::findOrFail($id);
-        app(CustodyService::class)->disburse($custody);
+        $this->disbursingId = $id;
+        $this->disbursementProof = null;
+    }
+
+    public function disburseCustody(): void
+    {
+        abort_unless(auth()->user()->can('finance.custodies.disburse'), 403);
+        $this->validate([
+            'disbursingId' => 'required|exists:custodies,id',
+            'disbursementProof' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
+        ], [
+            'disbursementProof.required' => 'إثبات الصرف إلزامي',
+        ]);
+
+        $path = $this->disbursementProof->store('custodies/disbursements', 'local');
+
+        try {
+            app(CustodyService::class)->disburse(Custody::findOrFail($this->disbursingId), $path);
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
+        $this->disbursingId = null;
+        $this->disbursementProof = null;
         $this->dispatch('toast', type: 'success', message: 'تم صرف العهدة');
     }
 

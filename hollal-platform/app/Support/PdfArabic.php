@@ -45,6 +45,9 @@ final class PdfArabic
         $cr = $includeCr && $company->commercial_register
             ? '<p>السجل التجاري: '.e((string) $company->commercial_register).'</p>'
             : '';
+        $address = $includeCr && $company->address
+            ? '<p>العنوان: '.e((string) $company->address).'</p>'
+            : '';
 
         return '<div dir="rtl" style="text-align:right; unicode-bidi: embed;">'
             .'<style>'.self::fontFace().' table { border-collapse: collapse; width: 100%; }'
@@ -53,6 +56,7 @@ final class PdfArabic
             .'<h2>'.e($title).'</h2>'
             .'<p>'.e($company->name).' — الرقم الضريبي: '.e((string) $company->tax_number).'</p>'
             .$cr
+            .$address
             .'</div>';
     }
 

@@ -7,6 +7,13 @@
         wire:click="openCreateModal"
     />
 
+    @if ($canViewBudgets)
+        <p class="ds-text-muted ds-mb-3">
+            طلب إضافة للموازنة يتم من
+            <a class="ds-link" href="{{ route('budgets.index') }}">لوحة الموازنات</a>.
+        </p>
+    @endif
+
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label" for="revenue-source">المصدر</label>
@@ -43,7 +50,13 @@
                 <td class="ds-ltr-num">{{ number_format((float) $revenue->amount, 2) }} ر.س</td>
                 <td class="ds-ltr-num">{{ $revenue->received_at?->format('Y-m-d') ?? '—' }}</td>
                 <td><x-ds-status-badge :status="$revenue->status" /></td>
-                <td>{{ $revenue->external_document_path ? 'مرفق' : '—' }}</td>
+                <td>
+                    @if ($revenue->external_document_path)
+                        <a class="ds-link" href="{{ route('revenues.files.download', $revenue) }}">تحميل / معاينة</a>
+                    @else
+                        —
+                    @endif
+                </td>
             </tr>
         @empty
             <tr><td colspan="5"><x-ds-empty-state message="لا توجد إيرادات مسجّلة" icon="fa-coins" /></td></tr>
@@ -75,25 +88,4 @@
             <button type="button" class="ds-btn ds-btn-primary" wire:click="saveRevenue">حفظ</button>
         </x-slot:footer>
     </x-ds-modal>
-
-    @if ($canManage)
-        <section class="ds-section">
-            <h3 class="ds-section-title">إضافة للموازنة (بانتظار المدير التنفيذي)</h3>
-            <x-ds-form-group label="المشروع" :error="$errors->first('budgetProjectId')">
-                <select class="ds-input" wire:model="budgetProjectId">
-                    <option value="">—</option>
-                    @foreach ($projects as $project)
-                        <option value="{{ $project->id }}">{{ $project->name }} (حاليًا {{ number_format((float) $project->budget, 2) }})</option>
-                    @endforeach
-                </select>
-            </x-ds-form-group>
-            <x-ds-form-group label="المبلغ" :error="$errors->first('budgetAmount')">
-                <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="budgetAmount">
-            </x-ds-form-group>
-            <x-ds-form-group label="ملاحظة">
-                <input type="text" class="ds-input" wire:model="budgetNote">
-            </x-ds-form-group>
-            <button type="button" class="ds-btn ds-btn-primary" wire:click="requestBudgetAdd">إرسال للاعتماد</button>
-        </section>
-    @endif
 </x-ds-page>

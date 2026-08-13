@@ -89,7 +89,7 @@ class FinancialReportService
     {
         $report = $this->monthly($month);
 
-        $html = PdfArabic::header('التقرير المالي الشهري — '.$month)
+        $html = PdfArabic::header('التقرير المالي الشهري — '.$month, includeCr: true)
             .'<div dir="rtl">'
             .'<table><thead><tr><th>البند</th><th>المبلغ</th></tr></thead><tbody>'
             .'<tr><td>إجمالي المصروفات</td><td>'.number_format($report['expenses_total'], 2).'</td></tr>'

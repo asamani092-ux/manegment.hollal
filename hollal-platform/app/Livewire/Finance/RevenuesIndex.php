@@ -2,10 +2,8 @@
 
 namespace App\Livewire\Finance;
 
-use App\Models\Project;
 use App\Models\Revenue;
 use App\Models\RevenueCategory;
-use App\Services\BudgetService;
 use App\Services\RevenueService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -33,12 +31,6 @@ class RevenuesIndex extends Component
     public string $received_at = '';
 
     public ?TemporaryUploadedFile $evidence = null;
-
-    public ?int $budgetProjectId = null;
-
-    public string $budgetAmount = '';
-
-    public string $budgetNote = '';
 
     public string $sourceFilter = '';
 
@@ -81,7 +73,7 @@ class RevenuesIndex extends Component
     public function openCreateModal(): void
     {
         abort_unless(auth()->user()->can('finance.revenues.manage'), 403);
-        $this->reset(['amount', 'category_id', 'evidence', 'budgetProjectId', 'budgetAmount', 'budgetNote']);
+        $this->reset(['amount', 'category_id', 'evidence']);
         $this->received_at = now()->toDateString();
         $this->showCreateModal = true;
     }
@@ -96,7 +88,10 @@ class RevenuesIndex extends Component
             'evidence' => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png',
         ]);
 
-        $path = $this->evidence?->store('revenues', 'local');
+        $path = null;
+        if ($this->evidence) {
+            $path = $this->evidence->store('revenues', 'local');
+        }
 
         app(RevenueService::class)->recordManual(
             (float) $this->amount,
@@ -106,28 +101,8 @@ class RevenuesIndex extends Component
         );
 
         $this->showCreateModal = false;
+        $this->reset(['amount', 'category_id', 'evidence']);
         $this->dispatch('toast', type: 'success', message: 'تم تسجيل الإيراد');
-    }
-
-    public function requestBudgetAdd(): void
-    {
-        abort_unless(auth()->user()->can('finance.revenues.manage') || auth()->user()->can('finance.budgets.view'), 403);
-
-        $this->validate([
-            'budgetProjectId' => 'required|exists:projects,id',
-            'budgetAmount' => 'required|numeric|min:0.01',
-            'budgetNote' => 'nullable|string|max:500',
-        ]);
-
-        app(BudgetService::class)->requestAddition(
-            Project::findOrFail($this->budgetProjectId),
-            (float) $this->budgetAmount,
-            auth()->user(),
-            $this->budgetNote !== '' ? $this->budgetNote : 'إضافة من الإيرادات',
-        );
-
-        $this->reset(['budgetProjectId', 'budgetAmount', 'budgetNote']);
-        $this->dispatch('toast', type: 'success', message: 'أُرسل طلب الإضافة للموازنة — بانتظار اعتماد المدير التنفيذي');
     }
 
     public function render(): View
@@ -147,7 +122,7 @@ class RevenuesIndex extends Component
                 Revenue::SOURCE_MANUAL,
             ],
             'canManage' => auth()->user()->can('finance.revenues.manage'),
-            'projects' => Project::query()->orderBy('name')->get(['id', 'name', 'budget']),
+            'canViewBudgets' => auth()->user()->can('finance.budgets.view'),
         ])->layout('layouts.app', ['title' => 'الإيرادات']);
     }
 }

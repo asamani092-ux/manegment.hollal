@@ -71,6 +71,7 @@ class DemoPartnershipsProjectsSeeder extends Seeder
                 'name' => 'جمعية تحفيظ القرآن الكريم بمحافظة الخرج',
                 'type' => 'جمعية تحفيظ',
                 'city' => 'الخرج',
+                'tax_number' => '310011122233344',
                 'roles' => ['متعاقدة', 'جهة تنفيذ'],
                 'notes' => 'شريك متكرر منذ 1445هـ، لديه 18 حلقة نسائية ورجالية.',
                 'contacts' => [
@@ -82,6 +83,7 @@ class DemoPartnershipsProjectsSeeder extends Seeder
                 'name' => 'إدارة التعليم بمنطقة الرياض',
                 'type' => 'جهة حكومية',
                 'city' => 'الرياض',
+                'tax_number' => '300055566677788',
                 'roles' => ['متعاقدة'],
                 'notes' => 'التنسيق يتم عبر إدارة النشاط الطلابي، ويشترط خطاب رسمي قبل كل زيارة.',
                 'contacts' => [
@@ -92,6 +94,7 @@ class DemoPartnershipsProjectsSeeder extends Seeder
                 'name' => 'شركة منارات التعليم للتدريب',
                 'type' => 'شركة تعليمية',
                 'city' => 'جدة',
+                'tax_number' => '310099988877766',
                 'roles' => ['جهة تنفيذ'],
                 'notes' => 'مزود تدريب معتمد، يتم التعاقد معه لتنفيذ ورش المعلمين.',
                 'contacts' => [
@@ -102,6 +105,7 @@ class DemoPartnershipsProjectsSeeder extends Seeder
                 'name' => 'وقف البر الخيري بالدمام',
                 'type' => 'وقف',
                 'city' => 'الدمام',
+                'tax_number' => '310044455566677',
                 'roles' => ['مانحة'],
                 'notes' => 'يمول برامج القياس والأثر ويطلب تقريراً ربعياً.',
                 'contacts' => [
@@ -117,6 +121,9 @@ class DemoPartnershipsProjectsSeeder extends Seeder
             unset($definition['contacts']);
 
             $organization = Organization::firstOrCreate(['name' => $definition['name']], $definition);
+            if (empty($organization->tax_number) && ! empty($definition['tax_number'])) {
+                $organization->update(['tax_number' => $definition['tax_number']]);
+            }
 
             foreach ($contacts as $contact) {
                 OrganizationContact::firstOrCreate(

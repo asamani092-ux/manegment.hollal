@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Asset;
 use App\Models\AssetCategory;
 use App\Models\AssetMovement;
+use App\Models\CompanyProfile;
 use App\Models\Custody;
 use App\Models\CustodySettlementItem;
 use App\Models\ExpenseApprovalLog;
@@ -17,6 +18,7 @@ use App\Models\User;
 use App\Services\ExpenseApprovalService;
 use App\Services\TaxInvoiceService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Demo finance data for UAT — assets, revenues, tax invoices, expense requests
@@ -47,11 +49,44 @@ class DemoFinanceSeeder extends Seeder
             return;
         }
 
+        $this->seedCompanyProfile();
+        $this->seedPlaceholderEvidenceFiles();
         $this->seedAssets();
         $this->seedRevenues();
         $this->seedTaxInvoices();
         $this->seedExpenseRequests();
         $this->seedCustodies();
+    }
+
+    private function seedCompanyProfile(): void
+    {
+        $profile = CompanyProfile::current();
+        $profile->fill([
+            'name' => $profile->name ?: 'مؤسسة حلّل',
+            'tax_number' => $profile->tax_number ?: '300000000000003',
+            'commercial_register' => $profile->commercial_register ?: '1010123456',
+            'address' => $profile->address ?: 'الرياض — حي العليا — طريق الملك فهد',
+        ]);
+        $profile->save();
+    }
+
+    /** Placeholder private-disk files so financial documents index is not empty. */
+    private function seedPlaceholderEvidenceFiles(): void
+    {
+        $disk = Storage::disk('local');
+        foreach ([
+            'revenues/demo-evidence-1.pdf',
+            'revenues/demo-evidence-2.pdf',
+            'expenses/official/demo-invoice-1.pdf',
+            'expenses/official/demo-invoice-2.pdf',
+            'custodies/settlements/demo-invoice.pdf',
+            'custodies/disbursements/demo-proof.pdf',
+            'payroll/demo-proof.pdf',
+        ] as $path) {
+            if (! $disk->exists($path)) {
+                $disk->put($path, "%PDF-1.4\n% demo placeholder for {$path}\n");
+            }
+        }
     }
 
     /** 6 assets + handover/maintenance/retirement movements. */
@@ -195,6 +230,7 @@ class DemoFinanceSeeder extends Seeder
                 'amount' => 150000.00,
                 'received_at' => now()->subMonths(2)->startOfMonth()->addDays(4)->toDateString(),
                 'status' => Revenue::STATUS_CONFIRMED,
+                'evidence' => 'revenues/demo-evidence-1.pdf',
             ],
             [
                 'source_type' => Revenue::SOURCE_MANUAL,
@@ -202,6 +238,7 @@ class DemoFinanceSeeder extends Seeder
                 'amount' => 25000.00,
                 'received_at' => now()->subMonths(2)->startOfMonth()->addDays(18)->toDateString(),
                 'status' => Revenue::STATUS_CONFIRMED,
+                'evidence' => 'revenues/demo-evidence-2.pdf',
             ],
             [
                 'source_type' => Revenue::SOURCE_MANUAL,
@@ -209,6 +246,7 @@ class DemoFinanceSeeder extends Seeder
                 'amount' => 87500.00,
                 'received_at' => now()->subMonth()->startOfMonth()->addDays(6)->toDateString(),
                 'status' => Revenue::STATUS_CONFIRMED,
+                'evidence' => 'revenues/demo-evidence-1.pdf',
             ],
             [
                 'source_type' => Revenue::SOURCE_PARTNERSHIP,
@@ -255,6 +293,7 @@ class DemoFinanceSeeder extends Seeder
                 'received_at' => $row['received_at'],
                 'category_id' => $category?->id,
                 'status' => $row['status'],
+                'external_document_path' => $row['evidence'] ?? null,
                 'confirmed_at' => $confirmed ? $row['received_at'].' 10:00:00' : null,
                 'confirmed_by' => $confirmed ? $this->finance->id : null,
             ]);
@@ -428,6 +467,9 @@ class DemoFinanceSeeder extends Seeder
                     'approved_at' => $row['approved_at'] ?? null,
                     'paid_ready_at' => $row['paid_ready_at'] ?? null,
                     'rejection_reason' => $row['rejection_reason'] ?? null,
+                    'official_document_path' => in_array($row['status'], ['approved', 'paid'], true)
+                        ? 'expenses/official/demo-invoice-1.pdf'
+                        : null,
                 ],
             );
 
@@ -504,6 +546,9 @@ class DemoFinanceSeeder extends Seeder
                     'employee_id' => $row['employee']->id,
                     'amount' => $row['amount'],
                     'disbursed_amount' => $row['disbursed_amount'] ?? null,
+                    'disbursement_proof_path' => isset($row['disbursed_amount'])
+                        ? 'custodies/disbursements/demo-proof.pdf'
+                        : null,
                     'returned_amount' => 0,
                     'category_id' => $category?->id,
                     'requested_by' => $row['employee']->id,
@@ -524,6 +569,7 @@ class DemoFinanceSeeder extends Seeder
                     [
                         'amount' => $item['amount'],
                         'category_id' => $itemCategory?->id,
+                        'invoice_file' => 'custodies/settlements/demo-invoice.pdf',
                     ],
                 );
             }

@@ -44,7 +44,7 @@
                         <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openReject({{ $custody->id }})">رفض</button>
                     @endif
                     @if ($canDisburse && $custody->status === \App\Models\Custody::STATUS_APPROVED)
-                        <button type="button" class="ds-btn ds-btn-teal ds-btn-sm" wire:click="disburseCustody({{ $custody->id }})">صرف</button>
+                        <button type="button" class="ds-btn ds-btn-teal ds-btn-sm" wire:click="openDisburse({{ $custody->id }})">صرف</button>
                     @endif
                 </div>
             </article>
@@ -83,7 +83,7 @@
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openReject({{ $custody->id }})">رفض</button>
                         @endif
                         @if ($canDisburse && $custody->status === \App\Models\Custody::STATUS_APPROVED)
-                            <button type="button" class="ds-btn ds-btn-teal ds-btn-sm" wire:click="disburseCustody({{ $custody->id }})">صرف</button>
+                            <button type="button" class="ds-btn ds-btn-teal ds-btn-sm" wire:click="openDisburse({{ $custody->id }})">صرف</button>
                         @endif
                     </td>
                 </tr>
@@ -125,6 +125,17 @@
         <x-slot:footer>
             <button type="button" class="ds-btn ds-btn-primary" wire:click="rejectCustody">تأكيد الرفض</button>
             <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('rejectingId', null)">إلغاء</button>
+        </x-slot:footer>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$disbursingId !== null" title="صرف العهدة" close-action="$set('disbursingId', null)">
+        <p class="ds-text-muted">يجب إرفاق إثبات الصرف قبل التأكيد.</p>
+        <x-ds-form-group label="إثبات الصرف" :error="$errors->first('disbursementProof')">
+            <input type="file" class="ds-input" wire:model="disbursementProof" accept=".pdf,.jpg,.jpeg,.png">
+        </x-ds-form-group>
+        <x-slot:footer>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="disburseCustody">تأكيد الصرف</button>
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('disbursingId', null)">إلغاء</button>
         </x-slot:footer>
     </x-ds-modal>
 </x-ds-page>
