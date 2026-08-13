@@ -61,10 +61,6 @@ class CustodiesIndex extends Component
             || auth()->user()->can('finance.custodies.disburse'),
             403
         );
-
-        if ($this->open) {
-            $this->search = (string) $this->open;
-        }
     }
 
     public function openRequestModal(): void
@@ -151,7 +147,8 @@ class CustodiesIndex extends Component
             ->select(['id', 'employee_id', 'amount', 'purpose', 'status', 'due_date', 'rejection_reason', 'created_at'])
             ->with('employee:id,name')
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
-            ->when($this->search, fn ($q) => $q->whereHas(
+            ->when($this->open, fn ($q) => $q->where('id', $this->open))
+            ->when($this->search && ! $this->open, fn ($q) => $q->whereHas(
                 'employee',
                 fn ($e) => $e->where('name', 'like', '%'.$this->search.'%')
             ))

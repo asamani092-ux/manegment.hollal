@@ -27,7 +27,7 @@
 
     <div class="ds-task-cards ds-list-cards-mobile">
         @forelse ($custodies as $custody)
-            <article class="ds-task-card" wire:key="custody-card-{{ $custody->id }}">
+            <article class="ds-task-card {{ $open === $custody->id ? 'is-open-record' : '' }}" wire:key="custody-card-{{ $custody->id }}">
                 <h3 class="ds-task-card-title">{{ $custody->employee?->name ?? '—' }}</h3>
                 <div class="ds-task-card-meta">
                     <span class="ds-ltr-num">{{ number_format((float) $custody->amount, 2) }} ر.س</span>
@@ -66,7 +66,7 @@
                 </tr>
             </x-slot:head>
             @forelse ($custodies as $custody)
-                <tr wire:key="custody-{{ $custody->id }}">
+                <tr wire:key="custody-{{ $custody->id }}" class="{{ $open === $custody->id ? 'is-open-record' : '' }}">
                     <td>{{ $custody->employee?->name ?? '—' }}</td>
                     <td class="ds-ltr-num">{{ number_format((float) $custody->amount, 2) }} ر.س</td>
                     <td>{{ $custody->purpose }}</td>

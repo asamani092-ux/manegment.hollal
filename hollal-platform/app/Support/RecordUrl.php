@@ -31,4 +31,36 @@ final class RecordUrl
     {
         return route('partnerships.show', $id);
     }
+
+    public static function project(int $id): string
+    {
+        return route('projects.show', $id);
+    }
+
+    public static function meeting(int $id): string
+    {
+        return route('meetings.index', ['open' => $id]);
+    }
+
+    public static function payrollRun(?int $id = null): string
+    {
+        return $id === null
+            ? route('payroll-runs.index')
+            : route('payroll-runs.index', ['open' => $id]);
+    }
+
+    public static function contract(int $id): string
+    {
+        return route('contracts.index', ['open' => $id]);
+    }
+
+    public static function document(int $id): string
+    {
+        return route('documents.index', ['open' => $id]);
+    }
+
+    public static function revenue(int $id): string
+    {
+        return route('revenues.index', ['open' => $id]);
+    }
 }

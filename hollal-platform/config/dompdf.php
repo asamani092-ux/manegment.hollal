@@ -45,7 +45,11 @@ return [
          * Times-Roman, Times-Bold, Times-BoldItalic, Times-Italic,
          * Symbol, ZapfDingbats.
          */
-        'font_dir' => storage_path('fonts'), // advised by dompdf (https://github.com/dompdf/dompdf/pull/782)
+        /*
+         * Metrics + installed Amiri live under storage/fonts; TTF source is resources/fonts.
+         * Dompdf registers fonts from font_dir; PdfArabic @font-face loads Amiri-Regular.ttf.
+         */
+        'font_dir' => storage_path('fonts'), // advised by dompdf (https://github.com/dompdf/dompdf/pull/782); Amiri metrics here, TTF also in resources/fonts
 
         /**
          * The location of the DOMPDF font cache directory
@@ -179,7 +183,7 @@ return [
          *
          * @var string
          */
-        'default_font' => 'dejavu sans',
+        'default_font' => is_file(resource_path('fonts/Amiri-Regular.ttf')) ? 'Amiri' : 'dejavu sans',
 
         /**
          * Image DPI setting
@@ -267,7 +271,7 @@ return [
          *
          * @var bool
          */
-        'enable_remote' => false,
+        'enable_remote' => true,
 
         /**
          * List of allowed remote hosts

@@ -4,12 +4,14 @@
     <meta charset="UTF-8">
     <style>
         @page { margin: 24px; }
+        {!! $pdfFontFace !!}
         body {
-            font-family: 'DejaVu Sans', sans-serif;
+            font-family: Amiri, dejavu sans, sans-serif;
             font-size: 12px;
             line-height: 1.6;
             color: #2a3f5f;
             direction: rtl;
+            unicode-bidi: embed;
             text-align: right;
         }
         h1 { font-size: 18px; color: #005c7b; margin-bottom: 4px; }

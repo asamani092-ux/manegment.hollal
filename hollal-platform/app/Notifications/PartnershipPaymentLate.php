@@ -27,12 +27,18 @@ class PartnershipPaymentLate extends Notification implements ShouldQueue
     /** @return array<string, mixed> */
     public function toDatabase(object $notifiable): array
     {
+        $this->scheduleItem->loadMissing('contract');
+        $partnershipId = $this->scheduleItem->contract?->partnership_id;
+
         return [
             'message' => 'دفعة متأخرة: '.($this->scheduleItem->label ?? 'دفعة')
                 .' بمبلغ '.number_format((float) $this->scheduleItem->amount, 2)
                 .' استحقت في '.$this->scheduleItem->due_on->format('Y-m-d'),
+            'url' => $partnershipId
+                ? \App\Support\RecordUrl::partnership((int) $partnershipId)
+                : route('partnerships.index'),
             'schedule_id' => $this->scheduleItem->id,
-            'partnership_id' => $this->scheduleItem->contract?->partnership_id,
+            'partnership_id' => $partnershipId,
         ];
     }
 }

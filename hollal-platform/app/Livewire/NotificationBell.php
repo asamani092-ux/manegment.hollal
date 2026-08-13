@@ -26,6 +26,25 @@ class NotificationBell extends Component
         $notification?->markAsRead();
     }
 
+    public function markAsReadAndGo(string $notificationId): void
+    {
+        $notification = auth()->user()->notifications()->where('id', $notificationId)->first();
+        if (! $notification) {
+            return;
+        }
+
+        $notification->markAsRead();
+
+        $url = $notification->data['url'] ?? null;
+        if (is_string($url) && $url !== '' && $url !== '#') {
+            $this->redirect($url);
+
+            return;
+        }
+
+        $this->open = true;
+    }
+
     public function markAllAsRead(): void
     {
         auth()->user()->unreadNotifications->markAsRead();

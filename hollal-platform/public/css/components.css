@@ -1182,10 +1182,18 @@
   padding: 1.5rem !important;
 }
 
-.ds-list-cards-mobile {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1rem;
+.is-open-record {
+  outline: 2px solid var(--ds-teal, #0d9488);
+  outline-offset: 2px;
+  background: color-mix(in srgb, var(--ds-teal, #0d9488) 8%, transparent);
+}
+
+@media (max-width: 767px) {
+  .ds-list-cards-mobile {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
 }
 
 /* 05-B2 — partnerships pipeline board */

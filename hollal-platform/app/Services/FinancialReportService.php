@@ -98,6 +98,11 @@ class FinancialReportService
             .'<tr><td><strong>الصافي</strong></td><td><strong>'.number_format($report['net'], 2).'</strong></td></tr>'
             .'</tbody></table></div>';
 
-        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', PdfArabic::defaultFont())->output();
+        $pdf = Pdf::loadHTML($html)->setPaper('a4');
+        foreach (PdfArabic::pdfOptions() as $key => $value) {
+            $pdf->setOption($key, $value);
+        }
+
+        return $pdf->output();
     }
 }

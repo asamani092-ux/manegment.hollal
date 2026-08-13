@@ -48,4 +48,10 @@ class Asset extends Model
     {
         return $this->belongsTo(User::class, 'current_holder_id');
     }
+
+    /** @return BelongsTo<AssetCategory, $this> */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(AssetCategory::class, 'category_id');
+    }
 }

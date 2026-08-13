@@ -47,14 +47,21 @@ class ContractsIndex extends Component
 
     public string $renewEndDate = '';
 
+    public ?int $open = null;
+
     protected $queryString = [
         'search' => ['except' => ''],
         'statusFilter' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function mount(): void
     {
         $this->authorize('viewAny', Contract::class);
+
+        if ($this->open) {
+            $this->openView($this->open);
+        }
     }
 
     public function updatingSearch(): void

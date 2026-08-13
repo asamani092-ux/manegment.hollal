@@ -40,9 +40,12 @@ class PayrollRunsIndex extends Component
 
     public string $returnNote = '';
 
+    public ?int $open = null;
+
     protected $queryString = [
         'statusFilter' => ['except' => ''],
         'monthFilter' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function updatingStatusFilter(): void
@@ -59,6 +62,10 @@ class PayrollRunsIndex extends Component
     {
         $this->authorize('hr.salaries.view');
         $this->month = now()->format('Y-m');
+
+        if ($this->open) {
+            $this->openRun($this->open);
+        }
     }
 
     public function generate(): void

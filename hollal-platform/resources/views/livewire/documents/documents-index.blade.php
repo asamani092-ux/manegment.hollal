@@ -47,7 +47,7 @@
                 </tr>
             </x-slot:head>
             @forelse ($documents as $document)
-                <tr wire:key="doc-{{ $document->id }}">
+                <tr wire:key="doc-{{ $document->id }}" class="{{ $open === $document->id ? 'is-open-record' : '' }}">
                     <td>{{ $document->title }}</td>
                     <td>{{ $document->category }}</td>
                     <td>{{ $document->project?->name ?? '—' }}</td>

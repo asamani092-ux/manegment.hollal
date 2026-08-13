@@ -141,7 +141,7 @@ class AssetsIndex extends Component
         return view('livewire.finance.assets-index', [
             'assets' => Asset::query()
                 ->select(['id', 'code', 'name_ar', 'description', 'category_id', 'condition', 'purchase_amount', 'location', 'current_holder_id', 'holder_since', 'can_be_custody'])
-                ->with(['currentHolder:id,name'])
+                ->with(['currentHolder:id,name', 'category:id,name_ar'])
                 ->when($this->search, fn ($q) => $q->where(
                     fn ($w) => $w->where('name_ar', 'like', '%'.$this->search.'%')
                         ->orWhere('code', 'like', '%'.$this->search.'%')

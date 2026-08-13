@@ -67,10 +67,6 @@ class LeavesIndex extends Component
             || auth()->user()->can('hr.employees.view'),
             403
         );
-
-        if ($this->open) {
-            $this->search = (string) $this->open;
-        }
     }
 
     public function openForm(): void
@@ -169,7 +165,8 @@ class LeavesIndex extends Component
             ->with(['employee:id,name,manager_id', 'approver:id,name'])
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->typeFilter, fn ($q) => $q->where('type', $this->typeFilter))
-            ->when($this->search, fn ($q) => $q->whereHas(
+            ->when($this->open, fn ($q) => $q->where('id', $this->open))
+            ->when($this->search && ! $this->open, fn ($q) => $q->whereHas(
                 'employee',
                 fn ($e) => $e->where('name', 'like', '%'.$this->search.'%')
             ))

@@ -29,6 +29,7 @@ class PartnershipStale extends Notification implements ShouldQueue
     {
         return [
             'message' => 'شراكة راكدة في مرحلة «'.$this->partnership->stageLabel().'» منذ '.$this->days.' يومًا',
+            'url' => \App\Support\RecordUrl::partnership($this->partnership->id),
             'partnership_id' => $this->partnership->id,
             'stage' => $this->partnership->stage,
             'days' => $this->days,

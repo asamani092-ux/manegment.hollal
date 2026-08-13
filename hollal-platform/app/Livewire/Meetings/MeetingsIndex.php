@@ -33,11 +33,20 @@ class MeetingsIndex extends Component
     /** @var array<int> */
     public array $attendeeIds = [];
 
-    protected $queryString = ['search' => ['except' => '']];
+    public ?int $open = null;
+
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'open' => ['except' => null],
+    ];
 
     public function mount(): void
     {
         $this->authorize('meetings.view');
+
+        if ($this->open) {
+            $this->openView($this->open);
+        }
     }
 
     public function updatingSearch(): void

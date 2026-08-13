@@ -46,10 +46,13 @@ class RevenuesIndex extends Component
 
     public string $dateTo = '';
 
+    public ?int $open = null;
+
     protected $queryString = [
         'sourceFilter' => ['except' => ''],
         'dateFrom' => ['except' => ''],
         'dateTo' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function updatingSourceFilter(): void
@@ -132,6 +135,7 @@ class RevenuesIndex extends Component
         return view('livewire.finance.revenues-index', [
             'revenues' => Revenue::query()
                 ->select(['id', 'source_type', 'amount', 'received_at', 'status', 'external_document_path', 'created_at'])
+                ->when($this->open, fn ($q) => $q->where('id', $this->open))
                 ->when($this->sourceFilter, fn ($q) => $q->where('source_type', $this->sourceFilter))
                 ->when($this->dateFrom, fn ($q) => $q->whereDate('received_at', '>=', $this->dateFrom))
                 ->when($this->dateTo, fn ($q) => $q->whereDate('received_at', '<=', $this->dateTo))

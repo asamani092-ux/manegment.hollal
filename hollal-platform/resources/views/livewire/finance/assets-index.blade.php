@@ -28,7 +28,8 @@
             <tr>
                 <th scope="col">الرمز</th>
                 <th scope="col">الاسم</th>
-                <th scope="col">الفئة / الموقع</th>
+                <th scope="col">الفئة</th>
+                <th scope="col">الموقع</th>
                 <th scope="col">قيمة الشراء</th>
                 <th scope="col">الحالة</th>
                 <th scope="col">حامل العهدة</th>
@@ -40,6 +41,7 @@
             <tr wire:key="asset-{{ $asset->id }}">
                 <td class="ds-ltr-num">{{ $asset->code }}</td>
                 <td>{{ $asset->name_ar }}</td>
+                <td>{{ $asset->category?->name_ar ?? '—' }}</td>
                 <td>{{ $asset->location ?? '—' }}</td>
                 <td class="ds-ltr-num">{{ $asset->purchase_amount !== null ? number_format((float) $asset->purchase_amount, 2) : '—' }}</td>
                 <td><x-ds-status-badge :status="$asset->condition" /></td>
@@ -52,7 +54,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="8"><x-ds-empty-state message="لا توجد أصول مسجّلة" icon="fa-boxes-stacked" /></td></tr>
+            <tr><td colspan="9"><x-ds-empty-state message="لا توجد أصول مسجّلة" icon="fa-boxes-stacked" /></td></tr>
         @endforelse
     </x-ds-table>
 
