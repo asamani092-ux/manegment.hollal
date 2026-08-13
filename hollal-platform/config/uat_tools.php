@@ -97,7 +97,6 @@ return [
                 ['id' => 'pipeline', 'tool' => 'رحلة الشراكات', 'path' => '/partnerships/pipeline', 'checks' => 'المراحل · نقل شراكة · فتح ملف'],
                 ['id' => 'p-contract', 'tool' => 'عقد الشراكة (داخل الصفحة)', 'path' => '/partnerships/{id}', 'checks' => 'المسمى «عقد الشراكة» · بصمة الملف · عروض الأسعار · الدفعات'],
                 ['id' => 'portal', 'tool' => 'بوابة الشريك', 'path' => '/portal/{token}', 'checks' => 'فتح برابط · عرض العقد PDF · لا تسريب بيانات أخرى'],
-                ['id' => 'guest', 'tool' => 'عرض الضيف', 'path' => '/partnership/guest/{token}', 'checks' => 'صلاحية الرابط · محتوى محدود'],
             ],
         ],
         [

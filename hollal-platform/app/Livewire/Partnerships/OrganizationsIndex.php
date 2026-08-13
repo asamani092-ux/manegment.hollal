@@ -4,6 +4,9 @@ namespace App\Livewire\Partnerships;
 
 use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\Organization;
+use App\Models\Program;
+use App\Models\User;
+use App\Services\PartnershipQuickCreateService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -25,7 +28,16 @@ class OrganizationsIndex extends Component
 
     public bool $showModal = false;
 
+    public bool $showQuickPartnershipModal = false;
+
     public ?int $editingId = null;
+
+    public ?int $quickOrganizationId = null;
+
+    public ?int $quickOwnerId = null;
+
+    /** @var list<int|string> */
+    public array $quickProgramIds = [];
 
     public string $name = '';
 
@@ -121,6 +133,42 @@ class OrganizationsIndex extends Component
         $this->dispatch('ds-toast', message: 'تمت أرشفة الجهة مع الحفاظ على سجلها');
     }
 
+    public function openQuickPartnership(int $organizationId): void
+    {
+        $this->authorize('partnerships.organizations.manage');
+        $this->quickOrganizationId = $organizationId;
+        $this->quickOwnerId = auth()->id();
+        $this->quickProgramIds = [];
+        $this->showQuickPartnershipModal = true;
+    }
+
+    public function createQuickPartnership(): void
+    {
+        $this->authorize('partnerships.organizations.manage');
+        $this->validate([
+            'quickOrganizationId' => 'required|exists:organizations,id',
+            'quickOwnerId' => 'required|exists:users,id',
+            'quickProgramIds' => 'required|array|min:1',
+            'quickProgramIds.*' => 'integer|exists:programs,id',
+        ], [], ['quickProgramIds' => 'البرامج المسموحة', 'quickOwnerId' => 'المتابع']);
+
+        try {
+            $partnership = app(PartnershipQuickCreateService::class)->create(
+                Organization::findOrFail($this->quickOrganizationId),
+                User::findOrFail($this->quickOwnerId),
+                $this->quickProgramIds,
+            );
+        } catch (\RuntimeException $exception) {
+            $this->addError('quickProgramIds', $exception->getMessage());
+
+            return;
+        }
+
+        $this->showQuickPartnershipModal = false;
+        $this->dispatch('ds-toast', message: 'تم إنشاء الشراكة وعرض السعر المسودة');
+        $this->redirectRoute('partnerships.show', ['partnership' => $partnership->id]);
+    }
+
     public function render(): View
     {
         $organizations = Organization::query()
@@ -134,6 +182,13 @@ class OrganizationsIndex extends Component
             'organizations' => $organizations,
             'types' => self::TYPES,
             'roleOptions' => self::ROLES,
+            'owners' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'programs' => Program::query()
+                ->where('stage', Program::STAGE_ACTIVE)
+                ->whereHas('prices', fn ($query) => $query->where('is_active', true))
+                ->withCount('prices')
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ])->layout('layouts.app', ['title' => 'الجهات الشريكة']);
     }
 

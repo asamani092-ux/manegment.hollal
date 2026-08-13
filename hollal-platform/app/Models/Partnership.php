@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -70,6 +71,8 @@ class Partnership extends Model
         'contract_pdf',
         'project_id',
         'status',
+        'awaiting_internal_approval',
+        'internal_approval_notes',
     ];
 
     protected function casts(): array
@@ -80,6 +83,7 @@ class Partnership extends Model
             'pricing_amount' => 'decimal:2',
             'expected_value' => 'decimal:2',
             'stage' => 'integer',
+            'awaiting_internal_approval' => 'boolean',
         ];
     }
 
@@ -92,6 +96,11 @@ class Partnership extends Model
     public function stageAgeDays(): int
     {
         return (int) ($this->stage_entered_at ?? $this->created_at ?? now())->diffInDays(now());
+    }
+
+    public function executionDays(): int
+    {
+        return $this->stage === self::STAGE_EXECUTION ? $this->stageAgeDays() : 0;
     }
 
     /** @return HasMany<PartnershipStageLog, $this> */
@@ -122,6 +131,14 @@ class Partnership extends Model
     public function links(): HasMany
     {
         return $this->hasMany(PartnerLink::class);
+    }
+
+    /** @return BelongsToMany<Program, $this> */
+    public function allowedPrograms(): BelongsToMany
+    {
+        return $this->belongsToMany(Program::class, 'partnership_allowed_programs')
+            ->withTimestamps()
+            ->orderBy('programs.name');
     }
 
     /** @return HasMany<ProjectGenerationRequest, $this> */

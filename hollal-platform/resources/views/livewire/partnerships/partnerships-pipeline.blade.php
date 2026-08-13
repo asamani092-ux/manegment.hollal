@@ -20,7 +20,11 @@
                                 <span class="ds-ltr-num">{{ $partnership->expected_value !== null ? number_format((float) $partnership->expected_value, 2) : '—' }}</span>
                             </p>
                             <p class="ds-text-muted">المتابع: {{ $partnership->owner?->name ?? '—' }}</p>
-                            @if ($partnership->stageAgeDays() >= $staleThreshold)
+                            @if ($partnership->stage === \App\Models\Partnership::STAGE_EXECUTION)
+                                <span class="ds-badge ds-badge-info">
+                                    مدة التنفيذ {{ $partnership->executionDays() }} يومًا
+                                </span>
+                            @elseif ($partnership->stageAgeDays() >= $staleThreshold)
                                 <span class="ds-badge ds-badge-warning">راكدة {{ $partnership->stageAgeDays() }} يومًا</span>
                             @else
                                 <span class="ds-badge ds-badge-info">{{ $partnership->stageAgeDays() }} يومًا</span>
@@ -43,7 +47,7 @@
                 <tr>
                     <th>الجهة</th>
                     <th>المرحلة</th>
-                    <th>عمر المرحلة</th>
+                    <th>عمر المرحلة / التنفيذ</th>
                     <th>المتابع</th>
                     <th>القيمة المتوقعة</th>
                     <th>إجراءات</th>
@@ -53,7 +57,13 @@
                 <tr wire:key="pipeline-row-{{ $partnership->id }}">
                     <td>{{ $partnership->organization?->name ?? $partnership->entity_name ?? '—' }}</td>
                     <td>{{ $partnership->stageLabel() }}</td>
-                    <td class="ds-ltr-num">{{ $partnership->stageAgeDays() }}</td>
+                    <td class="ds-ltr-num">
+                        @if ($partnership->stage === \App\Models\Partnership::STAGE_EXECUTION)
+                            {{ $partnership->executionDays() }} يومًا تنفيذ
+                        @else
+                            {{ $partnership->stageAgeDays() }}
+                        @endif
+                    </td>
                     <td>{{ $partnership->owner?->name ?? '—' }}</td>
                     <td class="ds-ltr-num">
                         {{ $partnership->expected_value !== null ? number_format((float) $partnership->expected_value, 2) : '—' }}

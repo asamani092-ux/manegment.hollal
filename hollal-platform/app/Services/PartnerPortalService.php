@@ -6,8 +6,10 @@ use App\Models\Partnership;
 use App\Models\PartnerLink;
 use App\Models\PartnerPortalActivity;
 use App\Models\User;
+use App\Notifications\PartnershipPortalInvite;
 use App\Support\Setting;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * 05-B5 — the unique partner link.
@@ -29,6 +31,45 @@ class PartnerPortalService
             'is_revoked' => false,
             'created_by' => $actor?->id,
         ]);
+    }
+
+    public function portalUrl(string $token): string
+    {
+        return route('partner.portal', ['token' => $token]);
+    }
+
+    /**
+     * Send the portal URL to the organization's contacts. The configured mail
+     * driver records the message in local/UAT environments; no WhatsApp API is
+     * called.
+     */
+    public function emailLink(PartnerLink $link, ?string $email = null): string
+    {
+        $link->loadMissing('partnership.organization.contacts');
+        $url = $this->portalUrl($link->token);
+        $emails = collect([$email])
+            ->merge($link->partnership->organization?->contacts?->pluck('email') ?? [])
+            ->filter(fn ($value) => is_string($value) && filter_var($value, FILTER_VALIDATE_EMAIL))
+            ->unique()
+            ->values();
+
+        foreach ($emails as $recipient) {
+            Notification::route('mail', $recipient)
+                ->notify(new PartnershipPortalInvite($link->partnership, $url));
+        }
+
+        $this->log($link, 'portal.invite_emailed', [
+            'url' => $url,
+            'recipients' => $emails->all(),
+        ]);
+
+        return $url;
+    }
+
+    public function whatsappText(PartnerLink $link): string
+    {
+        return 'مرحبًا، يمكنكم متابعة شراكتكم واختيار البرامج والكميات من خلال الرابط التالي: '
+            .$this->portalUrl($link->token);
     }
 
     public function revoke(PartnerLink $link): PartnerLink

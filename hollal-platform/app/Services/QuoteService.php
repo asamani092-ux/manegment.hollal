@@ -66,6 +66,31 @@ class QuoteService
         });
     }
 
+    /**
+     * Update a draft in place while the partner is still configuring the
+     * catalog. Issued versions remain immutable and use revise() instead.
+     *
+     * @param  list<array<string, mixed>>  $items
+     */
+    public function updateDraft(Quote $quote, array $items): Quote
+    {
+        if ($quote->status !== Quote::STATUS_DRAFT) {
+            throw new \RuntimeException('لا يمكن تعديل عرض غير مسودة');
+        }
+
+        return DB::transaction(function () use ($quote, $items) {
+            $quote->items()->delete();
+            $quote->forceFill([
+                'tax_rate' => $this->taxRate(),
+                'entity_notes' => null,
+            ])->save();
+            $this->fillItems($quote, $items);
+            $this->recalculate($quote);
+
+            return $quote->fresh(['items']);
+        });
+    }
+
     public function approve(Quote $quote, User $approver): Quote
     {
         $quote->forceFill([

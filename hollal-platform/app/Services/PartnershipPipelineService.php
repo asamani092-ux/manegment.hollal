@@ -107,7 +107,7 @@ class PartnershipPipelineService
         $threshold = $this->staleThresholdDays();
 
         return Partnership::query()
-            ->whereIn('stage', Partnership::PIPELINE_STAGES)
+            ->whereIn('stage', array_diff(Partnership::PIPELINE_STAGES, [Partnership::STAGE_EXECUTION]))
             ->get()
             ->filter(fn (Partnership $p) => $p->stageAgeDays() >= $threshold)
             ->values();

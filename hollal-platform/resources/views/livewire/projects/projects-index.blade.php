@@ -337,7 +337,7 @@
                             <input type="text" class="ds-input" wire:model="contract_pdf" @disabled($partnershipViewOnly)>
                         </x-ds-form-group>
                     </div>
-                    <x-ds-form-group label="التزامات حلال" :error="$errors->first('halal_commitments')">
+                    <x-ds-form-group label="التزامات حلل" :error="$errors->first('halal_commitments')">
                         <textarea class="ds-input" rows="3" wire:model="halal_commitments" @disabled($partnershipViewOnly)></textarea>
                     </x-ds-form-group>
                     <x-ds-form-group label="التزامات الشريك" :error="$errors->first('partner_commitments')">

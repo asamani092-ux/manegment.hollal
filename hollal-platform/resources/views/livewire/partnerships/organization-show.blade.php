@@ -5,13 +5,21 @@
         <p>النوع: {{ $organization->typeLabel() }} — المدينة: {{ $organization->city ?? '—' }}</p>
         <p>الأدوار: {{ $organization->roles ? implode('، ', $organization->roles) : '—' }}</p>
         <p class="ds-text-muted">{{ $organization->notes }}</p>
+        @can('partnerships.organizations.manage')
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="openQuickPartnership">
+                إنشاء شراكة من الكتالوج
+            </button>
+        @endcan
     </section>
 
     <section class="ds-section">
         <h2 class="ds-section-title">مسؤولو التواصل</h2>
+        @can('partnerships.organizations.manage')
+            <button type="button" class="ds-btn ds-btn-sm" wire:click="openContactCreate">إضافة مسؤول</button>
+        @endcan
         <x-ds-table>
             <x-slot:head>
-                <tr><th>الاسم</th><th>الصفة</th><th>الجوال</th><th>البريد</th><th>رئيسي</th></tr>
+                <tr><th>الاسم</th><th>الصفة</th><th>الجوال</th><th>البريد</th><th>رئيسي</th><th>إجراءات</th></tr>
             </x-slot:head>
             @forelse ($organization->contacts as $contact)
                 <tr wire:key="contact-{{ $contact->id }}">
@@ -20,9 +28,15 @@
                     <td dir="ltr">{{ $contact->phone ?? '—' }}</td>
                     <td dir="ltr">{{ $contact->email ?? '—' }}</td>
                     <td>{{ $contact->is_primary ? 'نعم' : '—' }}</td>
+                    <td>
+                        @can('partnerships.organizations.manage')
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="editContact({{ $contact->id }})">تعديل</button>
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="archiveContact({{ $contact->id }})">أرشفة</button>
+                        @endcan
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا يوجد مسؤولو تواصل</td></tr>
+                <tr><td colspan="6" class="ds-text-muted ds-table-empty">لا يوجد مسؤولو تواصل</td></tr>
             @endforelse
         </x-ds-table>
     </section>
@@ -107,4 +121,49 @@
             @endforelse
         </x-ds-table>
     </section>
+
+    <x-ds-modal :show="$showContactModal">
+        <x-slot:header><h2>{{ $contactId ? 'تعديل مسؤول التواصل' : 'إضافة مسؤول التواصل' }}</h2></x-slot:header>
+        <x-ds-form-group label="الاسم" :error="$errors->first('contactName')">
+            <input type="text" class="ds-input" wire:model="contactName">
+        </x-ds-form-group>
+        <x-ds-form-group label="الصفة" :error="$errors->first('contactPosition')">
+            <input type="text" class="ds-input" wire:model="contactPosition">
+        </x-ds-form-group>
+        <x-ds-form-group label="الجوال" :error="$errors->first('contactPhone')">
+            <input type="text" class="ds-input" wire:model="contactPhone">
+        </x-ds-form-group>
+        <x-ds-form-group label="البريد" :error="$errors->first('contactEmail')">
+            <input type="email" class="ds-input" wire:model="contactEmail">
+        </x-ds-form-group>
+        <label class="ds-checkbox"><input type="checkbox" wire:model="contactPrimary"> مسؤول رئيسي</label>
+        <x-slot:footer>
+            <button type="button" class="ds-btn" wire:click="$set('showContactModal', false)">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveContact">حفظ</button>
+        </x-slot:footer>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$showQuickPartnershipModal" size="lg">
+        <x-slot:header><h2>إنشاء شراكة من الكتالوج</h2></x-slot:header>
+        <x-ds-form-group label="المتابع" :error="$errors->first('quickOwnerId')">
+            <select class="ds-input" wire:model="quickOwnerId">
+                <option value="">—</option>
+                @foreach ($owners as $owner)
+                    <option value="{{ $owner->id }}">{{ $owner->name }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+        <x-ds-form-group label="البرامج المسموحة" :error="$errors->first('quickProgramIds')">
+            @foreach ($programs as $program)
+                <label class="ds-checkbox">
+                    <input type="checkbox" value="{{ $program->id }}" wire:model="quickProgramIds">
+                    {{ $program->name }} ({{ $program->prices_count }} أسعار نشطة)
+                </label>
+            @endforeach
+        </x-ds-form-group>
+        <x-slot:footer>
+            <button type="button" class="ds-btn" wire:click="$set('showQuickPartnershipModal', false)">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="createQuickPartnership">إنشاء</button>
+        </x-slot:footer>
+    </x-ds-modal>
 </x-ds-page>

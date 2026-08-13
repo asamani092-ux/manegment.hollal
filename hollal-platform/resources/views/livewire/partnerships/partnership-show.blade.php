@@ -7,6 +7,11 @@
     <section class="ds-section">
         <p>المرحلة الحالية: <strong>{{ $partnership->stageLabel() }}</strong> — منذ
             <span class="ds-ltr-num">{{ $partnership->stageAgeDays() }}</span> يومًا</p>
+        @if ($partnership->awaiting_internal_approval)
+            <p class="ds-badge ds-badge-warning">بانتظار الاعتماد النهائي</p>
+        @elseif ($partnership->internal_approval_notes)
+            <p class="ds-badge ds-badge-info">ملاحظات الجهة: {{ $partnership->internal_approval_notes }}</p>
+        @endif
         @error('contract') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
     </section>
 
@@ -61,6 +66,9 @@
                 @if ($contract->signed_pdf_hash)
                     <p class="ds-text-muted" dir="ltr">بصمة الملف: {{ Str::limit($contract->signed_pdf_hash, 24) }}</p>
                 @endif
+                @if ($partnership->awaiting_internal_approval)
+                    <p class="ds-badge ds-badge-warning">بانتظار الاعتماد النهائي من PM/EM</p>
+                @endif
 
                 <x-ds-table>
                     <x-slot:head>
@@ -97,11 +105,19 @@
                     <button type="button" class="ds-btn" wire:click="uploadSignedCopy({{ $contract->id }})">رفع النسخة الموقعة</button>
                 @endcan
 
-                @can('partnerships.contracts.confirm')
+                @if (auth()->user()->can('partnerships.contracts.confirm') || auth()->user()->can('projects.update') || auth()->user()->hasAnyRole(['Super Admin', 'Executive Manager']))
                     <button type="button" class="ds-btn ds-btn-primary" wire:click="confirmContract({{ $contract->id }})">
                         تأكيد التعاقد
                     </button>
-                @endcan
+                    @if ($partnership->awaiting_internal_approval)
+                        <x-ds-form-group label="ملاحظات الإرجاع" :error="$errors->first('internalApprovalNotes')">
+                            <textarea class="ds-input" wire:model="internalApprovalNotes"></textarea>
+                        </x-ds-form-group>
+                        <button type="button" class="ds-btn" wire:click="returnContract({{ $contract->id }})">
+                            إعادة للجهة بملاحظات
+                        </button>
+                    @endif
+                @endif
             </div>
         @endforeach
         @if ($partnership->partnershipContracts->isEmpty())
@@ -149,12 +165,27 @@
             </x-slot:head>
             @forelse ($partnership->links as $link)
                 <tr wire:key="link-{{ $link->id }}">
-                    <td dir="ltr">{{ Str::limit($link->token, 16) }}</td>
+                    <td dir="ltr">
+                        <span x-data="{ copied: false }">
+                            <input class="ds-input" readonly value="{{ app(\App\Services\PartnerPortalService::class)->portalUrl($link->token) }}"
+                                   x-ref="url">
+                            <button type="button" class="ds-btn ds-btn-sm"
+                                    @click="navigator.clipboard.writeText($refs.url.value); copied = true">
+                                <span x-text="copied ? 'تم النسخ' : 'نسخ الرابط الكامل'"></span>
+                            </button>
+                        </span>
+                    </td>
                     <td dir="ltr">{{ $link->expires_at?->format('Y-m-d') ?? '—' }}</td>
                     <td>{{ $link->isUsable() ? 'فعّال' : 'منتهٍ/مُبطل' }}</td>
                     <td dir="ltr">{{ $link->last_used_at?->format('Y-m-d H:i') ?? '—' }}</td>
                     <td>
                         @can('partnerships.links.manage')
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="sendLinkEmail({{ $link->id }})">إرسال بالبريد</button>
+                            <button type="button" class="ds-btn ds-btn-sm"
+                                    x-data
+                                    @click="navigator.clipboard.writeText(@js(app(\App\Services\PartnerPortalService::class)->whatsappText($link)))">
+                                نسخ واتساب
+                            </button>
                             <button type="button" class="ds-btn ds-btn-sm" wire:click="revokeLink({{ $link->id }})">إبطال</button>
                         @endcan
                     </td>

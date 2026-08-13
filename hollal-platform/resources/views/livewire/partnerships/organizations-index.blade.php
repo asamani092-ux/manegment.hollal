@@ -33,10 +33,19 @@
                 <td><a href="{{ route('organizations.show', $organization->id) }}">{{ $organization->name }}</a></td>
                 <td>{{ $organization->typeLabel() }}</td>
                 <td>{{ $organization->city ?? '—' }}</td>
-                <td>{{ $organization->roles ? implode('، ', $organization->roles) : '—' }}</td>
+                <td>
+                    @forelse ($organization->roles ?? [] as $role)
+                        <span class="ds-badge ds-badge-info">{{ $role }}</span>
+                    @empty
+                        —
+                    @endforelse
+                </td>
                 <td class="ds-ltr-num">{{ $organization->partnerships_count }}</td>
                 <td>
                     @can('partnerships.organizations.manage')
+                        <button type="button" class="ds-btn ds-btn-sm" wire:click="openQuickPartnership({{ $organization->id }})">
+                            شراكة سريعة
+                        </button>
                         <button type="button" class="ds-btn ds-btn-sm" wire:click="edit({{ $organization->id }})">تعديل</button>
                         <button type="button" class="ds-btn ds-btn-sm" wire:click="archive({{ $organization->id }})">أرشفة</button>
                     @endcan
@@ -90,6 +99,34 @@
         <x-slot:footer>
             <button type="button" class="ds-btn" wire:click="$set('showModal', false)">إلغاء</button>
             <button type="button" class="ds-btn ds-btn-primary" wire:click="save">حفظ</button>
+        </x-slot:footer>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$showQuickPartnershipModal" size="lg">
+        <x-slot:header><h2>إنشاء شراكة سريعة</h2></x-slot:header>
+        <p class="ds-text-muted">تُنشأ الشراكة في مرحلة عرض السعر مع عرض مسودة من أسعار البرامج المختارة.</p>
+
+        <x-ds-form-group label="المتابع" :error="$errors->first('quickOwnerId')">
+            <select class="ds-input" wire:model="quickOwnerId">
+                <option value="">—</option>
+                @foreach ($owners as $owner)
+                    <option value="{{ $owner->id }}">{{ $owner->name }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+
+        <x-ds-form-group label="البرامج المسموحة للجهة" :error="$errors->first('quickProgramIds')">
+            @foreach ($programs as $program)
+                <label class="ds-checkbox">
+                    <input type="checkbox" value="{{ $program->id }}" wire:model="quickProgramIds">
+                    {{ $program->name }} ({{ $program->prices_count }} أسعار نشطة)
+                </label>
+            @endforeach
+        </x-ds-form-group>
+
+        <x-slot:footer>
+            <button type="button" class="ds-btn" wire:click="$set('showQuickPartnershipModal', false)">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="createQuickPartnership">إنشاء</button>
         </x-slot:footer>
     </x-ds-modal>
 </x-ds-page>
