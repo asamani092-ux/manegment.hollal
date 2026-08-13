@@ -113,7 +113,7 @@ class ReportRound2PartnershipTest extends TestCase
         $this->assertTrue($partnership->fresh()->awaiting_internal_approval);
 
         Livewire::actingAs($manager)
-            ->test(PartnershipShow::class, ['partnership' => $partnership->id])
+            ->test(PartnershipShow::class, ['partnership' => $partnership])
             ->call('confirmContract', $contract->id)
             ->assertHasNoErrors();
 
