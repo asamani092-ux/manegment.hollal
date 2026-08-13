@@ -176,6 +176,7 @@ class ReportRound2PartnershipTest extends TestCase
         $partnership = Partnership::create([
             'organization_id' => $organization->id,
             'owner_id' => $manager->id,
+            'entity_name' => $organization->name,
             'stage' => Partnership::STAGE_QUOTE,
         ]);
         $partnership->allowedPrograms()->attach($program);
