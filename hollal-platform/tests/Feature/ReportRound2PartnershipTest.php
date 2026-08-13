@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Partnerships\OrganizationsIndex;
+use App\Livewire\Partnerships\OrganizationShow;
 use App\Livewire\Partnerships\PartnerPortal;
 use App\Livewire\Partnerships\PartnershipShow;
 use App\Models\Organization;
@@ -144,6 +145,66 @@ class ReportRound2PartnershipTest extends TestCase
             'partner_link_id' => $link->id,
             'action' => 'portal.invite_emailed',
         ]);
+    }
+
+    public function test_internal_review_can_return_a_signed_contract_with_notes_and_contacts_are_crud(): void
+    {
+        $manager = $this->manager();
+        $organization = Organization::create(['name' => 'جهة المراجعة']);
+
+        Livewire::actingAs($manager)
+            ->test(OrganizationShow::class, ['organization' => $organization])
+            ->call('openContactCreate')
+            ->set('contactName', 'مسؤول جديد')
+            ->set('contactEmail', 'new-contact@example.test')
+            ->set('contactPrimary', true)
+            ->call('saveContact')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('organization_contacts', [
+            'organization_id' => $organization->id,
+            'email' => 'new-contact@example.test',
+            'is_primary' => true,
+        ]);
+
+        $program = Program::create(['name' => 'برنامج المراجعة', 'stage' => Program::STAGE_ACTIVE]);
+        ProgramPrice::create([
+            'program_id' => $program->id,
+            'service_type' => ProgramPrice::SERVICE_TRAINING,
+            'unit_price' => 100,
+        ]);
+        $partnership = Partnership::create([
+            'organization_id' => $organization->id,
+            'owner_id' => $manager->id,
+            'stage' => Partnership::STAGE_QUOTE,
+        ]);
+        $partnership->allowedPrograms()->attach($program);
+        $quote = app(QuoteService::class)->create($partnership, [[
+            'program_id' => $program->id,
+            'service_type' => ProgramPrice::SERVICE_TRAINING,
+            'quantity' => 1,
+        ]]);
+        app(QuoteService::class)->accept($quote);
+        $contract = app(PartnershipContractService::class)->createFromQuote(
+            $quote->fresh(),
+            [['amount' => 100, 'due_on' => now()->toDateString()]],
+            requiresFirstPayment: false,
+        );
+        app(PartnershipContractService::class)->uploadSignedCopy(
+            $contract,
+            UploadedFile::fake()->create('signed.pdf', 10, 'application/pdf'),
+            'مسؤول الجهة',
+        );
+
+        Livewire::actingAs($manager)
+            ->test(PartnershipShow::class, ['partnership' => $partnership])
+            ->set('internalApprovalNotes', 'يرجى تحديث بند التنفيذ')
+            ->call('returnContract', $contract->id)
+            ->assertHasNoErrors();
+
+        $this->assertFalse($partnership->fresh()->awaiting_internal_approval);
+        $this->assertSame('يرجى تحديث بند التنفيذ', $partnership->fresh()->internal_approval_notes);
+        $this->assertSame(PartnershipContract::STATUS_AWAITING_SIGNATURE, $contract->fresh()->status);
     }
 
     public function test_execution_days_are_not_marked_stale_and_guest_tool_is_removed(): void
