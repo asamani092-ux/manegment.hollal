@@ -6,6 +6,7 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ReportSnapshot;
 use App\Services\ReportCenterService;
+use App\Services\ReportDocumentService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -55,8 +56,9 @@ class ReportsCenter extends Component
         abort_unless($this->canAccessCenter(), 403);
 
         $service = app(ReportCenterService::class);
+        $user = auth()->user();
 
-        match ($this->tab) {
+        $snapshot = match ($this->tab) {
             'project' => $this->projectId
                 ? $service->snapshot(
                     ReportSnapshot::KIND_PROJECT_DASHBOARD,
@@ -64,7 +66,7 @@ class ReportsCenter extends Component
                     $service->projectDashboard(Project::findOrFail($this->projectId)),
                     null,
                     $this->projectId,
-                    auth()->user(),
+                    $user,
                 )
                 : null,
             'impact' => $service->snapshot(
@@ -73,7 +75,7 @@ class ReportsCenter extends Component
                 $service->impact($this->organizationId ? Organization::find($this->organizationId) : null),
                 null,
                 $this->organizationId,
-                auth()->user(),
+                $user,
             ),
             'kpi' => $service->snapshot(
                 ReportSnapshot::KIND_KPI,
@@ -81,7 +83,7 @@ class ReportsCenter extends Component
                 $service->kpis(),
                 null,
                 null,
-                auth()->user(),
+                $user,
             ),
             default => $service->snapshot(
                 ReportSnapshot::KIND_MONTHLY,
@@ -89,9 +91,19 @@ class ReportsCenter extends Component
                 $service->monthly($this->month),
                 $this->month,
                 null,
-                auth()->user(),
+                $user,
             ),
         };
+
+        if ($snapshot) {
+            app(ReportDocumentService::class)->archiveCenterExport(
+                $this->tab,
+                $snapshot->label,
+                $snapshot->payload ?? [],
+                $user,
+                $snapshot,
+            );
+        }
 
         $this->dispatch('ds-toast', message: 'حُفظت لقطة التقرير (غير قابلة للتعديل)');
     }
@@ -102,6 +114,12 @@ class ReportsCenter extends Component
 
         $service = app(ReportCenterService::class);
         $month = preg_match('/^\d{4}-\d{2}$/', $this->month) === 1 ? $this->month : now()->format('Y-m');
+        $label = match ($this->tab) {
+            'project' => 'لوحة مشروع',
+            'impact' => 'تقرير الأثر',
+            'kpi' => 'مؤشرات الأداء',
+            default => 'التقرير الشهري',
+        };
         $payload = match ($this->tab) {
             'project' => $this->projectId
                 ? $service->projectDashboard(Project::findOrFail($this->projectId))
@@ -120,6 +138,13 @@ class ReportsCenter extends Component
             'metadata' => ['tab' => $this->tab, 'month' => $month],
             'created_at' => now(),
         ]);
+
+        app(ReportDocumentService::class)->archiveCenterExport(
+            $this->tab,
+            $label,
+            $payload,
+            auth()->user(),
+        );
 
         return response()->streamDownload(function () use ($payload) {
             $handle = fopen('php://output', 'w');

@@ -1,6 +1,10 @@
 <x-ds-page>
     <x-ds-page-header title="القياس والأثر" :show-button="false" />
 
+    <p class="ds-text-muted ds-mb-3">
+        لتسجيل القياس القبلي أو البعدي لمشروع: افتح المشروع ثم «مساحة التنفيذ» → تبويب القياس والأثر واختر المرحلة (قبلي/بعدي).
+    </p>
+
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label" for="measurement-program">البرنامج</label>

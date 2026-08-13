@@ -1,6 +1,10 @@
 <x-ds-page>
     <x-ds-page-header title="الزيارات" :show-button="false" />
 
+    <p class="ds-text-muted ds-mb-3">
+        لجدولة زيارة أو رفع تقريرها لمشروع معيّن: افتح المشروع ثم «مساحة التنفيذ» → تبويب الزيارات.
+    </p>
+
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label" for="visits-project">المشروع</label>

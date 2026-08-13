@@ -257,3 +257,40 @@
 لا دمج `main`.
 
 
+---
+
+## الدفعة 4 — شراكات — `fix/report-round-2`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| بوابة ذاتية | كتالوج برامج + مشاركة رابط + أيام تنفيذ | ReportRound2PartnershipTest |
+| اعتماد داخلي | طابور اعتماد العقود + صلاحية مدير المشروع للمراجعة | ReportRound2PartnershipTest |
+| دورة حياة | مسار الشراكة مغلق لهذه الجولة (كتالوج→عقد→اعتماد→تنفيذ) | مغلق |
+
+لا دمج `main`.
+
+---
+
+## الدفعة 5 — مشاريع + مستندات/تقارير + هيكلة — `fix/report-round-2`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| انحدار Batch 4 | middleware صلاحية على `revenues.files.download` (`finance.revenues.view\|manage`) | ReportRound2Batch5Test + ReportRound2FinTest |
+| PJ ملفات | نص مصدر الملفات من المستودع المرتبط بالمشروع + رفع يعمل | ReportRound2Batch5Test |
+| PJ تنفيذ | زر أساسي «فتح مساحة التنفيذ» من صفحة المشروع | ReportRound2Batch5Test |
+| PJ عقد | رفع ملف PDF بدل رابط URL في نموذج الشراكة داخل محفظة المشاريع | ReportRound2Batch5Test |
+| PJ زيارات/قياس | إرشاد عربي في صفحة المشروع + تبويبات التنفيذ + شاشات الزيارات/القياس | Blade |
+| PJ قالب | معاينة القالب من الجولة 1 ما زالت تعمل | ReportRound2Batch5Test |
+| DR روابط | مركز التقارير ↔ المستودع (قائم) | Blade |
+| DR أرشفة | توليد أسبوعي / تصدير المركز ينشئ Document بتصنيف «تقرير» تراكميًا | ReportRound2Batch5Test |
+| DR تنزيل | `DownloadHeaders` لاسم عربي | ReportRound2Batch5Test |
+| DR محاضر | مسار طلب←موافقة←نسخة موسومة ظاهر | قائم (جولة 1) |
+| DR سجل | توسيع ACTION_LABELS + عمود الحالة + فلتر إجراءات مخزّن/محدود | ReportRound2Batch5Test |
+| ST/RL | تحقق STRUCT من الجولة 1 + توسيع OperationalRolesTest | OperationalRolesTest |
+| أدوات دخان | ReportRound1ToolsSmokeTest + رفع نسخة مستند | ReportRound1ToolsSmokeTest |
+| شراكات | دورة حياة الشراكة **مغلقة** في الدفعة 4 | — |
+
+**مؤجّل عمدًا:** إرسال SMTP حقيقي · تنفيذ حضور QR (تصميم فقط) · Phase B فوترة ضريبية · دمج `main`.
+
+لا دمج `main`.
+

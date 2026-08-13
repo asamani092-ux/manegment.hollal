@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Livewire\Documents\DocumentPoliciesIndex;
 use App\Livewire\Documents\DocumentTemplatesIndex;
+use App\Livewire\Documents\DocumentVersionsIndex;
+use App\Livewire\Finance\FinancialDocumentsIndex;
 use App\Livewire\Settings\ExpenseSettingsIndex;
 use App\Livewire\Tasks\RecurringTasksIndex;
 use App\Models\Document;
@@ -15,6 +17,7 @@ use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -111,5 +114,37 @@ class ReportRound1ToolsSmokeTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertTrue(Document::query()->where('is_policy', true)->where('title', 'سياسة تجربة')->exists());
+    }
+
+    public function test_document_version_upload_and_financial_documents_open_smoke(): void
+    {
+        Storage::fake('local');
+        $admin = User::factory()->create(['must_change_password' => false]);
+        $admin->assignRole('Super Admin');
+
+        $document = Document::create([
+            'title' => 'مستند نسخ',
+            'category' => 'عام',
+            'confidentiality' => 'team',
+            'uploader_id' => $admin->id,
+            'path' => 'documents/base.pdf',
+            'current_version' => 1,
+        ]);
+        Storage::disk('local')->put('documents/base.pdf', 'v1');
+
+        Livewire::actingAs($admin)
+            ->test(DocumentVersionsIndex::class)
+            ->call('openUpload')
+            ->set('document_id', $document->id)
+            ->set('change_note', 'نسخة دخان')
+            ->set('uploadFile', UploadedFile::fake()->create('v2.pdf', 12, 'application/pdf'))
+            ->call('saveVersion')
+            ->assertHasNoErrors();
+
+        $this->assertSame(2, $document->fresh()->current_version);
+
+        Livewire::actingAs($admin)
+            ->test(FinancialDocumentsIndex::class)
+            ->assertOk();
     }
 }

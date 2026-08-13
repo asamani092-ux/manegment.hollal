@@ -10,6 +10,8 @@ use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Str;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
@@ -20,6 +22,7 @@ class ProjectsIndex extends Component
 {
     use AuthorizesRequests;
     use UsesDsPagination;
+    use WithFileUploads;
     use WithPagination;
 
     public string $projectSearch = '';
@@ -80,6 +83,8 @@ class ProjectsIndex extends Component
     public ?string $pricing_amount = null;
 
     public string $contract_pdf = '';
+
+    public ?TemporaryUploadedFile $contractFile = null;
 
     public string $partnership_status = 'pending_form';
 
@@ -211,6 +216,11 @@ class ProjectsIndex extends Component
 
         $this->validate($this->partnershipRules());
 
+        $contractPath = $this->contract_pdf ?: null;
+        if ($this->contractFile) {
+            $contractPath = $this->contractFile->store('partnership-contracts', 'local');
+        }
+
         $data = [
             'entity_name' => $this->entity_name,
             'contact_person' => $this->contact_person ?: null,
@@ -220,7 +230,7 @@ class ProjectsIndex extends Component
             'halal_commitments' => $this->halal_commitments ?: null,
             'partner_commitments' => $this->partner_commitments ?: null,
             'pricing_amount' => $this->pricing_amount,
-            'contract_pdf' => $this->contract_pdf ?: null,
+            'contract_pdf' => $contractPath,
             'status' => $this->partnership_status,
         ];
 
@@ -308,6 +318,7 @@ class ProjectsIndex extends Component
             'partner_commitments' => 'nullable|string',
             'pricing_amount' => 'nullable|numeric|min:0',
             'contract_pdf' => 'nullable|string|max:500',
+            'contractFile' => 'nullable|file|max:10240|mimes:pdf',
             'partnership_status' => 'required|in:pending_form,negotiation,active,completed',
         ];
     }
@@ -341,6 +352,7 @@ class ProjectsIndex extends Component
         $this->partner_commitments = $partnership->partner_commitments ?? '';
         $this->pricing_amount = $partnership->pricing_amount !== null ? (string) $partnership->pricing_amount : null;
         $this->contract_pdf = $partnership->contract_pdf ?? '';
+        $this->contractFile = null;
         $this->partnership_status = $partnership->status;
     }
 
@@ -376,6 +388,7 @@ class ProjectsIndex extends Component
         $this->partner_commitments = '';
         $this->pricing_amount = null;
         $this->contract_pdf = '';
+        $this->contractFile = null;
         $this->partnership_status = 'pending_form';
         $this->resetValidation();
     }

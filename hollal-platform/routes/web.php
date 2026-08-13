@@ -83,6 +83,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
             ->name('expenses.files.download');
 
         Route::get('/files/revenues/{revenue}', RevenueFileDownloadController::class)
+            ->middleware('permission:finance.revenues.view|finance.revenues.manage')
             ->name('revenues.files.download');
 
         Route::get('/files/financial-documents/{type}/{id}', FinancialDocumentDownloadController::class)

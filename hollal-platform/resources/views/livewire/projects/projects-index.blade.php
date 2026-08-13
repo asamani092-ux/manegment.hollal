@@ -333,8 +333,11 @@
                                 @endforeach
                             </select>
                         </x-ds-form-group>
-                        <x-ds-form-group label="رابط العقد (PDF)" :error="$errors->first('contract_pdf')">
-                            <input type="text" class="ds-input" wire:model="contract_pdf" @disabled($partnershipViewOnly)>
+                        <x-ds-form-group label="ملف العقد (PDF)" :error="$errors->first('contractFile')" hint="ارفع ملف PDF للعقد — ليس رابطًا خارجيًا">
+                            @if ($contract_pdf)
+                                <p class="ds-text-muted ds-mb-2">ملف محفوظ: {{ basename($contract_pdf) }}</p>
+                            @endif
+                            <input type="file" class="ds-input" wire:model="contractFile" accept=".pdf,application/pdf" @disabled($partnershipViewOnly)>
                         </x-ds-form-group>
                     </div>
                     <x-ds-form-group label="التزامات حلل" :error="$errors->first('halal_commitments')">

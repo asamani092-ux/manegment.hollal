@@ -27,9 +27,19 @@
     <p class="ds-text-muted">{{ $project->statusLabel() }}</p>
 
     <p class="ds-mb-3">
-        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('projects.execution', $project) }}">التنفيذ</a>
+        <a class="ds-btn ds-btn-primary" href="{{ route('projects.execution', $project) }}">
+            <i class="fas fa-play"></i> فتح مساحة التنفيذ
+        </a>
         <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('projects.execution', ['project' => $project, 'tab' => 'visits']) }}">الزيارات</a>
         <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('projects.execution', ['project' => $project, 'tab' => 'measurement']) }}">القياس</a>
+    </p>
+    <p class="ds-text-muted ds-mb-3">
+        الزيارات والقياس القبلي/البعدي تُنشأ من مساحة التنفيذ: تبويب «الزيارات والاستشارات» وتبويب «القياس والأثر».
+        يمكن أيضًا فتح قوائم
+        <a class="ds-link" href="{{ route('visits.index') }}">الزيارات</a>
+        و
+        <a class="ds-link" href="{{ route('measurement.index') }}">القياس والأثر</a>
+        من القائمة الجانبية.
     </p>
 
     <nav class="ds-tabs" aria-label="تبويبات المشروع">
@@ -140,6 +150,11 @@
 
     @if ($activeTab === 'files')
         <section class="ds-section-spaced">
+            <p class="ds-text-muted ds-mb-3">
+                مصدر الملفات: مستودع المستندات المرتبطة بهذا المشروع فقط.
+                الرفع من هذه الصفحة يُنشئ مستندًا في المستودع مربوطًا بالمشروع؛ الملفات العامة تظهر في
+                <a class="ds-link" href="{{ route('documents.index') }}">مستودع المستندات</a>.
+            </p>
             @can('create', \App\Models\Document::class)
                 <div class="ds-card ds-section-spaced">
                     <h3 class="ds-section-heading">رفع مرفق للمشروع</h3>

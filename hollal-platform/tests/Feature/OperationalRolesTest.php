@@ -143,4 +143,31 @@ class OperationalRolesTest extends TestCase
         $this->assertNotContains('structure.committees', $routes);
         $this->assertContains('structure.org-tree', $routes);
     }
+
+    public function test_general_manager_can_open_org_tree_and_grants(): void
+    {
+        $user = $this->makeUserForRole('General Manager', '0501111111');
+
+        $this->actingAs($user)->get(route('structure.org-tree'))->assertOk();
+        $this->actingAs($user)->get(route('settings.grants'))->assertOk();
+        $this->actingAs($user)->get(route('departments.index'))->assertOk();
+    }
+
+    public function test_employee_cannot_open_finance_or_audit_log(): void
+    {
+        $user = $this->makeUserForRole('Employee', '0505555555');
+
+        $this->actingAs($user)->get(route('revenues.index'))->assertForbidden();
+        $this->actingAs($user)->get(route('reports.audit-log'))->assertForbidden();
+        $this->actingAs($user)->get(route('settings.notifications'))->assertForbidden();
+    }
+
+    public function test_partnerships_manager_can_open_pipeline_not_roles(): void
+    {
+        $user = $this->makeUserForRole('Partnerships Manager', '0506666666');
+
+        $this->actingAs($user)->get(route('partnerships.pipeline'))->assertOk();
+        $this->actingAs($user)->get(route('organizations.index'))->assertOk();
+        $this->actingAs($user)->get(route('settings.roles'))->assertForbidden();
+    }
 }
