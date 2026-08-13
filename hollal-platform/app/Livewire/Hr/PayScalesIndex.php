@@ -94,7 +94,11 @@ class PayScalesIndex extends Component
     public function render(): View
     {
         return view('livewire.hr.pay-scales-index', [
-            'scales' => PayScale::query()->withCount('profiles')->orderBy('name_ar')->get(),
+            'scales' => PayScale::query()
+                ->withCount('profiles')
+                ->with(['profiles.user:id,name'])
+                ->orderBy('name_ar')
+                ->get(),
         ])->layout('layouts.app', ['title' => 'سلم الرواتب']);
     }
 }

@@ -120,6 +120,148 @@ class PayrollRunService
         return $item;
     }
 
+    /**
+     * Update a VARIABLE line by index while the run is draft/returned.
+     * Time: O(v) where v = variables on the item | Space: O(v).
+     *
+     * @param  'addition'|'deduction'  $kind
+     */
+    public function updateVariable(
+        PayrollRunItem $item,
+        int $index,
+        string $label,
+        string $reason,
+        float $amount,
+        string $kind,
+    ): PayrollRunItem {
+        $this->assertEditable($item->run);
+
+        if (trim($reason) === '') {
+            throw new \InvalidArgumentException('سبب البند المتغير إلزامي.');
+        }
+
+        $variables = $item->variables ?? [];
+        if (! array_key_exists($index, $variables)) {
+            throw new \InvalidArgumentException('البند المتغير غير موجود.');
+        }
+
+        $variables[$index] = [
+            'label' => $label,
+            'reason' => $reason,
+            'amount' => $amount,
+            'kind' => $kind,
+        ];
+        $item->variables = array_values($variables);
+        $item->recalculate();
+        $item->save();
+
+        return $item;
+    }
+
+    /**
+     * Delete a VARIABLE line by index while the run is draft/returned.
+     * Time: O(v) | Space: O(v).
+     */
+    public function deleteVariable(PayrollRunItem $item, int $index): PayrollRunItem
+    {
+        $this->assertEditable($item->run);
+
+        $variables = $item->variables ?? [];
+        if (! array_key_exists($index, $variables)) {
+            throw new \InvalidArgumentException('البند المتغير غير موجود.');
+        }
+
+        unset($variables[$index]);
+        $item->variables = array_values($variables);
+        $item->recalculate();
+        $item->save();
+
+        return $item;
+    }
+
+    /**
+     * Sync monthly Payroll rows into a draft/returned PayrollRun for the same month.
+     * Matching items are updated from Payroll amounts; missing items are created when a draft run exists.
+     * Big-O: Time O(p + i) for payrolls p and run items i (maps keyed by employee_id); Space O(p + i).
+     *
+     * @return array{updated: int, created: int, skipped: bool, message: string}
+     */
+    public function syncFromMonthlyPayroll(User $actor, string $month, ?int $employeeId = null): array
+    {
+        $run = PayrollRun::query()
+            ->where('month', $month)
+            ->whereIn('status', [PayrollRun::STATUS_DRAFT, PayrollRun::STATUS_RETURNED])
+            ->first();
+
+        if (! $run) {
+            return [
+                'updated' => 0,
+                'created' => 0,
+                'skipped' => true,
+                'message' => 'لا يوجد مسيّر مسودة أو معاد للتصحيح لهذا الشهر — أنشئ مسيّرًا أولًا أو انتظر إرجاعه من المالية.',
+            ];
+        }
+
+        $this->assertEditable($run);
+
+        $monthDate = $month.'-01';
+        $payrollQuery = \App\Models\Payroll::query()->whereDate('month', $monthDate);
+        if ($employeeId !== null) {
+            $payrollQuery->where('employee_id', $employeeId);
+        }
+        $payrolls = $payrollQuery->get();
+
+        if ($payrolls->isEmpty()) {
+            return [
+                'updated' => 0,
+                'created' => 0,
+                'skipped' => true,
+                'message' => 'لا توجد رواتب شهرية لهذا الشهر للمزامنة.',
+            ];
+        }
+
+        $itemsByEmployee = $run->items()->get()->keyBy('employee_id');
+        $updated = 0;
+        $created = 0;
+
+        foreach ($payrolls as $payroll) {
+            $item = $itemsByEmployee->get($payroll->employee_id);
+            if ($item) {
+                $item->base = (float) $payroll->base;
+                $item->allowances = (float) $payroll->additions;
+                $item->deductions = (float) $payroll->deductions;
+                $item->recalculate();
+                $item->save();
+                $updated++;
+            } else {
+                $item = new PayrollRunItem([
+                    'employee_id' => $payroll->employee_id,
+                    'base' => (float) $payroll->base,
+                    'allowances' => (float) $payroll->additions,
+                    'deductions' => (float) $payroll->deductions,
+                    'overtime_hours' => 0,
+                    'overtime_amount' => 0,
+                    'variables' => [],
+                ]);
+                $item->payroll_run_id = $run->id;
+                $item->recalculate();
+                $item->save();
+                $created++;
+            }
+        }
+
+        return [
+            'updated' => $updated,
+            'created' => $created,
+            'skipped' => false,
+            'message' => sprintf(
+                'تمت مزامنة الرواتب الشهرية إلى المسيّر (%d تحديث، %d إنشاء). المسيّر هو مسار الاعتماد قبل الصرف.',
+                $updated,
+                $created
+            ),
+        ];
+    }
+
     public function submitToFinance(PayrollRun $run, User $actor): PayrollRun
     {
         $this->assertEditable($run);

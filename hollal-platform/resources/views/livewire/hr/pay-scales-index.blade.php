@@ -7,12 +7,17 @@
         wire:click="openCreate"
     />
 
+    <p class="ds-text-muted ds-mb-3">
+        ربط الموظفين بالسلم يتم من تبويب الراتب في الملف الوظيفي لكل موظف (اختيار السلم والدرجة)، وليس من هذه الشاشة مباشرة.
+    </p>
+
     <x-ds-table>
         <x-slot:head>
                 <tr>
                     <th>الاسم</th>
                     <th>عدد الدرجات</th>
                     <th>عدد الموظفين</th>
+                    <th>الموظفون المرتبطون</th>
                     <th>الحالة</th>
                     <th>إجراءات</th>
                 </tr>
@@ -22,6 +27,20 @@
                 <td>{{ $scale->name_ar }}</td>
                 <td>{{ count($scale->grades ?? []) }}</td>
                 <td class="ds-ltr-num">{{ $scale->profiles_count }}</td>
+                <td>
+                    @forelse ($scale->profiles as $profile)
+                        @if ($profile->user)
+                            <a href="{{ route('users.profile', $profile->user_id) }}" class="ds-link">
+                                {{ $profile->user->name }}
+                                @if ($profile->grade_label)
+                                    <span class="ds-text-muted">({{ $profile->grade_label }})</span>
+                                @endif
+                            </a>@if (! $loop->last)، @endif
+                        @endif
+                    @empty
+                        <span class="ds-text-muted">لا موظفون على هذا السلم</span>
+                    @endforelse
+                </td>
                 <td>
                     <span class="ds-badge {{ $scale->is_active ? 'ds-badge-success' : 'ds-badge-pending' }}">
                         {{ $scale->is_active ? 'مفعّل' : 'معطّل' }}
@@ -33,7 +52,7 @@
             </tr>
         @empty
             <tr>
-                    <td colspan="5" class="ds-text-muted ds-table-empty">لا يوجد سلالم رواتب</td>
+                    <td colspan="6" class="ds-text-muted ds-table-empty">لا يوجد سلالم رواتب</td>
             </tr>
         @endforelse
     </x-ds-table>

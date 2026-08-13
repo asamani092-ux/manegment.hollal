@@ -207,5 +207,21 @@
 
 لا دمج `main`.
 
+---
+
+## الدفعة 1 — HR + حضور (تصميم) — `fix/report-round-2`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| HR-a | إزالة «تعديل» من بطاقة الموظف في `users-index` فقط (رابط الجدول بقي) | مراجعة Blade |
+| HR-b | تجديد العقد عبر نافذة منفصلة؛ الزر يظهر للمنتهي أو خلال 30 يومًا (`Contract::isRenewable`) | ReportRound2HrTest |
+| HR-c | نص مساعدة عربي + قائمة الموظفين المرتبطين بالسلم مع رابط الملف | ReportRound2HrTest |
+| HR-d | تعديل/حذف بنود متغيرة في مسودة/معاد + تحسين تسميات التفاصيل ومبلغ الإضافي | PayrollRunsIndex + PayrollRunService |
+| مزامنة رواتب | `syncFromMonthlyPayroll` + زر «مزامنة إلى مسير الشهر» وشرح أن المسيّر مسار الاعتماد | ReportRound2HrTest |
+| تقييمات | فقرة دورة الحياة أعلى الصفحة؛ عرض القائمة لـ `hr.employees.view`؛ إرشاد فراغ عربي | ReportRound2HrTest |
+| حضور QR | `docs/plans/ATTENDANCE-BARCODE-DESIGN.md` تصميم دورة حياة فقط | مستند |
+
+لا دمج `main`.
+
 
 

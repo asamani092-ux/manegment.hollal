@@ -70,10 +70,9 @@
                             delete-confirm="حذف هذا العقد؟"
                         />
                         @can('update', $contract)
-                            <div class="ds-toolbar-actions">
-                                <input type="date" class="ds-input" wire:model="renewEndDate" aria-label="تاريخ نهاية التجديد">
-                                <button type="button" class="ds-link" wire:click="renew({{ $contract->id }})">تجديد</button>
-                            </div>
+                            @if ($contract->isRenewable())
+                                <button type="button" class="ds-link" wire:click="openRenew({{ $contract->id }})">تجديد</button>
+                            @endif
                         @endcan
                     </td>
                 </tr>
@@ -150,6 +149,29 @@
                         </button>
                     @endif
                     <button type="button" class="ds-btn ds-btn-outline" wire:click="closeModal">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($showRenewModal)
+        <div class="ds-modal-overlay" wire:click.self="closeRenewModal">
+            <div class="ds-modal" role="dialog" aria-modal="true">
+                <div class="ds-modal-header">
+                    <h3>تجديد العقد</h3>
+                    <button type="button" class="ds-modal-close" wire:click="closeRenewModal">&times;</button>
+                </div>
+                <div class="ds-modal-body">
+                    <p class="ds-text-muted">أدخل تاريخ نهاية الفترة الجديدة. يُمدَّد نفس سجل العقد وتُسجَّل فترة التجديد في السجل.</p>
+                    <x-ds-form-group label="تاريخ نهاية التجديد" :error="$errors->first('renewEndDate')">
+                        <input type="date" class="ds-input" wire:model="renewEndDate" aria-label="تاريخ نهاية التجديد">
+                    </x-ds-form-group>
+                </div>
+                <div class="ds-modal-footer">
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="renew">
+                        <i class="fas fa-rotate" aria-hidden="true"></i> تأكيد التجديد
+                    </button>
+                    <button type="button" class="ds-btn ds-btn-outline" wire:click="closeRenewModal">إلغاء</button>
                 </div>
             </div>
         </div>

@@ -38,6 +38,8 @@ class PayrollRunsIndex extends Component
 
     public ?int $variableItemId = null;
 
+    public ?int $editingVariableIndex = null;
+
     public string $returnNote = '';
 
     public ?int $open = null;
@@ -89,12 +91,43 @@ class PayrollRunsIndex extends Component
     {
         $this->authorize('hr.salaries.view');
         $this->viewingRunId = $runId;
-        $this->reset(['variableLabel', 'variableReason', 'variableAmount', 'variableItemId', 'returnNote']);
+        $this->reset([
+            'variableLabel', 'variableReason', 'variableAmount', 'variableItemId',
+            'editingVariableIndex', 'returnNote',
+        ]);
+        $this->variableKind = 'deduction';
     }
 
     public function closeRun(): void
     {
         $this->viewingRunId = null;
+        $this->editingVariableIndex = null;
+    }
+
+    public function startEditVariable(int $itemId, int $index): void
+    {
+        $this->authorize('hr.salaries.manage');
+        $item = PayrollRunItem::findOrFail($itemId);
+        $variables = $item->variables ?? [];
+        if (! array_key_exists($index, $variables)) {
+            $this->dispatch('toast', type: 'error', message: 'البند المتغير غير موجود');
+
+            return;
+        }
+
+        $variable = $variables[$index];
+        $this->variableItemId = $itemId;
+        $this->editingVariableIndex = $index;
+        $this->variableLabel = (string) ($variable['label'] ?? '');
+        $this->variableReason = (string) ($variable['reason'] ?? '');
+        $this->variableAmount = (string) ($variable['amount'] ?? '');
+        $this->variableKind = (string) ($variable['kind'] ?? 'deduction');
+    }
+
+    public function cancelEditVariable(): void
+    {
+        $this->reset(['variableLabel', 'variableReason', 'variableAmount', 'variableItemId', 'editingVariableIndex']);
+        $this->variableKind = 'deduction';
     }
 
     public function addVariable(): void
@@ -112,21 +145,56 @@ class PayrollRunsIndex extends Component
         $item = PayrollRunItem::findOrFail($this->variableItemId);
 
         try {
-            app(PayrollRunService::class)->addVariable(
-                $item,
-                $this->variableLabel,
-                $this->variableReason,
-                (float) $this->variableAmount,
-                $this->variableKind,
-            );
+            if ($this->editingVariableIndex !== null) {
+                app(PayrollRunService::class)->updateVariable(
+                    $item,
+                    $this->editingVariableIndex,
+                    $this->variableLabel,
+                    $this->variableReason,
+                    (float) $this->variableAmount,
+                    $this->variableKind,
+                );
+                $message = 'تم تحديث البند المتغير';
+            } else {
+                app(PayrollRunService::class)->addVariable(
+                    $item,
+                    $this->variableLabel,
+                    $this->variableReason,
+                    (float) $this->variableAmount,
+                    $this->variableKind,
+                );
+                $message = 'أُضيف البند المتغير';
+            }
         } catch (\InvalidArgumentException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
 
             return;
         }
 
-        $this->reset(['variableLabel', 'variableReason', 'variableAmount']);
-        $this->dispatch('toast', type: 'success', message: 'أُضيف البند المتغير');
+        $this->reset(['variableLabel', 'variableReason', 'variableAmount', 'editingVariableIndex']);
+        $this->variableKind = 'deduction';
+        $this->dispatch('toast', type: 'success', message: $message);
+    }
+
+    public function deleteVariable(int $itemId, int $index): void
+    {
+        $this->authorize('hr.salaries.manage');
+
+        $item = PayrollRunItem::findOrFail($itemId);
+
+        try {
+            app(PayrollRunService::class)->deleteVariable($item, $index);
+        } catch (\InvalidArgumentException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
+        if ($this->variableItemId === $itemId && $this->editingVariableIndex === $index) {
+            $this->cancelEditVariable();
+        }
+
+        $this->dispatch('toast', type: 'success', message: 'حُذف البند المتغير');
     }
 
     public function submit(int $runId): void

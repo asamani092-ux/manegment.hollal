@@ -114,7 +114,8 @@ class EvaluationsIndex extends Component
     {
         $evaluation = PeriodicEvaluation::with('employee')->findOrFail($id);
         abort_unless(
-            auth()->user()->can('hr.employees.update')
+            auth()->user()->can('hr.employees.view')
+            || auth()->user()->can('hr.employees.update')
             || $evaluation->evaluator_id === auth()->id()
             || $evaluation->employee_id === auth()->id(),
             403
@@ -183,6 +184,8 @@ class EvaluationsIndex extends Component
 
     public function render(): View
     {
+        // Anyone with hr.employees.view (required in mount) sees the full list.
+        // Create / score / publish remain gated by hr.employees.update (or evaluator for scores).
         $query = PeriodicEvaluation::query()
             ->select(['id', 'employee_id', 'period', 'evaluator_id', 'status', 'created_at'])
             ->with(['employee:id,name', 'evaluator:id,name'])
@@ -193,13 +196,6 @@ class EvaluationsIndex extends Component
                 fn ($e) => $e->where('name', 'like', '%'.$this->search.'%')
             ))
             ->latest();
-
-        if (! auth()->user()->can('hr.employees.update')) {
-            $query->where(function ($q) {
-                $q->where('employee_id', auth()->id())
-                    ->orWhere('evaluator_id', auth()->id());
-            });
-        }
 
         return view('livewire.hr.evaluations-index', [
             'evaluations' => $query->paginate(15),

@@ -105,9 +105,6 @@
                     <div class="ds-text-muted">{{ $user->department?->name ?? 'بدون قسم' }}</div>
                     <div class="ds-card-actions">
                         <a href="{{ route('users.profile', $user->id) }}" class="ds-link">الملف الوظيفي</a>
-                        @can('hr.employees.update')
-                            <button type="button" class="ds-link" wire:click="openEditModal({{ $user->id }})">تعديل</button>
-                        @endcan
                     </div>
                 </div>
             @empty

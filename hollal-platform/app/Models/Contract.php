@@ -52,6 +52,30 @@ class Contract extends Model
         return self::STATUS_LABELS[$this->status] ?? $this->status;
     }
 
+    /**
+     * Renew is offered when expired (status) or ending within 30 days.
+     * Time: O(1).
+     */
+    public function isRenewable(?\Carbon\CarbonInterface $asOf = null): bool
+    {
+        if ($this->status === 'expired') {
+            return true;
+        }
+
+        if ($this->status === 'terminated') {
+            return false;
+        }
+
+        if (! $this->end_date) {
+            return false;
+        }
+
+        $asOf ??= now()->startOfDay();
+        $end = $this->end_date->copy()->startOfDay();
+
+        return $end->lessThanOrEqualTo($asOf->copy()->addDays(30));
+    }
+
     /** @return BelongsTo<User, $this> */
     public function employee(): BelongsTo
     {

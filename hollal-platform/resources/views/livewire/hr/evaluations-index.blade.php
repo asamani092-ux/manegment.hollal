@@ -7,6 +7,11 @@
         wire:click="openCreate"
     />
 
+    <p class="ds-text-muted ds-mb-3">
+        دورة التقييم: تُنشأ مسودة لفترة (مثل 2026-Q3) ← تُسجَّل درجات المسؤوليات من 1 إلى 5 ← يُنشر التقييم للموظف ← يمكن للموظف إضافة تعليق من ملفه الوظيفي.
+        من يملك صلاحية عرض الموظفين يرى القائمة؛ الإنشاء والتقييم يتطلب صلاحية التحديث.
+    </p>
+
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label" for="eval-status">الحالة</label>
@@ -55,7 +60,14 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5"><x-ds-empty-state message="لا توجد تقييمات" icon="fa-star-half-stroke" /></td></tr>
+            <tr>
+                <td colspan="5">
+                    <x-ds-empty-state
+                        message="لا توجد تقييمات بعد. أنشئ تقييمًا جديدًا بعد تعريف مسؤوليات الموظف من شاشة المسؤوليات؛ بدون مسؤوليات لن تظهر بنود للدرجات."
+                        icon="fa-star-half-stroke"
+                    />
+                </td>
+            </tr>
         @endforelse
     </x-ds-table>
     {{ $evaluations->links() }}
@@ -95,7 +107,9 @@
                     @endif
                 </div>
             @empty
-                <p class="ds-text-muted">لا توجد مسؤوليات لهذا الموظف. أضفها من شاشة المسؤوليات أولاً.</p>
+                <p class="ds-text-muted">
+                    لا توجد مسؤوليات نشطة لهذا الموظف. أضف المسؤوليات من شاشة «المسؤوليات» أولًا، ثم أعد فتح الدرجات لتسجيل التقييم.
+                </p>
             @endforelse
             @if ($scoringEvaluation->status === \App\Models\PeriodicEvaluation::STATUS_DRAFT && ($canManage || $scoringEvaluation->evaluator_id === auth()->id()))
                 <button type="button" class="ds-btn ds-btn-primary" wire:click="saveScores">حفظ الدرجات</button>

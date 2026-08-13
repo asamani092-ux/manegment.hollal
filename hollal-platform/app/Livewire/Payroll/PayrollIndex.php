@@ -5,6 +5,7 @@ namespace App\Livewire\Payroll;
 use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\Payroll;
 use App\Models\User;
+use App\Services\PayrollRunService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -127,8 +128,51 @@ class PayrollIndex extends Component
             ]
         );
 
+        $syncResult = null;
+        try {
+            $syncResult = app(PayrollRunService::class)->syncFromMonthlyPayroll(
+                auth()->user(),
+                $this->month,
+                (int) $this->employee_id,
+            );
+        } catch (\InvalidArgumentException $e) {
+            // Run exists but not editable — keep payroll save; surface sync message below.
+            $syncResult = ['skipped' => true, 'message' => $e->getMessage(), 'updated' => 0, 'created' => 0];
+        }
+
         $this->closeModal();
-        $this->dispatch('toast', type: 'success', message: $isEdit ? 'تم تحديث الراتب' : 'تم إنشاء الراتب');
+        $message = $isEdit ? 'تم تحديث الراتب' : 'تم إنشاء الراتب';
+        if ($syncResult && ! ($syncResult['skipped'] ?? true) && (($syncResult['updated'] ?? 0) + ($syncResult['created'] ?? 0)) > 0) {
+            $message .= ' — وتُزامن إلى مسيّر الشهر';
+        }
+        $this->dispatch('toast', type: 'success', message: $message);
+    }
+
+    /**
+     * Push all monthly payroll rows for a month into the draft/returned run.
+     * Public Livewire method name kept stable for the UI button.
+     */
+    public function syncToPayrollRun(?string $month = null): void
+    {
+        $this->authorize('hr.salaries.manage');
+
+        $targetMonth = $month ?: ($this->monthFilter ?: now()->format('Y-m'));
+        if (! preg_match('/^\d{4}-\d{2}$/', $targetMonth)) {
+            $this->dispatch('toast', type: 'error', message: 'اختر شهرًا صالحًا للمزامنة');
+
+            return;
+        }
+
+        try {
+            $result = app(PayrollRunService::class)->syncFromMonthlyPayroll(auth()->user(), $targetMonth);
+        } catch (\InvalidArgumentException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
+        $type = ($result['skipped'] ?? false) ? 'warning' : 'success';
+        $this->dispatch('toast', type: $type, message: $result['message']);
     }
 
     public function delete(int $id): void

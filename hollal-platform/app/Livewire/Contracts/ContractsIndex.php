@@ -47,6 +47,10 @@ class ContractsIndex extends Component
 
     public string $renewEndDate = '';
 
+    public bool $showRenewModal = false;
+
+    public ?int $renewingContractId = null;
+
     public ?int $open = null;
 
     protected $queryString = [
@@ -164,10 +168,47 @@ class ContractsIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'تم حذف العقد');
     }
 
-    public function renew(int $id): void
+    public function openRenew(int $id): void
     {
         $contract = Contract::findOrFail($id);
         $this->authorize('update', $contract);
+
+        if (! $contract->isRenewable()) {
+            $this->dispatch('toast', type: 'error', message: 'التجديد متاح فقط للعقود المنتهية أو التي تنتهي خلال 30 يومًا');
+
+            return;
+        }
+
+        $this->renewingContractId = $contract->id;
+        $this->renewEndDate = $contract->end_date
+            ? $contract->end_date->copy()->addYear()->format('Y-m-d')
+            : '';
+        $this->showRenewModal = true;
+        $this->resetValidation('renewEndDate');
+    }
+
+    public function closeRenewModal(): void
+    {
+        $this->showRenewModal = false;
+        $this->renewingContractId = null;
+        $this->renewEndDate = '';
+        $this->resetValidation('renewEndDate');
+    }
+
+    public function renew(): void
+    {
+        if (! $this->renewingContractId) {
+            return;
+        }
+
+        $contract = Contract::findOrFail($this->renewingContractId);
+        $this->authorize('update', $contract);
+
+        if (! $contract->isRenewable()) {
+            $this->addError('renewEndDate', 'التجديد متاح فقط للعقود المنتهية أو التي تنتهي خلال 30 يومًا');
+
+            return;
+        }
 
         $this->validate([
             'renewEndDate' => 'required|date',
@@ -181,7 +222,7 @@ class ContractsIndex extends Component
             return;
         }
 
-        $this->renewEndDate = '';
+        $this->closeRenewModal();
         $this->dispatch('toast', type: 'success', message: 'مُدّد العقد وسُجّلت فترة التجديد');
     }
 

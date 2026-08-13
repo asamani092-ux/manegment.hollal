@@ -11,6 +11,20 @@
         wire:click="openCreate"
     />
 
+    <p class="ds-text-muted ds-mb-3">
+        الرواتب الشهرية هنا للتسجيل السريع. <strong>المسيّر</strong> (مسير رواتب الشهر) هو مسار الاعتماد قبل الصرف.
+        استخدم «مزامنة إلى مسير الشهر» لدفع المبالغ إلى مسيّر مسودة أو معاد للتصحيح لنفس الشهر.
+    </p>
+
+    @can('hr.salaries.manage')
+        <section class="ds-section ds-filter-bar">
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="syncToPayrollRun">
+                <i class="fas fa-arrows-rotate" aria-hidden="true"></i> مزامنة إلى مسير الشهر
+            </button>
+            <span class="ds-text-muted">يُزامَن حسب فلتر الشهر إن وُجد، وإلا شهر اليوم.</span>
+        </section>
+    @endcan
+
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label">بحث</label>
