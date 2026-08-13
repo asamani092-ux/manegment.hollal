@@ -40,8 +40,22 @@ class UatToolsChecklistTest extends TestCase
             ->assertOk()
             ->assertSee('تقييم أدوات المنصة (UAT)', false)
             ->assertSee('نسخ التقرير كاملاً', false)
+            ->assertSee('تحميل التقييم السابق', false)
+            ->assertSee('تقييم التجربة الثانية', false)
             ->assertSee('دليل العاملين', false)
             ->assertSee('الملاحظة', false);
+    }
+
+    public function test_baseline_round2_covers_prior_verdicts(): void
+    {
+        $baseline = config('uat_tools.baseline');
+
+        $this->assertSame('2026-08-13 15:22', $baseline['date']);
+        $this->assertSame('يحتاج تحسين', $baseline['verdicts']['bell']);
+        $this->assertSame('يعتمد', $baseline['verdicts']['sidebar']);
+        $this->assertSame('غير مجرّب', $baseline['verdicts']['smtp']);
+        $this->assertStringContainsString('صفحة سوداء', $baseline['notes']['bell']);
+        $this->assertGreaterThanOrEqual(50, count($baseline['verdicts']));
     }
 
     public function test_disabled_page_returns_not_found_and_leaves_nav(): void

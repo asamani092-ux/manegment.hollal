@@ -1,7 +1,7 @@
 <x-ds-page>
     <div
         class="uat-checklist"
-        x-data="uatToolsChecklist(@js($groups))"
+        x-data="uatToolsChecklist(@js($groups), @js($baseline ?? []))"
         x-init="load()"
     >
         <div class="ds-page-header-bar">
@@ -10,6 +10,9 @@
                 <button type="button" class="ds-btn ds-btn-primary" @click="copyReport()" :disabled="copying">
                     <i class="fas fa-copy" aria-hidden="true"></i>
                     <span x-text="copied ? 'تم النسخ — الصق في المحادثة' : 'نسخ التقرير كاملاً'"></span>
+                </button>
+                <button type="button" class="ds-btn ds-btn-outline" @click="loadBaseline()" title="تحميل تقييم عبدالله 2026-08-13">
+                    تحميل التقييم السابق
                 </button>
                 <button type="button" class="ds-btn ds-btn-outline" @click="resetAll()">
                     إعادة التعيين
@@ -20,6 +23,13 @@
         <div class="ds-alert ds-alert-warning ds-mb-3">
             صفحة تجريبية فقط. تُحذف تلقائيًا عند النشر (`APP_ENV=production` أو `UAT_TOOLS_ENABLED=false`).
             عبّئ التقييم والملاحظة ثم انسخ التقرير وأرسله في محادثة Cursor لإصلاح الملاحظات.
+            <template x-if="baseline?.date">
+                <span>
+                    · الأساس المحمّل: <strong x-text="baseline.label || 'تقييم سابق'"></strong>
+                    (<span class="ds-ltr-num" x-text="baseline.date"></span>)
+                    — <span x-text="baseline.summary || ''"></span>
+                </span>
+            </template>
         </div>
 
         <div class="ds-filters-row">
@@ -113,31 +123,30 @@
 
 @script
 <script>
-    Alpine.data('uatToolsChecklist', (groups) => ({
+    Alpine.data('uatToolsChecklist', (groups, baseline = {}) => ({
         groups,
+        baseline: baseline || {},
         filter: 'الكل',
         verdicts: {},
         tags: {},
         notes: {},
         copying: false,
         copied: false,
-        storageKey: 'hollal.uat.tools.v1',
+        storageKey: 'hollal.uat.tools.v2',
 
         get total() {
             return this.groups.reduce((sum, g) => sum + g.items.length, 0);
         },
 
-        load() {
-            try {
-                const raw = localStorage.getItem(this.storageKey);
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    this.verdicts = parsed.verdicts || {};
-                    this.tags = parsed.tags || {};
-                    this.notes = parsed.notes || {};
-                }
-            } catch (e) {}
+        applyBaseline() {
+            const b = this.baseline || {};
+            this.verdicts = Object.assign({}, b.verdicts || {});
+            this.tags = Object.assign({}, b.tags || {});
+            this.notes = Object.assign({}, b.notes || {});
+            this.fillMissing();
+        },
 
+        fillMissing() {
             this.groups.forEach((g) => {
                 g.items.forEach((t) => {
                     if (!this.verdicts[t.id]) this.verdicts[t.id] = 'غير مجرّب';
@@ -147,11 +156,42 @@
             });
         },
 
+        load() {
+            let loaded = false;
+            try {
+                const raw = localStorage.getItem(this.storageKey);
+                if (raw) {
+                    const parsed = JSON.parse(raw);
+                    this.verdicts = parsed.verdicts || {};
+                    this.tags = parsed.tags || {};
+                    this.notes = parsed.notes || {};
+                    loaded = Object.keys(this.verdicts).length > 0;
+                }
+            } catch (e) {}
+
+            if (!loaded && this.baseline && this.baseline.verdicts) {
+                this.applyBaseline();
+                this.persist();
+            } else {
+                this.fillMissing();
+            }
+        },
+
+        loadBaseline() {
+            if (!confirm('استبدال التقييم الحالي بتقييم التجربة الثانية (2026-08-13)؟')) return;
+            this.applyBaseline();
+            this.persist();
+            if (window.Livewire) {
+                Livewire.dispatch('toast', { type: 'success', message: 'تم تحميل التقييم السابق' });
+            }
+        },
+
         persist() {
             localStorage.setItem(this.storageKey, JSON.stringify({
                 verdicts: this.verdicts,
                 tags: this.tags,
                 notes: this.notes,
+                source: 'uat-baseline-round2',
             }));
         },
 
@@ -238,10 +278,11 @@
 
         resetAll() {
             if (!confirm('مسح كل التقييمات والملاحظات المحفوظة في هذا المتصفح؟')) return;
+            localStorage.removeItem(this.storageKey);
             this.verdicts = {};
             this.tags = {};
             this.notes = {};
-            this.load();
+            this.fillMissing();
             this.persist();
         },
     }));

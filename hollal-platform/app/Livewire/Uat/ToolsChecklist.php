@@ -26,6 +26,7 @@ class ToolsChecklist extends Component
             'groups' => $groups,
             'verdicts' => config('uat_tools.verdicts', []),
             'noteTags' => config('uat_tools.note_tags', []),
+            'baseline' => config('uat_tools.baseline', []),
             'total' => $total,
         ])->layout('layouts.app', ['title' => 'تقييم الأدوات (UAT)']);
     }
