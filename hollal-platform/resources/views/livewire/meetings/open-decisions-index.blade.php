@@ -3,7 +3,20 @@
         $itemStatusLabels = ['open' => 'مفتوح', 'in_progress' => 'قيد التنفيذ', 'done' => 'منجز'];
     @endphp
 
-    <x-ds-page-header title="قرارات مفتوحة" :back-url="route('meetings.index')" back-label="رجوع" />
+    <x-ds-page-header title="القرارات" :back-url="route('meetings.index')" back-label="رجوع" />
+
+    <p class="ds-text-muted" style="max-width:40rem;margin-bottom:1rem">
+        تُنشأ القرارات من بنود المحضر عند توثيق قرار في اجتماع، ثم تُتابع هنا حتى تُحوَّل إلى مهمة في إسناد أو تُغلق يدويًا مع سبب الإغلاق.
+    </p>
+
+    <nav class="ds-tabs" role="tablist">
+        <button type="button" class="ds-tab {{ $tab === 'open' ? 'ds-tab-active' : '' }}" wire:click="$set('tab','open')">
+            مفتوحة
+        </button>
+        <button type="button" class="ds-tab {{ $tab === 'archived' ? 'ds-tab-active' : '' }}" wire:click="$set('tab','archived')">
+            مؤرشفة (مغلقة)
+        </button>
+    </nav>
 
     <div class="ds-filters-row">
         <div class="ds-filter-field">
@@ -23,7 +36,11 @@
                     <th>تاريخ الاستحقاق</th>
                     <th>الحالة</th>
                     <th>المهمة</th>
-                    <th>إجراءات</th>
+                    @if ($archived)
+                        <th>سبب الإغلاق</th>
+                    @else
+                        <th>إجراءات</th>
+                    @endif
                 </tr>
             </x-slot:head>
             @forelse ($decisions as $item)
@@ -45,15 +62,21 @@
                             <span class="ds-text-muted">لم تُحوَّل بعد</span>
                         @endif
                     </td>
-                    <td>
-                        @can('meetings.update')
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="openClose({{ $item->id }})">إغلاق</button>
-                        @endcan
-                    </td>
+                    @if ($archived)
+                        <td>{{ $item->close_reason ?? '—' }}</td>
+                    @else
+                        <td>
+                            @can('meetings.update')
+                                <button type="button" class="ds-btn ds-btn-sm" wire:click="openClose({{ $item->id }})">إغلاق</button>
+                            @endcan
+                        </td>
+                    @endif
                 </tr>
             @empty
                 <tr>
-                    <td colspan="8" class="ds-text-muted ds-table-empty">لا توجد قرارات مفتوحة</td>
+                    <td colspan="8" class="ds-text-muted ds-table-empty">
+                        {{ $archived ? 'لا توجد قرارات مؤرشفة' : 'لا توجد قرارات مفتوحة' }}
+                    </td>
                 </tr>
             @endforelse
         </x-ds-table>

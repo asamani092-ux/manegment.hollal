@@ -106,6 +106,14 @@
                     <x-ds-form-group label="التاريخ والوقت" :error="$errors->first('scheduled_at')">
                         <input type="datetime-local" class="ds-input" wire:model="scheduled_at" @disabled($viewOnly)>
                     </x-ds-form-group>
+                    <div class="ds-grid-2">
+                        <x-ds-form-group label="المكان" :error="$errors->first('location')">
+                            <input type="text" class="ds-input" wire:model="location" @disabled($viewOnly) placeholder="قاعة / عنوان">
+                        </x-ds-form-group>
+                        <x-ds-form-group label="رابط الاجتماع عن بُعد" :error="$errors->first('remote_link')">
+                            <input type="url" class="ds-input" wire:model="remote_link" @disabled($viewOnly) placeholder="https://..." dir="ltr">
+                        </x-ds-form-group>
+                    </div>
                     <x-ds-form-group label="جدول الأعمال" :error="$errors->first('agenda')">
                         <textarea class="ds-input" rows="3" wire:model="agenda" @disabled($viewOnly) placeholder="نقاط جدول الأعمال..."></textarea>
                     </x-ds-form-group>

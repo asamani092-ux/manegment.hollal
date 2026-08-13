@@ -38,7 +38,7 @@ class MeetingMinutes extends Component
 
     public function mount(Meeting $meeting): void
     {
-        $this->meeting = $meeting->load(['chair:id,name', 'secretary:id,name']);
+        $this->meeting = $meeting->load(['chair:id,name', 'secretary:id,name', 'attendees.profile:id,user_id,job_title']);
         $this->authorize('view', $this->meeting);
     }
 
@@ -196,10 +196,10 @@ class MeetingMinutes extends Component
 
         try {
             Mail::to($recipients->all())->queue(new MeetingMinutesMailable($this->meeting));
-            $this->dispatch('toast', type: 'success', message: 'تم إدراج إرسال المحضر في قائمة الانتظار (يتطلب SMTP)');
+            $this->dispatch('toast', type: 'success', message: 'تم إدراج إرسال المحضر (يُسجَّل في السجل عند MAIL_MAILER=log أو يُرسل عبر SMTP)');
         } catch (\Throwable $exception) {
             report($exception);
-            $this->dispatch('toast', type: 'error', message: 'تعذّر الإرسال — تحقق من إعداد SMTP');
+            $this->dispatch('toast', type: 'error', message: 'تعذّر الإرسال — تحقق من إعداد البريد');
         }
     }
 
@@ -245,6 +245,7 @@ class MeetingMinutes extends Component
         return view('livewire.meetings.meeting-minutes', [
             'items' => $items,
             'users' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'attendees' => $this->meeting->attendees()->with('profile:id,user_id,job_title')->orderBy('name')->get(),
         ])->layout('layouts.app', ['title' => 'محضر — '.$this->meeting->title]);
     }
 }

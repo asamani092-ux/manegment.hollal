@@ -22,6 +22,7 @@
         th { background: #f8fafb; color: #005c7b; font-size: 11px; }
         .section { margin-bottom: 16px; }
         ul { margin: 4px 0; padding-right: 16px; }
+        .sig-line { display: inline-block; min-width: 110px; border-bottom: 1px solid #2a3f5f; height: 22px; }
     </style>
 </head>
 <body>
@@ -30,6 +31,9 @@
         التاريخ: {{ $meeting->scheduled_at?->format('Y-m-d H:i') ?? '—' }}
         @if ($meeting->location)
             | المكان: {{ $meeting->location }}
+        @endif
+        @if ($meeting->link)
+            | رابط عن بُعد: {{ $meeting->link }}
         @endif
     </div>
 
@@ -41,14 +45,29 @@
     @endif
 
     <div class="section">
-        <h2>الحضور</h2>
-        <ul>
-            @forelse ($meeting->attendees as $attendee)
-                <li>{{ $attendee->name }}</li>
-            @empty
-                <li>—</li>
-            @endforelse
-        </ul>
+        <h2>الحضور والتوقيع</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>الاسم</th>
+                    <th>المسمى الوظيفي</th>
+                    <th>التوقيع</th>
+                </tr>
+            </thead>
+            <tbody>
+                @forelse ($meeting->attendees as $attendee)
+                    <tr>
+                        <td>{{ $attendee->name }}</td>
+                        <td>{{ $attendee->profile?->job_title ?? '—' }}</td>
+                        <td><span class="sig-line">&nbsp;</span></td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="3">—</td>
+                    </tr>
+                @endforelse
+            </tbody>
+        </table>
     </div>
 
     <div class="section">

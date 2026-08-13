@@ -240,5 +240,20 @@
 
 لا دمج `main`.
 
+---
+
+## الدفعة 3 — إسناد + اجتماعات — `fix/report-round-2`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| ES-a | خلفية خضراء كاملة لبطاقات `.ds-task-card.is-completed` · روابط تنزيل المرفق/الشاهد في نافذة العرض حتى بعد الإكمال | ReportRound2EsnadMeetTest |
+| ES-b | نافذة تفاصيل من مهام الفريق: شواهد، ملاحظات، سجل حالات، اعتماد/إرجاع من التفاصيل | ReportRound2EsnadMeetTest |
+| ES-c | تقويم شهري 7 أعمدة (سبت→جمعة) · تنقّل أشهر · شرائح مهام/إجازات · نقر يفتح تفاصيل | ReportRound2EsnadMeetTest |
+| ES-d | قائمة آخر النسخ المولَّدة لكل قالب متكرر · لوحة أحمال: قوالب متكررة + زر «تذكير» (`TaskReminder`) | ReportRound2EsnadMeetTest |
+| MT-a | حقول المكان + رابط عن بُعد (`location`/`link`) في الإنشاء/التعديل · `MeetingInvite` للحاضرين | ReportRound2EsnadMeetTest |
+| MT-b | جدول أعمال أوضح · جدول حضور/توقيع في PDF والطباعة · نص مسار الاعتماد · toast إرسال مع log | مراجعة Blade + PDF |
+| قرارات | نص مساعدة عن الإنشاء من المحضر · تبويب مؤرشف للحالة `done` مع `close_reason` | ReportRound2EsnadMeetTest |
+
+لا دمج `main`.
 
 

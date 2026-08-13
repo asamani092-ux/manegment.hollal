@@ -12,7 +12,7 @@ use Livewire\Component;
 
 /**
  * 02-B2 — team tasks, overdue (own/team scope), and the approval queue
- * («بانتظار اعتمادي») with in-place approve / return.
+ * («بانتظار اعتمادي») with in-place approve / return + detail modal.
  */
 class TeamTasksIndex extends Component
 {
@@ -26,9 +26,27 @@ class TeamTasksIndex extends Component
     /** @var array<int, string> per-task note input */
     public array $approveNote = [];
 
+    public bool $showDetail = false;
+
+    public ?int $detailTaskId = null;
+
     public function mount(): void
     {
         $this->authorize('esnad.tasks.view');
+    }
+
+    public function openDetail(int $taskId): void
+    {
+        $task = Task::findOrFail($taskId);
+        $this->authorize('view', $task);
+        $this->detailTaskId = $task->id;
+        $this->showDetail = true;
+    }
+
+    public function closeDetail(): void
+    {
+        $this->showDetail = false;
+        $this->detailTaskId = null;
     }
 
     public function approveFromForm(int $taskId): void
@@ -49,6 +67,9 @@ class TeamTasksIndex extends Component
         try {
             app(TaskLifecycleService::class)->recordFinalRating($task, auth()->user(), $rating, $notes);
             $this->dispatch('toast', type: 'success', message: 'تم اعتماد المهمة');
+            if ($this->detailTaskId === $taskId) {
+                $this->closeDetail();
+            }
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
@@ -62,6 +83,9 @@ class TeamTasksIndex extends Component
         try {
             app(TaskLifecycleService::class)->requestRevision($task, auth()->user(), $note);
             $this->dispatch('toast', type: 'success', message: 'أُعيدت المهمة للتعديل');
+            if ($this->detailTaskId === $taskId) {
+                $this->closeDetail();
+            }
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
@@ -91,6 +115,19 @@ class TeamTasksIndex extends Component
         /** @var User $user */
         $user = auth()->user();
 
+        $detailTask = null;
+        if ($this->detailTaskId) {
+            $detailTask = Task::query()
+                ->with([
+                    'assignee:id,name',
+                    'assigner:id,name',
+                    'project:id,name',
+                    'notes.author:id,name',
+                    'statusLogs' => fn ($q) => $q->orderByDesc('created_at')->limit(20),
+                ])
+                ->find($this->detailTaskId);
+        }
+
         return view('livewire.tasks.team-tasks-index', [
             'approvalQueue' => Task::query()
                 ->pendingApprovalFor($user)
@@ -102,6 +139,14 @@ class TeamTasksIndex extends Component
                 : new Collection,
             'overdueTasks' => $this->overdueTasks($user),
             'ratings' => Task::RATINGS,
+            'detailTask' => $detailTask,
+            'statusLabels' => [
+                'new' => 'جديدة',
+                'in_progress' => 'قيد التنفيذ',
+                'pending_review' => 'بانتظار المراجعة',
+                'completed' => 'مكتملة',
+                'overdue' => 'متأخرة',
+            ],
         ])->layout('layouts.app', ['title' => 'مهام الفريق']);
     }
 }

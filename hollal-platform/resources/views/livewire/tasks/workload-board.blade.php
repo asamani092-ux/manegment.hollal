@@ -11,6 +11,7 @@
                 <th>متأخرة</th>
                 <th>مستحقة هذا الأسبوع</th>
                 <th>تقييمات 30 يومًا</th>
+                <th>تذكير</th>
             </tr>
         </x-slot:head>
         @forelse ($rows as $row)
@@ -31,11 +32,50 @@
                         —
                     @endforelse
                 </td>
+                <td>
+                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="sendReminder({{ $row['user']->id }})">
+                        تذكير
+                    </button>
+                </td>
             </tr>
         @empty
             <tr>
-                <td colspan="5" class="ds-text-muted ds-table-empty">لا يوجد أعضاء فريق</td>
+                <td colspan="6" class="ds-text-muted ds-table-empty">لا يوجد أعضاء فريق</td>
             </tr>
         @endforelse
     </x-ds-table>
+
+    <section class="ds-section-spaced">
+        <h2 class="ds-section-heading">القوالب المتكررة للفريق</h2>
+        <x-ds-table>
+            <x-slot:head>
+                <tr>
+                    <th>القالب</th>
+                    <th>المكلَّف</th>
+                    <th>النمط</th>
+                    <th>إجراء</th>
+                </tr>
+            </x-slot:head>
+            @forelse ($recurringTemplates as $template)
+                <tr wire:key="wl-tpl-{{ $template->id }}">
+                    <td>{{ $template->title }}</td>
+                    <td>{{ $template->assignee?->name ?? '—' }}</td>
+                    <td>{{ $template->pattern }}</td>
+                    <td>
+                        <button
+                            type="button"
+                            class="ds-btn ds-btn-outline ds-btn-sm"
+                            wire:click="sendReminder({{ $template->assigned_to_id }}, {{ $template->id }})"
+                        >
+                            تذكير
+                        </button>
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="4" class="ds-text-muted ds-table-empty">لا قوالب متكررة نشطة لأعضاء الفريق</td>
+                </tr>
+            @endforelse
+        </x-ds-table>
+    </section>
 </x-ds-page>

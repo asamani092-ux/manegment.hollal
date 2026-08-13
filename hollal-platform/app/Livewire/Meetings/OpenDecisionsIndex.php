@@ -17,20 +17,33 @@ class OpenDecisionsIndex extends Component
 
     public string $search = '';
 
+    public string $tab = 'open';
+
     public bool $showCloseModal = false;
 
     public ?int $closingId = null;
 
     public string $closeReason = '';
 
-    protected $queryString = ['search' => ['except' => '']];
+    protected $queryString = [
+        'search' => ['except' => ''],
+        'tab' => ['except' => 'open'],
+    ];
 
     public function mount(): void
     {
         $this->authorize('meetings.view');
+        if (! in_array($this->tab, ['open', 'archived'], true)) {
+            $this->tab = 'open';
+        }
     }
 
     public function updatingSearch(): void
+    {
+        $this->resetPage();
+    }
+
+    public function updatingTab(): void
     {
         $this->resetPage();
     }
@@ -64,19 +77,29 @@ class OpenDecisionsIndex extends Component
         $this->showCloseModal = false;
         $this->closingId = null;
         $this->closeReason = '';
-        $this->dispatch('ds-toast', message: 'أُغلق القرار');
+        $this->dispatch('toast', type: 'success', message: 'أُغلق القرار');
     }
 
     public function render(): View
     {
+        $archived = $this->tab === 'archived';
+
         $decisions = MeetingItem::query()
-            ->select(['id', 'meeting_id', 'topic', 'decision', 'responsible_id', 'due_date', 'status', 'task_id'])
+            ->select([
+                'id', 'meeting_id', 'topic', 'decision', 'responsible_id', 'due_date',
+                'status', 'task_id', 'close_reason', 'closed_at',
+            ])
             ->whereNotNull('decision')
             ->where('decision', '!=', '')
-            ->where('status', '!=', 'done')
+            ->when(
+                $archived,
+                fn ($q) => $q->where('status', 'done'),
+                fn ($q) => $q->where('status', '!=', 'done')
+            )
             ->when($this->search, fn ($q) => $q->where(function ($q) {
                 $q->where('topic', 'like', '%'.$this->search.'%')
-                    ->orWhere('decision', 'like', '%'.$this->search.'%');
+                    ->orWhere('decision', 'like', '%'.$this->search.'%')
+                    ->orWhere('close_reason', 'like', '%'.$this->search.'%');
             }))
             ->with([
                 'meeting:id,title',
@@ -88,6 +111,7 @@ class OpenDecisionsIndex extends Component
 
         return view('livewire.meetings.open-decisions-index', [
             'decisions' => $decisions,
-        ])->layout('layouts.app', ['title' => 'قرارات مفتوحة']);
+            'archived' => $archived,
+        ])->layout('layouts.app', ['title' => $archived ? 'قرارات مغلقة' : 'قرارات مفتوحة']);
     }
 }

@@ -27,6 +27,20 @@
                     </button>
                 </td>
             </tr>
+            <tr wire:key="tpl-instances-{{ $template->id }}">
+                <td colspan="5">
+                    <div class="ds-text-muted" style="margin-bottom:0.35rem">آخر النسخ المولَّدة</div>
+                    @forelse ($template->generatedTasks as $instance)
+                        <div class="ds-stat-mini" wire:key="gen-{{ $instance->id }}">
+                            <a class="ds-link" href="{{ route('tasks.index', ['open' => $instance->id]) }}">{{ $instance->title }}</a>
+                            <span class="ds-badge">{{ $statusLabels[$instance->status] ?? $instance->status }}</span>
+                            <span class="ds-text-muted ds-ltr-num">{{ $instance->due_date?->format('Y-m-d') ?? '—' }}</span>
+                        </div>
+                    @empty
+                        <p class="ds-text-muted">لم تُولَّد مهام بعد من هذا القالب</p>
+                    @endforelse
+                </td>
+            </tr>
         @empty
             <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد قوالب متكررة</td></tr>
         @endforelse

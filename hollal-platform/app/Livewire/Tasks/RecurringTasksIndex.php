@@ -10,7 +10,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 /**
- * 02-B3 — manage recurring task templates.
+ * 02-B3 — manage recurring task templates + last generated instances.
  */
 class RecurringTasksIndex extends Component
 {
@@ -33,6 +33,9 @@ class RecurringTasksIndex extends Component
     public ?int $day_of_month = null;
 
     public string $required_evidence = '';
+
+    /** How many generated Task instances to show per template. */
+    public int $instancesLimit = 8;
 
     public function mount(): void
     {
@@ -86,10 +89,24 @@ class RecurringTasksIndex extends Component
 
     public function render(): View
     {
+        $limit = max(1, min(30, $this->instancesLimit));
+
         return view('livewire.tasks.recurring-tasks-index', [
-            'templates' => RecurringTaskTemplate::with('assignee:id,name')->latest()->get(),
+            'templates' => RecurringTaskTemplate::with([
+                'assignee:id,name',
+                'generatedTasks' => fn ($q) => $q->latest()->limit($limit)->select([
+                    'id', 'title', 'status', 'due_date', 'recurring_template_id', 'assigned_to',
+                ]),
+            ])->latest()->get(),
             'users' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'projects' => Project::orderBy('name')->get(['id', 'name']),
+            'statusLabels' => [
+                'new' => 'جديدة',
+                'in_progress' => 'قيد التنفيذ',
+                'pending_review' => 'بانتظار المراجعة',
+                'completed' => 'مكتملة',
+                'overdue' => 'متأخرة',
+            ],
         ])->layout('layouts.app', ['title' => 'المهام المتكررة']);
     }
 }

@@ -19,10 +19,50 @@ class TasksCalendar extends Component
 
     public string $month = '';
 
+    public ?int $selectedTaskId = null;
+
+    public ?int $selectedLeaveId = null;
+
     public function mount(): void
     {
         $this->authorize('esnad.tasks.view');
         $this->month = now()->format('Y-m');
+    }
+
+    public function previousMonth(): void
+    {
+        $this->month = $this->resolveMonthStart()->copy()->subMonth()->format('Y-m');
+        $this->closePeek();
+    }
+
+    public function nextMonth(): void
+    {
+        $this->month = $this->resolveMonthStart()->copy()->addMonth()->format('Y-m');
+        $this->closePeek();
+    }
+
+    public function goToday(): void
+    {
+        $this->month = now()->format('Y-m');
+        $this->closePeek();
+    }
+
+    public function openTask(int $taskId): void
+    {
+        $this->selectedLeaveId = null;
+        $this->selectedTaskId = $taskId;
+    }
+
+    public function openLeave(int $leaveId): void
+    {
+        $this->selectedTaskId = null;
+        $this->selectedLeaveId = $leaveId;
+    }
+
+    public function closePeek(): void
+    {
+        $this->selectedTaskId = null;
+        $this->selectedLeaveId = null;
     }
 
     /** الشهر يصل من الواجهة، فأي قيمة غير Y-m ترتد إلى الشهر الحالي بدل رمي استثناء. */
@@ -60,6 +100,7 @@ class TasksCalendar extends Component
             ->groupBy(fn (Task $task) => $task->due_date->format('Y-m-d'));
 
         $leavesByDay = [];
+        $leavesById = collect();
         if (\Illuminate\Support\Facades\Schema::hasTable('leave_requests')) {
             $leaves = LeaveRequest::query()
                 ->select(['id', 'employee_id', 'type', 'from_date', 'to_date', 'status'])
@@ -69,6 +110,8 @@ class TasksCalendar extends Component
                 ->whereDate('to_date', '>=', $start)
                 ->with('employee:id,name')
                 ->get();
+
+            $leavesById = $leaves->keyBy('id');
 
             foreach ($leaves as $leave) {
                 $cursor = $leave->from_date->copy()->max($start);
@@ -81,10 +124,39 @@ class TasksCalendar extends Component
             }
         }
 
+        // Saudi week: Saturday → Friday (7 columns).
+        $gridStart = $start->copy()->startOfWeek(Carbon::SATURDAY);
+        $gridEnd = $end->copy()->endOfWeek(Carbon::FRIDAY);
+        $cells = [];
+        $cursor = $gridStart->copy();
+        while ($cursor->lte($gridEnd)) {
+            $key = $cursor->format('Y-m-d');
+            $cells[] = [
+                'date' => $key,
+                'day' => (int) $cursor->day,
+                'inMonth' => $cursor->month === $start->month,
+                'isToday' => $cursor->isToday(),
+                'tasks' => $tasks[$key] ?? collect(),
+                'leaves' => $leavesByDay[$key] ?? [],
+            ];
+            $cursor->addDay();
+        }
+
+        $selectedTask = $this->selectedTaskId
+            ? Task::query()->with('assignee:id,name')->find($this->selectedTaskId)
+            : null;
+        $selectedLeave = $this->selectedLeaveId
+            ? ($leavesById->get($this->selectedLeaveId) ?? LeaveRequest::with('employee:id,name')->find($this->selectedLeaveId))
+            : null;
+
         return view('livewire.tasks.tasks-calendar', [
             'tasksByDay' => $tasks,
             'leavesByDay' => $leavesByDay,
             'monthLabel' => $start->translatedFormat('F Y'),
+            'dayHeaders' => ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
+            'cells' => $cells,
+            'selectedTask' => $selectedTask,
+            'selectedLeave' => $selectedLeave,
         ])->layout('layouts.app', ['title' => 'تقويم المهام']);
     }
 }

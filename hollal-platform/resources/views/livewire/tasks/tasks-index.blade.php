@@ -39,7 +39,7 @@
 
         <div class="ds-task-cards ds-task-cards-mobile">
             @forelse ($myTasks as $task)
-                <article class="ds-task-card" wire:key="my-card-{{ $task->id }}">
+                <article class="ds-task-card {{ $task->status === 'completed' ? 'is-completed' : '' }}" wire:key="my-card-{{ $task->id }}">
                     @include('livewire.tasks.partials.status-badge', ['status' => $task->status])
                     <h3 class="ds-task-card-title">{{ $task->title }}</h3>
                     <div class="ds-task-card-meta">
@@ -93,7 +93,7 @@
         <h2 class="ds-section-heading">مهام أسندتها</h2>
         <div class="ds-task-cards ds-task-cards-mobile">
             @forelse ($assignedByMe as $task)
-                <article class="ds-task-card" wire:key="delegated-card-{{ $task->id }}">
+                <article class="ds-task-card {{ $task->status === 'completed' ? 'is-completed' : '' }}" wire:key="delegated-card-{{ $task->id }}">
                     @include('livewire.tasks.partials.status-badge', ['status' => $task->status])
                     <h3 class="ds-task-card-title">{{ $task->title }}</h3>
                     <div class="ds-task-card-meta">
@@ -183,6 +183,28 @@
                             <input type="file" class="ds-input" wire:model="attachment">
                             <div wire:loading wire:target="attachment" class="ds-text-muted">جاري الرفع...</div>
                         </x-ds-form-group>
+                    @endif
+
+                    @if ($taskId && $currentTask)
+                        <div class="ds-section-spaced">
+                            <h4 class="ds-section-heading">الملفات</h4>
+                            <div class="ds-detail-row">
+                                <span class="ds-detail-label">مرفق المهمة:</span>
+                                @if ($existingAttachmentPath || $currentTask->attachment_path)
+                                    <a class="ds-link" href="{{ route('tasks.files.download', ['task' => $currentTask->id, 'type' => 'attachment']) }}">تنزيل المرفق</a>
+                                @else
+                                    <span class="ds-text-muted">لا يوجد</span>
+                                @endif
+                            </div>
+                            <div class="ds-detail-row">
+                                <span class="ds-detail-label">ملف الإنجاز:</span>
+                                @if ($existingSubmittedPath || $currentTask->submitted_file)
+                                    <a class="ds-link" href="{{ route('tasks.files.download', ['task' => $currentTask->id, 'type' => 'submitted']) }}">تنزيل الشاهد</a>
+                                @else
+                                    <span class="ds-text-muted">لا يوجد</span>
+                                @endif
+                            </div>
+                        </div>
                     @endif
 
                     @if ($taskId && $currentTask)

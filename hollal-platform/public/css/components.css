@@ -817,6 +817,11 @@
   gap: 0.65rem;
 }
 
+.ds-task-card.is-completed {
+  background: color-mix(in srgb, var(--ds-success) 22%, var(--ds-card));
+  border-color: color-mix(in srgb, var(--ds-success) 45%, var(--ds-border));
+}
+
 .ds-task-card-status {
   position: absolute;
   top: 0.55rem;
@@ -1267,12 +1272,156 @@
   flex-basis: 100%;
 }
 
+/* ── Tasks calendar (monthly grid) ── */
+.ds-cal-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ds-cal-nav-label {
+  font-weight: 700;
+  font-size: 1.1rem;
+  min-width: 9rem;
+  text-align: center;
+}
+
+.ds-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--ds-border);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  overflow: hidden;
+}
+
+.ds-cal-dow {
+  background: var(--ds-surface-alt, #f0f4f7);
+  color: var(--ds-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+}
+
+.ds-cal-cell {
+  background: var(--ds-card);
+  min-height: 6.5rem;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ds-cal-cell.is-outside {
+  background: color-mix(in srgb, var(--ds-border) 35%, var(--ds-card));
+  opacity: 0.65;
+}
+
+.ds-cal-cell.is-today {
+  outline: 2px solid var(--ds-primary, #005c7b);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.ds-cal-daynum {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ds-text-muted);
+  margin-bottom: 0.15rem;
+}
+
+.ds-cal-chip {
+  display: block;
+  width: 100%;
+  text-align: right;
+  border: 0;
+  border-radius: 4px;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #fff;
+}
+
+.ds-cal-chip-task {
+  background: #0d7a8c;
+}
+
+.ds-cal-chip-task.is-completed {
+  background: var(--ds-success);
+}
+
+.ds-cal-chip-task.is-overdue,
+.ds-cal-chip-task.is-pending_review {
+  background: #c45c26;
+}
+
+.ds-cal-chip-leave {
+  background: #b8860b;
+}
+
+.ds-minutes-agenda {
+  background: color-mix(in srgb, var(--ds-primary, #005c7b) 8%, var(--ds-card));
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  padding: 0.85rem 1rem;
+  margin-bottom: 1rem;
+}
+
+.ds-minutes-agenda h2 {
+  margin: 0 0 0.4rem;
+  font-size: 1rem;
+  color: var(--ds-primary, #005c7b);
+}
+
+.ds-minutes-approval-help {
+  font-size: 0.85rem;
+  color: var(--ds-text-muted);
+  margin: 0.5rem 0 1rem;
+  max-width: 42rem;
+}
+
+.ds-attendance-sign-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.ds-attendance-sign-table th,
+.ds-attendance-sign-table td {
+  border: 1px solid var(--ds-border);
+  padding: 0.55rem 0.65rem;
+  text-align: right;
+  vertical-align: middle;
+}
+
+.ds-attendance-sign-table th {
+  background: var(--ds-surface-alt, #f8fafb);
+  color: var(--ds-primary, #005c7b);
+  font-size: 0.85rem;
+}
+
+.ds-sig-line {
+  display: inline-block;
+  min-width: 8rem;
+  border-bottom: 1px solid var(--ds-text);
+  height: 1.4rem;
+}
+
 @media print {
   .ds-no-print,
   .ds-sidebar,
   .ds-topbar,
   .ds-task-card-actions,
-  .ds-modal-overlay {
+  .ds-modal-overlay,
+  .ds-page-toolbar.ds-no-print {
     display: none !important;
   }
 
@@ -1285,6 +1434,17 @@
     break-inside: avoid;
     box-shadow: none;
     border: 1px solid #ccc;
+  }
+
+  .ds-printable-minutes .ds-minutes-print-block {
+    break-inside: avoid;
+    margin-bottom: 1rem;
+  }
+
+  .ds-printable-minutes .ds-minutes-agenda,
+  .ds-printable-minutes .ds-minute-item-card,
+  .ds-printable-minutes .ds-attendance-sign-table {
+    border-color: #ccc;
   }
 
   body {
