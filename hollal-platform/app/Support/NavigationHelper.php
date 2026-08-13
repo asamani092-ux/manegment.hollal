@@ -18,7 +18,17 @@ class NavigationHelper
             }
         }
 
-        return $items;
+        return array_values(array_filter($items, fn (array $item) => self::itemIsVisible($item)));
+    }
+
+    /** Hide UAT-only entries when the pre-production flag is off. */
+    public static function itemIsVisible(array $item): bool
+    {
+        if (! empty($item['uat_only']) && ! config('uat_tools.enabled')) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

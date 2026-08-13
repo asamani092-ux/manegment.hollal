@@ -14,7 +14,7 @@
     </div>
 
     @foreach ($nav['top'] ?? [] as $item)
-        @if (\App\Support\NavigationHelper::userCanSee($item['permission']))
+        @if (\App\Support\NavigationHelper::itemIsVisible($item) && \App\Support\NavigationHelper::userCanSee($item['permission']))
             <a href="{{ route($item['route']) }}"
                class="ds-sidebar-item {{ request()->routeIs($item['route']) ? 'active' : '' }}"
                data-nav-label="{{ $item['label'] }}">

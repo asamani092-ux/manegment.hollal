@@ -35,6 +35,7 @@ use App\Livewire\Tasks\TasksCalendar;
 use App\Livewire\Tasks\TasksIndex;
 use App\Livewire\Tasks\TeamTasksIndex;
 use App\Livewire\Tasks\WorkloadBoard;
+use App\Livewire\Uat\ToolsChecklist;
 use App\Livewire\Users\EmployeeProfileShow;
 use App\Livewire\Users\UsersIndex;
 use Illuminate\Support\Facades\Route;
@@ -86,6 +87,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/dashboard', DashboardIndex::class)
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
+
+    Route::get('/uat/tools', ToolsChecklist::class)
+        ->middleware(['uat.enabled', 'permission:dashboard.view'])
+        ->name('uat.tools');
 
     Route::get('/projects', ProjectsIndex::class)
         ->middleware('permission:projects.view')

@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
             'password.changed' => \App\Http\Middleware\EnsurePasswordIsChanged::class,
             'maintenance' => \App\Http\Middleware\MaintenanceMode::class,
+            'uat.enabled' => \App\Http\Middleware\EnsureUatToolsEnabled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
