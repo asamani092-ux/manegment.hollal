@@ -75,7 +75,15 @@ class PartnershipShow extends Component
 
     public function mount(Partnership $partnership): void
     {
-        $this->authorize('partnerships.pipeline.view');
+        $user = auth()->user();
+        abort_unless(
+            $user && (
+                $user->can('partnerships.pipeline.view')
+                || $user->can('partnerships.contracts.confirm')
+                || $user->can('projects.update')
+            ),
+            403,
+        );
         $this->partnership = $partnership;
         $this->resetQuoteLines();
         $this->scheduleRows = [['label' => 'الدفعة الأولى', 'amount' => '', 'due_on' => now()->toDateString()]];

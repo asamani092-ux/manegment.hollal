@@ -274,7 +274,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('partnerships.pipeline');
 
     Route::get('/partnerships/{partnership}', \App\Livewire\Partnerships\PartnershipShow::class)
-        ->middleware('permission:partnerships.pipeline.view')
+        ->middleware('permission:partnerships.pipeline.view|partnerships.contracts.confirm|projects.update')
         ->name('partnerships.show');
 
     Route::get('/quotes/{quote}/pdf', \App\Http\Controllers\QuotePdfController::class)
