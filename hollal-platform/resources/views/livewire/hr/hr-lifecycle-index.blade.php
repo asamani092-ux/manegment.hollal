@@ -45,7 +45,10 @@
                     @if ($rowHolds === [])
                         <span class="ds-text-muted">لا يوجد</span>
                     @else
-                        <span class="ds-badge ds-badge-warning">{{ implode('، ', $rowHolds) }}</span>
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openHoldsDrawer({{ $user->id }})">
+                            عرض الموانع
+                            <span class="ds-badge ds-badge-warning ds-ltr-num">{{ count($rowHolds) }}</span>
+                        </button>
                     @endif
                 </td>
                 <td>
@@ -152,6 +155,31 @@
         </ul>
         <div class="ds-toolbar-actions ds-mt-3">
             <button type="button" class="ds-btn ds-btn-outline" wire:click="closeTasksDrawer">إغلاق</button>
+        </div>
+    </x-ds-modal>
+
+    @php
+        $holdsDrawerItems = $holdsDrawerUserId
+            ? ($holds[$holdsDrawerUserId] ?? [])
+            : [];
+        $holdsDrawerUser = $holdsDrawerUserId
+            ? $users->firstWhere('id', $holdsDrawerUserId)
+            : null;
+    @endphp
+    <x-ds-modal :show="$holdsDrawerUserId !== null" title="موانع الإغلاق — {{ $holdsDrawerUser?->name ?? '' }}" close-action="closeHoldsDrawer">
+        <p class="ds-text-muted ds-mb-3">يجب معالجة هذه الموانع قبل إغلاق إنهاء العلاقة وتعطيل الحساب.</p>
+        <ul class="ds-list" style="list-style:none;padding:0;margin:0;display:grid;gap:.75rem">
+            @forelse ($holdsDrawerItems as $hold)
+                <li class="ds-card" style="padding:.75rem 1rem;display:flex;align-items:flex-start;gap:.75rem">
+                    <span class="ds-badge ds-badge-warning" aria-hidden="true">!</span>
+                    <span>{{ $hold }}</span>
+                </li>
+            @empty
+                <li class="ds-text-muted">لا موانع</li>
+            @endforelse
+        </ul>
+        <div class="ds-toolbar-actions ds-mt-3">
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="closeHoldsDrawer">إغلاق</button>
         </div>
     </x-ds-modal>
 </x-ds-page>

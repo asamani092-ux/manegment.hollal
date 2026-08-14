@@ -30,6 +30,8 @@ class HrLifecycleIndex extends Component
 
     public ?int $tasksDrawerUserId = null;
 
+    public ?int $holdsDrawerUserId = null;
+
     public function mount(): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
@@ -81,11 +83,23 @@ class HrLifecycleIndex extends Component
     public function openTasksDrawer(int $userId): void
     {
         $this->tasksDrawerUserId = $userId;
+        $this->holdsDrawerUserId = null;
     }
 
     public function closeTasksDrawer(): void
     {
         $this->tasksDrawerUserId = null;
+    }
+
+    public function openHoldsDrawer(int $userId): void
+    {
+        $this->holdsDrawerUserId = $userId;
+        $this->tasksDrawerUserId = null;
+    }
+
+    public function closeHoldsDrawer(): void
+    {
+        $this->holdsDrawerUserId = null;
     }
 
     public function cancelConfirm(): void
