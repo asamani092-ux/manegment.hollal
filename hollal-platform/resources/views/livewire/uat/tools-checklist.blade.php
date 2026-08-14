@@ -1,7 +1,7 @@
 <x-ds-page>
     <div
         class="uat-checklist"
-        x-data="uatToolsChecklist(@js($groups), @js($phases), @js($baseline ?? []))"
+        x-data="uatToolsChecklist(@js($groups), @js($phases), @js($baseline ?? []), @js($baselineRound2 ?? []))"
         x-init="load()"
     >
         <div class="ds-page-header-bar">
@@ -11,8 +11,11 @@
                     <i class="fas fa-copy" aria-hidden="true"></i>
                     <span x-text="copied ? 'تم النسخ — الصق في المحادثة' : 'نسخ التقرير كاملاً'"></span>
                 </button>
-                <button type="button" class="ds-btn ds-btn-outline" @click="loadBaseline()" title="تحميل تقييم عبدالله 2026-08-13">
-                    تحميل التقييم السابق
+                <button type="button" class="ds-btn ds-btn-outline" @click="loadBaseline()" title="تحميل تقييم 2026-08-14">
+                    تحميل التقييم المحفوظ (14 أغسطس)
+                </button>
+                <button type="button" class="ds-btn ds-btn-outline" @click="loadRound2()" title="تحميل تقييم التجربة الثانية 2026-08-13">
+                    تحميل التجربة الثانية
                 </button>
                 <button type="button" class="ds-btn ds-btn-outline" @click="resetAll()">
                     إعادة التعيين
@@ -158,10 +161,11 @@
 
 @script
 <script>
-    Alpine.data('uatToolsChecklist', (groups, phases, baseline = {}) => ({
+    Alpine.data('uatToolsChecklist', (groups, phases, baseline = {}, baselineRound2 = {}) => ({
         groups,
         phases,
         baseline: baseline || {},
+        baselineRound2: baselineRound2 || {},
         activePhase: 1,
         filter: 'الكل',
         verdicts: {},
@@ -169,7 +173,7 @@
         notes: {},
         copying: false,
         copied: false,
-        storageKey: 'hollal.uat.tools.v3',
+        storageKey: 'hollal.uat.tools.v4',
 
         get total() {
             return this.groups.reduce((sum, g) => sum + g.items.length, 0);
@@ -212,8 +216,8 @@
             this.persist();
         },
 
-        applyBaseline() {
-            const b = this.baseline || {};
+        applyBaseline(source) {
+            const b = source || this.baseline || {};
             this.verdicts = Object.assign({}, b.verdicts || {});
             this.tags = Object.assign({}, b.tags || {});
             this.notes = Object.assign({}, b.notes || {});
@@ -254,7 +258,7 @@
             } catch (e) {}
 
             if (!loaded && this.baseline && this.baseline.verdicts) {
-                this.applyBaseline();
+                this.applyBaseline(this.baseline);
                 this.persist();
             } else {
                 this.fillMissing();
@@ -265,11 +269,20 @@
         },
 
         loadBaseline() {
-            if (!confirm('استبدال التقييم الحالي بتقييم التجربة الثانية (2026-08-13)؟ قد يفتح مراحل لاحقًا حسب الحالات المحمّلة.')) return;
-            this.applyBaseline();
+            if (!confirm('استبدال التقييم الحالي بتقييم 2026-08-14 (ملاحظات المرحلة 1 وما بعدها)؟')) return;
+            this.applyBaseline(this.baseline);
             this.persist();
             if (window.Livewire) {
-                Livewire.dispatch('toast', { type: 'success', message: 'تم تحميل التقييم السابق' });
+                Livewire.dispatch('toast', { type: 'success', message: 'تم تحميل تقييم 14 أغسطس' });
+            }
+        },
+
+        loadRound2() {
+            if (!confirm('استبدال التقييم الحالي بتقييم التجربة الثانية (2026-08-13)؟')) return;
+            this.applyBaseline(this.baselineRound2);
+            this.persist();
+            if (window.Livewire) {
+                Livewire.dispatch('toast', { type: 'success', message: 'تم تحميل التجربة الثانية' });
             }
         },
 
@@ -279,7 +292,7 @@
                 tags: this.tags,
                 notes: this.notes,
                 activePhase: this.activePhase,
-                source: 'uat-phases-v3',
+                source: 'uat-baseline-round3',
             }));
         },
 
@@ -378,14 +391,13 @@
         },
 
         resetAll() {
-            if (!confirm('مسح كل التقييمات والملاحظات المحفوظة في هذا المتصفح؟')) return;
+            if (!confirm('مسح التقييم المحلي ثم تحميل ملاحظات 14 أغسطس؟')) return;
             localStorage.removeItem(this.storageKey);
-            this.verdicts = {};
-            this.tags = {};
-            this.notes = {};
-            this.activePhase = 1;
-            this.fillMissing();
+            this.applyBaseline(this.baseline);
             this.persist();
+            if (window.Livewire) {
+                Livewire.dispatch('toast', { type: 'success', message: 'أُعيد تحميل تقييم 14 أغسطس' });
+            }
         },
     }));
 </script>

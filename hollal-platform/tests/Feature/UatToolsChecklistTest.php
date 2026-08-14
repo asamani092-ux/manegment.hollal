@@ -40,8 +40,9 @@ class UatToolsChecklistTest extends TestCase
             ->assertOk()
             ->assertSee('تقييم أدوات المنصة (UAT) — 3 مراحل', false)
             ->assertSee('نسخ التقرير كاملاً', false)
-            ->assertSee('تحميل التقييم السابق', false)
-            ->assertSee('تقييم التجربة الثانية', false)
+            ->assertSee('تحميل التقييم المحفوظ (14 أغسطس)', false)
+            ->assertSee('تحميل التجربة الثانية', false)
+            ->assertSee('2026-08-14 19:04', false)
             ->assertSee('المرحلة 1 — الأساس والموارد', false)
             ->assertSee('المرحلة 2 — التشغيل والمالية', false)
             ->assertSee('المرحلة 3 — النمو والمحتوى', false)
@@ -82,16 +83,26 @@ class UatToolsChecklistTest extends TestCase
         }
     }
 
-    public function test_baseline_round2_covers_prior_verdicts(): void
+    public function test_baseline_round3_is_default_and_covers_prior_verdicts(): void
     {
         $baseline = config('uat_tools.baseline');
 
-        $this->assertSame('2026-08-13 15:22', $baseline['date']);
-        $this->assertSame('يحتاج تحسين', $baseline['verdicts']['bell']);
+        $this->assertSame('2026-08-14 19:04', $baseline['date']);
+        $this->assertSame('يعتمد', $baseline['verdicts']['bell']);
         $this->assertSame('يعتمد', $baseline['verdicts']['sidebar']);
         $this->assertSame('غير مجرّب', $baseline['verdicts']['smtp']);
-        $this->assertStringContainsString('صفحة سوداء', $baseline['notes']['bell']);
-        $this->assertGreaterThanOrEqual(50, count($baseline['verdicts']));
+        $this->assertSame('يحتاج تحسين', $baseline['verdicts']['attendance']);
+        $this->assertStringContainsString('تفكيك', $baseline['notes']['attendance']);
+        $this->assertGreaterThanOrEqual(60, count($baseline['verdicts']));
+    }
+
+    public function test_baseline_round2_remains_available(): void
+    {
+        $round2 = config('uat_tools.baseline_round2');
+
+        $this->assertSame('2026-08-13 15:22', $round2['date']);
+        $this->assertSame('يحتاج تحسين', $round2['verdicts']['bell']);
+        $this->assertStringContainsString('صفحة سوداء', $round2['notes']['bell']);
     }
 
     public function test_disabled_page_returns_not_found_and_leaves_nav(): void
