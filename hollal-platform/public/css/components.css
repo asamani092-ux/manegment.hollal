@@ -697,17 +697,24 @@
 .ds-toast-container {
   position: fixed;
   bottom: 1.5rem;
-  right: 1.5rem;
-  left: auto;
+  inset-inline-end: 1.5rem;
+  inset-inline-start: auto;
   z-index: 1100;
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-width: 380px;
+  max-width: min(380px, calc(100vw - 2rem));
+  pointer-events: none;
 }
 
 .ds-toast {
-  padding: 0.625rem 0.875rem;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding-block: 0.625rem;
+  padding-inline-start: 2rem;
+  padding-inline-end: 0.875rem;
   border-radius: var(--ds-radius-sm);
   font-size: 0.8125rem;
   font-weight: 500;
@@ -716,6 +723,34 @@
   background: var(--ds-card);
   color: var(--ds-text);
   animation: ds-fadeIn 0.3s ease;
+  pointer-events: auto;
+  transition: opacity 0.28s ease, transform 0.28s ease;
+}
+
+.ds-toast-hide {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.ds-toast-dismiss {
+  position: absolute;
+  top: 0.25rem;
+  inset-inline-start: 0.25rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  border: none;
+  border-radius: var(--ds-radius-sm);
+  background: transparent;
+  color: inherit;
+  font-size: 1.125rem;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.65;
+}
+
+.ds-toast-dismiss:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.06);
 }
 
 .ds-toast-success {
