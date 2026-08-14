@@ -57,6 +57,9 @@
                         <td>{{ $job->job_purpose ?? '—' }}</td>
                         <td>
                             <button type="button" class="ds-btn ds-btn-sm" wire:click="viewJobCard({{ $job->id }})">بطاقة الوظيفة</button>
+                            @can('structure.positions.manage')
+                                <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.jobs', ['edit' => $job->id]) }}">تعديل البطاقة</a>
+                            @endcan
                         </td>
                     </tr>
                 @empty
@@ -140,7 +143,7 @@
 
         <x-ds-table>
             <x-slot:head>
-                <tr><th>اللجنة</th><th>الرئيس</th><th>الأعضاء</th><th>الاجتماعات</th></tr>
+                <tr><th>اللجنة</th><th>الرئيس</th><th>الأعضاء</th><th>الاجتماعات</th><th>إجراءات</th></tr>
             </x-slot:head>
             @forelse ($committees as $committee)
                 <tr wire:key="committee-{{ $committee->id }}">
@@ -148,9 +151,14 @@
                     <td>{{ $committee->chair?->name ?? '—' }}</td>
                     <td class="ds-ltr-num">{{ $committee->members->count() }}</td>
                     <td class="ds-ltr-num">{{ $committee->meetings()->count() }}</td>
+                    <td>
+                        @can('structure.committees.manage')
+                            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.committees', ['manage' => $committee->id]) }}">الأعضاء والضيوف</a>
+                        @endcan
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="ds-text-muted ds-table-empty">لا توجد لجان</td></tr>
+                <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد لجان</td></tr>
             @endforelse
         </x-ds-table>
     @endif

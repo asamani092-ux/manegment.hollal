@@ -36,7 +36,10 @@ class CommitteesIndex extends Component
     protected $queryString = [
         'search' => ['except' => ''],
         'activeFilter' => ['except' => ''],
+        'manage' => ['except' => null],
     ];
+
+    public ?int $manage = null;
 
     public function mount(): void
     {
@@ -45,6 +48,10 @@ class CommitteesIndex extends Component
             || auth()->user()->can('structure.view'),
             403
         );
+
+        if ($this->manage) {
+            $this->openManage($this->manage);
+        }
     }
 
     public function updatingSearch(): void
@@ -61,6 +68,7 @@ class CommitteesIndex extends Component
     {
         abort_unless(auth()->user()->can('structure.committees.manage'), 403);
         $this->managingId = $id;
+        $this->manage = $id;
         $this->reset(['addUserId', 'guestName', 'guestOrg']);
         $this->addRoleLabel = 'عضو';
         $this->guestRole = 'مستشار';
@@ -69,6 +77,7 @@ class CommitteesIndex extends Component
     public function closeManage(): void
     {
         $this->managingId = null;
+        $this->manage = null;
     }
 
     public function addMember(): void

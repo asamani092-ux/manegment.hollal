@@ -1603,9 +1603,11 @@
 .org-node--job .org-node__name { font-weight: 500; color: var(--ds-muted, #556); }
 
 .org-node__badge {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
   margin-inline-end: 0.4rem;
-  padding: 0.1rem 0.45rem;
+  padding: 0.15rem 0.55rem;
   border-radius: 4px;
   font-size: 0.72rem;
   font-weight: 700;
@@ -1613,8 +1615,19 @@
 }
 .org-node__badge--admin { background: #0F3446; color: #fff; }
 .org-node__badge--unit { background: #1a6b5c; color: #fff; }
-.org-node__badge--job { background: #e8eef2; color: #0F3446; }
+.org-node__badge--job { background: #e8eef2; color: #0F3446; border: 1px solid #c5d0d8; }
 
-.org-node--admin { background: color-mix(in srgb, #0F3446 6%, white); }
-.org-node--unit { background: color-mix(in srgb, #1a6b5c 4%, white); }
-.org-node--job { background: transparent; }
+.org-node__level-pill {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+.org-node__level-pill--admin { background: #0F3446; color: #fff; }
+.org-node__level-pill--unit { background: #d8f0ea; color: #0f4a3f; }
+.org-node__level-pill--job { background: #f0f3f5; color: #334; }
+
+.org-node--admin { background: color-mix(in srgb, #0F3446 8%, white); border-inline-start: 4px solid #0F3446; }
+.org-node--unit { background: color-mix(in srgb, #1a6b5c 5%, white); border-inline-start: 4px solid #1a6b5c; }
+.org-node--job { background: transparent; border-inline-start: 4px solid #c5d0d8; }

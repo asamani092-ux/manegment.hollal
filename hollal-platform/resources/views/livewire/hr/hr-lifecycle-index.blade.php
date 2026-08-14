@@ -21,7 +21,6 @@
             @php
                 $rowHolds = $holds[$user->id] ?? [];
                 $counts = $taskCounts[$user->id] ?? null;
-                $tasks = $offboardingTasks[$user->id] ?? collect();
             @endphp
             <tr wire:key="life-{{ $user->id }}">
                 <td>{{ $user->name }}</td>
@@ -34,15 +33,10 @@
                 </td>
                 <td>
                     @if ($counts)
-                        <span class="ds-ltr-num">{{ (int) $counts->done }} / {{ (int) $counts->total }}</span>
-                        <ul style="margin:.35rem 0 0;padding-inline-start:1rem;font-size:.85rem">
-                            @foreach ($tasks as $task)
-                                <li>
-                                    <a class="ds-link" href="{{ route('tasks.index', ['open' => $task->id]) }}">{{ $task->title }}</a>
-                                    — {{ $task->status }}
-                                </li>
-                            @endforeach
-                        </ul>
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openTasksDrawer({{ $user->id }})">
+                            عرض المهام
+                            <span class="ds-ltr-num">({{ (int) $counts->done }}/{{ (int) $counts->total }})</span>
+                        </button>
                     @else
                         —
                     @endif
@@ -57,14 +51,14 @@
                 <td>
                     @if ($user->id !== auth()->id())
                         @if (($user->employment_status ?? '') === \App\Models\User::STATUS_FROZEN)
-                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="unfreezeAccount({{ $user->id }})">
+                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="askUnfreeze({{ $user->id }})">
                                 إلغاء التجميد
                             </button>
                         @elseif (! $user->offboarding_started_at)
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askStartOffboarding({{ $user->id }})">
                                 بدء إنهاء العلاقة
                             </button>
-                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="freezeAccount({{ $user->id }})" wire:confirm="تجميد الحساب مؤقتًا ومنع الدخول؟">
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askFreeze({{ $user->id }})">
                                 تعطيل مؤقت (تجميد)
                             </button>
                         @else
@@ -73,7 +67,7 @@
                                     @disabled($rowHolds !== [])>
                                 إغلاق وتعطيل الحساب
                             </button>
-                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="cancelOffboarding({{ $user->id }})" wire:confirm="التراجع عن بدء الإنهاء وحذف المهام غير المكتملة؟">
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askCancelOffboarding({{ $user->id }})">
                                 تراجع عن الإنهاء
                             </button>
                         @endif
@@ -87,7 +81,7 @@
     {{ $users->links() }}
 
     <x-ds-modal :show="$confirmStartId !== null" title="تأكيد بدء إنهاء العلاقة" close-action="cancelConfirm">
-        <p>سيُنشأ 4 مهام تسليم في إسناد يمكن فتحها ومتابعتها من عمود المهام. الحساب يبقى نشطًا حتى خطوة الإغلاق النهائية.</p>
+        <p>سيُنشأ 4 مهام تسليم في إسناد يمكن فتحها ومتابعتها من نافذة المهام. الحساب يبقى نشطًا حتى خطوة الإغلاق النهائية.</p>
         <div class="ds-toolbar-actions">
             <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelConfirm">إلغاء</button>
             <button type="button" class="ds-btn ds-btn-primary" wire:click="startOffboarding({{ $confirmStartId }})">تأكيد البدء</button>
@@ -99,6 +93,65 @@
         <div class="ds-toolbar-actions">
             <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelConfirm">إلغاء</button>
             <button type="button" class="ds-btn ds-btn-primary" wire:click="completeOffboarding({{ $confirmCompleteId }})">تأكيد الإغلاق</button>
+        </div>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$confirmFreezeId !== null" title="تأكيد التجميد المؤقت" close-action="cancelConfirm">
+        <p>سيُمنع دخول الحساب مؤقتًا دون إنهاء العلاقة. يمكن إلغاء التجميد لاحقًا.</p>
+        <div class="ds-toolbar-actions">
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelConfirm">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="freezeAccount({{ $confirmFreezeId }})">تأكيد التجميد</button>
+        </div>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$confirmUnfreezeId !== null" title="تأكيد إلغاء التجميد" close-action="cancelConfirm">
+        <p>سيُعاد تفعيل الحساب ويُسمح بالدخول مجددًا.</p>
+        <div class="ds-toolbar-actions">
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelConfirm">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="unfreezeAccount({{ $confirmUnfreezeId }})">تأكيد إلغاء التجميد</button>
+        </div>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$confirmCancelOffboardingId !== null" title="تأكيد التراجع عن الإنهاء" close-action="cancelConfirm">
+        <p>سيُلغى بدء إنهاء العلاقة وتُحذف المهام غير المكتملة المرتبطة به.</p>
+        <div class="ds-toolbar-actions">
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelConfirm">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="cancelOffboarding({{ $confirmCancelOffboardingId }})">تأكيد التراجع</button>
+        </div>
+    </x-ds-modal>
+
+    @php
+        $drawerTasks = $tasksDrawerUserId
+            ? ($offboardingTasks[$tasksDrawerUserId] ?? collect())
+            : collect();
+        $drawerUser = $tasksDrawerUserId
+            ? $users->firstWhere('id', $tasksDrawerUserId)
+            : null;
+        $statusAr = [
+            'new' => 'جديدة',
+            'in_progress' => 'قيد التنفيذ',
+            'pending_review' => 'بانتظار المراجعة',
+            'waiting_review' => 'بانتظار المراجعة',
+            'completed' => 'مكتملة',
+            'cancelled' => 'ملغاة',
+        ];
+    @endphp
+    <x-ds-modal :show="$tasksDrawerUserId !== null" title="مهام إنهاء العلاقة — {{ $drawerUser?->name ?? '' }}" close-action="closeTasksDrawer" size="lg">
+        <ul class="ds-list" style="list-style:none;padding:0;margin:0;display:grid;gap:.75rem">
+            @forelse ($drawerTasks as $task)
+                <li class="ds-card" style="padding:.75rem 1rem">
+                    <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap">
+                        <strong>{{ $task->title }}</strong>
+                        <x-ds-status-badge :status="$statusAr[$task->status] ?? $task->status" />
+                    </div>
+                    <a class="ds-link" href="{{ route('tasks.index', ['open' => $task->id]) }}">فتح في إسناد</a>
+                </li>
+            @empty
+                <li class="ds-text-muted">لا مهام</li>
+            @endforelse
+        </ul>
+        <div class="ds-toolbar-actions ds-mt-3">
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="closeTasksDrawer">إغلاق</button>
         </div>
     </x-ds-modal>
 </x-ds-page>

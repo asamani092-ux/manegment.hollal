@@ -6,20 +6,32 @@
         \App\Models\OrgUnit::LEVEL_JOB => 'org-node--job',
         default => 'org-node--unit',
     };
+    $levelIcon = match ($node->level) {
+        \App\Models\OrgUnit::LEVEL_ADMINISTRATION => 'fa-building',
+        \App\Models\OrgUnit::LEVEL_UNIT => 'fa-sitemap',
+        \App\Models\OrgUnit::LEVEL_JOB => 'fa-briefcase',
+        default => 'fa-circle',
+    };
+    $badgeMod = $node->level === 'إدارة' ? 'admin' : ($node->level === 'وحدة' ? 'unit' : 'job');
 @endphp
-<tr wire:key="org-node-{{ $node->id }}" class="org-node {{ $levelClass }}" style="border-inline-start: 4px solid {{ $adminColor ?? '#0F3446' }}">
-    <td style="padding-inline-start: {{ $depth * 18 }}px">
-        <span class="org-node__badge org-node__badge--{{ $node->level === 'إدارة' ? 'admin' : ($node->level === 'وحدة' ? 'unit' : 'job') }}">{{ $node->level }}</span>
+<tr wire:key="org-node-{{ $node->id }}" class="org-node {{ $levelClass }}">
+    <td style="padding-inline-start: {{ $depth * 22 }}px">
+        <span class="org-node__badge org-node__badge--{{ $badgeMod }}">
+            <i class="fas {{ $levelIcon }}" aria-hidden="true"></i>
+            {{ $node->level }}
+        </span>
         <strong class="org-node__name">{{ $node->name }}</strong>
     </td>
-    <td>{{ $node->level }}</td>
+    <td>
+        <span class="org-node__level-pill org-node__level-pill--{{ $badgeMod }}">{{ $node->level }}</span>
+    </td>
     <td>{{ $node->manager?->name ?? '—' }}</td>
     <td class="ds-ltr-num">{{ $node->members_count ?? $node->members()->count() }}</td>
     <td>
         @if ($node->isJobCard())
             <button type="button" class="ds-btn ds-btn-sm" wire:click="viewJobCard({{ $node->id }})">بطاقة الوظيفة</button>
             @can('structure.positions.manage')
-                <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.jobs') }}?edit={{ $node->id }}">تعديل</a>
+                <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.jobs', ['edit' => $node->id]) }}">تعديل</a>
             @endcan
         @endif
         @can('structure.departments.create')

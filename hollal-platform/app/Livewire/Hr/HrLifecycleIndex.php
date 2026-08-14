@@ -22,6 +22,14 @@ class HrLifecycleIndex extends Component
 
     public ?int $confirmCompleteId = null;
 
+    public ?int $confirmFreezeId = null;
+
+    public ?int $confirmCancelOffboardingId = null;
+
+    public ?int $confirmUnfreezeId = null;
+
+    public ?int $tasksDrawerUserId = null;
+
     public function mount(): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
@@ -33,12 +41,60 @@ class HrLifecycleIndex extends Component
         abort_if($userId === auth()->id(), 403);
         $this->confirmStartId = $userId;
         $this->confirmCompleteId = null;
+        $this->confirmFreezeId = null;
+        $this->confirmCancelOffboardingId = null;
+        $this->confirmUnfreezeId = null;
+    }
+
+    public function askFreeze(int $userId): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        abort_if($userId === auth()->id(), 403);
+        $this->confirmFreezeId = $userId;
+        $this->confirmStartId = null;
+        $this->confirmCompleteId = null;
+        $this->confirmCancelOffboardingId = null;
+        $this->confirmUnfreezeId = null;
+    }
+
+    public function askUnfreeze(int $userId): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        $this->confirmUnfreezeId = $userId;
+        $this->confirmStartId = null;
+        $this->confirmCompleteId = null;
+        $this->confirmFreezeId = null;
+        $this->confirmCancelOffboardingId = null;
+    }
+
+    public function askCancelOffboarding(int $userId): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        abort_if($userId === auth()->id(), 403);
+        $this->confirmCancelOffboardingId = $userId;
+        $this->confirmStartId = null;
+        $this->confirmCompleteId = null;
+        $this->confirmFreezeId = null;
+        $this->confirmUnfreezeId = null;
+    }
+
+    public function openTasksDrawer(int $userId): void
+    {
+        $this->tasksDrawerUserId = $userId;
+    }
+
+    public function closeTasksDrawer(): void
+    {
+        $this->tasksDrawerUserId = null;
     }
 
     public function cancelConfirm(): void
     {
         $this->confirmStartId = null;
         $this->confirmCompleteId = null;
+        $this->confirmFreezeId = null;
+        $this->confirmCancelOffboardingId = null;
+        $this->confirmUnfreezeId = null;
     }
 
     public function startOffboarding(int $userId): void
@@ -87,6 +143,7 @@ class HrLifecycleIndex extends Component
 
         try {
             app(OffboardingService::class)->cancel(User::findOrFail($userId));
+            $this->confirmCancelOffboardingId = null;
             $this->dispatch('toast', type: 'success', message: 'تم التراجع عن بدء إنهاء العلاقة');
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
@@ -106,6 +163,7 @@ class HrLifecycleIndex extends Component
         }
 
         $user->transitionStatus(User::STATUS_FROZEN);
+        $this->confirmFreezeId = null;
         $this->dispatch('toast', type: 'success', message: 'جُمّد الحساب — ممنوع الدخول حتى إلغاء التجميد');
     }
 
@@ -121,6 +179,7 @@ class HrLifecycleIndex extends Component
         }
 
         $user->transitionStatus(User::STATUS_ACTIVE);
+        $this->confirmUnfreezeId = null;
         $this->dispatch('toast', type: 'success', message: 'أُلغي التجميد — الحساب نشط');
     }
 
