@@ -31,28 +31,6 @@ class DashboardIndex extends Component
         $this->authorize('dashboard.view');
     }
 
-    /**
-     * 00-B5 — check-in placeholder. Visible only for attendance-enabled users;
-     * timestamp persistence and full logic are wired in 01-B4.
-     */
-    public function checkIn(): void
-    {
-        abort_unless((bool) auth()->user()->attendance_enabled, 403);
-
-        app(\App\Services\AttendanceService::class)->checkIn(auth()->user());
-
-        $this->dispatch('toast', type: 'success', message: 'تم تسجيل الحضور');
-    }
-
-    public function checkOut(): void
-    {
-        abort_unless((bool) auth()->user()->attendance_enabled, 403);
-
-        app(\App\Services\AttendanceService::class)->checkOut(auth()->user());
-
-        $this->dispatch('toast', type: 'success', message: 'تم تسجيل الانصراف');
-    }
-
     public function render(): View
     {
         /** @var User $user */
@@ -73,7 +51,6 @@ class DashboardIndex extends Component
             'myTasksToday' => $this->myTasksToday($user),
             'myOpenTasks' => $this->myOpenTasks($user),
             'myUpcomingMeetings' => $this->myUpcomingMeetings($user),
-            'attendanceEnabled' => (bool) $user->attendance_enabled,
             'dutiesFileUrl' => $this->officialDutiesFileUrl(),
         ])->layout('layouts.app', ['title' => 'الرئيسية']);
     }

@@ -11,8 +11,8 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * 00-B5 — dashboard: attendance placeholder gating, personal workspace,
- * and loads cleanly for every operational role.
+ * 00-B5 — dashboard: personal workspace, duties link, role smoke loads.
+ * Check-in/out removed from dashboard (external attendance / QR path).
  */
 class DashboardEnrichmentTest extends TestCase
 {
@@ -34,33 +34,15 @@ class DashboardEnrichmentTest extends TestCase
         ]);
     }
 
-    public function test_checkin_buttons_visible_only_when_attendance_enabled(): void
+    public function test_dashboard_does_not_show_checkin_checkout_buttons(): void
     {
         $enabled = $this->user(attendance: true);
         $enabled->givePermissionTo('dashboard.view');
 
         Livewire::actingAs($enabled)
             ->test(DashboardIndex::class)
-            ->assertSee('تسجيل حضور')
-            ->assertSee('تسجيل انصراف');
-
-        $disabled = $this->user(attendance: false);
-        $disabled->givePermissionTo('dashboard.view');
-
-        Livewire::actingAs($disabled)
-            ->test(DashboardIndex::class)
-            ->assertDontSee('تسجيل حضور');
-    }
-
-    public function test_checkin_action_blocked_without_attendance_flag(): void
-    {
-        $user = $this->user(attendance: false);
-        $user->givePermissionTo('dashboard.view');
-
-        Livewire::actingAs($user)
-            ->test(DashboardIndex::class)
-            ->call('checkIn')
-            ->assertForbidden();
+            ->assertDontSee('تسجيل حضور')
+            ->assertDontSee('تسجيل انصراف');
     }
 
     public function test_employee_sees_personal_workspace(): void
