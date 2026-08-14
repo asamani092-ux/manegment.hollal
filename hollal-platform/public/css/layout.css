@@ -122,8 +122,6 @@
   top: calc(100% + 6px);
   inset-inline-end: 0;
   inset-inline-start: auto;
-  left: unset;
-  right: unset;
   width: min(320px, calc(100vw - 2rem));
   max-width: min(320px, calc(100vw - 1rem));
   background: var(--ds-card);
@@ -295,10 +293,9 @@
 .ds-dropdown-menu {
   position: absolute;
   top: calc(100% + 6px);
+  /* Do not set left/right after inset-inline-* — that clears the inset mapping. */
   inset-inline-end: 0;
   inset-inline-start: auto;
-  left: unset;
-  right: unset;
   min-width: 220px;
   max-width: min(280px, calc(100vw - 1rem));
   background: var(--ds-card);
@@ -687,31 +684,45 @@
     padding: 0.25rem;
   }
 
-  /* Keep menus absolute under their triggers (RTL-safe). Fixed+inset-inline-end
-     pinned panels to the wrong viewport edge and pushed notifications off-screen. */
+  /* Menus must stay in-viewport: navbar-end sits on the physical LEFT in RTL.
+     Position menus against .ds-navbar-end (not each tiny icon) so width fits. */
   .ds-topbar,
-  .ds-navbar,
-  .ds-navbar-end {
+  .ds-navbar {
     overflow: visible;
   }
 
-  .ds-navbar-end .ds-user-dropdown.open .ds-dropdown-menu,
-  .ds-navbar-end .ds-notifications-menu {
+  .ds-navbar-end {
+    position: relative;
+    overflow: visible;
+  }
+
+  .ds-navbar-end .ds-user-dropdown,
+  .ds-navbar-end .ds-notifications-dropdown {
+    position: static;
+  }
+
+  html[dir="rtl"] .ds-navbar-end .ds-user-dropdown.open .ds-dropdown-menu,
+  html[dir="rtl"] .ds-navbar-end .ds-notifications-menu {
     position: absolute;
     top: calc(100% + 6px);
-    inset-inline-end: 0;
-    inset-inline-start: auto;
-    left: unset;
-    right: unset;
-    width: min(280px, calc(100vw - 1rem));
-    max-width: min(280px, calc(100vw - 1rem));
+    left: 0;
+    right: auto;
+    width: min(280px, calc(100vw - 1.5rem));
+    max-width: min(280px, calc(100vw - 1.5rem));
     min-width: 0;
     z-index: 1100;
   }
 
-  .ds-navbar-end .ds-notifications-menu {
-    width: min(320px, calc(100vw - 1rem));
-    max-width: min(320px, calc(100vw - 1rem));
+  html[dir="ltr"] .ds-navbar-end .ds-user-dropdown.open .ds-dropdown-menu,
+  html[dir="ltr"] .ds-navbar-end .ds-notifications-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    left: auto;
+    width: min(280px, calc(100vw - 1.5rem));
+    max-width: min(280px, calc(100vw - 1.5rem));
+    min-width: 0;
+    z-index: 1100;
   }
 
   .ds-sidebar {
