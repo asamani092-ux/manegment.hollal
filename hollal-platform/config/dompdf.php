@@ -183,7 +183,7 @@ return [
          *
          * @var string
          */
-        'default_font' => is_file(resource_path('fonts/Amiri-Regular.ttf')) ? 'Amiri' : 'dejavu sans',
+        'default_font' => is_file(resource_path('fonts/Amiri-Regular.ttf')) ? 'amiri' : 'dejavu sans',
 
         /**
          * Image DPI setting

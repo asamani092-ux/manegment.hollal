@@ -67,7 +67,7 @@ class ReportRound2CritTest extends TestCase
     {
         $this->assertStringContainsString('open=7', RecordUrl::meeting(7));
         $this->assertStringContainsString('open=9', RecordUrl::payrollRun(9));
-        $this->assertSame(route('payroll-runs.index'), RecordUrl::payrollRun());
+        $this->assertSame(route('payroll-runs.index', absolute: false), RecordUrl::payrollRun());
         $this->assertStringContainsString('open=3', RecordUrl::contract(3));
         $this->assertStringContainsString('open=4', RecordUrl::document(4));
         $this->assertStringContainsString('open=5', RecordUrl::revenue(5));

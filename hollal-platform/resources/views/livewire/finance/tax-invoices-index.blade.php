@@ -32,7 +32,7 @@
                 <td dir="ltr">{{ $invoice->issued_at?->format('Y-m-d') }}</td>
                 <td class="ds-ltr-num">{{ $invoice->notes_count }}</td>
                 <td>
-                    <a class="ds-btn ds-btn-sm" href="{{ route('tax-invoices.pdf', $invoice->id) }}">PDF</a>
+                    <a class="ds-btn ds-btn-sm" href="{{ route('tax-invoices.pdf', ['taxInvoice' => $invoice->id, 'print' => 1]) }}" target="_blank" rel="noopener">طباعة</a>
                     @can('finance.tax_invoices.issue')
                         <button type="button" class="ds-btn ds-btn-sm" wire:click="openNoteModal({{ $invoice->id }})">
                             إشعار دائن/مدين

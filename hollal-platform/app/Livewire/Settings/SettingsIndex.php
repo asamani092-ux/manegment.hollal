@@ -83,6 +83,14 @@ class SettingsIndex extends Component
             Setting::set(str_replace('__', '.', $safeKey), $value);
         }
 
+        // Keep invoice seller profile aligned with finance.tax.* platform settings.
+        $profile = \App\Models\CompanyProfile::current();
+        $profile->fill([
+            'name' => (string) ($this->values[self::safeKey('finance.tax.seller_name')] ?? $profile->name),
+            'tax_number' => (string) ($this->values[self::safeKey('finance.tax.seller_vat_number')] ?? $profile->tax_number),
+        ]);
+        $profile->save();
+
         $this->dispatch('toast', type: 'success', message: 'تم حفظ الإعدادات');
     }
 

@@ -405,6 +405,14 @@
   font-size: 0.75rem;
 }
 
+.ds-help-text {
+  display: block;
+  margin-top: 0.35rem;
+  font-size: 0.75rem;
+  color: var(--ds-text-muted);
+  line-height: 1.45;
+}
+
 .ds-login-footer {
   text-align: center;
   margin-top: 1.5rem;

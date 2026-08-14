@@ -34,7 +34,7 @@
                     <th>الموظف</th>
                     <th>تاريخ البداية</th>
                     <th>تاريخ النهاية</th>
-                    <th>القيمة</th>
+                    <th>قيمة العقد</th>
                     <th>الحالة</th>
                     <th>الملف</th>
                     <th>إجراءات</th>
@@ -117,8 +117,9 @@
                         <input type="date" class="ds-input" wire:model="end_date" @disabled($viewOnly)>
                     </x-ds-form-group>
                     @if ($canViewValue)
-                        <x-ds-form-group label="القيمة" :error="$errors->first('value')">
-                            <input type="number" step="0.01" class="ds-input" wire:model="value" @disabled($viewOnly)>
+                        <x-ds-form-group label="قيمة العقد (إجمالي العقد وليس الراتب الشهري)" :error="$errors->first('value')">
+                            <input type="number" step="0.01" class="ds-input" wire:model="value" @disabled($viewOnly) aria-describedby="contract-value-help">
+                            <p id="contract-value-help" class="ds-help-text">قيمة العقد كاملة طوال مدته. الراتب الشهري يُدار من سلم الرواتب / الملف الوظيفي / المسيّرات.</p>
                         </x-ds-form-group>
                     @endif
                     <x-ds-form-group label="الحالة" :error="$errors->first('status')">

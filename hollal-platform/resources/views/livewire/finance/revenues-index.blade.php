@@ -82,10 +82,14 @@
         </x-ds-form-group>
         <x-ds-form-group label="شاهد الإيراد" :error="$errors->first('evidence')">
             <input type="file" class="ds-input" wire:model="evidence" accept=".pdf,.jpg,.jpeg,.png">
+            <div wire:loading wire:target="evidence" class="ds-help-text">جاري رفع الشاهد…</div>
+            @if ($evidence)
+                <p class="ds-help-text">تم تجهيز الملف: {{ $evidence->getClientOriginalName() }}</p>
+            @endif
         </x-ds-form-group>
 
         <x-slot:footer>
-            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveRevenue">حفظ</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveRevenue" wire:loading.attr="disabled" wire:target="evidence,saveRevenue">حفظ</button>
         </x-slot:footer>
     </x-ds-modal>
 </x-ds-page>

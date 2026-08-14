@@ -3,7 +3,7 @@
 @section('content')
     <div class="ds-login-card">
         <div class="ds-login-header">
-            <img src="{{ asset('assets/logos/logo.svg') }}" alt="منصة حلل" class="ds-logo-img ds-login-logo">
+            <img src="{{ asset('brand/logos/logo.svg') }}" alt="منصة حلل" class="ds-logo-img ds-login-logo">
             <h1>منصة حلل للإدارة</h1>
             <p>تسجيل الدخول إلى حسابك</p>
         </div>

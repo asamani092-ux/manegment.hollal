@@ -35,14 +35,42 @@ class NotificationBell extends Component
 
         $notification->markAsRead();
 
-        $url = $notification->data['url'] ?? null;
-        if (is_string($url) && $url !== '' && $url !== '#') {
-            $this->redirect($url);
+        $path = self::appPath($notification->data['url'] ?? null);
+        if ($path !== null) {
+            // Relative path keeps the current host/port (APP_URL=localhost caused black pages).
+            $this->redirect($path);
 
             return;
         }
 
         $this->open = true;
+    }
+
+    /**
+     * Normalize stored absolute/relative notification URLs to an in-app path.
+     * Time: O(1) | Space: O(1)
+     */
+    public static function appPath(mixed $url): ?string
+    {
+        if (! is_string($url) || $url === '' || $url === '#') {
+            return null;
+        }
+
+        if (str_starts_with($url, '/')) {
+            return $url;
+        }
+
+        $parts = parse_url($url);
+        if (! is_array($parts) || empty($parts['path'])) {
+            return null;
+        }
+
+        $path = $parts['path'];
+        if (! empty($parts['query'])) {
+            $path .= '?'.$parts['query'];
+        }
+
+        return $path;
     }
 
     public function markAllAsRead(): void

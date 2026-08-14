@@ -62,7 +62,7 @@ class TaskNotificationTest extends TestCase
         $notification = $this->assignee->fresh()->notifications->first();
         $this->assertStringContainsString('مهمة للإشعار', $notification->data['message']);
         $this->assertSame(
-            route('tasks.index', ['open' => $notification->data['task_id']]),
+            route('tasks.index', ['open' => $notification->data['task_id']], absolute: false),
             $notification->data['url']
         );
     }

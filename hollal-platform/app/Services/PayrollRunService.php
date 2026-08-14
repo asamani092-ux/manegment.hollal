@@ -194,12 +194,10 @@ class PayrollRunService
             ->first();
 
         if (! $run) {
-            return [
-                'updated' => 0,
-                'created' => 0,
-                'skipped' => true,
-                'message' => 'لا يوجد مسيّر مسودة أو معاد للتصحيح لهذا الشهر — أنشئ مسيّرًا أولًا أو انتظر إرجاعه من المالية.',
-            ];
+            $run = PayrollRun::create([
+                'month' => $month,
+                'status' => PayrollRun::STATUS_DRAFT,
+            ]);
         }
 
         $this->assertEditable($run);
@@ -260,6 +258,69 @@ class PayrollRunService
                 $created
             ),
         ];
+    }
+
+    /**
+     * Mirror monthly payroll amounts into active salary components (employee profile source).
+     * Time: O(1) | Space: O(1)
+     */
+    public function mirrorMonthlyPayrollToProfile(\App\Models\Payroll $payroll): void
+    {
+        $from = $payroll->month?->copy()->startOfMonth() ?? now()->startOfMonth();
+
+        SalaryComponent::query()
+            ->where('employee_id', $payroll->employee_id)
+            ->where('type', SalaryComponent::TYPE_BASE)
+            ->where('is_active', true)
+            ->whereNull('valid_to')
+            ->whereDate('valid_from', '<', $from->toDateString())
+            ->update(['valid_to' => $from->copy()->subDay()->toDateString()]);
+
+        SalaryComponent::updateOrCreate(
+            [
+                'employee_id' => $payroll->employee_id,
+                'type' => SalaryComponent::TYPE_BASE,
+                'label_ar' => 'أساسي (من الرواتب الشهرية)',
+                'valid_from' => $from->toDateString(),
+            ],
+            [
+                'amount' => (float) $payroll->base,
+                'is_active' => true,
+                'valid_to' => null,
+            ]
+        );
+
+        if ((float) $payroll->additions > 0) {
+            SalaryComponent::updateOrCreate(
+                [
+                    'employee_id' => $payroll->employee_id,
+                    'type' => SalaryComponent::TYPE_ALLOWANCE,
+                    'label_ar' => 'بدلات (من الرواتب الشهرية)',
+                    'valid_from' => $from->toDateString(),
+                ],
+                [
+                    'amount' => (float) $payroll->additions,
+                    'is_active' => true,
+                    'valid_to' => null,
+                ]
+            );
+        }
+
+        if ((float) $payroll->deductions > 0) {
+            SalaryComponent::updateOrCreate(
+                [
+                    'employee_id' => $payroll->employee_id,
+                    'type' => SalaryComponent::TYPE_DEDUCTION,
+                    'label_ar' => 'خصومات (من الرواتب الشهرية)',
+                    'valid_from' => $from->toDateString(),
+                ],
+                [
+                    'amount' => (float) $payroll->deductions,
+                    'is_active' => true,
+                    'valid_to' => null,
+                ]
+            );
+        }
     }
 
     public function submitToFinance(PayrollRun $run, User $actor): PayrollRun

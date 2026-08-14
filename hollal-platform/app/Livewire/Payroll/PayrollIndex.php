@@ -115,7 +115,7 @@ class PayrollIndex extends Component
         $monthDate = $this->month.'-01';
         $net = Payroll::computeNet($this->base, $this->additions, $this->deductions);
 
-        Payroll::updateOrCreate(
+        $payroll = Payroll::updateOrCreate(
             ['id' => $this->payrollId],
             [
                 'employee_id' => $this->employee_id,
@@ -127,6 +127,8 @@ class PayrollIndex extends Component
                 'transfer_status' => $this->transfer_status,
             ]
         );
+
+        app(PayrollRunService::class)->mirrorMonthlyPayrollToProfile($payroll);
 
         $syncResult = null;
         try {
@@ -143,7 +145,9 @@ class PayrollIndex extends Component
         $this->closeModal();
         $message = $isEdit ? 'تم تحديث الراتب' : 'تم إنشاء الراتب';
         if ($syncResult && ! ($syncResult['skipped'] ?? true) && (($syncResult['updated'] ?? 0) + ($syncResult['created'] ?? 0)) > 0) {
-            $message .= ' — وتُزامن إلى مسيّر الشهر';
+            $message .= ' — وتُزامن إلى مسيّر الشهر والملف الوظيفي';
+        } else {
+            $message .= ' — حُدّث الملف الوظيفي (المسيّر يُحدَّث عند وجود مسودة قابلة للتعديل)';
         }
         $this->dispatch('toast', type: 'success', message: $message);
     }

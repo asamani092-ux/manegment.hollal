@@ -154,8 +154,14 @@ class CustodiesIndex extends Component
             'disbursingId' => 'required|exists:custodies,id',
             'disbursementProof' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
         ], [
-            'disbursementProof.required' => 'إثبات الصرف إلزامي',
+            'disbursementProof.required' => 'إثبات الصرف إلزامي — انتظر اكتمال رفع الملف (الشاهد) قبل التأكيد',
         ]);
+
+        if (! $this->disbursementProof instanceof TemporaryUploadedFile) {
+            $this->addError('disbursementProof', 'انتظر اكتمال رفع إثبات الصرف ثم أكّد');
+
+            return;
+        }
 
         $path = $this->disbursementProof->store('custodies/disbursements', 'local');
 

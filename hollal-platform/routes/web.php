@@ -314,6 +314,9 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/financial-reports/pdf', \App\Http\Controllers\FinancialReportPdfController::class)
         ->middleware('permission:finance.reports.view')
         ->name('financial-reports.pdf');
+    Route::get('/financial-reports/excel', \App\Http\Controllers\FinancialReportExcelController::class)
+        ->middleware('permission:finance.reports.view')
+        ->name('financial-reports.excel');
 
     Route::get('/financial-reports', FinancialReportsIndex::class)
         ->middleware('permission:finance.reports.view')
@@ -326,6 +329,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/assets', \App\Livewire\Finance\AssetsIndex::class)
         ->middleware('permission:finance.assets.view|finance.assets.manage')
         ->name('assets.index');
+    Route::redirect('/finance/assets', '/assets');
 
     Route::get('/revenues', \App\Livewire\Finance\RevenuesIndex::class)
         ->middleware('permission:finance.revenues.view|finance.revenues.manage')

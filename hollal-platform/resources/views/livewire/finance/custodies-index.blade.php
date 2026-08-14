@@ -129,12 +129,16 @@
     </x-ds-modal>
 
     <x-ds-modal :show="$disbursingId !== null" title="صرف العهدة" close-action="$set('disbursingId', null)">
-        <p class="ds-text-muted">يجب إرفاق إثبات الصرف قبل التأكيد.</p>
-        <x-ds-form-group label="إثبات الصرف" :error="$errors->first('disbursementProof')">
+        <p class="ds-text-muted">أرفق إثبات الصرف (الشاهد). لا تضغط تأكيد الصرف قبل اكتمال الرفع.</p>
+        <x-ds-form-group label="إثبات الصرف / الشاهد" :error="$errors->first('disbursementProof')">
             <input type="file" class="ds-input" wire:model="disbursementProof" accept=".pdf,.jpg,.jpeg,.png">
+            <div wire:loading wire:target="disbursementProof" class="ds-help-text">جاري رفع الإثبات…</div>
+            @if ($disbursementProof)
+                <p class="ds-help-text">تم تجهيز الملف: {{ $disbursementProof->getClientOriginalName() }}</p>
+            @endif
         </x-ds-form-group>
         <x-slot:footer>
-            <button type="button" class="ds-btn ds-btn-primary" wire:click="disburseCustody">تأكيد الصرف</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="disburseCustody" wire:loading.attr="disabled" wire:target="disbursementProof,disburseCustody">تأكيد الصرف</button>
             <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('disbursingId', null)">إلغاء</button>
         </x-slot:footer>
     </x-ds-modal>

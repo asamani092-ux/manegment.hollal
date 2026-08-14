@@ -27,8 +27,8 @@ final class PdfArabic
 
         $src = 'file://'.str_replace('\\', '/', $path);
 
-        return '@font-face { font-family: Amiri; font-style: normal; font-weight: normal; src: url("'.$src.'") format("truetype"); }'
-            .' body { font-family: Amiri, dejavu sans, sans-serif; direction: rtl; unicode-bidi: embed; }';
+        return '@font-face { font-family: amiri; font-style: normal; font-weight: normal; src: url("'.$src.'") format("truetype"); }'
+            .' body { font-family: amiri, DejaVu Sans, sans-serif; direction: rtl; unicode-bidi: embed; }';
     }
 
     public static function header(string $title, bool $includeCr = false): string
@@ -48,13 +48,17 @@ final class PdfArabic
         $address = $includeCr && $company->address
             ? '<p>العنوان: '.e((string) $company->address).'</p>'
             : '';
+        $tax = $company->tax_number
+            ? '<p>الرقم الضريبي: '.e((string) $company->tax_number).'</p>'
+            : '';
 
         return '<div dir="rtl" style="text-align:right; unicode-bidi: embed;">'
             .'<style>'.self::fontFace().' table { border-collapse: collapse; width: 100%; }'
             .' th, td { border: 1px solid #0F3446; padding: 6px; } th { background: #0F3446; color: #fff; }</style>'
             .$logo
             .'<h2>'.e($title).'</h2>'
-            .'<p>'.e($company->name).' — الرقم الضريبي: '.e((string) $company->tax_number).'</p>'
+            .'<p>'.e($company->name).'</p>'
+            .$tax
             .$cr
             .$address
             .'</div>';
@@ -62,7 +66,8 @@ final class PdfArabic
 
     public static function defaultFont(): string
     {
-        return self::fontPath() !== null ? 'Amiri' : 'dejavu sans';
+        // Must match storage/fonts/installed-fonts.json family key (lowercase).
+        return self::fontPath() !== null ? 'amiri' : 'dejavu sans';
     }
 
     /** @return array<string, mixed> */

@@ -33,7 +33,7 @@
                     @foreach ($notifications as $notification)
                         <li class="ds-notifications-item {{ $notification->read_at === null ? 'is-unread' : '' }}">
                             <a
-                                href="{{ $notification->data['url'] ?? '#' }}"
+                                href="{{ \App\Livewire\NotificationBell::appPath($notification->data['url'] ?? null) ?? '#' }}"
                                 class="ds-notifications-link"
                                 wire:click.prevent="markAsReadAndGo('{{ $notification->id }}')"
                             >

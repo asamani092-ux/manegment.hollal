@@ -105,4 +105,37 @@ class FinancialReportService
 
         return $pdf->output();
     }
+
+    /**
+     * UTF-8 CSV with BOM for Excel. Sheets simulated as sections.
+     * Time: O(n) | Space: O(n)
+     */
+    public function exportMonthlyCsv(string $month): string
+    {
+        $report = $this->monthly($month);
+        $lines = [];
+        $lines[] = ['القسم', 'البند', 'المبلغ'];
+        $lines[] = ['ملخص', 'إجمالي المصروفات', number_format((float) $report['expenses_total'], 2, '.', '')];
+        $lines[] = ['ملخص', 'إجمالي الإيرادات', number_format((float) $report['revenues_total'], 2, '.', '')];
+        $lines[] = ['ملخص', 'إجمالي الرواتب', number_format((float) $report['payroll_total'], 2, '.', '')];
+        $lines[] = ['ملخص', 'الصافي', number_format((float) $report['net'], 2, '.', '')];
+
+        foreach ($report['expenses_by_category'] as $line) {
+            $lines[] = ['مصروفات حسب التصنيف', (string) ($line['category_id'] ?? 'غير مصنّف'), number_format((float) $line['total'], 2, '.', '')];
+        }
+        foreach ($report['revenues_by_category'] as $line) {
+            $lines[] = ['إيرادات حسب التصنيف', (string) ($line['category_id'] ?? 'غير مصنّف'), number_format((float) $line['total'], 2, '.', '')];
+        }
+
+        $fh = fopen('php://temp', 'r+');
+        fwrite($fh, "\xEF\xBB\xBF");
+        foreach ($lines as $row) {
+            fputcsv($fh, $row);
+        }
+        rewind($fh);
+        $csv = stream_get_contents($fh) ?: '';
+        fclose($fh);
+
+        return $csv;
+    }
 }

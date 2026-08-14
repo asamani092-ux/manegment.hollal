@@ -637,9 +637,11 @@
     display: block;
   }
 
-  .ds-task-cards-mobile,
+  /* Beat .ds-task-cards { display:grid } from components.css (loaded later). */
+  .ds-task-cards.ds-task-cards-mobile,
+  .ds-task-cards.ds-list-cards-mobile,
   .ds-list-cards-mobile {
-    display: none;
+    display: none !important;
   }
 }
 
@@ -651,7 +653,7 @@
 
   .ds-task-table-desktop,
   .ds-list-table-desktop {
-    display: none;
+    display: none !important;
   }
 }
 
@@ -699,13 +701,18 @@
   .ds-navbar-end .ds-notifications-menu {
     position: fixed !important;
     top: calc(var(--ds-navbar-height) + 0.35rem) !important;
-    /* Physical edges only — do not set inset-inline after these (it clears them). */
-    left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
-    right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
-    width: auto !important;
-    max-width: none !important;
+    /* One edge + capped width — left+right together widened the page and shifted the UI. */
+    left: 0.75rem !important;
+    right: auto !important;
+    width: min(320px, calc(100% - 1.5rem)) !important;
+    max-width: calc(100vw - 1.5rem) !important;
     min-width: 0 !important;
     z-index: 1200 !important;
+    box-sizing: border-box !important;
+  }
+
+  html {
+    overflow-x: clip;
   }
 
   .ds-sidebar {

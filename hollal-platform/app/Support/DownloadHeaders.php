@@ -17,11 +17,11 @@ final class DownloadHeaders
     }
 
     /** @return array<string, string> */
-    public static function pdf(string $filename): array
+    public static function pdf(string $filename, string $disposition = 'attachment'): array
     {
         return [
             'Content-Type' => 'application/pdf',
-            'Content-Disposition' => self::contentDisposition($filename),
+            'Content-Disposition' => self::contentDisposition($filename, $disposition),
         ];
     }
 }

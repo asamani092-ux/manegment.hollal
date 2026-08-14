@@ -3,8 +3,11 @@
 
     <section class="ds-section ds-filter-bar">
         <input type="month" class="ds-input" wire:model.live="month" dir="ltr">
-        <a class="ds-btn ds-btn-secondary" href="{{ route('financial-reports.pdf', ['month' => $report['month']]) }}">
-            <i class="fas fa-file-pdf"></i> تصدير PDF
+        <a class="ds-btn ds-btn-secondary" href="{{ route('financial-reports.pdf', ['month' => $report['month'], 'print' => 1]) }}" target="_blank" rel="noopener">
+            <i class="fas fa-print"></i> طباعة / PDF
+        </a>
+        <a class="ds-btn ds-btn-secondary" href="{{ route('financial-reports.excel', ['month' => $report['month']]) }}">
+            <i class="fas fa-file-excel"></i> تصدير Excel
         </a>
     </section>
 

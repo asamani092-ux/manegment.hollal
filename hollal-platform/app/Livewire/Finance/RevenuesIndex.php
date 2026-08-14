@@ -85,13 +85,18 @@ class RevenuesIndex extends Component
             'amount' => 'required|numeric|min:0.01',
             'category_id' => 'nullable|exists:revenue_categories,id',
             'received_at' => 'required|date',
-            'evidence' => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png',
+            'evidence' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
+        ], [
+            'evidence.required' => 'شاهد الإيراد إلزامي — انتظر اكتمال رفع الملف قبل الحفظ',
         ]);
 
-        $path = null;
-        if ($this->evidence) {
-            $path = $this->evidence->store('revenues', 'local');
+        if (! $this->evidence instanceof TemporaryUploadedFile) {
+            $this->addError('evidence', 'انتظر اكتمال رفع الملف ثم احفظ');
+
+            return;
         }
+
+        $path = $this->evidence->store('revenues', 'local');
 
         app(RevenueService::class)->recordManual(
             (float) $this->amount,
