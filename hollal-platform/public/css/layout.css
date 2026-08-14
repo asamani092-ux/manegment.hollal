@@ -120,7 +120,10 @@
 .ds-notifications-menu {
   position: absolute;
   top: calc(100% + 6px);
-  left: 0;
+  inset-inline-end: 0;
+  inset-inline-start: auto;
+  left: auto;
+  right: auto;
   width: min(320px, calc(100vw - 2rem));
   background: var(--ds-card);
   border: 1px solid var(--ds-border);
@@ -657,6 +660,10 @@
     display: inline-flex;
   }
 
+  .ds-navbar {
+    overflow: visible;
+  }
+
   .ds-navbar-title {
     display: none;
   }
@@ -675,6 +682,20 @@
 
   .ds-user-trigger {
     padding: 0.25rem;
+  }
+
+  .ds-user-dropdown.open .ds-dropdown-menu,
+  .ds-notifications-menu {
+    position: fixed;
+    top: calc(var(--ds-navbar-height) + 4px);
+    inset-inline-end: 0.5rem;
+    inset-inline-start: auto;
+    left: auto;
+    right: auto;
+    width: min(280px, calc(100vw - 1rem));
+    max-width: min(280px, calc(100vw - 1rem));
+    min-width: 0;
+    z-index: 1100;
   }
 
   .ds-sidebar {
@@ -703,11 +724,6 @@
 @media (max-width: 480px) {
   .ds-navbar {
     padding: 0 0.75rem;
-  }
-
-  .ds-dropdown-menu {
-    min-width: 200px;
-    left: auto;
-    right: 0;
+    overflow: visible;
   }
 }
