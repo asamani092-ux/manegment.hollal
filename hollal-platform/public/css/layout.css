@@ -684,45 +684,28 @@
     padding: 0.25rem;
   }
 
-  /* Menus must stay in-viewport: navbar-end sits on the physical LEFT in RTL.
-     Position menus against .ds-navbar-end (not each tiny icon) so width fits. */
-  .ds-topbar,
-  .ds-navbar {
-    overflow: visible;
-  }
-
+  /* Mobile: pin menus to the viewport so RTL/LTR icon side cannot clip them. */
+  .ds-navbar,
   .ds-navbar-end {
-    position: relative;
     overflow: visible;
   }
 
   .ds-navbar-end .ds-user-dropdown,
   .ds-navbar-end .ds-notifications-dropdown {
-    position: static;
+    position: relative;
   }
 
-  html[dir="rtl"] .ds-navbar-end .ds-user-dropdown.open .ds-dropdown-menu,
-  html[dir="rtl"] .ds-navbar-end .ds-notifications-menu {
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    right: auto;
-    width: min(280px, calc(100vw - 1.5rem));
-    max-width: min(280px, calc(100vw - 1.5rem));
-    min-width: 0;
-    z-index: 1100;
-  }
-
-  html[dir="ltr"] .ds-navbar-end .ds-user-dropdown.open .ds-dropdown-menu,
-  html[dir="ltr"] .ds-navbar-end .ds-notifications-menu {
-    position: absolute;
-    top: calc(100% + 6px);
-    right: 0;
-    left: auto;
-    width: min(280px, calc(100vw - 1.5rem));
-    max-width: min(280px, calc(100vw - 1.5rem));
-    min-width: 0;
-    z-index: 1100;
+  .ds-navbar-end .ds-user-dropdown.open .ds-dropdown-menu,
+  .ds-navbar-end .ds-notifications-menu {
+    position: fixed !important;
+    top: calc(var(--ds-navbar-height) + 0.35rem) !important;
+    /* Physical edges only — do not set inset-inline after these (it clears them). */
+    left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+    right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    z-index: 1200 !important;
   }
 
   .ds-sidebar {
