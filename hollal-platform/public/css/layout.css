@@ -122,9 +122,10 @@
   top: calc(100% + 6px);
   inset-inline-end: 0;
   inset-inline-start: auto;
-  left: auto;
-  right: auto;
+  left: unset;
+  right: unset;
   width: min(320px, calc(100vw - 2rem));
+  max-width: min(320px, calc(100vw - 1rem));
   background: var(--ds-card);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-md);
@@ -296,8 +297,10 @@
   top: calc(100% + 6px);
   inset-inline-end: 0;
   inset-inline-start: auto;
-  left: auto;
+  left: unset;
+  right: unset;
   min-width: 220px;
+  max-width: min(280px, calc(100vw - 1rem));
   background: var(--ds-card);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-md);
@@ -684,18 +687,31 @@
     padding: 0.25rem;
   }
 
-  .ds-user-dropdown.open .ds-dropdown-menu,
-  .ds-notifications-menu {
-    position: fixed;
-    top: calc(var(--ds-navbar-height) + 4px);
-    inset-inline-end: 0.5rem;
+  /* Keep menus absolute under their triggers (RTL-safe). Fixed+inset-inline-end
+     pinned panels to the wrong viewport edge and pushed notifications off-screen. */
+  .ds-topbar,
+  .ds-navbar,
+  .ds-navbar-end {
+    overflow: visible;
+  }
+
+  .ds-navbar-end .ds-user-dropdown.open .ds-dropdown-menu,
+  .ds-navbar-end .ds-notifications-menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    inset-inline-end: 0;
     inset-inline-start: auto;
-    left: auto;
-    right: auto;
+    left: unset;
+    right: unset;
     width: min(280px, calc(100vw - 1rem));
     max-width: min(280px, calc(100vw - 1rem));
     min-width: 0;
     z-index: 1100;
+  }
+
+  .ds-navbar-end .ds-notifications-menu {
+    width: min(320px, calc(100vw - 1rem));
+    max-width: min(320px, calc(100vw - 1rem));
   }
 
   .ds-sidebar {
