@@ -6,10 +6,11 @@ use App\Models\Task;
 use App\Support\RecordUrl;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 /**
- * Simple reminder for open / recurring workload follow-up.
+ * Reminder for open / recurring workload — database + mail channels.
  */
 class TaskReminder extends Notification implements ShouldQueue
 {
@@ -39,5 +40,25 @@ class TaskReminder extends Notification implements ShouldQueue
             'url' => $url,
             'task_id' => $this->task?->id,
         ];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        $payload = $this->toDatabase($notifiable);
+        $url = $payload['url'] ?? null;
+        if (is_string($url) && str_starts_with($url, '/')) {
+            $url = url($url);
+        }
+
+        $mail = (new MailMessage)
+            ->subject('منصة حلّل — تذكير مهمة')
+            ->greeting('مرحبًا'.(isset($notifiable->name) ? ' '.$notifiable->name : ''))
+            ->line($payload['message'] ?? 'تذكير بمهامك المفتوحة في إسناد');
+
+        if (! empty($url)) {
+            $mail->action('فتح المهمة', $url);
+        }
+
+        return $mail->line('هذه رسالة آلية من منصة حلّل الإدارية.');
     }
 }

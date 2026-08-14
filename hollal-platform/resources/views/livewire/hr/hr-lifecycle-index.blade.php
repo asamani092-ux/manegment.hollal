@@ -1,7 +1,10 @@
 <x-ds-page>
     <x-ds-page-header title="التهيئة وإنهاء العلاقة" :show-button="false" />
 
-    <p class="ds-text-muted ds-mb-3">مهام الإنهاء تُنشأ في إسناد. الموانع تُعرض صراحة وتمنع إغلاق الإنهاء. تعطيل الحساب هو آخر خطوة بعد اكتمال المهام.</p>
+    <p class="ds-text-muted ds-mb-3">
+        <strong>إنهاء العلاقة:</strong> إنشاء مهام تسليم في إسناد ← متابعتها حتى الاكتمال ← تعطيل الحساب كآخر خطوة.
+        <strong>التجميد:</strong> تعطيل مؤقت للدخول دون إنهاء العلاقة (قابل للعكس).
+    </p>
 
     <x-ds-table>
         <x-slot:head>
@@ -18,6 +21,7 @@
             @php
                 $rowHolds = $holds[$user->id] ?? [];
                 $counts = $taskCounts[$user->id] ?? null;
+                $tasks = $offboardingTasks[$user->id] ?? collect();
             @endphp
             <tr wire:key="life-{{ $user->id }}">
                 <td>{{ $user->name }}</td>
@@ -28,9 +32,17 @@
                         <span class="ds-badge ds-badge-warning">قيد الإنهاء</span>
                     @endif
                 </td>
-                <td class="ds-ltr-num">
+                <td>
                     @if ($counts)
-                        {{ (int) $counts->done }} / {{ (int) $counts->total }}
+                        <span class="ds-ltr-num">{{ (int) $counts->done }} / {{ (int) $counts->total }}</span>
+                        <ul style="margin:.35rem 0 0;padding-inline-start:1rem;font-size:.85rem">
+                            @foreach ($tasks as $task)
+                                <li>
+                                    <a class="ds-link" href="{{ route('tasks.index', ['open' => $task->id]) }}">{{ $task->title }}</a>
+                                    — {{ $task->status }}
+                                </li>
+                            @endforeach
+                        </ul>
                     @else
                         —
                     @endif
@@ -44,18 +56,25 @@
                 </td>
                 <td>
                     @if ($user->id !== auth()->id())
-                        @if (! $user->offboarding_started_at)
-                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm"
-                                    wire:click="startOffboarding({{ $user->id }})"
-                                    wire:confirm="تأكيد بدء إنهاء العلاقة وإنشاء مهام التسليم؟">
+                        @if (($user->employment_status ?? '') === \App\Models\User::STATUS_FROZEN)
+                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="unfreezeAccount({{ $user->id }})">
+                                إلغاء التجميد
+                            </button>
+                        @elseif (! $user->offboarding_started_at)
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askStartOffboarding({{ $user->id }})">
                                 بدء إنهاء العلاقة
+                            </button>
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="freezeAccount({{ $user->id }})" wire:confirm="تجميد الحساب مؤقتًا ومنع الدخول؟">
+                                تعطيل مؤقت (تجميد)
                             </button>
                         @else
                             <button type="button" class="ds-btn ds-btn-primary ds-btn-sm"
-                                    wire:click="completeOffboarding({{ $user->id }})"
-                                    wire:confirm="تعطيل الحساب خطوة أخيرة. تأكيد الإغلاق؟"
+                                    wire:click="askCompleteOffboarding({{ $user->id }})"
                                     @disabled($rowHolds !== [])>
                                 إغلاق وتعطيل الحساب
+                            </button>
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="cancelOffboarding({{ $user->id }})" wire:confirm="التراجع عن بدء الإنهاء وحذف المهام غير المكتملة؟">
+                                تراجع عن الإنهاء
                             </button>
                         @endif
                     @endif
@@ -66,4 +85,20 @@
         @endforelse
     </x-ds-table>
     {{ $users->links() }}
+
+    <x-ds-modal :show="$confirmStartId !== null" title="تأكيد بدء إنهاء العلاقة" close-action="cancelConfirm">
+        <p>سيُنشأ 4 مهام تسليم في إسناد يمكن فتحها ومتابعتها من عمود المهام. الحساب يبقى نشطًا حتى خطوة الإغلاق النهائية.</p>
+        <div class="ds-toolbar-actions">
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelConfirm">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="startOffboarding({{ $confirmStartId }})">تأكيد البدء</button>
+        </div>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$confirmCompleteId !== null" title="تأكيد إغلاق وتعطيل الحساب" close-action="cancelConfirm">
+        <p>تعطيل الحساب خطوة أخيرة بعد اكتمال المهام وخلو الموانع. لا يمكن التراجع بعد الإغلاق.</p>
+        <div class="ds-toolbar-actions">
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelConfirm">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="completeOffboarding({{ $confirmCompleteId }})">تأكيد الإغلاق</button>
+        </div>
+    </x-ds-modal>
 </x-ds-page>

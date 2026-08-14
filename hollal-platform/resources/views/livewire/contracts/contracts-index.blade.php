@@ -49,12 +49,26 @@
                     <td>{{ $statusLabels[$contract->status] ?? $contract->status }}</td>
                     <td>
                         @if ($contract->contract_file)
-                            <a class="ds-link" href="{{ route('contracts.files.download', $contract) }}?inline=1" target="_blank" rel="noopener">
-                                معاينة PDF
-                            </a>
-                            <a class="ds-link" href="{{ route('contracts.files.download', $contract) }}">
-                                تحميل
-                            </a>
+                            <div class="ds-toolbar-actions" style="gap:.35rem">
+                                <a
+                                    class="ds-btn ds-btn-outline ds-btn-sm"
+                                    href="{{ route('contracts.files.download', $contract) }}?inline=1"
+                                    target="_blank"
+                                    rel="noopener"
+                                    title="معاينة"
+                                    aria-label="معاينة الملف"
+                                >
+                                    <i class="fas fa-eye" aria-hidden="true"></i>
+                                </a>
+                                <a
+                                    class="ds-btn ds-btn-outline ds-btn-sm"
+                                    href="{{ route('contracts.files.download', $contract) }}"
+                                    title="تحميل"
+                                    aria-label="تحميل الملف"
+                                >
+                                    <i class="fas fa-download" aria-hidden="true"></i>
+                                </a>
+                            </div>
                         @else
                             <span class="ds-text-muted">—</span>
                         @endif

@@ -16,12 +16,15 @@ class Committee extends Model
     use SoftDeletes;
 
     /** @var list<string> */
-    protected $fillable = ['name', 'mandate', 'chair_id', 'is_active'];
+    protected $fillable = ['name', 'mandate', 'chair_id', 'is_active', 'guests'];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'guests' => 'array',
+        ];
     }
 
     /** @return BelongsToMany<User, $this> */

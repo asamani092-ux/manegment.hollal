@@ -2,8 +2,13 @@
     <x-ds-page-header title="إدارة الحضور" :show-button="false" />
 
     <p class="ds-text-muted ds-mb-3">
-        إدارة الحضور: تفعيل البرنامج لكل موظف · تسجيل حضور/انصراف وإقرار نوع اليوم · بيان التأخر مقابل بداية الدوام (<span class="ds-ltr-num">{{ $officeStart }}</span>) · طباعة السجل الشهري.
-        الورديات المتعددة وQR مرحلة لاحقة؛ حالياً بداية الدوام من إعدادات المنصة.
+        <strong>دورة الحضور:</strong>
+        (1) تفعيل البرنامج للموظف ←
+        (2) تسجيل حضور/انصراف يوميًا ←
+        (3) إقرار نوع اليوم (لا يغيّر وقت البصمة) ←
+        (4) سجل مع بيان التأخر مقابل بداية الدوام (<span class="ds-ltr-num">{{ $officeStart }}</span>) ←
+        (5) طباعة شهرية.
+        الورديات المتعددة وQR ضمن ROADMAP لاحقًا.
     </p>
 
     @if ($canManage)
@@ -73,6 +78,8 @@
             <button type="button" class="ds-btn ds-btn-outline" wire:click="checkOut">تسجيل انصراف</button>
         </div>
         <div class="ds-card ds-mb-3 ds-no-print">
+            <h3 class="ds-section-title" style="margin-top:0">إقرار نوع يوم العمل</h3>
+            <p class="ds-text-muted">الإقرار مرجع إداري فقط (حضور / عن بعد / تكليف / انقطاع). لا يعدّل وقت الحضور أو الانصراف المسجَّل ولا يخصم الراتب آليًا.</p>
             <x-ds-form-group label="نوع الإقرار">
                 <select class="ds-input" wire:model="type">
                     <option value="حضور">حضور</option>

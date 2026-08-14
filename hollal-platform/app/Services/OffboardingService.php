@@ -174,6 +174,31 @@ class OffboardingService
         });
     }
 
+    /**
+     * Cancel offboarding before final disable: clear flag + delete open checklist tasks.
+     * Time: O(t) | Space: O(1)
+     */
+    public function cancel(User $employee): void
+    {
+        if ($employee->employment_status === User::STATUS_TERMINATED) {
+            throw new \RuntimeException('لا يمكن التراجع بعد انتهاء العلاقة.');
+        }
+
+        if (! $employee->offboarding_started_at) {
+            throw new \RuntimeException('لا يوجد إنهاء علاقة جارٍ للتراجع عنه.');
+        }
+
+        DB::transaction(function () use ($employee) {
+            Task::query()
+                ->where('related_user_id', $employee->id)
+                ->where('role_label', 'إنهاء_علاقة')
+                ->where('status', '!=', TaskLifecycleService::STATUS_COMPLETED)
+                ->delete();
+
+            $employee->forceFill(['offboarding_started_at' => null])->save();
+        });
+    }
+
     /** @return Collection<int, Task> */
     public function incompleteTasks(User $employee): Collection
     {

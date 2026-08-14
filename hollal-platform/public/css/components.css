@@ -1596,3 +1596,25 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Org tree level distinction */
+.org-node--admin .org-node__name { font-weight: 800; font-size: 1.05rem; }
+.org-node--unit .org-node__name { font-weight: 650; }
+.org-node--job .org-node__name { font-weight: 500; color: var(--ds-muted, #556); }
+
+.org-node__badge {
+  display: inline-block;
+  margin-inline-end: 0.4rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: middle;
+}
+.org-node__badge--admin { background: #0F3446; color: #fff; }
+.org-node__badge--unit { background: #1a6b5c; color: #fff; }
+.org-node__badge--job { background: #e8eef2; color: #0F3446; }
+
+.org-node--admin { background: color-mix(in srgb, #0F3446 6%, white); }
+.org-node--unit { background: color-mix(in srgb, #1a6b5c 4%, white); }
+.org-node--job { background: transparent; }

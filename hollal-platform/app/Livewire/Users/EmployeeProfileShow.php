@@ -71,6 +71,14 @@ class EmployeeProfileShow extends Component
 
     public string $newComponentAmount = '';
 
+    public string $baseAmount = '';
+
+    public ?int $editingComponentId = null;
+
+    public string $editComponentAmount = '';
+
+    public string $editComponentLabel = '';
+
     public string $overtimeHourValue = '';
 
     public string $employeeComment = '';
@@ -85,6 +93,17 @@ class EmployeeProfileShow extends Component
         $this->payScaleId = $user->profile?->pay_scale_id;
         $this->gradeLabel = (string) ($user->profile?->grade_label ?? '');
         $this->overtimeHourValue = (string) ($user->profile?->overtime_hour_value ?? '0');
+        $base = SalaryComponent::query()
+            ->where('employee_id', $user->id)
+            ->where('type', SalaryComponent::TYPE_BASE)
+            ->effectiveOn(today())
+            ->value('amount');
+        $this->baseAmount = $base !== null ? (string) $base : '';
+
+        $tab = request()->query('tab');
+        if (is_string($tab) && $tab !== '') {
+            $this->setTab($tab);
+        }
     }
 
     public function setTab(string $tab): void
@@ -221,6 +240,72 @@ class EmployeeProfileShow extends Component
         $this->dispatch('ds-toast', message: $this->overtimeGate === 'مفتوح'
             ? 'فُتحت الساعات الإضافية لهذا الموظف'
             : 'أُقفلت الساعات الإضافية لهذا الموظف');
+    }
+
+    public function saveBaseAmount(): void
+    {
+        $this->authorize('hr.salaries.manage');
+
+        $this->validate([
+            'baseAmount' => 'required|numeric|min:0',
+        ]);
+
+        app(SalaryService::class)->setBaseAmount(
+            User::findOrFail($this->userId),
+            (float) $this->baseAmount,
+        );
+
+        $this->dispatch('toast', type: 'success', message: 'حُدّث الراتب الأساسي — المسيّرات الجديدة تستخدم المبلغ الجديد');
+    }
+
+    public function openEditComponent(int $id): void
+    {
+        $this->authorize('hr.salaries.manage');
+        $component = SalaryComponent::query()
+            ->where('employee_id', $this->userId)
+            ->findOrFail($id);
+        $this->editingComponentId = $component->id;
+        $this->editComponentAmount = (string) $component->amount;
+        $this->editComponentLabel = (string) $component->label_ar;
+    }
+
+    public function saveEditComponent(): void
+    {
+        $this->authorize('hr.salaries.manage');
+
+        $this->validate([
+            'editComponentAmount' => 'required|numeric|min:0',
+            'editComponentLabel' => 'required|string|max:255',
+        ]);
+
+        $component = SalaryComponent::query()
+            ->where('employee_id', $this->userId)
+            ->findOrFail($this->editingComponentId);
+
+        $new = app(SalaryService::class)->edit($component, [
+            'amount' => (float) $this->editComponentAmount,
+            'label_ar' => $this->editComponentLabel,
+        ]);
+
+        if ($new->type === SalaryComponent::TYPE_BASE) {
+            $this->baseAmount = (string) $new->amount;
+        }
+
+        $this->editingComponentId = null;
+        $this->dispatch('toast', type: 'success', message: 'حُدّث المكوّن (أُغلق السابق وحُفظ السجل)');
+    }
+
+    public function closeSalaryComponent(int $id): void
+    {
+        $this->authorize('hr.salaries.manage');
+        $component = SalaryComponent::query()
+            ->where('employee_id', $this->userId)
+            ->findOrFail($id);
+        app(SalaryService::class)->closeComponent($component);
+        if ($component->type === SalaryComponent::TYPE_BASE) {
+            $this->baseAmount = '';
+        }
+        $this->dispatch('toast', type: 'success', message: 'أُوقف سريان المكوّن');
     }
 
     public function assignPayGrade(): void

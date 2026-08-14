@@ -8,8 +8,8 @@
     />
 
     <p class="ds-text-muted ds-mb-3">
-        مسودة = للمقيّم/الموارد فقط · <strong>نشر</strong> = يظهر للموظف ليطّلع ويعلّق (خلال المهلة) · استخدم «معاينة قبل النشر» قبل الظهور للموظف.
-        الإنشاء والتقييم يتطلب صلاحية التحديث.
+        التقييم <strong>داخلي للموارد/المقيّم</strong> افتراضيًا (مسودة → درجات → اكتمال داخلي).
+        «إظهار للموظف» خيار اختياري لمراجعة العميل — ليس شرطًا لإكمال الدورة.
     </p>
 
     <div class="ds-filters-row">
@@ -55,7 +55,7 @@
                 <td>
                     <button type="button" class="ds-link" wire:click="openScoring({{ $evaluation->id }})">الدرجات</button>
                     @if ($canManage && $evaluation->status === \App\Models\PeriodicEvaluation::STATUS_DRAFT)
-                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openPreview({{ $evaluation->id }})">معاينة قبل النشر</button>
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openPreview({{ $evaluation->id }})">إظهار للموظف (اختياري)</button>
                     @endif
                 </td>
             </tr>
@@ -87,10 +87,10 @@
         <button type="button" class="ds-btn ds-btn-primary" wire:click="createEvaluation">حفظ</button>
     </x-ds-modal>
 
-    <x-ds-modal :show="$previewId !== null" title="معاينة التقييم قبل النشر" close-action="closePreview">
+    <x-ds-modal :show="$previewId !== null" title="إظهار التقييم للموظف (اختياري)" close-action="closePreview">
         @if ($previewEvaluation)
             <p class="ds-text-muted ds-mb-3">
-                بعد التأكيد سيظهر هذا التقييم للموظف المعني فقط (وليس للموارد البشرية وحدهم). الموظف يستطيع التعليق ضمن المهلة المحددة في الإعدادات.
+                الدورة الافتراضية داخلية للموارد. هذا الخيار يُظهر التقييم للموظف لمراجعة العميل (قبول/رفض السياسة لاحقًا). ليس إلزاميًا لإكمال التقييم.
             </p>
             <p><strong>الموظف:</strong> {{ $previewEvaluation->employee?->name ?? '—' }}</p>
             <p><strong>الفترة:</strong> <span class="ds-ltr-num">{{ $previewEvaluation->period }}</span></p>
@@ -114,8 +114,8 @@
                     type="button"
                     class="ds-btn ds-btn-primary"
                     wire:click="publish({{ $previewId }})"
-                    wire:confirm="تأكيد النشر؟ سيظهر التقييم للموظف فوراً."
-                >تأكيد النشر للموظف</button>
+                    wire:confirm="تأكيد إظهار التقييم للموظف؟ (خيار اختياري)"
+                >تأكيد الإظهار للموظف</button>
             </div>
         @endif
     </x-ds-modal>

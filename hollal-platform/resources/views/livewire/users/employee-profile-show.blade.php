@@ -116,20 +116,53 @@
                             <th>النوع</th>
                             <th>البند</th>
                             <th>المبلغ</th>
+                            @if ($canManageOvertime)<th>إجراءات</th>@endif
                         </tr>
                     </x-slot:head>
                     @forelse ($salaryComponents as $component)
                         <tr wire:key="comp-{{ $component->id }}">
                             <td>{{ $component->type }}</td>
-                            <td>{{ $component->label_ar }}</td>
-                            <td class="ds-ltr-num">{{ number_format((float) $component->amount, 2) }}</td>
+                            <td>
+                                @if ($editingComponentId === $component->id)
+                                    <input type="text" class="ds-input" wire:model="editComponentLabel">
+                                @else
+                                    {{ $component->label_ar }}
+                                @endif
+                            </td>
+                            <td class="ds-ltr-num">
+                                @if ($editingComponentId === $component->id)
+                                    <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="editComponentAmount">
+                                @else
+                                    {{ number_format((float) $component->amount, 2) }}
+                                @endif
+                            </td>
+                            @if ($canManageOvertime)
+                                <td>
+                                    @if ($editingComponentId === $component->id)
+                                        <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="saveEditComponent">حفظ</button>
+                                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="$set('editingComponentId', null)">إلغاء</button>
+                                    @else
+                                        <button type="button" class="ds-link" wire:click="openEditComponent({{ $component->id }})">تعديل</button>
+                                        <button type="button" class="ds-link" wire:click="closeSalaryComponent({{ $component->id }})" wire:confirm="إيقاف سريان هذا المكوّن؟">إيقاف</button>
+                                    @endif
+                                </td>
+                            @endif
                         </tr>
                     @empty
-                        <tr><td colspan="3" class="ds-text-muted">لا توجد مكوّنات سارية</td></tr>
+                        <tr><td colspan="{{ $canManageOvertime ? 4 : 3 }}" class="ds-text-muted">لا توجد مكوّنات سارية</td></tr>
                     @endforelse
                 </x-ds-table>
 
                 @if ($canManageOvertime)
+                    <section class="ds-section">
+                        <h3 class="ds-section-title">الراتب الأساسي (تعديل مباشر)</h3>
+                        <p class="ds-text-muted">يُغلق المبلغ السابق ويُفتح مبلغ جديد من اليوم — المسيّرات السابقة لا تتأثر؛ المسيّر التالي يلتقط القيمة الجديدة.</p>
+                        <x-ds-form-group label="الأساسي (ر.س)" :error="$errors->first('baseAmount')">
+                            <input type="number" step="0.01" min="0" class="ds-input ds-ltr-num" wire:model="baseAmount">
+                        </x-ds-form-group>
+                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveBaseAmount">حفظ الأساسي</button>
+                    </section>
+
                     <section class="ds-section">
                         <h3 class="ds-section-title">ربط السلم والدرجة</h3>
                         <x-ds-form-group label="سلم الرواتب" :error="$errors->first('payScaleId')">

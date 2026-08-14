@@ -53,7 +53,13 @@ class WorkloadBoard extends Component
         }
 
         $employee->notify(new TaskReminder($task, $message));
-        $this->dispatch('toast', type: 'success', message: 'تم إرسال التذكير للموظف');
+
+        $channels = ['إشعار داخل المنصة'];
+        if (! empty($employee->email)) {
+            $channels[] = 'بريد';
+        }
+
+        $this->dispatch('toast', type: 'success', message: 'أُرسل التذكير: '.implode(' + ', $channels));
     }
 
     public function render(): View

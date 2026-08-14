@@ -13,7 +13,19 @@
                 <input type="search" class="ds-input" wire:model.live.debounce.200ms="roleQuery" placeholder="بحث عن دور...">
                 <select class="ds-input" wire:model.live="roleId">
                     @foreach ($roles as $role)
-                        <option value="{{ $role->id }}">{{ $role->name }}</option>
+                        @php
+                            $roleAr = [
+                                'Super Admin' => 'مدير النظام',
+                                'General Manager' => 'المدير العام',
+                                'Executive Manager' => 'المدير التنفيذي',
+                                'Project Manager' => 'مدير مشروع',
+                                'Finance' => 'المالية',
+                                'Employee' => 'موظف',
+                                'Partnerships Manager' => 'مدير الشراكات',
+                                'HR Manager' => 'مدير الموارد البشرية',
+                            ][$role->name] ?? $role->name;
+                        @endphp
+                        <option value="{{ $role->id }}">{{ $roleAr }}</option>
                     @endforeach
                 </select>
             </x-ds-form-group>
@@ -25,18 +37,24 @@
         </section>
 
         @foreach ($permissions as $section => $sectionPermissions)
-            <section class="ds-section" wire:key="section-{{ $section }}">
-                <h2 class="ds-section-title">{{ $groups[$section] ?? $section }}</h2>
-                <button type="button" class="ds-btn ds-btn-sm" wire:click="toggleSection('{{ $section }}', true)">تفعيل القسم</button>
-                <button type="button" class="ds-btn ds-btn-sm" wire:click="toggleSection('{{ $section }}', false)">تعطيل القسم</button>
-
-                @foreach ($sectionPermissions as $permission)
-                    <label class="ds-checkbox" wire:key="perm-{{ $permission }}">
-                        <input type="checkbox" value="{{ $permission }}" wire:model="selected">
-                        {{ $labels[$permission] ?? $permission }}
-                    </label>
-                @endforeach
-            </section>
+            <details class="ds-card ds-mb-3 uat-perm-section" wire:key="section-{{ $section }}" open>
+                <summary class="ds-section-title" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:.75rem">
+                    <span>{{ $groups[$section] ?? $section }}</span>
+                    <span class="ds-text-muted ds-ltr-num" style="font-size:.85rem">{{ count($sectionPermissions) }} صلاحية</span>
+                </summary>
+                <div style="padding:.75rem 0;display:grid;gap:.35rem">
+                    <div class="ds-toolbar-actions">
+                        <button type="button" class="ds-btn ds-btn-sm" wire:click="toggleSection('{{ $section }}', true)">تفعيل القسم</button>
+                        <button type="button" class="ds-btn ds-btn-sm" wire:click="toggleSection('{{ $section }}', false)">تعطيل القسم</button>
+                    </div>
+                    @foreach ($sectionPermissions as $permission)
+                        <label class="ds-checkbox" wire:key="perm-{{ $permission }}" style="display:flex;align-items:center;gap:.5rem;padding:.35rem .5rem;border-radius:8px;background:var(--ds-surface-2,#f5f7fa)">
+                            <input type="checkbox" value="{{ $permission }}" wire:model="selected">
+                            <span>{{ $labels[$permission] ?? $permission }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </details>
         @endforeach
 
         @can('roles.update')

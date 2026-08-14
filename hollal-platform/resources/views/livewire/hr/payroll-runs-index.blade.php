@@ -83,7 +83,12 @@
                 </x-slot:head>
                 @foreach ($viewingRun->items as $item)
                     <tr wire:key="item-{{ $item->id }}">
-                        <td>{{ $item->employee?->name }}</td>
+                        <td>
+                            {{ $item->employee?->name }}
+                            @if ($item->employee_id)
+                                <a class="ds-link" href="{{ route('users.profile', $item->employee_id) }}?tab=salary" target="_blank" rel="noopener">تعديل الراتب في الملف</a>
+                            @endif
+                        </td>
                         <td class="ds-ltr-num">{{ number_format((float) $item->base, 2) }}</td>
                         <td class="ds-ltr-num">{{ number_format((float) $item->allowances, 2) }}</td>
                         <td class="ds-ltr-num">{{ number_format((float) $item->deductions, 2) }}</td>

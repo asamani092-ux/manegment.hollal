@@ -110,7 +110,7 @@ class EvaluationsIndex extends Component
         $evaluation = PeriodicEvaluation::findOrFail($id);
         app(EvaluationService::class)->publish($evaluation);
         $this->previewId = null;
-        $this->dispatch('toast', type: 'success', message: 'نُشر التقييم — أصبح ظاهرًا للموظف للتعليق');
+        $this->dispatch('toast', type: 'success', message: 'أُظهر التقييم للموظف (خيار اختياري) — الدورة الافتراضية تبقى داخلية للموارد');
     }
 
     public function openPreview(int $id): void

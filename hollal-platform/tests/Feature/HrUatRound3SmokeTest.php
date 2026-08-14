@@ -92,11 +92,11 @@ class HrUatRound3SmokeTest extends TestCase
 
         Livewire::actingAs($this->admin)
             ->test(EvaluationsIndex::class)
-            ->assertSee('معاينة قبل النشر')
+            ->assertSee('إظهار للموظف (اختياري)')
             ->call('openPreview', $evaluation->id)
             ->assertSet('previewId', $evaluation->id)
-            ->assertSee('معاينة التقييم قبل النشر')
-            ->assertSee('سيظهر هذا التقييم للموظف');
+            ->assertSee('إظهار التقييم للموظف (اختياري)')
+            ->assertSee('خيار اختياري');
     }
 
     public function test_attendance_management_tools_render(): void

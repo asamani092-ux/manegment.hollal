@@ -74,6 +74,45 @@ class SalaryService
     }
 
     /**
+     * Set or replace base salary (cumulative: close old, open new).
+     * Time: O(1) | Space: O(1)
+     */
+    public function setBaseAmount(User $employee, float $amount, ?string $labelAr = null): SalaryComponent
+    {
+        return DB::transaction(function () use ($employee, $amount, $labelAr) {
+            SalaryComponent::query()
+                ->where('employee_id', $employee->id)
+                ->where('type', SalaryComponent::TYPE_BASE)
+                ->effectiveOn(today())
+                ->update([
+                    'valid_to' => today()->subDay(),
+                    'is_active' => false,
+                ]);
+
+            return SalaryComponent::create([
+                'employee_id' => $employee->id,
+                'type' => SalaryComponent::TYPE_BASE,
+                'label_ar' => $labelAr ?: 'الراتب الأساسي',
+                'amount' => $amount,
+                'valid_from' => today(),
+                'is_active' => true,
+            ]);
+        });
+    }
+
+    /**
+     * Close an effective component without replacement.
+     * Time: O(1) | Space: O(1)
+     */
+    public function closeComponent(SalaryComponent $component): void
+    {
+        $component->update([
+            'valid_to' => today()->subDay(),
+            'is_active' => false,
+        ]);
+    }
+
+    /**
      * Time: O(1) | Space: O(1)
      */
     public function addComponent(User $employee, string $type, string $labelAr, float $amount): SalaryComponent
