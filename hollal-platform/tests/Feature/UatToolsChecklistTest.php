@@ -40,9 +40,9 @@ class UatToolsChecklistTest extends TestCase
             ->assertOk()
             ->assertSee('تقييم أدوات المنصة (UAT) — 3 مراحل', false)
             ->assertSee('نسخ التقرير كاملاً', false)
-            ->assertSee('تحميل التقييم المحفوظ (14 أغسطس)', false)
-            ->assertSee('تحميل التجربة الثانية', false)
-            ->assertSee('2026-08-14 19:04', false)
+            ->assertSee('تحميل آخر تقييم (20:27)', false)
+            ->assertSee('تقييم 19:04', false)
+            ->assertSee('2026-08-14 20:27', false)
             ->assertSee('المرحلة 1 — الأساس والموارد', false)
             ->assertSee('المرحلة 2 — التشغيل والمالية', false)
             ->assertSee('المرحلة 3 — النمو والمحتوى', false)
@@ -83,17 +83,26 @@ class UatToolsChecklistTest extends TestCase
         }
     }
 
-    public function test_baseline_round3_is_default_and_covers_prior_verdicts(): void
+    public function test_baseline_round4_is_default_and_covers_prior_verdicts(): void
     {
         $baseline = config('uat_tools.baseline');
 
-        $this->assertSame('2026-08-14 19:04', $baseline['date']);
+        $this->assertSame('2026-08-14 20:27', $baseline['date']);
         $this->assertSame('يعتمد', $baseline['verdicts']['bell']);
         $this->assertSame('يعتمد', $baseline['verdicts']['sidebar']);
+        $this->assertSame('يعتمد', $baseline['verdicts']['attendance']);
         $this->assertSame('غير مجرّب', $baseline['verdicts']['smtp']);
-        $this->assertSame('يحتاج تحسين', $baseline['verdicts']['attendance']);
-        $this->assertStringContainsString('تفكيك', $baseline['notes']['attendance']);
+        $this->assertSame('يحتاج تحسين', $baseline['verdicts']['evaluations']);
+        $this->assertStringContainsString('أرشفة', $baseline['notes']['evaluations']);
         $this->assertGreaterThanOrEqual(60, count($baseline['verdicts']));
+    }
+
+    public function test_baseline_round3_remains_available(): void
+    {
+        $round3 = config('uat_tools.baseline_round3');
+
+        $this->assertSame('2026-08-14 19:04', $round3['date']);
+        $this->assertSame('يحتاج تحسين', $round3['verdicts']['attendance']);
     }
 
     public function test_baseline_round2_remains_available(): void

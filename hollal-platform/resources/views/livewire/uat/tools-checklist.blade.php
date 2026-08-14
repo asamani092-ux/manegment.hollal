@@ -1,7 +1,7 @@
 <x-ds-page>
     <div
         class="uat-checklist"
-        x-data="uatToolsChecklist(@js($groups), @js($phases), @js($baseline ?? []), @js($baselineRound2 ?? []))"
+        x-data="uatToolsChecklist(@js($groups), @js($phases), @js($baseline ?? []), @js($baselineRound3 ?? []), @js($baselineRound2 ?? []))"
         x-init="load()"
     >
         <div class="ds-page-header-bar">
@@ -11,11 +11,11 @@
                     <i class="fas fa-copy" aria-hidden="true"></i>
                     <span x-text="copied ? 'تم النسخ — الصق في المحادثة' : 'نسخ التقرير كاملاً'"></span>
                 </button>
-                <button type="button" class="ds-btn ds-btn-outline" @click="loadBaseline()" title="تحميل تقييم 2026-08-14">
-                    تحميل التقييم المحفوظ (14 أغسطس)
+                <button type="button" class="ds-btn ds-btn-outline" @click="loadBaseline()" title="تحميل تقييم 2026-08-14 20:27">
+                    تحميل آخر تقييم (20:27)
                 </button>
-                <button type="button" class="ds-btn ds-btn-outline" @click="loadRound2()" title="تحميل تقييم التجربة الثانية 2026-08-13">
-                    تحميل التجربة الثانية
+                <button type="button" class="ds-btn ds-btn-outline" @click="loadRound3()" title="تحميل تقييم 19:04">
+                    تقييم 19:04
                 </button>
                 <button type="button" class="ds-btn ds-btn-outline" @click="resetAll()">
                     إعادة التعيين
@@ -161,10 +161,11 @@
 
 @script
 <script>
-    Alpine.data('uatToolsChecklist', (groups, phases, baseline = {}, baselineRound2 = {}) => ({
+    Alpine.data('uatToolsChecklist', (groups, phases, baseline = {}, baselineRound3 = {}, baselineRound2 = {}) => ({
         groups,
         phases,
         baseline: baseline || {},
+        baselineRound3: baselineRound3 || {},
         baselineRound2: baselineRound2 || {},
         activePhase: 1,
         filter: 'الكل',
@@ -173,7 +174,7 @@
         notes: {},
         copying: false,
         copied: false,
-        storageKey: 'hollal.uat.tools.v4',
+        storageKey: 'hollal.uat.tools.v5',
 
         get total() {
             return this.groups.reduce((sum, g) => sum + g.items.length, 0);
@@ -269,11 +270,20 @@
         },
 
         loadBaseline() {
-            if (!confirm('استبدال التقييم الحالي بتقييم 2026-08-14 (ملاحظات المرحلة 1 وما بعدها)؟')) return;
+            if (!confirm('استبدال التقييم الحالي بتقييم 2026-08-14 20:27؟')) return;
             this.applyBaseline(this.baseline);
             this.persist();
             if (window.Livewire) {
-                Livewire.dispatch('toast', { type: 'success', message: 'تم تحميل تقييم 14 أغسطس' });
+                Livewire.dispatch('toast', { type: 'success', message: 'تم تحميل تقييم 20:27' });
+            }
+        },
+
+        loadRound3() {
+            if (!confirm('استبدال التقييم الحالي بتقييم 19:04؟')) return;
+            this.applyBaseline(this.baselineRound3);
+            this.persist();
+            if (window.Livewire) {
+                Livewire.dispatch('toast', { type: 'success', message: 'تم تحميل تقييم 19:04' });
             }
         },
 
@@ -292,7 +302,7 @@
                 tags: this.tags,
                 notes: this.notes,
                 activePhase: this.activePhase,
-                source: 'uat-baseline-round3',
+                source: 'uat-baseline-round4',
             }));
         },
 
@@ -391,12 +401,12 @@
         },
 
         resetAll() {
-            if (!confirm('مسح التقييم المحلي ثم تحميل ملاحظات 14 أغسطس؟')) return;
+            if (!confirm('مسح التقييم المحلي ثم تحميل ملاحظات 20:27؟')) return;
             localStorage.removeItem(this.storageKey);
             this.applyBaseline(this.baseline);
             this.persist();
             if (window.Livewire) {
-                Livewire.dispatch('toast', { type: 'success', message: 'أُعيد تحميل تقييم 14 أغسطس' });
+                Livewire.dispatch('toast', { type: 'success', message: 'أُعيد تحميل تقييم 20:27' });
             }
         },
     }));

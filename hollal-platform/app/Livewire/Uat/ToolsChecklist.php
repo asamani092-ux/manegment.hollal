@@ -39,6 +39,7 @@ class ToolsChecklist extends Component
             'verdicts' => config('uat_tools.verdicts', []),
             'noteTags' => config('uat_tools.note_tags', []),
             'baseline' => config('uat_tools.baseline', []),
+            'baselineRound3' => config('uat_tools.baseline_round3', []),
             'baselineRound2' => config('uat_tools.baseline_round2', []),
             'total' => $total,
         ])->layout('layouts.app', ['title' => 'تقييم الأدوات (UAT)']);
