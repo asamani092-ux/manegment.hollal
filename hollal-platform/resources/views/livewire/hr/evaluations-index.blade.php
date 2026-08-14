@@ -8,8 +8,8 @@
     />
 
     <p class="ds-text-muted ds-mb-3">
-        التقييم <strong>داخلي للموارد/المقيّم</strong> افتراضيًا (مسودة → درجات → اكتمال داخلي).
-        «إظهار للموظف» خيار اختياري لمراجعة العميل — ليس شرطًا لإكمال الدورة.
+        أداة الموارد البشرية: التقييم <strong>داخلي</strong> افتراضيًا (مسودة → درجات).
+        «إظهار للموظف» اختياري. بعد الإكمال استخدم <strong>أرشفة</strong> لنقل التقييم إلى سجل الملف الوظيفي.
     </p>
 
     <div class="ds-filters-row">
@@ -18,7 +18,8 @@
             <select id="eval-status" class="ds-input" wire:model.live="statusFilter">
                 <option value="">— الكل —</option>
                 <option value="مسودة">مسودة</option>
-                <option value="منشور">منشور</option>
+                <option value="منشور">منشور (ظاهر للموظف)</option>
+                <option value="مؤرشف">مؤرشف</option>
             </select>
         </div>
         <div class="ds-filter-field">
@@ -57,6 +58,10 @@
                     @if ($canManage && $evaluation->status === \App\Models\PeriodicEvaluation::STATUS_DRAFT)
                         <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openPreview({{ $evaluation->id }})">إظهار للموظف (اختياري)</button>
                     @endif
+                    @if ($canManage && $evaluation->status !== \App\Models\PeriodicEvaluation::STATUS_ARCHIVED)
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="archive({{ $evaluation->id }})">أرشفة</button>
+                    @endif
+                    <a class="ds-link" href="{{ route('users.profile', $evaluation->employee_id) }}?tab=evaluations">الملف الوظيفي</a>
                 </td>
             </tr>
         @empty

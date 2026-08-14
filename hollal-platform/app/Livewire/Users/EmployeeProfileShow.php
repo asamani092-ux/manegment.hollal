@@ -405,6 +405,17 @@ class EmployeeProfileShow extends Component
             'responsibilities' => Responsibility::query()->where('employee_id', $this->userId)->active()->orderBy('order')->get(),
             'evaluations' => PeriodicEvaluation::query()
                 ->where('employee_id', $this->userId)
+                ->where('status', '!=', PeriodicEvaluation::STATUS_ARCHIVED)
+                ->when(
+                    ! auth()->user()->can('hr.employees.update'),
+                    fn ($q) => $q->where('status', PeriodicEvaluation::STATUS_PUBLISHED)
+                )
+                ->with(['scores.responsibility', 'evaluator:id,name'])
+                ->latest()
+                ->get(),
+            'archivedEvaluations' => PeriodicEvaluation::query()
+                ->where('employee_id', $this->userId)
+                ->where('status', PeriodicEvaluation::STATUS_ARCHIVED)
                 ->with(['scores.responsibility', 'evaluator:id,name'])
                 ->latest()
                 ->get(),

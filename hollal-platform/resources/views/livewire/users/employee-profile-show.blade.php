@@ -258,6 +258,10 @@
                     @endforelse
                 </x-ds-table>
             @elseif ($activeTab === 'evaluations')
+                <p class="ds-text-muted ds-mb-3">
+                    سجل التقييمات من أداة «التقييم الدوري» في الموارد البشرية. الأرشيف يحفظ التاريخ دون حذفه.
+                </p>
+                <h3 class="ds-section-title">الجاري</h3>
                 @forelse ($evaluations as $evaluation)
                     <article class="ds-card ds-mb-3" wire:key="ev-{{ $evaluation->id }}">
                         <h3>{{ $evaluation->period }} — {{ $evaluation->status }}</h3>
@@ -277,7 +281,25 @@
                         @endif
                     </article>
                 @empty
-                    <p class="ds-text-muted">لا توجد تقييمات.</p>
+                    <p class="ds-text-muted ds-mb-3">لا توجد تقييمات جارية.</p>
+                @endforelse
+
+                <h3 class="ds-section-title">الأرشيف</h3>
+                @forelse ($archivedEvaluations as $evaluation)
+                    <article class="ds-card ds-mb-3" wire:key="ev-arch-{{ $evaluation->id }}">
+                        <h3>{{ $evaluation->period }} — مؤرشف</h3>
+                        <p class="ds-text-muted">المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}</p>
+                        @foreach ($evaluation->scores as $score)
+                            <p>{{ $score->responsibility?->body ?? 'بند' }}: <strong class="ds-ltr-num">{{ $score->score }}</strong>/5
+                                @if ($score->note) — {{ $score->note }} @endif
+                            </p>
+                        @endforeach
+                        @if ($evaluation->employee_comment)
+                            <p>تعليق الموظف: {{ $evaluation->employee_comment }}</p>
+                        @endif
+                    </article>
+                @empty
+                    <p class="ds-text-muted">لا يوجد أرشيف بعد.</p>
                 @endforelse
             @elseif ($activeTab === 'leaves')
                 <p class="ds-text-muted ds-mb-3">الرصيد السنوي: <strong class="ds-ltr-num">{{ $user->profile?->annual_leave_balance ?? '—' }}</strong></p>

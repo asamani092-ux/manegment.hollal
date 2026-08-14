@@ -45,6 +45,15 @@ class EvaluationService
         $evaluation->update(['status' => PeriodicEvaluation::STATUS_PUBLISHED]);
     }
 
+    public function archive(PeriodicEvaluation $evaluation): void
+    {
+        if ($evaluation->isArchived()) {
+            return;
+        }
+
+        $evaluation->update(['status' => PeriodicEvaluation::STATUS_ARCHIVED]);
+    }
+
     /**
      * Employee's single comment — only after publication.
      */
