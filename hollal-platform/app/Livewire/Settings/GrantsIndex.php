@@ -328,7 +328,6 @@ class GrantsIndex extends Component
             'permissionChoices' => $permissionChoices,
             'labels' => $labels,
             'groups' => $groups,
-            'users' => User::orderBy('name')->get(['id', 'name']),
             'userChoices' => User::query()
                 ->select(['id', 'name', 'phone'])
                 ->orderBy('name')
