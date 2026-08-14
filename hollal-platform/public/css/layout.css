@@ -669,6 +669,33 @@
     padding: 0.25rem;
   }
 
+<<<<<<< HEAD
+=======
+  /* Mobile: pin menus to the viewport so RTL/LTR icon side cannot clip them. */
+  .ds-navbar,
+  .ds-navbar-end {
+    overflow: visible;
+  }
+
+  .ds-navbar-end .ds-user-dropdown,
+  .ds-navbar-end .ds-notifications-dropdown {
+    position: relative;
+  }
+
+  .ds-navbar-end .ds-user-dropdown.open .ds-dropdown-menu,
+  .ds-navbar-end .ds-notifications-menu {
+    position: fixed !important;
+    top: calc(var(--ds-navbar-height) + 0.35rem) !important;
+    /* Physical edges only — do not set inset-inline after these (it clears them). */
+    left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+    right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+    width: auto !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    z-index: 1200 !important;
+  }
+
+>>>>>>> d01dff4 (fix(ui): clamp mobile account/notification menus to viewport)
   .ds-sidebar {
     top: 0;
     height: 100vh;
