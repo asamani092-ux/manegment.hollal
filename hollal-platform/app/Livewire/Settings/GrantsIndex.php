@@ -48,6 +48,9 @@ class GrantsIndex extends Component
     /** بحث قائمة الصلاحيات في تبويب الاستثناءات */
     public string $permissionQuery = '';
 
+    /** بحث قائمة الموظفين في تبويب الاستثناءات */
+    public string $userQuery = '';
+
     /** @var array<string, array<string, mixed>> */
     protected $queryString = [
         'tab' => ['except' => 'entities'],
@@ -227,6 +230,8 @@ class GrantsIndex extends Component
             $this->grantReason = '';
             $this->grantPermission = null;
             $this->permissionQuery = '';
+            $this->grantUserId = null;
+            $this->userQuery = '';
             $this->dispatch('ds-toast', message: 'تم منح الاستثناء');
         } catch (\InvalidArgumentException $e) {
             $this->addError('grantPermission', $e->getMessage());
@@ -250,6 +255,25 @@ class GrantsIndex extends Component
     {
         $this->grantPermission = null;
         $this->permissionQuery = '';
+    }
+
+    /** اختيار موظف من نتائج البحث. O(1). */
+    public function selectGrantUser(int $userId): void
+    {
+        if (! User::query()->whereKey($userId)->exists()) {
+            $this->addError('grantUserId', 'موظف غير موجود');
+
+            return;
+        }
+
+        $this->grantUserId = $userId;
+        $this->resetErrorBag('grantUserId');
+    }
+
+    public function clearGrantUser(): void
+    {
+        $this->grantUserId = null;
+        $this->userQuery = '';
     }
 
     public function revokeException(int $grantId): void
@@ -305,6 +329,21 @@ class GrantsIndex extends Component
             'labels' => $labels,
             'groups' => $groups,
             'users' => User::orderBy('name')->get(['id', 'name']),
+            'userChoices' => User::query()
+                ->select(['id', 'name', 'phone'])
+                ->orderBy('name')
+                ->when($this->userQuery !== '', function ($q) {
+                    $term = '%'.trim($this->userQuery).'%';
+                    $q->where(function ($inner) use ($term) {
+                        $inner->where('name', 'like', $term)
+                            ->orWhere('phone', 'like', $term);
+                    });
+                })
+                ->limit(40)
+                ->get(),
+            'selectedGrantUser' => $this->grantUserId
+                ? User::query()->select(['id', 'name', 'phone'])->find($this->grantUserId)
+                : null,
             'exceptions' => ExceptionalGrant::with('user')->orderByDesc('id')->get(),
             'matrix' => $this->tab === 'matrix' ? app(PermissionGrantService::class)->matrix() : collect(),
         ])->layout('layouts.app', ['title' => 'الأدوار والصلاحيات']);

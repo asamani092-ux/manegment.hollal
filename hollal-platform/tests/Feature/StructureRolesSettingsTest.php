@@ -246,6 +246,20 @@ class StructureRolesSettingsTest extends TestCase
             ->assertSee('ابحث عن صلاحية', false);
     }
 
+    public function test_exception_user_picker_is_searchable(): void
+    {
+        $match = User::factory()->create(['name' => 'نورة المالية', 'phone' => '0555111222', 'must_change_password' => false]);
+        User::factory()->create(['name' => 'موظف آخر', 'phone' => '0555000000', 'must_change_password' => false]);
+
+        Livewire::actingAs($this->admin())->test(GrantsIndex::class)
+            ->call('setTab', 'exceptions')
+            ->set('userQuery', 'نورة')
+            ->assertViewHas('userChoices', fn ($rows) => $rows->contains('id', $match->id) && $rows->count() === 1)
+            ->call('selectGrantUser', $match->id)
+            ->assertSet('grantUserId', $match->id)
+            ->assertSee('ابحث عن موظف', false);
+    }
+
     public function test_matrix_export_is_authorized(): void
     {
         $stranger = User::factory()->create(['must_change_password' => false]);
