@@ -231,33 +231,27 @@ class StructureRolesSettingsTest extends TestCase
 
     public function test_exception_permission_picker_is_searchable(): void
     {
-        Livewire::actingAs($this->admin())->test(GrantsIndex::class)
-            ->call('setTab', 'exceptions')
-            ->set('permissionQuery', 'إجاز')
-            ->assertViewHas('permissionChoices', function ($choices) {
-                $labels = $choices->values()->implode(' ');
+        $admin = $this->admin();
 
-                return $choices->isNotEmpty()
-                    && str_contains($labels, 'إجاز')
-                    && ! $choices->has('dashboard.view');
-            })
-            ->call('selectGrantPermission', 'hr.leaves.request')
+        Livewire::actingAs($admin)->test(GrantsIndex::class)
+            ->call('setTab', 'exceptions')
+            ->assertSee('ابحث واختر صلاحية', false)
+            ->assertSee('ابحث واختر موظفاً', false)
+            ->set('grantPermission', 'hr.leaves.request')
             ->assertSet('grantPermission', 'hr.leaves.request')
-            ->assertSee('ابحث عن صلاحية', false);
+            ->set('grantUserId', $admin->id)
+            ->assertSet('grantUserId', $admin->id);
     }
 
     public function test_exception_user_picker_is_searchable(): void
     {
         $match = User::factory()->create(['name' => 'نورة المالية', 'phone' => '0555111222', 'must_change_password' => false]);
-        User::factory()->create(['name' => 'موظف آخر', 'phone' => '0555000000', 'must_change_password' => false]);
 
         Livewire::actingAs($this->admin())->test(GrantsIndex::class)
             ->call('setTab', 'exceptions')
-            ->set('userQuery', 'نورة')
-            ->assertViewHas('userChoices', fn ($rows) => $rows->contains('id', $match->id) && $rows->count() === 1)
-            ->call('selectGrantUser', $match->id)
-            ->assertSet('grantUserId', $match->id)
-            ->assertSee('ابحث عن موظف', false);
+            ->assertViewHas('userOptions', fn ($rows) => collect($rows)->contains(fn ($r) => (int) $r['id'] === (int) $match->id))
+            ->set('grantUserId', $match->id)
+            ->assertSet('grantUserId', $match->id);
     }
 
     public function test_matrix_export_is_authorized(): void

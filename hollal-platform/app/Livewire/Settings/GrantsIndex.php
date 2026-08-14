@@ -45,12 +45,6 @@ class GrantsIndex extends Component
 
     public ?string $grantExpiresOn = null;
 
-    /** بحث قائمة الصلاحيات في تبويب الاستثناءات */
-    public string $permissionQuery = '';
-
-    /** بحث قائمة الموظفين في تبويب الاستثناءات */
-    public string $userQuery = '';
-
     /** @var array<string, array<string, mixed>> */
     protected $queryString = [
         'tab' => ['except' => 'entities'],
@@ -229,51 +223,11 @@ class GrantsIndex extends Component
 
             $this->grantReason = '';
             $this->grantPermission = null;
-            $this->permissionQuery = '';
             $this->grantUserId = null;
-            $this->userQuery = '';
             $this->dispatch('ds-toast', message: 'تم منح الاستثناء');
         } catch (\InvalidArgumentException $e) {
             $this->addError('grantPermission', $e->getMessage());
         }
-    }
-
-    /** اختيار صلاحية من نتائج البحث. O(1). */
-    public function selectGrantPermission(string $permission): void
-    {
-        if (! in_array($permission, PermissionSeeder::PERMISSIONS, true)) {
-            $this->addError('grantPermission', 'صلاحية غير معروفة');
-
-            return;
-        }
-
-        $this->grantPermission = $permission;
-        $this->resetErrorBag('grantPermission');
-    }
-
-    public function clearGrantPermission(): void
-    {
-        $this->grantPermission = null;
-        $this->permissionQuery = '';
-    }
-
-    /** اختيار موظف من نتائج البحث. O(1). */
-    public function selectGrantUser(int $userId): void
-    {
-        if (! User::query()->whereKey($userId)->exists()) {
-            $this->addError('grantUserId', 'موظف غير موجود');
-
-            return;
-        }
-
-        $this->grantUserId = $userId;
-        $this->resetErrorBag('grantUserId');
-    }
-
-    public function clearGrantUser(): void
-    {
-        $this->grantUserId = null;
-        $this->userQuery = '';
     }
 
     public function revokeException(int $grantId): void
@@ -303,16 +257,25 @@ class GrantsIndex extends Component
         $labels = config('permission_labels.labels', []);
         $groups = config('permission_labels.groups', []);
 
-        $permissionChoices = collect(PermissionSeeder::PERMISSIONS)
-            ->mapWithKeys(fn (string $p) => [$p => $labels[$p] ?? $p])
-            ->when($this->permissionQuery !== '', function ($collection) {
-                $term = mb_strtolower(trim($this->permissionQuery));
+        $permissionOptions = collect(PermissionSeeder::PERMISSIONS)
+            ->map(fn (string $p) => [
+                'id' => $p,
+                'label' => $labels[$p] ?? $p,
+                'sub' => $p,
+            ])
+            ->values()
+            ->all();
 
-                return $collection->filter(function (string $label, string $key) use ($term) {
-                    return str_contains(mb_strtolower($label), $term)
-                        || str_contains(mb_strtolower($key), $term);
-                });
-            });
+        $userOptions = User::query()
+            ->select(['id', 'name', 'phone'])
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'label' => $u->name,
+                'sub' => (string) ($u->phone ?? ''),
+            ])
+            ->all();
 
         return view('livewire.settings.grants-index', [
             'roleEntities' => Role::query()
@@ -325,24 +288,10 @@ class GrantsIndex extends Component
                 ->get(),
             'permissions' => collect(PermissionSeeder::PERMISSIONS)
                 ->groupBy(fn (string $p) => explode('.', $p, 2)[0]),
-            'permissionChoices' => $permissionChoices,
+            'permissionOptions' => $permissionOptions,
+            'userOptions' => $userOptions,
             'labels' => $labels,
             'groups' => $groups,
-            'userChoices' => User::query()
-                ->select(['id', 'name', 'phone'])
-                ->orderBy('name')
-                ->when($this->userQuery !== '', function ($q) {
-                    $term = '%'.trim($this->userQuery).'%';
-                    $q->where(function ($inner) use ($term) {
-                        $inner->where('name', 'like', $term)
-                            ->orWhere('phone', 'like', $term);
-                    });
-                })
-                ->limit(40)
-                ->get(),
-            'selectedGrantUser' => $this->grantUserId
-                ? User::query()->select(['id', 'name', 'phone'])->find($this->grantUserId)
-                : null,
             'exceptions' => ExceptionalGrant::with('user')->orderByDesc('id')->get(),
             'matrix' => $this->tab === 'matrix' ? app(PermissionGrantService::class)->matrix() : collect(),
         ])->layout('layouts.app', ['title' => 'الأدوار والصلاحيات']);

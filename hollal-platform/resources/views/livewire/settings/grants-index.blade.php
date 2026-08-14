@@ -108,88 +108,25 @@
             <section class="ds-section">
                 <h2 class="ds-section-title">منح استثنائي لشخص</h2>
                 <x-ds-form-group label="الموظف" :error="$errors->first('grantUserId')">
-                    <input
-                        type="search"
-                        class="ds-input"
-                        wire:model.live.debounce.200ms="userQuery"
-                        placeholder="ابحث عن موظف بالاسم أو الجوال…"
-                        autocomplete="off"
-                    >
-                    @if ($selectedGrantUser)
-                        <div class="ds-toolbar-actions ds-mt-2" style="align-items:center;gap:.5rem;flex-wrap:wrap">
-                            <span class="ds-badge ds-badge-info">
-                                {{ $selectedGrantUser->name }}
-                                @if ($selectedGrantUser->phone)
-                                    <span class="ds-ltr-num">({{ $selectedGrantUser->phone }})</span>
-                                @endif
-                            </span>
-                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="clearGrantUser">مسح الاختيار</button>
-                        </div>
-                    @endif
-                    <div
-                        class="ds-perm-picker"
-                        style="margin-top:.5rem;max-height:220px;overflow:auto;border:1px solid var(--ds-border,#e8eef5);border-radius:8px;background:var(--ds-card,#fff)"
-                        role="listbox"
-                        aria-label="نتائج بحث الموظفين"
-                    >
-                        @forelse ($userChoices as $user)
-                            <button
-                                type="button"
-                                class="ds-perm-picker__item"
-                                style="display:block;width:100%;text-align:right;padding:.55rem .75rem;border:0;border-bottom:1px solid var(--ds-border,#e8eef5);background:{{ (int) $grantUserId === (int) $user->id ? 'var(--ds-accent-light,#e8f9f7)' : 'transparent' }};cursor:pointer;font:inherit;color:inherit"
-                                wire:key="pick-user-{{ $user->id }}"
-                                wire:click="selectGrantUser({{ $user->id }})"
-                                role="option"
-                                @if ((int) $grantUserId === (int) $user->id) aria-selected="true" @endif
-                            >
-                                <strong>{{ $user->name }}</strong>
-                                @if ($user->phone)
-                                    <span class="ds-text-muted ds-ltr-num" style="display:block;font-size:.8rem">{{ $user->phone }}</span>
-                                @endif
-                            </button>
-                        @empty
-                            <p class="ds-text-muted" style="padding:.75rem">لا يوجد موظف مطابق للبحث</p>
-                        @endforelse
-                    </div>
+                    <x-ds-search-select
+                        wire-model="grantUserId"
+                        :options="$userOptions"
+                        value-key="id"
+                        label-key="label"
+                        sub-label-key="sub"
+                        placeholder="ابحث واختر موظفاً…"
+                    />
                 </x-ds-form-group>
 
                 <x-ds-form-group label="الصلاحية" :error="$errors->first('grantPermission')">
-                    <input
-                        type="search"
-                        class="ds-input"
-                        wire:model.live.debounce.200ms="permissionQuery"
-                        placeholder="ابحث عن صلاحية بالاسم أو المفتاح…"
-                        autocomplete="off"
-                    >
-                    @if ($grantPermission)
-                        <div class="ds-toolbar-actions ds-mt-2" style="align-items:center;gap:.5rem;flex-wrap:wrap">
-                            <span class="ds-badge ds-badge-info">{{ $labels[$grantPermission] ?? $grantPermission }}</span>
-                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="clearGrantPermission">مسح الاختيار</button>
-                        </div>
-                    @endif
-                    <div
-                        class="ds-perm-picker"
-                        style="margin-top:.5rem;max-height:220px;overflow:auto;border:1px solid var(--ds-border,#e8eef5);border-radius:8px;background:var(--ds-card,#fff)"
-                        role="listbox"
-                        aria-label="نتائج بحث الصلاحيات"
-                    >
-                        @forelse ($permissionChoices as $permission => $label)
-                            <button
-                                type="button"
-                                class="ds-perm-picker__item"
-                                style="display:block;width:100%;text-align:right;padding:.55rem .75rem;border:0;border-bottom:1px solid var(--ds-border,#e8eef5);background:{{ $grantPermission === $permission ? 'var(--ds-accent-light,#e8f9f7)' : 'transparent' }};cursor:pointer;font:inherit;color:inherit"
-                                wire:key="pick-perm-{{ $permission }}"
-                                wire:click="selectGrantPermission('{{ $permission }}')"
-                                role="option"
-                                @if ($grantPermission === $permission) aria-selected="true" @endif
-                            >
-                                <strong>{{ $label }}</strong>
-                                <span class="ds-text-muted ds-ltr-num" style="display:block;font-size:.8rem">{{ $permission }}</span>
-                            </button>
-                        @empty
-                            <p class="ds-text-muted" style="padding:.75rem">لا توجد صلاحية مطابقة للبحث</p>
-                        @endforelse
-                    </div>
+                    <x-ds-search-select
+                        wire-model="grantPermission"
+                        :options="$permissionOptions"
+                        value-key="id"
+                        label-key="label"
+                        sub-label-key="sub"
+                        placeholder="ابحث واختر صلاحية…"
+                    />
                 </x-ds-form-group>
 
                 <x-ds-form-group label="سبب الاستثناء (إلزامي)" :error="$errors->first('grantReason')">
