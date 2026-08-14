@@ -38,12 +38,48 @@ class UatToolsChecklistTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('uat.tools'))
             ->assertOk()
-            ->assertSee('تقييم أدوات المنصة (UAT)', false)
+            ->assertSee('تقييم أدوات المنصة (UAT) — 3 مراحل', false)
             ->assertSee('نسخ التقرير كاملاً', false)
             ->assertSee('تحميل التقييم السابق', false)
             ->assertSee('تقييم التجربة الثانية', false)
+            ->assertSee('المرحلة 1 — الأساس والموارد', false)
+            ->assertSee('المرحلة 2 — التشغيل والمالية', false)
+            ->assertSee('المرحلة 3 — النمو والمحتوى', false)
             ->assertSee('دليل العاملين', false)
-            ->assertSee('الملاحظة', false);
+            ->assertSee('الملاحظة', false)
+            ->assertSee('قاعدة المراحل', false);
+    }
+
+    public function test_phases_cover_all_groups_without_overlap(): void
+    {
+        $phases = config('uat_tools.phases');
+        $groups = collect(config('uat_tools.groups'));
+
+        $this->assertCount(3, $phases);
+
+        $assigned = collect($phases)->flatMap(fn (array $p) => $p['group_ids'])->sort()->values();
+        $allIds = $groups->pluck('id')->sort()->values();
+
+        $this->assertSame($allIds->all(), $assigned->all());
+
+        foreach ($groups as $group) {
+            $this->assertContains($group['phase'], [1, 2, 3]);
+            $phase = collect($phases)->firstWhere('id', $group['phase']);
+            $this->assertContains($group['id'], $phase['group_ids']);
+        }
+
+        $counts = [];
+        foreach ($phases as $phase) {
+            $counts[$phase['id']] = $groups
+                ->whereIn('id', $phase['group_ids'])
+                ->sum(fn (array $g) => count($g['items']));
+        }
+
+        // Balanced within ~±5 of mean (~21)
+        foreach ($counts as $n) {
+            $this->assertGreaterThanOrEqual(18, $n);
+            $this->assertLessThanOrEqual(25, $n);
+        }
     }
 
     public function test_baseline_round2_covers_prior_verdicts(): void

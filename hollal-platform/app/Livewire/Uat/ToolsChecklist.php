@@ -7,6 +7,7 @@ use Livewire\Component;
 
 /**
  * Interactive UAT tools evaluation page (pre-production only).
+ * Three gated phases — next unlocks only when current is all «يعتمد».
  * Time: O(n) tools | Space: O(n) client state.
  */
 class ToolsChecklist extends Component
@@ -20,10 +21,21 @@ class ToolsChecklist extends Component
     public function render(): View
     {
         $groups = config('uat_tools.groups', []);
+        $phases = config('uat_tools.phases', []);
         $total = collect($groups)->sum(fn (array $g) => count($g['items'] ?? []));
+
+        $phaseTotals = [];
+        foreach ($phases as $phase) {
+            $ids = $phase['group_ids'] ?? [];
+            $phaseTotals[$phase['id']] = collect($groups)
+                ->whereIn('id', $ids)
+                ->sum(fn (array $g) => count($g['items'] ?? []));
+        }
 
         return view('livewire.uat.tools-checklist', [
             'groups' => $groups,
+            'phases' => $phases,
+            'phaseTotals' => $phaseTotals,
             'verdicts' => config('uat_tools.verdicts', []),
             'noteTags' => config('uat_tools.note_tags', []),
             'baseline' => config('uat_tools.baseline', []),
