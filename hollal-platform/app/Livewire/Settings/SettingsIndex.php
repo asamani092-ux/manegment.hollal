@@ -67,6 +67,7 @@ class SettingsIndex extends Component
             'aging.task_stale_days' => 'بعد كم يوم تُعد المهمة راكدة.',
             'aging.project_stale_days' => 'بعد كم يوم يُعد المشروع راكدًا.',
             'attendance.monthly_working_days' => 'أيام الدوام المعتمدة لحساب الشهر.',
+            'attendance.office_start_time' => 'وقت بداية الدوام (مثل 08:00) لحساب دقائق التأخر في الحضور والطباعة الشهرية.',
             'maintenance.enabled' => 'تفعيل وضع الصيانة لإيقاف الدخول التشغيلي.',
             'maintenance.message' => 'الرسالة المعروضة أثناء الصيانة.',
             'backup.last_run_at' => 'وقت آخر نسخة احتياطية (للعرض).',

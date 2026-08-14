@@ -8,8 +8,8 @@
     />
 
     <p class="ds-text-muted ds-mb-3">
-        دورة التقييم: تُنشأ مسودة لفترة (مثل 2026-Q3) ← تُسجَّل درجات المسؤوليات من 1 إلى 5 ← يُنشر التقييم للموظف ← يمكن للموظف إضافة تعليق من ملفه الوظيفي.
-        من يملك صلاحية عرض الموظفين يرى القائمة؛ الإنشاء والتقييم يتطلب صلاحية التحديث.
+        مسودة = للمقيّم/الموارد فقط · <strong>نشر</strong> = يظهر للموظف ليطّلع ويعلّق (خلال المهلة) · استخدم «معاينة قبل النشر» قبل الظهور للموظف.
+        الإنشاء والتقييم يتطلب صلاحية التحديث.
     </p>
 
     <div class="ds-filters-row">
@@ -55,7 +55,7 @@
                 <td>
                     <button type="button" class="ds-link" wire:click="openScoring({{ $evaluation->id }})">الدرجات</button>
                     @if ($canManage && $evaluation->status === \App\Models\PeriodicEvaluation::STATUS_DRAFT)
-                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="publish({{ $evaluation->id }})">نشر</button>
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openPreview({{ $evaluation->id }})">معاينة قبل النشر</button>
                     @endif
                 </td>
             </tr>
@@ -85,6 +85,39 @@
             <input type="text" class="ds-input ds-ltr-num" wire:model="period" placeholder="2026-Q3">
         </x-ds-form-group>
         <button type="button" class="ds-btn ds-btn-primary" wire:click="createEvaluation">حفظ</button>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$previewId !== null" title="معاينة التقييم قبل النشر" close-action="closePreview">
+        @if ($previewEvaluation)
+            <p class="ds-text-muted ds-mb-3">
+                بعد التأكيد سيظهر هذا التقييم للموظف المعني فقط (وليس للموارد البشرية وحدهم). الموظف يستطيع التعليق ضمن المهلة المحددة في الإعدادات.
+            </p>
+            <p><strong>الموظف:</strong> {{ $previewEvaluation->employee?->name ?? '—' }}</p>
+            <p><strong>الفترة:</strong> <span class="ds-ltr-num">{{ $previewEvaluation->period }}</span></p>
+            <p><strong>المقيّم:</strong> {{ $previewEvaluation->evaluator?->name ?? '—' }}</p>
+            @if ($previewEvaluation->scores->isNotEmpty())
+                <ul class="ds-mb-3">
+                    @foreach ($previewEvaluation->scores as $score)
+                        <li>
+                            {{ $score->responsibility?->body ?? ('بند #'.$score->responsibility_id) }}
+                            — <span class="ds-ltr-num">{{ $score->score }} / 5</span>
+                            @if ($score->note) — {{ $score->note }} @endif
+                        </li>
+                    @endforeach
+                </ul>
+            @else
+                <p class="ds-text-muted">لا توجد درجات مسجّلة بعد.</p>
+            @endif
+            <div class="ds-toolbar-actions">
+                <button type="button" class="ds-btn ds-btn-outline" wire:click="closePreview">إلغاء</button>
+                <button
+                    type="button"
+                    class="ds-btn ds-btn-primary"
+                    wire:click="publish({{ $previewId }})"
+                    wire:confirm="تأكيد النشر؟ سيظهر التقييم للموظف فوراً."
+                >تأكيد النشر للموظف</button>
+            </div>
+        @endif
     </x-ds-modal>
 
     <x-ds-modal :show="$scoringId !== null" title="درجات المسؤوليات /5" close-action="$set('scoringId', null)" size="lg">

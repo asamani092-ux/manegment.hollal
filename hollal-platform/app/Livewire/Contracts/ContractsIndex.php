@@ -125,22 +125,15 @@ class ContractsIndex extends Component
             'contractFile' => 'nullable|file|max:10240|mimes:pdf,doc,docx',
         ];
 
-        if ($this->canViewValue()) {
-            $rules['value'] = 'nullable|numeric|min:0';
-        }
-
         $this->validate($rules);
 
+        // الراتب الشهري من الملف الوظيفي فقط — لا نكتب قيمة عقد مالية هنا.
         $data = [
             'employee_id' => $this->employee_id,
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
             'status' => $this->status,
         ];
-
-        if ($this->canViewValue() && $this->value !== '') {
-            $data['value'] = $this->value;
-        }
 
         if ($this->contractFile) {
             if ($this->existingContractFile) {
@@ -248,11 +241,19 @@ class ContractsIndex extends Component
             return '—';
         }
 
-        if ($this->canViewValue()) {
-            return $contract->value !== null ? number_format((float) $contract->value, 2) : '—';
+        if (! $this->canViewValue()) {
+            return '****';
         }
 
-        return '****';
+        $employee = $contract->employee;
+        if (! $employee) {
+            return '—';
+        }
+
+        $monthly = app(\App\Services\SalaryService::class)->monthlyFromComponents($employee);
+        $base = (float) ($monthly['base'] ?? 0);
+
+        return $base > 0 ? number_format($base, 2).' ر.س' : '— عيّن الراتب من الملف';
     }
 
     protected function fillForm(Contract $contract): void
@@ -286,7 +287,7 @@ class ContractsIndex extends Component
         return view('livewire.contracts.contracts-index', [
             'contracts' => Contract::query()
                 ->select(['id', 'employee_id', 'start_date', 'end_date', 'value', 'contract_file', 'status', 'created_at'])
-                ->with('employee:id,name')
+                ->with(['employee:id,name'])
                 ->when($this->search, fn ($q) => $q->whereHas(
                     'employee',
                     fn ($eq) => $eq->where('name', 'like', '%'.$this->search.'%')

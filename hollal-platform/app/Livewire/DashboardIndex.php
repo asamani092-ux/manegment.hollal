@@ -26,9 +26,17 @@ class DashboardIndex extends Component
 {
     use AuthorizesRequests;
 
+    /** Collapsed by default so «يحتاج تدخلك» does not dominate the first viewport. */
+    public bool $actionPanelOpen = false;
+
     public function mount(): void
     {
         $this->authorize('dashboard.view');
+    }
+
+    public function toggleActionPanel(): void
+    {
+        $this->actionPanelOpen = ! $this->actionPanelOpen;
     }
 
     public function render(): View

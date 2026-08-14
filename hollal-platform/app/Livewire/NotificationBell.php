@@ -35,15 +35,48 @@ class NotificationBell extends Component
 
         $notification->markAsRead();
 
-        $path = self::appPath($notification->data['url'] ?? null);
+        $path = self::resolveTarget($notification);
         if ($path !== null) {
-            // Relative path keeps the current host/port (APP_URL=localhost caused black pages).
-            $this->redirect($path);
+            // Full page redirect keeps ?open= (Livewire navigate can drop query in some cases).
+            $this->redirect($path, navigate: false);
 
             return;
         }
 
         $this->open = true;
+    }
+
+    /**
+     * Prefer typed ids (task_id, …) over stale stored urls that omit ?open=.
+     * Time: O(1) | Space: O(1)
+     */
+    public static function resolveTarget(\Illuminate\Notifications\DatabaseNotification $notification): ?string
+    {
+        $data = $notification->data;
+        if (! empty($data['task_id']) && is_numeric($data['task_id'])) {
+            return \App\Support\RecordUrl::task((int) $data['task_id']);
+        }
+        if (! empty($data['expense_id']) && is_numeric($data['expense_id'])) {
+            return \App\Support\RecordUrl::expense((int) $data['expense_id']);
+        }
+        if (! empty($data['leave_id']) && is_numeric($data['leave_id'])) {
+            return \App\Support\RecordUrl::leave((int) $data['leave_id']);
+        }
+        if (! empty($data['custody_id']) && is_numeric($data['custody_id'])) {
+            return \App\Support\RecordUrl::custody((int) $data['custody_id']);
+        }
+
+        $path = self::appPath($data['url'] ?? null);
+        if ($path === null) {
+            return null;
+        }
+
+        // Repair bare /tasks → cannot open a record without id.
+        if ($path === '/tasks' || $path === '/tasks/') {
+            return null;
+        }
+
+        return $path;
     }
 
     /**

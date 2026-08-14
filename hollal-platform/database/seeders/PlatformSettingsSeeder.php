@@ -42,6 +42,7 @@ class PlatformSettingsSeeder extends Seeder
         ['aging.task_stale_days', '7', 'integer', 'ركود المهمة (أيام)'],
         ['aging.project_stale_days', '21', 'integer', 'ركود المشروع (أيام)'],
         ['attendance.monthly_working_days', '22', 'integer', 'أيام الدوام الشهرية'],
+        ['attendance.office_start_time', '08:00', 'string', 'بداية الدوام (HH:MM) لحساب التأخر'],
         ['maintenance.enabled', '0', 'boolean', 'وضع الصيانة'],
         ['maintenance.message', 'المنصة تحت الصيانة مؤقتًا', 'string', 'رسالة وضع الصيانة'],
         ['backup.last_run_at', null, 'string', 'آخر نسخة احتياطية'],

@@ -34,7 +34,7 @@
                     <th>الموظف</th>
                     <th>تاريخ البداية</th>
                     <th>تاريخ النهاية</th>
-                    <th>قيمة العقد</th>
+                    <th>الراتب الشهري</th>
                     <th>الحالة</th>
                     <th>الملف</th>
                     <th>إجراءات</th>
@@ -117,10 +117,15 @@
                         <input type="date" class="ds-input" wire:model="end_date" @disabled($viewOnly)>
                     </x-ds-form-group>
                     @if ($canViewValue)
-                        <x-ds-form-group label="قيمة العقد (إجمالي العقد وليس الراتب الشهري)" :error="$errors->first('value')">
-                            <input type="number" step="0.01" class="ds-input" wire:model="value" @disabled($viewOnly) aria-describedby="contract-value-help">
-                            <p id="contract-value-help" class="ds-help-text">قيمة العقد كاملة طوال مدته. الراتب الشهري يُدار من سلم الرواتب / الملف الوظيفي / المسيّرات.</p>
-                        </x-ds-form-group>
+                        <div class="ds-form-group">
+                            <span class="ds-label">الراتب الشهري (من الملف الوظيفي)</span>
+                            <p class="ds-help-text" id="contract-salary-help">
+                                لا توجد «قيمة عقد» منفصلة — الراتب الشهري يُدار من الملف الوظيفي (مكوّنات الراتب) ويظهر في المسيّر عند التوليد.
+                                @if ($contractId && $employee_id)
+                                    <a class="ds-link" href="{{ route('users.profile', $employee_id) }}">فتح الملف الوظيفي</a>
+                                @endif
+                            </p>
+                        </div>
                     @endif
                     <x-ds-form-group label="الحالة" :error="$errors->first('status')">
                         <select class="ds-input" wire:model="status" @disabled($viewOnly)>

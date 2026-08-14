@@ -31,6 +31,8 @@ class EvaluationsIndex extends Component
 
     public ?int $scoringId = null;
 
+    public ?int $previewId = null;
+
     /** @var array<int, array{score: string, note: string}> */
     public array $scoreInputs = [];
 
@@ -107,7 +109,26 @@ class EvaluationsIndex extends Component
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
         $evaluation = PeriodicEvaluation::findOrFail($id);
         app(EvaluationService::class)->publish($evaluation);
-        $this->dispatch('toast', type: 'success', message: 'تم نشر التقييم');
+        $this->previewId = null;
+        $this->dispatch('toast', type: 'success', message: 'نُشر التقييم — أصبح ظاهرًا للموظف للتعليق');
+    }
+
+    public function openPreview(int $id): void
+    {
+        $evaluation = PeriodicEvaluation::with(['employee:id,name', 'evaluator:id,name', 'scores'])->findOrFail($id);
+        abort_unless(
+            auth()->user()->can('hr.employees.view')
+            || auth()->user()->can('hr.employees.update')
+            || $evaluation->evaluator_id === auth()->id(),
+            403
+        );
+        $this->previewId = $id;
+        $this->scoringId = null;
+    }
+
+    public function closePreview(): void
+    {
+        $this->previewId = null;
     }
 
     public function openScoring(int $id): void
@@ -212,6 +233,9 @@ class EvaluationsIndex extends Component
                     ->orderBy('order')
                     ->get()
                 : collect(),
+            'previewEvaluation' => $this->previewId
+                ? PeriodicEvaluation::with(['employee:id,name', 'evaluator:id,name', 'scores.responsibility'])->find($this->previewId)
+                : null,
         ]);
     }
 }

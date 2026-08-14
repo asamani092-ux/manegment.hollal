@@ -10,7 +10,6 @@ use App\Livewire\Tasks\TasksIndex;
 use App\Models\Document;
 use App\Models\ExpenseRequest;
 use App\Models\Meeting;
-use App\Models\Payroll;
 use App\Models\Task;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
@@ -119,11 +118,8 @@ class SecurityIdorAuditTest extends TestCase
     {
         $this->employee->givePermissionTo('hr.salaries.view');
 
-        $payroll = Payroll::factory()->create();
-
         Livewire::actingAs($this->employee)
             ->test(PayrollIndex::class)
-            ->call('openEdit', $payroll->id)
-            ->assertForbidden();
+            ->assertRedirect(route('payroll-runs.index'));
     }
 }

@@ -413,6 +413,27 @@
   line-height: 1.45;
 }
 
+.ds-action-panel-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: none;
+  background: transparent;
+  padding: 0.35rem 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: right;
+}
+
+.ds-action-panel-body {
+  margin-top: 0.75rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
 .ds-login-footer {
   text-align: center;
   margin-top: 1.5rem;
@@ -697,14 +718,19 @@
 /* ── Toasts ── */
 .ds-toast-container {
   position: fixed;
-  bottom: 1.5rem;
-  inset-inline-end: 1.5rem;
-  inset-inline-start: auto;
+  top: 1.25rem;
+  left: 50%;
+  right: auto;
+  bottom: auto;
+  transform: translateX(-50%);
+  inset-inline: auto;
   z-index: 1100;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 10px;
-  max-width: min(380px, calc(100vw - 2rem));
+  width: min(420px, calc(100vw - 2rem));
+  max-width: min(420px, calc(100vw - 2rem));
   pointer-events: none;
 }
 
@@ -1468,6 +1494,10 @@
     display: none !important;
   }
 
+  .ds-attendance-print-sheet {
+    display: block !important;
+  }
+
   .ds-printable-minutes,
   .ds-weekly-print {
     padding: 0;
@@ -1493,4 +1523,8 @@
   body {
     background: #fff;
   }
+}
+
+.ds-attendance-print-sheet {
+  display: none;
 }

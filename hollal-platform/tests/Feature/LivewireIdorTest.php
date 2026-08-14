@@ -14,7 +14,6 @@ use App\Models\Department;
 use App\Models\Document;
 use App\Models\ExpenseRequest;
 use App\Models\Meeting;
-use App\Models\Payroll;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -128,12 +127,11 @@ class LivewireIdorTest extends TestCase
 
     public function test_employee_cannot_edit_payroll_without_manage_permission(): void
     {
-        $payroll = Payroll::factory()->create(['employee_id' => $this->otherUser->id]);
+        $this->employee->givePermissionTo('hr.salaries.view');
 
         Livewire::actingAs($this->employee)
             ->test(PayrollIndex::class)
-            ->call('openEdit', $payroll->id)
-            ->assertForbidden();
+            ->assertRedirect(route('payroll-runs.index'));
     }
 
     public function test_employee_cannot_delete_document_they_cannot_access(): void

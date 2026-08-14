@@ -32,7 +32,7 @@ class TaskReminder extends Notification implements ShouldQueue
     {
         $url = $this->task
             ? RecordUrl::task($this->task->id)
-            : route('tasks.index');
+            : route('tasks.index', absolute: false);
 
         return [
             'message' => $this->contextMessage,
