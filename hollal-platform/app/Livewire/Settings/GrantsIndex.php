@@ -45,6 +45,9 @@ class GrantsIndex extends Component
 
     public ?string $grantExpiresOn = null;
 
+    /** بحث قائمة الصلاحيات في تبويب الاستثناءات */
+    public string $permissionQuery = '';
+
     /** @var array<string, array<string, mixed>> */
     protected $queryString = [
         'tab' => ['except' => 'entities'],
@@ -222,10 +225,31 @@ class GrantsIndex extends Component
             );
 
             $this->grantReason = '';
+            $this->grantPermission = null;
+            $this->permissionQuery = '';
             $this->dispatch('ds-toast', message: 'تم منح الاستثناء');
         } catch (\InvalidArgumentException $e) {
             $this->addError('grantPermission', $e->getMessage());
         }
+    }
+
+    /** اختيار صلاحية من نتائج البحث. O(1). */
+    public function selectGrantPermission(string $permission): void
+    {
+        if (! in_array($permission, PermissionSeeder::PERMISSIONS, true)) {
+            $this->addError('grantPermission', 'صلاحية غير معروفة');
+
+            return;
+        }
+
+        $this->grantPermission = $permission;
+        $this->resetErrorBag('grantPermission');
+    }
+
+    public function clearGrantPermission(): void
+    {
+        $this->grantPermission = null;
+        $this->permissionQuery = '';
     }
 
     public function revokeException(int $grantId): void
@@ -252,6 +276,20 @@ class GrantsIndex extends Component
 
     public function render(): View
     {
+        $labels = config('permission_labels.labels', []);
+        $groups = config('permission_labels.groups', []);
+
+        $permissionChoices = collect(PermissionSeeder::PERMISSIONS)
+            ->mapWithKeys(fn (string $p) => [$p => $labels[$p] ?? $p])
+            ->when($this->permissionQuery !== '', function ($collection) {
+                $term = mb_strtolower(trim($this->permissionQuery));
+
+                return $collection->filter(function (string $label, string $key) use ($term) {
+                    return str_contains(mb_strtolower($label), $term)
+                        || str_contains(mb_strtolower($key), $term);
+                });
+            });
+
         return view('livewire.settings.grants-index', [
             'roleEntities' => Role::query()
                 ->withCount('permissions')
@@ -263,8 +301,9 @@ class GrantsIndex extends Component
                 ->get(),
             'permissions' => collect(PermissionSeeder::PERMISSIONS)
                 ->groupBy(fn (string $p) => explode('.', $p, 2)[0]),
-            'labels' => config('permission_labels.labels'),
-            'groups' => config('permission_labels.groups'),
+            'permissionChoices' => $permissionChoices,
+            'labels' => $labels,
+            'groups' => $groups,
             'users' => User::orderBy('name')->get(['id', 'name']),
             'exceptions' => ExceptionalGrant::with('user')->orderByDesc('id')->get(),
             'matrix' => $this->tab === 'matrix' ? app(PermissionGrantService::class)->matrix() : collect(),

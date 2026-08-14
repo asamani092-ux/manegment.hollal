@@ -229,6 +229,23 @@ class StructureRolesSettingsTest extends TestCase
         $this->assertSame(0, ExceptionalGrant::count());
     }
 
+    public function test_exception_permission_picker_is_searchable(): void
+    {
+        Livewire::actingAs($this->admin())->test(GrantsIndex::class)
+            ->call('setTab', 'exceptions')
+            ->set('permissionQuery', 'إجاز')
+            ->assertViewHas('permissionChoices', function ($choices) {
+                $labels = $choices->values()->implode(' ');
+
+                return $choices->isNotEmpty()
+                    && str_contains($labels, 'إجاز')
+                    && ! $choices->has('dashboard.view');
+            })
+            ->call('selectGrantPermission', 'hr.leaves.request')
+            ->assertSet('grantPermission', 'hr.leaves.request')
+            ->assertSee('ابحث عن صلاحية', false);
+    }
+
     public function test_matrix_export_is_authorized(): void
     {
         $stranger = User::factory()->create(['must_change_password' => false]);
