@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Expenses\ExpensesIndex;
-use App\Livewire\Settings\RolesIndex;
+use App\Livewire\Settings\GrantsIndex;
 use App\Models\AuditLog;
 use App\Models\ExpenseRequest;
 use App\Models\Role;
@@ -62,15 +62,16 @@ class AuditLogTest extends TestCase
         $role = Role::where('name', 'Employee')->first();
 
         Livewire::actingAs($admin)
-            ->test(RolesIndex::class)
-            ->call('openEditModal', $role->id)
-            ->set('selectedPermissions', ['dashboard.view', 'esnad.tasks.view'])
-            ->call('save')
+            ->test(GrantsIndex::class)
+            ->set('tab', 'perms')
+            ->call('selectRole', $role->id)
+            ->set('selected', ['dashboard.view', 'esnad.tasks.view'])
+            ->call('saveRole')
             ->assertHasNoErrors();
 
         $this->assertDatabaseHas('audit_logs', [
             'actor_id' => $admin->id,
-            'action' => 'role.updated',
+            'action' => 'permissions.role_synced',
             'target_type' => $role->getMorphClass(),
             'target_id' => $role->id,
         ]);

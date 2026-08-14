@@ -30,7 +30,6 @@ use App\Livewire\Projects\ProjectsIndex;
 use App\Livewire\Reports\ReportsIndex;
 use App\Livewire\Settings\ExpenseSettingsIndex;
 use App\Livewire\Settings\MailSettingsIndex;
-use App\Livewire\Settings\RolesIndex;
 use App\Livewire\Settings\SettingsIndex;
 use App\Livewire\Tasks\RecurringTasksIndex;
 use App\Livewire\Tasks\TasksCalendar;
@@ -183,13 +182,13 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:roles.view')
         ->name('settings.grants');
 
+    Route::get('/settings/roles', function () {
+        return redirect()->route('settings.grants', ['tab' => 'entities']);
+    })->middleware('permission:roles.view')->name('settings.roles');
+
     Route::get('/structure/org-tree', \App\Livewire\Structure\OrgTreeIndex::class)
         ->middleware('permission:structure.view|structure.departments.view|structure.manage')
         ->name('structure.org-tree');
-
-    Route::get('/settings/roles', RolesIndex::class)
-        ->middleware('permission:roles.view')
-        ->name('settings.roles');
 
     Route::get('/settings/expenses', ExpenseSettingsIndex::class)
         ->middleware('permission:settings.manage')

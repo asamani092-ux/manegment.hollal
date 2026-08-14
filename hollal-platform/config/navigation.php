@@ -31,7 +31,7 @@ return [
                 ['label' => 'سلم الرواتب', 'route' => 'pay-scales.index', 'icon' => 'fa-layer-group', 'permission' => 'hr.salaries.manage'],
                 ['label' => 'مسيّرات الرواتب', 'route' => 'payroll-runs.index', 'icon' => 'fa-file-invoice-dollar', 'permission' => 'hr.salaries.view'],
                 // «الرواتب الشهرية» أُدمجت في المسيّر + الملف الوظيفي — لا تبويب ثالث.
-                ['label' => 'التقييم الدوري', 'route' => 'evaluations.index', 'icon' => 'fa-star-half-alt', 'permission' => 'hr.employees.view'],
+                ['label' => 'التقييم الدوري (أرشيف في الملف)', 'route' => 'evaluations.index', 'icon' => 'fa-star-half-alt', 'permission' => 'hr.employees.view'],
                 ['label' => 'المسؤوليات', 'route' => 'responsibilities.index', 'icon' => 'fa-clipboard-list', 'permission' => 'hr.employees.update'],
                 ['label' => 'الحضور', 'route' => 'attendance.index', 'icon' => 'fa-user-clock', 'permission' => 'hr.employees.view'],
                 ['label' => 'الإجازات', 'route' => 'leaves.index', 'icon' => 'fa-umbrella-beach', 'permission' => 'hr.leaves.request|hr.leaves.approve|hr.leaves.view-all|hr.employees.view'],
@@ -114,8 +114,7 @@ return [
         [
             'label' => 'الأدوار والصلاحيات',
             'items' => [
-                ['label' => 'الأدوار', 'route' => 'settings.roles', 'icon' => 'fa-shield-halved', 'permission' => 'roles.view'],
-                ['label' => 'منح الصلاحيات', 'route' => 'settings.grants', 'icon' => 'fa-key', 'permission' => 'roles.view'],
+                ['label' => 'الأدوار والصلاحيات', 'route' => 'settings.grants', 'icon' => 'fa-shield-halved', 'permission' => 'roles.view'],
             ],
         ],
         [

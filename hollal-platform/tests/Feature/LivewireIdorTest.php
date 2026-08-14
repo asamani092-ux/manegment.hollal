@@ -8,7 +8,7 @@ use App\Livewire\Expenses\ExpensesIndex;
 use App\Livewire\Meetings\MeetingMinutes;
 use App\Livewire\Meetings\MeetingsIndex;
 use App\Livewire\Payroll\PayrollIndex;
-use App\Livewire\Settings\RolesIndex;
+use App\Livewire\Settings\GrantsIndex;
 use App\Livewire\Users\UsersIndex;
 use App\Models\Department;
 use App\Models\Document;
@@ -120,8 +120,8 @@ class LivewireIdorTest extends TestCase
         $role = Role::create(['name' => 'test-role', 'guard_name' => 'web']);
 
         Livewire::actingAs($this->employee)
-            ->test(RolesIndex::class)
-            ->call('openEditModal', $role->id)
+            ->test(GrantsIndex::class)
+            ->call('openEditRole', $role->id)
             ->assertForbidden();
     }
 

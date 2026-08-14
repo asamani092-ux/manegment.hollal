@@ -72,6 +72,7 @@ class ReportRound1StructSetTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(GrantsIndex::class)
+            ->call('setTab', 'perms')
             ->assertSee('بحث عن دور')
             ->set('roleQuery', 'Finance')
             ->assertViewHas('roles', function ($roles) {

@@ -1,13 +1,54 @@
 <x-ds-page>
-    <x-ds-page-header title="منح الصلاحيات" />
+    <x-ds-page-header
+        title="الأدوار والصلاحيات"
+        :show-button="auth()->user()->can('roles.create') && $tab === 'entities'"
+        button-label="إضافة دور"
+        wire:click="openCreateRole"
+    />
+
+    <p class="ds-text-muted ds-mb-3">
+        صفحة واحدة: إدارة الأدوار، منح صلاحيات الدور، الاستثناءات، ومصفوفة «من يملك ماذا».
+    </p>
 
     <section class="ds-section ds-filter-bar">
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'roles')">صلاحيات الأدوار</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'exceptions')">الاستثناءات</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'matrix')">من يملك ماذا</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'entities' ? 'ds-btn-primary' : '' }}" wire:click="setTab('entities')">الأدوار</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'perms' ? 'ds-btn-primary' : '' }}" wire:click="setTab('perms')">صلاحيات الأدوار</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'exceptions' ? 'ds-btn-primary' : '' }}" wire:click="setTab('exceptions')">الاستثناءات</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'matrix' ? 'ds-btn-primary' : '' }}" wire:click="setTab('matrix')">من يملك ماذا</button>
     </section>
 
-    @if ($tab === 'roles')
+    @if ($tab === 'entities')
+        <x-ds-table>
+            <x-slot:head>
+                <tr>
+                    <th>اسم الدور</th>
+                    <th>عدد الصلاحيات</th>
+                    <th>إجراءات</th>
+                </tr>
+            </x-slot:head>
+            @forelse ($roleEntities as $role)
+                <tr wire:key="role-entity-{{ $role->id }}">
+                    <td><x-ds-role-label :name="$role->name" /></td>
+                    <td class="ds-ltr-num">{{ $role->permissions_count }}</td>
+                    <td>
+                        @can('roles.update')
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEditRole({{ $role->id }})">إعادة تسمية</button>
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="manageRolePermissions({{ $role->id }})">إدارة الصلاحيات</button>
+                        @endcan
+                        @can('roles.delete')
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="deleteRole({{ $role->id }})" wire:confirm="حذف هذا الدور؟">حذف</button>
+                        @endcan
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="3" class="ds-text-muted ds-table-empty">لا توجد أدوار</td>
+                </tr>
+            @endforelse
+        </x-ds-table>
+    @endif
+
+    @if ($tab === 'perms')
         <section class="ds-section ds-filter-bar">
             <x-ds-form-group label="الدور">
                 <input type="search" class="ds-input" wire:model.live.debounce.200ms="roleQuery" placeholder="بحث عن دور...">
@@ -152,4 +193,15 @@
             @endforelse
         </x-ds-table>
     @endif
+
+    <x-ds-modal :show="$showRoleModal" title="{{ $editingRoleId ? 'إعادة تسمية الدور' : 'إضافة دور' }}" close-action="closeRoleModal">
+        <x-ds-form-group label="اسم الدور" for="merged-role-name" :error="$errors->first('roleName')">
+            <input type="text" id="merged-role-name" class="ds-input" wire:model="roleName" placeholder="مثال: مدير الموارد البشرية">
+        </x-ds-form-group>
+        <p class="ds-text-muted">الصلاحيات تُدار من تبويب «صلاحيات الأدوار» بعد الحفظ.</p>
+        <div class="ds-toolbar-actions">
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="closeRoleModal">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveRoleEntity">حفظ</button>
+        </div>
+    </x-ds-modal>
 </x-ds-page>
