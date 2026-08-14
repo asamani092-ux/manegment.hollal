@@ -14,7 +14,6 @@
   border-bottom: 1px solid var(--ds-border);
   height: var(--ds-navbar-height);
   gap: 1rem;
-  overflow-x: clip;
 }
 
 .ds-navbar-start,
@@ -27,10 +26,6 @@
 
 .ds-navbar-start {
   flex: 1;
-}
-
-.ds-navbar-end {
-  flex-shrink: 0;
 }
 
 .ds-navbar-brand {
@@ -120,10 +115,8 @@
 .ds-notifications-menu {
   position: absolute;
   top: calc(100% + 6px);
-  inset-inline-end: 0;
-  inset-inline-start: auto;
+  left: 0;
   width: min(320px, calc(100vw - 2rem));
-  max-width: min(320px, calc(100vw - 1rem));
   background: var(--ds-card);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-md);
@@ -218,7 +211,6 @@
 /* ── User Dropdown ── */
 .ds-user-dropdown {
   position: relative;
-  flex-shrink: 0;
 }
 
 .ds-user-trigger {
@@ -293,11 +285,8 @@
 .ds-dropdown-menu {
   position: absolute;
   top: calc(100% + 6px);
-  /* Do not set left/right after inset-inline-* — that clears the inset mapping. */
-  inset-inline-end: 0;
-  inset-inline-start: auto;
+  left: 0;
   min-width: 220px;
-  max-width: min(280px, calc(100vw - 1rem));
   background: var(--ds-card);
   border: 1px solid var(--ds-border);
   border-radius: var(--ds-radius-md);
@@ -631,21 +620,19 @@
 }
 
 /* ── Responsive list cards (mobile) / tables (desktop) ── */
-@media (min-width: 768px) {
+@media (min-width: 900px) {
   .ds-task-table-desktop,
   .ds-list-table-desktop {
     display: block;
   }
 
-  /* Beat .ds-task-cards { display:grid } from components.css (loaded later). */
-  .ds-task-cards.ds-task-cards-mobile,
-  .ds-task-cards.ds-list-cards-mobile,
+  .ds-task-cards-mobile,
   .ds-list-cards-mobile {
-    display: none !important;
+    display: none;
   }
 }
 
-@media (max-width: 767px) {
+@media (max-width: 899px) {
   .ds-task-cards-mobile,
   .ds-list-cards-mobile {
     display: grid;
@@ -653,17 +640,13 @@
 
   .ds-task-table-desktop,
   .ds-list-table-desktop {
-    display: none !important;
+    display: none;
   }
 }
 
 @media (max-width: 768px) {
   .ds-sidebar-toggle {
     display: inline-flex;
-  }
-
-  .ds-navbar {
-    overflow: visible;
   }
 
   .ds-navbar-title {
@@ -686,6 +669,8 @@
     padding: 0.25rem;
   }
 
+<<<<<<< HEAD
+=======
   /* Mobile: pin menus to the viewport so RTL/LTR icon side cannot clip them. */
   .ds-navbar,
   .ds-navbar-end {
@@ -701,20 +686,16 @@
   .ds-navbar-end .ds-notifications-menu {
     position: fixed !important;
     top: calc(var(--ds-navbar-height) + 0.35rem) !important;
-    /* One edge + capped width — left+right together widened the page and shifted the UI. */
-    left: 0.75rem !important;
-    right: auto !important;
-    width: min(320px, calc(100% - 1.5rem)) !important;
-    max-width: calc(100vw - 1.5rem) !important;
+    /* Physical edges only — do not set inset-inline after these (it clears them). */
+    left: max(0.75rem, env(safe-area-inset-left, 0px)) !important;
+    right: max(0.75rem, env(safe-area-inset-right, 0px)) !important;
+    width: auto !important;
+    max-width: none !important;
     min-width: 0 !important;
     z-index: 1200 !important;
-    box-sizing: border-box !important;
   }
 
-  html {
-    overflow-x: clip;
-  }
-
+>>>>>>> d01dff4 (fix(ui): clamp mobile account/notification menus to viewport)
   .ds-sidebar {
     top: 0;
     height: 100vh;
@@ -741,6 +722,11 @@
 @media (max-width: 480px) {
   .ds-navbar {
     padding: 0 0.75rem;
-    overflow: visible;
+  }
+
+  .ds-dropdown-menu {
+    min-width: 200px;
+    left: auto;
+    right: 0;
   }
 }
