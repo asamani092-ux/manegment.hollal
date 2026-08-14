@@ -72,9 +72,7 @@
                         </span>
                     </td>
                     <td>
-                        @can('hr.employees.update')
-                            <button type="button" class="ds-link" wire:click="openEditModal({{ $user->id }})">تعديل</button>
-                        @endcan
+                        <a href="{{ route('users.profile', $user->id) }}" class="ds-link">الملف الوظيفي</a>
                         <x-ds-action-icons
                             :show-view="true"
                             :show-edit="false"

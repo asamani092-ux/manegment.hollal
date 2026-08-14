@@ -286,6 +286,15 @@
         <x-ds-form-group label="البريد" :error="$errors->first('editEmail')">
             <input type="email" class="ds-input" wire:model="editEmail">
         </x-ds-form-group>
+        <x-ds-form-group label="كلمة المرور الجديدة (اتركها فارغة للإبقاء)" :error="$errors->first('editPassword')">
+            <input type="password" class="ds-input" wire:model="editPassword" autocomplete="new-password">
+        </x-ds-form-group>
+        <div class="ds-form-group">
+            <label class="ds-checkbox-label">
+                <input type="checkbox" wire:model="editIsActive">
+                <span>الحساب نشط (إلغاء التفعيل يمنع تسجيل الدخول)</span>
+            </label>
+        </div>
         <x-ds-form-group label="المسمى">
             <input type="text" class="ds-input" wire:model="editJobTitle">
         </x-ds-form-group>

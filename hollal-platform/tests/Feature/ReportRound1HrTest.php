@@ -20,6 +20,7 @@ use App\Services\PayrollRunService;
 use App\Services\SalaryService;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -36,15 +37,48 @@ class ReportRound1HrTest extends TestCase
         $this->seed(PermissionSeeder::class);
     }
 
-    public function test_directory_table_shows_text_edit_button(): void
+    public function test_directory_defers_edit_to_profile(): void
     {
         $hr = User::factory()->create(['must_change_password' => false]);
         $hr->givePermissionTo(['hr.employees.view', 'hr.employees.update']);
+        $target = User::factory()->create(['name' => 'موظف تجريبي']);
 
         Livewire::actingAs($hr)
             ->test(UsersIndex::class)
             ->set('viewMode', 'table')
+            ->assertSee('الملف الوظيفي', false)
+            ->assertDontSeeHtml('wire:click="openEditModal('.$target->id.')"');
+
+        Livewire::actingAs($hr)
+            ->test(EmployeeProfileShow::class, ['user' => $target])
             ->assertSee('تعديل', false);
+    }
+
+    public function test_profile_edit_can_set_password_and_deactivate(): void
+    {
+        $target = User::factory()->create([
+            'password' => Hash::make('old-password-99'),
+            'is_active' => true,
+            'must_change_password' => false,
+        ]);
+        EmployeeProfile::create(['user_id' => $target->id, 'job_title' => 'موظف']);
+        $hr = User::factory()->create(['must_change_password' => false]);
+        $hr->givePermissionTo(['hr.employees.view', 'hr.employees.update']);
+
+        Livewire::actingAs($hr)
+            ->test(EmployeeProfileShow::class, ['user' => $target])
+            ->call('openEdit')
+            ->assertSee('كلمة المرور الجديدة', false)
+            ->assertSee('الحساب نشط', false)
+            ->set('editPassword', 'new-secure-99')
+            ->set('editIsActive', false)
+            ->call('saveProfile')
+            ->assertHasNoErrors();
+
+        $target->refresh();
+        $this->assertFalse($target->is_active);
+        $this->assertTrue($target->must_change_password);
+        $this->assertTrue(Hash::check('new-secure-99', $target->password));
     }
 
     public function test_profile_edit_saves_job_fields(): void

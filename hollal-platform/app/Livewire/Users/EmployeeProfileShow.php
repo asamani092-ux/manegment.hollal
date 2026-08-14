@@ -17,6 +17,7 @@ use App\Services\EvaluationService;
 use App\Services\SalaryService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Hash;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
 
@@ -55,6 +56,10 @@ class EmployeeProfileShow extends Component
     public string $editJobTitle = '';
 
     public string $editEmploymentType = '';
+
+    public string $editPassword = '';
+
+    public bool $editIsActive = true;
 
     public ?int $payScaleId = null;
 
@@ -108,6 +113,8 @@ class EmployeeProfileShow extends Component
         $this->editManagerId = $user->manager_id;
         $this->editJobTitle = (string) ($user->profile?->job_title ?? '');
         $this->editEmploymentType = (string) ($user->profile?->employment_type ?? '');
+        $this->editPassword = '';
+        $this->editIsActive = (bool) $user->is_active;
         $this->showEdit = true;
     }
 
@@ -125,15 +132,28 @@ class EmployeeProfileShow extends Component
             'editManagerId' => 'nullable|exists:users,id',
             'editJobTitle' => 'nullable|string|max:255',
             'editEmploymentType' => 'nullable|in:دوام_كامل,دوام_جزئي,متعاون,متطوع',
+            'editPassword' => 'nullable|string|min:8',
+            'editIsActive' => 'boolean',
+        ], [], [
+            'editPassword' => 'كلمة المرور',
+            'editIsActive' => 'حالة الحساب',
         ]);
 
-        $user->update([
+        $payload = [
             'name' => $this->editName,
             'phone' => $this->editPhone,
             'email' => $this->editEmail,
             'department_id' => $this->editDepartmentId,
             'manager_id' => $this->editManagerId,
-        ]);
+            'is_active' => $this->editIsActive,
+        ];
+
+        if ($this->editPassword !== '') {
+            $payload['password'] = Hash::make($this->editPassword);
+            $payload['must_change_password'] = true;
+        }
+
+        $user->update($payload);
 
         $profile = EmployeeProfile::query()->firstOrCreate(
             ['user_id' => $user->id],
