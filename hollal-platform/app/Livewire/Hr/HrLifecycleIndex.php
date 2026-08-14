@@ -28,9 +28,11 @@ class HrLifecycleIndex extends Component
 
     public ?int $confirmUnfreezeId = null;
 
-    public ?int $tasksDrawerUserId = null;
+    /** Unified floating panel for tasks + holds. */
+    public ?int $detailUserId = null;
 
-    public ?int $holdsDrawerUserId = null;
+    /** tasks|holds */
+    public string $detailTab = 'holds';
 
     public function mount(): void
     {
@@ -41,6 +43,7 @@ class HrLifecycleIndex extends Component
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
         abort_if($userId === auth()->id(), 403);
+        $this->closeDetails();
         $this->confirmStartId = $userId;
         $this->confirmCompleteId = null;
         $this->confirmFreezeId = null;
@@ -52,6 +55,7 @@ class HrLifecycleIndex extends Component
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
         abort_if($userId === auth()->id(), 403);
+        $this->closeDetails();
         $this->confirmFreezeId = $userId;
         $this->confirmStartId = null;
         $this->confirmCompleteId = null;
@@ -62,6 +66,7 @@ class HrLifecycleIndex extends Component
     public function askUnfreeze(int $userId): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        $this->closeDetails();
         $this->confirmUnfreezeId = $userId;
         $this->confirmStartId = null;
         $this->confirmCompleteId = null;
@@ -73,6 +78,7 @@ class HrLifecycleIndex extends Component
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
         abort_if($userId === auth()->id(), 403);
+        $this->closeDetails();
         $this->confirmCancelOffboardingId = $userId;
         $this->confirmStartId = null;
         $this->confirmCompleteId = null;
@@ -80,26 +86,37 @@ class HrLifecycleIndex extends Component
         $this->confirmUnfreezeId = null;
     }
 
-    public function openTasksDrawer(int $userId): void
+    public function askCompleteOffboarding(int $userId): void
     {
-        $this->tasksDrawerUserId = $userId;
-        $this->holdsDrawerUserId = null;
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        abort_if($userId === auth()->id(), 403);
+        $this->closeDetails();
+        $this->confirmCompleteId = $userId;
+        $this->confirmStartId = null;
     }
 
-    public function closeTasksDrawer(): void
+    /**
+     * Open unified floating panel. O(1).
+     */
+    public function openDetails(int $userId, string $tab = 'holds'): void
     {
-        $this->tasksDrawerUserId = null;
+        $this->cancelConfirm();
+        $this->detailUserId = $userId;
+        $this->detailTab = in_array($tab, ['tasks', 'holds'], true) ? $tab : 'holds';
     }
 
-    public function openHoldsDrawer(int $userId): void
+    public function setDetailTab(string $tab): void
     {
-        $this->holdsDrawerUserId = $userId;
-        $this->tasksDrawerUserId = null;
+        if (! in_array($tab, ['tasks', 'holds'], true) || $this->detailUserId === null) {
+            return;
+        }
+        $this->detailTab = $tab;
     }
 
-    public function closeHoldsDrawer(): void
+    public function closeDetails(): void
     {
-        $this->holdsDrawerUserId = null;
+        $this->detailUserId = null;
+        $this->detailTab = 'holds';
     }
 
     public function cancelConfirm(): void
@@ -116,24 +133,13 @@ class HrLifecycleIndex extends Component
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
         abort_if($userId === auth()->id(), 403);
 
-        $employee = User::findOrFail($userId);
-        $service = app(OffboardingService::class);
-
         try {
-            $service->offboard($employee, auth()->user());
+            app(OffboardingService::class)->offboard(User::findOrFail($userId), auth()->user());
             $this->confirmStartId = null;
             $this->dispatch('toast', type: 'success', message: 'أُنشئت مهام إنهاء العلاقة في إسناد — الحساب يبقى نشطًا حتى إكمالها');
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
-    }
-
-    public function askCompleteOffboarding(int $userId): void
-    {
-        abort_unless(auth()->user()->can('hr.employees.update'), 403);
-        abort_if($userId === auth()->id(), 403);
-        $this->confirmCompleteId = $userId;
-        $this->confirmStartId = null;
     }
 
     public function completeOffboarding(int $userId): void
@@ -212,29 +218,45 @@ class HrLifecycleIndex extends Component
             ->orderBy('name')
             ->paginate(15);
 
-        $holds = $service->holdsForMany($users->pluck('id')->all());
+        $ids = $users->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $holds = $service->holdsForMany($ids);
 
         $taskCounts = Task::query()
-            ->whereIn('related_user_id', $users->pluck('id'))
+            ->whereIn('related_user_id', $ids)
             ->where('role_label', 'إنهاء_علاقة')
             ->selectRaw('related_user_id, COUNT(*) as total, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as done', [TaskLifecycleService::STATUS_COMPLETED])
             ->groupBy('related_user_id')
             ->get()
-            ->keyBy('related_user_id');
+            ->keyBy(fn ($row) => (int) $row->related_user_id);
 
         $offboardingTasks = Task::query()
             ->select(['id', 'title', 'status', 'related_user_id'])
-            ->whereIn('related_user_id', $users->pluck('id'))
+            ->whereIn('related_user_id', $ids)
             ->where('role_label', 'إنهاء_علاقة')
             ->orderBy('id')
             ->get()
-            ->groupBy('related_user_id');
+            ->groupBy(fn (Task $t) => (int) $t->related_user_id);
+
+        $detailUser = $this->detailUserId
+            ? User::query()->select(['id', 'name'])->find($this->detailUserId)
+            : null;
+
+        $detailHolds = $this->detailUserId
+            ? ($holds[(int) $this->detailUserId] ?? $service->holds(User::findOrFail($this->detailUserId)))
+            : [];
+
+        $detailTasks = $this->detailUserId
+            ? ($offboardingTasks->get((int) $this->detailUserId) ?? collect())
+            : collect();
 
         return view('livewire.hr.hr-lifecycle-index', [
             'users' => $users,
             'holds' => $holds,
             'taskCounts' => $taskCounts,
             'offboardingTasks' => $offboardingTasks,
+            'detailUser' => $detailUser,
+            'detailHolds' => $detailHolds,
+            'detailTasks' => $detailTasks,
         ]);
     }
 }

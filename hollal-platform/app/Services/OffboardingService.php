@@ -110,7 +110,17 @@ class OffboardingService
             ->groupBy('related_user_id')
             ->pluck('aggregate', 'related_user_id');
 
+        $offboardingStarted = User::query()
+            ->whereIn('id', $employeeIds)
+            ->whereNotNull('offboarding_started_at')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
         foreach ($incompleteCounts as $employeeId => $count) {
+            if (! in_array((int) $employeeId, $offboardingStarted, true)) {
+                continue;
+            }
             $result[(int) $employeeId][] = 'مهام إنهاء غير مكتملة ('.$count.')';
         }
 
