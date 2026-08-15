@@ -3,6 +3,7 @@
 namespace App\Livewire\Hr;
 
 use App\Models\PayrollRun;
+use App\Models\PayrollRunItem;
 use App\Services\PayrollRunService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -11,7 +12,8 @@ use Livewire\Component;
 use Livewire\WithPagination;
 
 /**
- * 01-B3 — payroll runs: generate for a month, review, submit to finance.
+ * 01-B3 + HR-6 — payroll runs: generate, item detail, HR edit with reason,
+ * finance accept/reject with reason.
  */
 class PayrollRunsIndex extends Component
 {
@@ -24,9 +26,28 @@ class PayrollRunsIndex extends Component
 
     public string $monthFilter = '';
 
+    public ?int $viewingRunId = null;
+
+    public string $variableLabel = '';
+
+    public string $variableReason = '';
+
+    public string $variableAmount = '';
+
+    public string $variableKind = 'deduction';
+
+    public ?int $variableItemId = null;
+
+    public ?int $editingVariableIndex = null;
+
+    public string $returnNote = '';
+
+    public ?int $open = null;
+
     protected $queryString = [
         'statusFilter' => ['except' => ''],
         'monthFilter' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function updatingStatusFilter(): void
@@ -43,6 +64,10 @@ class PayrollRunsIndex extends Component
     {
         $this->authorize('hr.salaries.view');
         $this->month = now()->format('Y-m');
+
+        if ($this->open) {
+            $this->openRun($this->open);
+        }
     }
 
     public function generate(): void
@@ -60,6 +85,116 @@ class PayrollRunsIndex extends Component
         app(PayrollRunService::class)->generate($this->month);
 
         $this->dispatch('toast', type: 'success', message: 'تم توليد مسيّر رواتب '.$this->month);
+    }
+
+    public function openRun(int $runId): void
+    {
+        $this->authorize('hr.salaries.view');
+        $this->viewingRunId = $runId;
+        $this->reset([
+            'variableLabel', 'variableReason', 'variableAmount', 'variableItemId',
+            'editingVariableIndex', 'returnNote',
+        ]);
+        $this->variableKind = 'deduction';
+    }
+
+    public function closeRun(): void
+    {
+        $this->viewingRunId = null;
+        $this->editingVariableIndex = null;
+    }
+
+    public function startEditVariable(int $itemId, int $index): void
+    {
+        $this->authorize('hr.salaries.manage');
+        $item = PayrollRunItem::findOrFail($itemId);
+        $variables = $item->variables ?? [];
+        if (! array_key_exists($index, $variables)) {
+            $this->dispatch('toast', type: 'error', message: 'البند المتغير غير موجود');
+
+            return;
+        }
+
+        $variable = $variables[$index];
+        $this->variableItemId = $itemId;
+        $this->editingVariableIndex = $index;
+        $this->variableLabel = (string) ($variable['label'] ?? '');
+        $this->variableReason = (string) ($variable['reason'] ?? '');
+        $this->variableAmount = (string) ($variable['amount'] ?? '');
+        $this->variableKind = (string) ($variable['kind'] ?? 'deduction');
+    }
+
+    public function cancelEditVariable(): void
+    {
+        $this->reset(['variableLabel', 'variableReason', 'variableAmount', 'variableItemId', 'editingVariableIndex']);
+        $this->variableKind = 'deduction';
+    }
+
+    public function addVariable(): void
+    {
+        $this->authorize('hr.salaries.manage');
+
+        $this->validate([
+            'variableItemId' => 'required|exists:payroll_run_items,id',
+            'variableLabel' => 'required|string|max:255',
+            'variableReason' => 'required|string|max:500',
+            'variableAmount' => 'required|numeric|min:0.01',
+            'variableKind' => 'required|in:addition,deduction',
+        ]);
+
+        $item = PayrollRunItem::findOrFail($this->variableItemId);
+
+        try {
+            if ($this->editingVariableIndex !== null) {
+                app(PayrollRunService::class)->updateVariable(
+                    $item,
+                    $this->editingVariableIndex,
+                    $this->variableLabel,
+                    $this->variableReason,
+                    (float) $this->variableAmount,
+                    $this->variableKind,
+                );
+                $message = 'تم تحديث البند المتغير';
+            } else {
+                app(PayrollRunService::class)->addVariable(
+                    $item,
+                    $this->variableLabel,
+                    $this->variableReason,
+                    (float) $this->variableAmount,
+                    $this->variableKind,
+                );
+                $message = 'أُضيف البند المتغير';
+            }
+        } catch (\InvalidArgumentException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
+        $this->reset(['variableLabel', 'variableReason', 'variableAmount', 'editingVariableIndex']);
+        $this->variableKind = 'deduction';
+        $this->dispatch('toast', type: 'success', message: $message);
+    }
+
+    public function deleteVariable(int $itemId, int $index): void
+    {
+        $this->authorize('hr.salaries.manage');
+
+        $item = PayrollRunItem::findOrFail($itemId);
+
+        try {
+            app(PayrollRunService::class)->deleteVariable($item, $index);
+        } catch (\InvalidArgumentException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
+        if ($this->variableItemId === $itemId && $this->editingVariableIndex === $index) {
+            $this->cancelEditVariable();
+        }
+
+        $this->dispatch('toast', type: 'success', message: 'حُذف البند المتغير');
     }
 
     public function submit(int $runId): void
@@ -88,8 +223,29 @@ class PayrollRunsIndex extends Component
         }
     }
 
+    public function financeReject(int $runId): void
+    {
+        $this->authorize('finance.payroll.approve');
+
+        $this->validate([
+            'returnNote' => 'required|string|max:1000',
+        ]);
+
+        try {
+            app(PayrollRunService::class)->returnForCorrection(PayrollRun::findOrFail($runId), $this->returnNote);
+            $this->dispatch('toast', type: 'success', message: 'أُعيد المسيّر للموارد بسبب: '.$this->returnNote);
+            $this->returnNote = '';
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
     public function render(): View
     {
+        $viewingRun = $this->viewingRunId
+            ? PayrollRun::with(['items.employee:id,name'])->find($this->viewingRunId)
+            : null;
+
         return view('livewire.hr.payroll-runs-index', [
             'runs' => PayrollRun::withCount('items')
                 ->withSum('items', 'net')
@@ -103,6 +259,7 @@ class PayrollRunsIndex extends Component
                 PayrollRun::STATUS_EXECUTED,
                 PayrollRun::STATUS_RETURNED,
             ],
+            'viewingRun' => $viewingRun,
         ])->layout('layouts.app', ['title' => 'مسيّرات الرواتب']);
     }
 }

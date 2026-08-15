@@ -1,19 +1,75 @@
 <x-ds-page>
-    <x-ds-page-header title="منح الصلاحيات" />
+    <x-ds-page-header
+        title="الأدوار والصلاحيات"
+        :show-button="auth()->user()->can('roles.create') && $tab === 'entities'"
+        button-label="إضافة دور"
+        wire:click="openCreateRole"
+    />
+
+    <p class="ds-text-muted ds-mb-3">
+        صفحة واحدة: إدارة الأدوار، منح صلاحيات الدور، الاستثناءات، ومصفوفة «من يملك ماذا».
+    </p>
 
     <section class="ds-section ds-filter-bar">
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'roles')">صلاحيات الأدوار</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'exceptions')">الاستثناءات</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'matrix')">من يملك ماذا</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'entities' ? 'ds-btn-primary' : '' }}" wire:click="setTab('entities')">الأدوار</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'perms' ? 'ds-btn-primary' : '' }}" wire:click="setTab('perms')">صلاحيات الأدوار</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'exceptions' ? 'ds-btn-primary' : '' }}" wire:click="setTab('exceptions')">الاستثناءات</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'matrix' ? 'ds-btn-primary' : '' }}" wire:click="setTab('matrix')">من يملك ماذا</button>
     </section>
 
-    @if ($tab === 'roles')
+    @if ($tab === 'entities')
+        <x-ds-table>
+            <x-slot:head>
+                <tr>
+                    <th>اسم الدور</th>
+                    <th>عدد الصلاحيات</th>
+                    <th>إجراءات</th>
+                </tr>
+            </x-slot:head>
+            @forelse ($roleEntities as $role)
+                <tr wire:key="role-entity-{{ $role->id }}">
+                    <td><x-ds-role-label :name="$role->name" /></td>
+                    <td class="ds-ltr-num">{{ $role->permissions_count }}</td>
+                    <td>
+                        @can('roles.update')
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEditRole({{ $role->id }})">إعادة تسمية</button>
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="manageRolePermissions({{ $role->id }})">إدارة الصلاحيات</button>
+                        @endcan
+                        @can('roles.delete')
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="deleteRole({{ $role->id }})" wire:confirm="حذف هذا الدور؟">حذف</button>
+                        @endcan
+                    </td>
+                </tr>
+            @empty
+                <tr>
+                    <td colspan="3" class="ds-text-muted ds-table-empty">لا توجد أدوار</td>
+                </tr>
+            @endforelse
+        </x-ds-table>
+    @endif
+
+    @if ($tab === 'perms')
         <section class="ds-section ds-filter-bar">
-            @foreach ($roles as $role)
-                <button type="button" class="ds-btn ds-btn-sm" wire:click="selectRole({{ $role->id }})">
-                    <x-ds-role-label :name="$role->name" />
-                </button>
-            @endforeach
+            <x-ds-form-group label="الدور">
+                <input type="search" class="ds-input" wire:model.live.debounce.200ms="roleQuery" placeholder="بحث عن دور...">
+                <select class="ds-input" wire:model.live="roleId">
+                    @foreach ($roles as $role)
+                        @php
+                            $roleAr = [
+                                'Super Admin' => 'مدير النظام',
+                                'General Manager' => 'المدير العام',
+                                'Executive Manager' => 'المدير التنفيذي',
+                                'Project Manager' => 'مدير مشروع',
+                                'Finance' => 'المالية',
+                                'Employee' => 'موظف',
+                                'Partnerships Manager' => 'مدير الشراكات',
+                                'HR Manager' => 'مدير الموارد البشرية',
+                            ][$role->name] ?? $role->name;
+                        @endphp
+                        <option value="{{ $role->id }}">{{ $roleAr }}</option>
+                    @endforeach
+                </select>
+            </x-ds-form-group>
         </section>
 
         <section class="ds-section">
@@ -22,18 +78,24 @@
         </section>
 
         @foreach ($permissions as $section => $sectionPermissions)
-            <section class="ds-section" wire:key="section-{{ $section }}">
-                <h2 class="ds-section-title">{{ $groups[$section] ?? $section }}</h2>
-                <button type="button" class="ds-btn ds-btn-sm" wire:click="toggleSection('{{ $section }}', true)">تفعيل القسم</button>
-                <button type="button" class="ds-btn ds-btn-sm" wire:click="toggleSection('{{ $section }}', false)">تعطيل القسم</button>
-
-                @foreach ($sectionPermissions as $permission)
-                    <label class="ds-checkbox" wire:key="perm-{{ $permission }}">
-                        <input type="checkbox" value="{{ $permission }}" wire:model="selected">
-                        {{ $labels[$permission] ?? $permission }}
-                    </label>
-                @endforeach
-            </section>
+            <details class="ds-card ds-mb-3 uat-perm-section" wire:key="section-{{ $section }}" open>
+                <summary class="ds-section-title" style="cursor:pointer;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:.75rem">
+                    <span>{{ $groups[$section] ?? $section }}</span>
+                    <span class="ds-text-muted ds-ltr-num" style="font-size:.85rem">{{ count($sectionPermissions) }} صلاحية</span>
+                </summary>
+                <div style="padding:.75rem 0;display:grid;gap:.35rem">
+                    <div class="ds-toolbar-actions">
+                        <button type="button" class="ds-btn ds-btn-sm" wire:click="toggleSection('{{ $section }}', true)">تفعيل القسم</button>
+                        <button type="button" class="ds-btn ds-btn-sm" wire:click="toggleSection('{{ $section }}', false)">تعطيل القسم</button>
+                    </div>
+                    @foreach ($sectionPermissions as $permission)
+                        <label class="ds-checkbox" wire:key="perm-{{ $permission }}" style="display:flex;align-items:center;gap:.5rem;padding:.35rem .5rem;border-radius:8px;background:var(--ds-surface-2,#f5f7fa)">
+                            <input type="checkbox" value="{{ $permission }}" wire:model="selected">
+                            <span>{{ $labels[$permission] ?? $permission }}</span>
+                        </label>
+                    @endforeach
+                </div>
+            </details>
         @endforeach
 
         @can('roles.update')
@@ -46,23 +108,25 @@
             <section class="ds-section">
                 <h2 class="ds-section-title">منح استثنائي لشخص</h2>
                 <x-ds-form-group label="الموظف" :error="$errors->first('grantUserId')">
-                    <select class="ds-input" wire:model="grantUserId">
-                        <option value="">—</option>
-                        @foreach ($users as $user)
-                            <option value="{{ $user->id }}">{{ $user->name }}</option>
-                        @endforeach
-                    </select>
+                    <x-ds-search-select
+                        wire-model="grantUserId"
+                        :options="$userOptions"
+                        value-key="id"
+                        label-key="label"
+                        sub-label-key="sub"
+                        placeholder="ابحث واختر موظفاً…"
+                    />
                 </x-ds-form-group>
 
                 <x-ds-form-group label="الصلاحية" :error="$errors->first('grantPermission')">
-                    <select class="ds-input" wire:model="grantPermission">
-                        <option value="">—</option>
-                        @foreach ($permissions as $section => $sectionPermissions)
-                            @foreach ($sectionPermissions as $permission)
-                                <option value="{{ $permission }}">{{ $labels[$permission] ?? $permission }}</option>
-                            @endforeach
-                        @endforeach
-                    </select>
+                    <x-ds-search-select
+                        wire-model="grantPermission"
+                        :options="$permissionOptions"
+                        value-key="id"
+                        label-key="label"
+                        sub-label-key="sub"
+                        placeholder="ابحث واختر صلاحية…"
+                    />
                 </x-ds-form-group>
 
                 <x-ds-form-group label="سبب الاستثناء (إلزامي)" :error="$errors->first('grantReason')">
@@ -131,4 +195,15 @@
             @endforelse
         </x-ds-table>
     @endif
+
+    <x-ds-modal :show="$showRoleModal" title="{{ $editingRoleId ? 'إعادة تسمية الدور' : 'إضافة دور' }}" close-action="closeRoleModal">
+        <x-ds-form-group label="اسم الدور" for="merged-role-name" :error="$errors->first('roleName')">
+            <input type="text" id="merged-role-name" class="ds-input" wire:model="roleName" placeholder="مثال: مدير الموارد البشرية">
+        </x-ds-form-group>
+        <p class="ds-text-muted">الصلاحيات تُدار من تبويب «صلاحيات الأدوار» بعد الحفظ.</p>
+        <div class="ds-toolbar-actions">
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="closeRoleModal">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveRoleEntity">حفظ</button>
+        </div>
+    </x-ds-modal>
 </x-ds-page>

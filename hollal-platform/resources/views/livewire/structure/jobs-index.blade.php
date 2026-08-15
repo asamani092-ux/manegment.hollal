@@ -30,10 +30,15 @@
         @forelse ($jobs as $job)
             <tr wire:key="job-{{ $job->id }}">
                 <td>{{ $job->name }}</td>
-                <td>{{ $job->level }}</td>
+                <td><span class="org-node__badge org-node__badge--job">{{ $job->level }}</span></td>
                 <td>{{ $job->parent?->name ?? '—' }}</td>
                 <td>{{ $job->manager?->name ?? '—' }}</td>
-                <td><a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.org-tree') }}">الهيكل</a></td>
+                <td>
+                    @if ($canManage)
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEdit({{ $job->id }})">تعديل البطاقة</button>
+                    @endif
+                    <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.org-tree') }}">الهيكل</a>
+                </td>
             </tr>
         @empty
             <tr>
@@ -43,4 +48,39 @@
     </x-ds-table>
 
     {{ $jobs->links() }}
+
+    <x-ds-modal :show="$editingId !== null" title="تعديل بطاقة الوظيفة" close-action="closeEdit" size="lg">
+        <x-ds-form-group label="المسمى" :error="$errors->first('editName')">
+            <input type="text" class="ds-input" wire:model="editName">
+        </x-ds-form-group>
+        <x-ds-form-group label="الوحدة الأب" :error="$errors->first('editParentId')">
+            <select class="ds-input" wire:model="editParentId">
+                <option value="">—</option>
+                @foreach ($parentUnits as $unit)
+                    <option value="{{ $unit->id }}">{{ $unit->name }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+        <x-ds-form-group label="المسؤول المباشر" :error="$errors->first('editManagerId')">
+            <select class="ds-input" wire:model="editManagerId">
+                <option value="">—</option>
+                @foreach ($managers as $manager)
+                    <option value="{{ $manager->id }}">{{ $manager->name }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+        <x-ds-form-group label="الغرض من الوظيفة" :error="$errors->first('editPurpose')">
+            <textarea class="ds-input" rows="3" wire:model="editPurpose"></textarea>
+        </x-ds-form-group>
+        <x-ds-form-group label="المسؤوليات (سطر لكل بند)" :error="$errors->first('editResponsibilities')">
+            <textarea class="ds-input" rows="5" wire:model="editResponsibilities"></textarea>
+        </x-ds-form-group>
+        <x-ds-form-group label="المتطلبات (سطر لكل بند)" :error="$errors->first('editRequirements')">
+            <textarea class="ds-input" rows="4" wire:model="editRequirements"></textarea>
+        </x-ds-form-group>
+        <div class="ds-toolbar-actions">
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveEdit">حفظ</button>
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="closeEdit">إلغاء</button>
+        </div>
+    </x-ds-modal>
 </x-ds-page>

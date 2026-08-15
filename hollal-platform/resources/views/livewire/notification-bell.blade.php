@@ -33,9 +33,9 @@
                     @foreach ($notifications as $notification)
                         <li class="ds-notifications-item {{ $notification->read_at === null ? 'is-unread' : '' }}">
                             <a
-                                href="{{ $notification->data['url'] ?? '#' }}"
+                                href="{{ \App\Livewire\NotificationBell::resolveTarget($notification) ?? '#' }}"
                                 class="ds-notifications-link"
-                                wire:click="markAsRead('{{ $notification->id }}')"
+                                wire:click.prevent="markAsReadAndGo('{{ $notification->id }}')"
                             >
                                 <span class="ds-notifications-message">{{ $notification->data['message'] ?? '' }}</span>
                                 <span class="ds-notifications-time">{{ $notification->created_at->diffForHumans() }}</span>

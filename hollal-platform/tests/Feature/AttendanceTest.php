@@ -81,4 +81,53 @@ class AttendanceTest extends TestCase
         $this->assertSame(3, $enabledProfile->fresh()->overtime_days_this_month);
         $this->assertSame(0, $disabledProfile->fresh()->overtime_days_this_month);
     }
+
+    public function test_lateness_minutes_against_office_start(): void
+    {
+        $this->seed(PlatformSettingsSeeder::class);
+        Setting::set('attendance.office_start_time', '08:00');
+
+        $employee = User::factory()->create(['attendance_enabled' => true]);
+        $record = \App\Models\AttendanceRecord::create([
+            'employee_id' => $employee->id,
+            'date' => today(),
+            'type' => 'حضور',
+            'check_in_at' => today()->setTime(8, 25),
+            'declared_by' => $employee->id,
+        ]);
+
+        $service = app(AttendanceService::class);
+        $this->assertSame(25, $service->latenessMinutes($record));
+
+        $onTime = \App\Models\AttendanceRecord::create([
+            'employee_id' => $employee->id,
+            'date' => today()->subDay(),
+            'type' => 'حضور',
+            'check_in_at' => today()->subDay()->setTime(7, 55),
+            'declared_by' => $employee->id,
+        ]);
+        $this->assertSame(0, $service->latenessMinutes($onTime));
+    }
+
+    public function test_monthly_report_includes_lateness(): void
+    {
+        $this->seed(PlatformSettingsSeeder::class);
+        Setting::set('attendance.office_start_time', '09:00');
+
+        $employee = User::factory()->create(['attendance_enabled' => true, 'name' => 'موظف تجريبي']);
+        \App\Models\AttendanceRecord::create([
+            'employee_id' => $employee->id,
+            'date' => now()->startOfMonth()->addDays(2),
+            'type' => 'حضور',
+            'check_in_at' => now()->startOfMonth()->addDays(2)->setTime(9, 12),
+            'declared_by' => $employee->id,
+        ]);
+
+        $report = app(AttendanceService::class)->monthlyReport(now()->format('Y-m'), $employee->id);
+
+        $this->assertSame('09:00', $report['office_start']);
+        $this->assertCount(1, $report['rows']);
+        $this->assertSame(12, $report['rows'][0]['late_minutes']);
+        $this->assertSame('موظف تجريبي', $report['rows'][0]['employee']);
+    }
 }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class PayScale extends Model
@@ -35,5 +36,11 @@ class PayScale extends Model
         }
 
         return null;
+    }
+
+    /** @return HasMany<EmployeeProfile, $this> */
+    public function profiles(): HasMany
+    {
+        return $this->hasMany(EmployeeProfile::class);
     }
 }

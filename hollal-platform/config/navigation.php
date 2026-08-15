@@ -30,7 +30,7 @@ return [
                 ['label' => 'عقود العاملين', 'route' => 'contracts.index', 'icon' => 'fa-file-signature', 'permission' => 'hr.employees.view'],
                 ['label' => 'سلم الرواتب', 'route' => 'pay-scales.index', 'icon' => 'fa-layer-group', 'permission' => 'hr.salaries.manage'],
                 ['label' => 'مسيّرات الرواتب', 'route' => 'payroll-runs.index', 'icon' => 'fa-file-invoice-dollar', 'permission' => 'hr.salaries.view'],
-                ['label' => 'الرواتب الشهرية', 'route' => 'payroll.index', 'icon' => 'fa-money-check-dollar', 'permission' => 'hr.salaries.view'],
+                // «الرواتب الشهرية» أُدمجت في المسيّر + الملف الوظيفي — لا تبويب ثالث.
                 ['label' => 'التقييم الدوري', 'route' => 'evaluations.index', 'icon' => 'fa-star-half-alt', 'permission' => 'hr.employees.view'],
                 ['label' => 'المسؤوليات', 'route' => 'responsibilities.index', 'icon' => 'fa-clipboard-list', 'permission' => 'hr.employees.update'],
                 ['label' => 'الحضور', 'route' => 'attendance.index', 'icon' => 'fa-user-clock', 'permission' => 'hr.employees.view'],
@@ -109,15 +109,12 @@ return [
             'items' => [
                 ['label' => 'الأقسام', 'route' => 'departments.index', 'icon' => 'fa-sitemap', 'permission' => 'structure.departments.view'],
                 ['label' => 'الهيكل التنظيمي', 'route' => 'structure.org-tree', 'icon' => 'fa-network-wired', 'permission' => 'structure.view|structure.departments.view|structure.manage'],
-                ['label' => 'الوظائف', 'route' => 'structure.jobs', 'icon' => 'fa-id-badge', 'permission' => 'structure.positions.manage|structure.view'],
-                ['label' => 'اللجان', 'route' => 'structure.committees', 'icon' => 'fa-users-cog', 'permission' => 'structure.committees.manage|structure.view'],
             ],
         ],
         [
             'label' => 'الأدوار والصلاحيات',
             'items' => [
-                ['label' => 'الأدوار', 'route' => 'settings.roles', 'icon' => 'fa-shield-halved', 'permission' => 'roles.view'],
-                ['label' => 'منح الصلاحيات', 'route' => 'settings.grants', 'icon' => 'fa-key', 'permission' => 'roles.view'],
+                ['label' => 'الأدوار والصلاحيات', 'route' => 'settings.grants', 'icon' => 'fa-shield-halved', 'permission' => 'roles.view'],
             ],
         ],
         [

@@ -40,6 +40,6 @@ class PayrollAccessTest extends TestCase
 
         $response = $this->actingAs($user)->get(route('payroll.index'));
 
-        $response->assertOk();
+        $response->assertRedirect(route('payroll-runs.index'));
     }
 }

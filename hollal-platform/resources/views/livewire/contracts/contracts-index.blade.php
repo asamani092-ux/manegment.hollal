@@ -1,11 +1,6 @@
 <x-ds-page>
     @php
-        $statusLabels = [
-            'active' => 'ساري',
-            'expired' => 'منتهٍ',
-            'terminated' => 'مُنهى',
-            'pending' => 'قيد الانتظار',
-        ];
+        $statusLabels = \App\Models\Contract::STATUS_LABELS;
     @endphp
 
     <x-ds-page-header
@@ -39,7 +34,7 @@
                     <th>الموظف</th>
                     <th>تاريخ البداية</th>
                     <th>تاريخ النهاية</th>
-                    <th>القيمة</th>
+                    <th>الراتب الشهري</th>
                     <th>الحالة</th>
                     <th>الملف</th>
                     <th>إجراءات</th>
@@ -54,9 +49,26 @@
                     <td>{{ $statusLabels[$contract->status] ?? $contract->status }}</td>
                     <td>
                         @if ($contract->contract_file)
-                            <a class="ds-link" href="{{ route('contracts.files.download', $contract) }}">
-                                <i class="fas fa-download"></i> تحميل
-                            </a>
+                            <div class="ds-toolbar-actions" style="gap:.35rem">
+                                <a
+                                    class="ds-btn ds-btn-outline ds-btn-sm"
+                                    href="{{ route('contracts.files.download', $contract) }}?inline=1"
+                                    target="_blank"
+                                    rel="noopener"
+                                    title="معاينة"
+                                    aria-label="معاينة الملف"
+                                >
+                                    <i class="fas fa-eye" aria-hidden="true"></i>
+                                </a>
+                                <a
+                                    class="ds-btn ds-btn-outline ds-btn-sm"
+                                    href="{{ route('contracts.files.download', $contract) }}"
+                                    title="تحميل"
+                                    aria-label="تحميل الملف"
+                                >
+                                    <i class="fas fa-download" aria-hidden="true"></i>
+                                </a>
+                            </div>
                         @else
                             <span class="ds-text-muted">—</span>
                         @endif
@@ -71,6 +83,11 @@
                             :delete-action="'delete('.$contract->id.')'"
                             delete-confirm="حذف هذا العقد؟"
                         />
+                        @can('update', $contract)
+                            @if ($contract->isRenewable())
+                                <button type="button" class="ds-link" wire:click="openRenew({{ $contract->id }})">تجديد</button>
+                            @endif
+                        @endcan
                     </td>
                 </tr>
             @empty
@@ -114,9 +131,15 @@
                         <input type="date" class="ds-input" wire:model="end_date" @disabled($viewOnly)>
                     </x-ds-form-group>
                     @if ($canViewValue)
-                        <x-ds-form-group label="القيمة" :error="$errors->first('value')">
-                            <input type="number" step="0.01" class="ds-input" wire:model="value" @disabled($viewOnly)>
-                        </x-ds-form-group>
+                        <div class="ds-form-group">
+                            <span class="ds-label">الراتب الشهري (من الملف الوظيفي)</span>
+                            <p class="ds-help-text" id="contract-salary-help">
+                                لا توجد «قيمة عقد» منفصلة — الراتب الشهري يُدار من الملف الوظيفي (مكوّنات الراتب) ويظهر في المسيّر عند التوليد.
+                                @if ($contractId && $employee_id)
+                                    <a class="ds-link" href="{{ route('users.profile', $employee_id) }}">فتح الملف الوظيفي</a>
+                                @endif
+                            </p>
+                        </div>
                     @endif
                     <x-ds-form-group label="الحالة" :error="$errors->first('status')">
                         <select class="ds-input" wire:model="status" @disabled($viewOnly)>
@@ -128,6 +151,7 @@
                     @if (! $viewOnly)
                         <x-ds-form-group label="ملف العقد" :error="$errors->first('contractFile')">
                             <input type="file" class="ds-input" wire:model="contractFile" accept=".pdf,.doc,.docx">
+                            <div wire:loading wire:target="contractFile" class="ds-text-muted">جاري رفع الملف…</div>
                             @if ($existingContractFile)
                                 <p class="ds-text-muted ds-mt-sm">ملف محفوظ — رفع ملف جديد لاستبداله</p>
                             @endif
@@ -145,6 +169,29 @@
                         </button>
                     @endif
                     <button type="button" class="ds-btn ds-btn-outline" wire:click="closeModal">إغلاق</button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($showRenewModal)
+        <div class="ds-modal-overlay" wire:click.self="closeRenewModal">
+            <div class="ds-modal" role="dialog" aria-modal="true">
+                <div class="ds-modal-header">
+                    <h3>تجديد العقد</h3>
+                    <button type="button" class="ds-modal-close" wire:click="closeRenewModal">&times;</button>
+                </div>
+                <div class="ds-modal-body">
+                    <p class="ds-text-muted">أدخل تاريخ نهاية الفترة الجديدة. يُمدَّد نفس سجل العقد وتُسجَّل فترة التجديد في السجل.</p>
+                    <x-ds-form-group label="تاريخ نهاية التجديد" :error="$errors->first('renewEndDate')">
+                        <input type="date" class="ds-input" wire:model="renewEndDate" aria-label="تاريخ نهاية التجديد">
+                    </x-ds-form-group>
+                </div>
+                <div class="ds-modal-footer">
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="renew">
+                        <i class="fas fa-rotate" aria-hidden="true"></i> تأكيد التجديد
+                    </button>
+                    <button type="button" class="ds-btn ds-btn-outline" wire:click="closeRenewModal">إلغاء</button>
                 </div>
             </div>
         </div>

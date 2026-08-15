@@ -4,19 +4,26 @@ namespace App\Services;
 
 use App\Models\Task;
 use App\Models\User;
+use App\Services\TaskLifecycleService;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * 01-B5 — offboarding: block while the employee still holds custodies/assets,
- * otherwise disable the account (منتهية_علاقته) and raise handover tasks.
- * The hold checks read the custodies/assets tables when they exist (04-B3 /
- * 04-B5); until then there are no holds.
+ * 01-B5 / HR-5 — offboarding starts إسناد checklist tasks; account disable is
+ * the last step after every task is completed and holds are cleared.
  */
 class OffboardingService
 {
+    public const CHECKLIST = [
+        'تسليم الأعمال الجارية',
+        'استلام العهد المالية والأصول',
+        'نقل الملفات والمستندات',
+        'إصدار المخالصة',
+    ];
+
     /**
-     * @return list<string> outstanding holds preventing offboarding
+     * @return list<string> outstanding holds preventing offboarding close
      */
     public function holds(User $employee): array
     {
@@ -25,7 +32,7 @@ class OffboardingService
         if (Schema::hasTable('custodies')) {
             $openCustodies = DB::table('custodies')
                 ->where('employee_id', $employee->id)
-                ->whereNotIn('status', ['مغلقة'])
+                ->whereNotIn('status', ['مغلقة', 'مرفوضة'])
                 ->whereNull('deleted_at')
                 ->count();
 
@@ -45,11 +52,16 @@ class OffboardingService
             }
         }
 
+        $incomplete = $this->incompleteTasks($employee)->count();
+        if ($employee->offboarding_started_at && $incomplete > 0) {
+            $holds[] = 'مهام إنهاء غير مكتملة ('.$incomplete.')';
+        }
+
         return $holds;
     }
 
     /**
-     * Batched variant of holds() for list screens — 2 queries total instead of 2×n.
+     * Batched variant of holds() for list screens — 2 queries + 1 task query.
      * Time: O(n) | Space: O(n).
      *
      * @param  list<int>  $employeeIds
@@ -67,7 +79,7 @@ class OffboardingService
             $rows = DB::table('custodies')
                 ->selectRaw('employee_id, COUNT(*) as aggregate')
                 ->whereIn('employee_id', $employeeIds)
-                ->whereNotIn('status', ['مغلقة'])
+                ->whereNotIn('status', ['مغلقة', 'مرفوضة'])
                 ->whereNull('deleted_at')
                 ->groupBy('employee_id')
                 ->pluck('aggregate', 'employee_id');
@@ -90,33 +102,120 @@ class OffboardingService
             }
         }
 
+        $incompleteCounts = Task::query()
+            ->whereIn('related_user_id', $employeeIds)
+            ->where('role_label', 'إنهاء_علاقة')
+            ->where('status', '!=', TaskLifecycleService::STATUS_COMPLETED)
+            ->selectRaw('related_user_id, COUNT(*) as aggregate')
+            ->groupBy('related_user_id')
+            ->pluck('aggregate', 'related_user_id');
+
+        $offboardingStarted = User::query()
+            ->whereIn('id', $employeeIds)
+            ->whereNotNull('offboarding_started_at')
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        foreach ($incompleteCounts as $employeeId => $count) {
+            if (! in_array((int) $employeeId, $offboardingStarted, true)) {
+                continue;
+            }
+            $result[(int) $employeeId][] = 'مهام إنهاء غير مكتملة ('.$count.')';
+        }
+
         return $result;
     }
 
+    /**
+     * Starts the offboarding checklist in إسناد. Does not disable the account.
+     * Public signature of offboard() is unchanged; disable moved to complete().
+     */
     public function offboard(User $employee, User $actor): void
     {
         if ($employee->employment_status === User::STATUS_TERMINATED) {
             throw new \RuntimeException('علاقة الموظف منتهية بالفعل.');
         }
 
-        $holds = $this->holds($employee);
-
-        if ($holds !== []) {
-            throw new \RuntimeException('لا يمكن إنهاء الخدمة: '.implode('، ', $holds));
+        if ($employee->offboarding_started_at) {
+            throw new \RuntimeException('بدأ إنهاء العلاقة بالفعل — أكمل المهام ثم عطّل الحساب.');
         }
 
         DB::transaction(function () use ($employee, $actor) {
-            $employee->transitionStatus(User::STATUS_TERMINATED, viaOffboarding: true);
+            $employee->forceFill(['offboarding_started_at' => now()])->save();
 
-            Task::create([
-                'title' => 'تسليم المهام والعهد — '.$employee->name,
-                'type' => 'single',
-                'assigned_by' => $actor->id,
-                'assigned_to' => $actor->id,
-                'priority' => 'high',
-                'status' => 'new',
-                'due_date' => now()->addDays(3),
-            ]);
+            foreach (self::CHECKLIST as $index => $title) {
+                Task::create([
+                    'title' => $title.' — '.$employee->name,
+                    'type' => 'single',
+                    'assigned_by' => $actor->id,
+                    'assigned_to' => $actor->id,
+                    'related_user_id' => $employee->id,
+                    'role_label' => 'إنهاء_علاقة',
+                    'priority' => 'high',
+                    'status' => 'new',
+                    'due_date' => now()->addDays(($index + 1) * 2),
+                ]);
+            }
         });
+    }
+
+    /**
+     * Last step: disable login after checklist + custody/asset holds are clear.
+     * Time: O(t) tasks | Space: O(1)
+     */
+    public function complete(User $employee, User $actor): void
+    {
+        if ($employee->employment_status === User::STATUS_TERMINATED) {
+            throw new \RuntimeException('علاقة الموظف منتهية بالفعل.');
+        }
+
+        if (! $employee->offboarding_started_at) {
+            throw new \RuntimeException('ابدأ إنهاء العلاقة أولاً لإنشاء مهام التسليم.');
+        }
+
+        $holds = $this->holds($employee);
+        if ($holds !== []) {
+            throw new \RuntimeException('لا يمكن إغلاق إنهاء العلاقة: '.implode('، ', $holds));
+        }
+
+        DB::transaction(function () use ($employee) {
+            $employee->transitionStatus(User::STATUS_TERMINATED, viaOffboarding: true);
+        });
+    }
+
+    /**
+     * Cancel offboarding before final disable: clear flag + delete open checklist tasks.
+     * Time: O(t) | Space: O(1)
+     */
+    public function cancel(User $employee): void
+    {
+        if ($employee->employment_status === User::STATUS_TERMINATED) {
+            throw new \RuntimeException('لا يمكن التراجع بعد انتهاء العلاقة.');
+        }
+
+        if (! $employee->offboarding_started_at) {
+            throw new \RuntimeException('لا يوجد إنهاء علاقة جارٍ للتراجع عنه.');
+        }
+
+        DB::transaction(function () use ($employee) {
+            Task::query()
+                ->where('related_user_id', $employee->id)
+                ->where('role_label', 'إنهاء_علاقة')
+                ->where('status', '!=', TaskLifecycleService::STATUS_COMPLETED)
+                ->delete();
+
+            $employee->forceFill(['offboarding_started_at' => null])->save();
+        });
+    }
+
+    /** @return Collection<int, Task> */
+    public function incompleteTasks(User $employee): Collection
+    {
+        return Task::query()
+            ->where('related_user_id', $employee->id)
+            ->where('role_label', 'إنهاء_علاقة')
+            ->where('status', '!=', TaskLifecycleService::STATUS_COMPLETED)
+            ->get();
     }
 }

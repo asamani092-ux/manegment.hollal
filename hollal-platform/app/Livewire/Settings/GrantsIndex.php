@@ -5,29 +5,38 @@ namespace App\Livewire\Settings;
 use App\Models\ExceptionalGrant;
 use App\Models\Role;
 use App\Models\User;
+use App\Services\AuditLogService;
 use App\Services\PermissionGrantService;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
- * 10-B1 — the grant screen: an «الكل» switch per role, section and action
- * toggles, exceptional per-user grants (reason + date, highlighted), and the
- * «من يملك ماذا» review matrix with its export.
+ * Merged roles + grants: أدوار | صلاحيات الأدوار | استثناءات | من يملك ماذا.
+ * Time: O(p) permissions | Space: O(p + roles).
  */
 class GrantsIndex extends Component
 {
     use AuthorizesRequests;
 
-    public string $tab = 'roles'; // roles|exceptions|matrix
+    /** entities|perms|exceptions|matrix */
+    public string $tab = 'entities';
 
     public ?int $roleId = null;
+
+    public string $roleQuery = '';
 
     /** @var list<string> */
     public array $selected = [];
 
-    // exceptional grant form
+    public bool $showRoleModal = false;
+
+    public ?int $editingRoleId = null;
+
+    public string $roleName = '';
+
     public ?int $grantUserId = null;
 
     public ?string $grantPermission = null;
@@ -36,11 +45,33 @@ class GrantsIndex extends Component
 
     public ?string $grantExpiresOn = null;
 
+    /** @var array<string, array<string, mixed>> */
+    protected $queryString = [
+        'tab' => ['except' => 'entities'],
+        'roleId' => ['except' => null, 'as' => 'role'],
+    ];
+
     public function mount(): void
     {
         $this->authorize('roles.view');
-        $this->roleId = Role::orderBy('id')->value('id');
+
+        if (! in_array($this->tab, ['entities', 'perms', 'exceptions', 'matrix'], true)) {
+            $this->tab = 'entities';
+        }
+
+        if ($this->roleId === null) {
+            $this->roleId = Role::orderBy('id')->value('id');
+        }
+
         $this->loadRole();
+    }
+
+    public function setTab(string $tab): void
+    {
+        if (! in_array($tab, ['entities', 'perms', 'exceptions', 'matrix'], true)) {
+            return;
+        }
+        $this->tab = $tab;
     }
 
     public function selectRole(int $roleId): void
@@ -49,13 +80,101 @@ class GrantsIndex extends Component
         $this->loadRole();
     }
 
-    /** «الكل» — every permission on or off in one switch. */
+    public function updatedRoleId(): void
+    {
+        $this->loadRole();
+    }
+
+    public function manageRolePermissions(int $roleId): void
+    {
+        $this->roleId = $roleId;
+        $this->loadRole();
+        $this->tab = 'perms';
+    }
+
+    public function openCreateRole(): void
+    {
+        $this->authorize('roles.create');
+        $this->editingRoleId = null;
+        $this->roleName = '';
+        $this->showRoleModal = true;
+        $this->resetValidation();
+    }
+
+    public function openEditRole(int $id): void
+    {
+        $role = Role::findOrFail($id);
+        $this->authorize('update', $role);
+        $this->editingRoleId = $role->id;
+        $this->roleName = $role->name;
+        $this->showRoleModal = true;
+        $this->resetValidation();
+    }
+
+    public function closeRoleModal(): void
+    {
+        $this->showRoleModal = false;
+        $this->editingRoleId = null;
+        $this->roleName = '';
+        $this->resetValidation();
+    }
+
+    public function saveRoleEntity(): void
+    {
+        if ($this->editingRoleId) {
+            $role = Role::findOrFail($this->editingRoleId);
+            $this->authorize('update', $role);
+        } else {
+            $this->authorize('roles.create');
+        }
+
+        $this->validate([
+            'roleName' => 'required|string|max:255|unique:roles,name,'.($this->editingRoleId ?? 'NULL'),
+        ], [], ['roleName' => 'اسم الدور']);
+
+        $role = Role::updateOrCreate(
+            ['id' => $this->editingRoleId],
+            ['name' => $this->roleName, 'guard_name' => 'web']
+        );
+
+        app(AuditLogService::class)->record(
+            $this->editingRoleId ? 'role.updated' : 'role.created',
+            $role,
+            ['name' => $role->name]
+        );
+
+        $this->closeRoleModal();
+        $this->roleId = $role->id;
+        $this->dispatch('ds-toast', message: 'تم حفظ الدور');
+    }
+
+    public function deleteRole(int $id): void
+    {
+        $role = Role::findOrFail($id);
+        $this->authorize('delete', $role);
+        $roleName = $role->name;
+        $permissions = $role->permissions->pluck('name')->all();
+        $role->delete();
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        app(AuditLogService::class)->record('role.deleted', metadata: [
+            'role_name' => $roleName,
+            'permissions' => $permissions,
+        ]);
+
+        if ($this->roleId === $id) {
+            $this->roleId = Role::orderBy('id')->value('id');
+            $this->loadRole();
+        }
+
+        $this->dispatch('ds-toast', message: 'تم حذف الدور');
+    }
+
     public function toggleAll(bool $on): void
     {
         $this->selected = $on ? PermissionSeeder::PERMISSIONS : [];
     }
 
-    /** Toggle a whole section (e.g. all of finance.*). */
     public function toggleSection(string $section, bool $on): void
     {
         $inSection = collect(PermissionSeeder::PERMISSIONS)
@@ -103,6 +222,8 @@ class GrantsIndex extends Component
             );
 
             $this->grantReason = '';
+            $this->grantPermission = null;
+            $this->grantUserId = null;
             $this->dispatch('ds-toast', message: 'تم منح الاستثناء');
         } catch (\InvalidArgumentException $e) {
             $this->addError('grantPermission', $e->getMessage());
@@ -118,7 +239,6 @@ class GrantsIndex extends Component
         $this->dispatch('ds-toast', message: 'تم سحب الاستثناء');
     }
 
-    /** Export the «من يملك ماذا» matrix. */
     public function exportMatrix()
     {
         $this->authorize('roles.view');
@@ -134,16 +254,47 @@ class GrantsIndex extends Component
 
     public function render(): View
     {
+        $labels = config('permission_labels.labels', []);
+        $groups = config('permission_labels.groups', []);
+
+        $permissionOptions = collect(PermissionSeeder::PERMISSIONS)
+            ->map(fn (string $p) => [
+                'id' => $p,
+                'label' => $labels[$p] ?? $p,
+                'sub' => $p,
+            ])
+            ->values()
+            ->all();
+
+        $userOptions = User::query()
+            ->select(['id', 'name', 'phone'])
+            ->orderBy('name')
+            ->get()
+            ->map(fn (User $u) => [
+                'id' => $u->id,
+                'label' => $u->name,
+                'sub' => (string) ($u->phone ?? ''),
+            ])
+            ->all();
+
         return view('livewire.settings.grants-index', [
-            'roles' => Role::orderBy('id')->get(),
+            'roleEntities' => Role::query()
+                ->withCount('permissions')
+                ->orderBy('name')
+                ->get(['id', 'name']),
+            'roles' => Role::query()
+                ->orderBy('id')
+                ->when($this->roleQuery !== '', fn ($q) => $q->where('name', 'like', '%'.$this->roleQuery.'%'))
+                ->get(),
             'permissions' => collect(PermissionSeeder::PERMISSIONS)
                 ->groupBy(fn (string $p) => explode('.', $p, 2)[0]),
-            'labels' => config('permission_labels.labels'),
-            'groups' => config('permission_labels.groups'),
-            'users' => User::orderBy('name')->get(['id', 'name']),
+            'permissionOptions' => $permissionOptions,
+            'userOptions' => $userOptions,
+            'labels' => $labels,
+            'groups' => $groups,
             'exceptions' => ExceptionalGrant::with('user')->orderByDesc('id')->get(),
             'matrix' => $this->tab === 'matrix' ? app(PermissionGrantService::class)->matrix() : collect(),
-        ])->layout('layouts.app', ['title' => 'منح الصلاحيات']);
+        ])->layout('layouts.app', ['title' => 'الأدوار والصلاحيات']);
     }
 
     private function loadRole(): void

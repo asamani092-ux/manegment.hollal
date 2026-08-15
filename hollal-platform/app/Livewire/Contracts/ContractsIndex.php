@@ -5,6 +5,7 @@ namespace App\Livewire\Contracts;
 use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\Contract;
 use App\Models\User;
+use App\Services\ContractService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Storage;
@@ -44,14 +45,27 @@ class ContractsIndex extends Component
 
     public ?string $existingContractFile = null;
 
+    public string $renewEndDate = '';
+
+    public bool $showRenewModal = false;
+
+    public ?int $renewingContractId = null;
+
+    public ?int $open = null;
+
     protected $queryString = [
         'search' => ['except' => ''],
         'statusFilter' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function mount(): void
     {
         $this->authorize('viewAny', Contract::class);
+
+        if ($this->open) {
+            $this->openView($this->open);
+        }
     }
 
     public function updatingSearch(): void
@@ -111,22 +125,15 @@ class ContractsIndex extends Component
             'contractFile' => 'nullable|file|max:10240|mimes:pdf,doc,docx',
         ];
 
-        if ($this->canViewValue()) {
-            $rules['value'] = 'nullable|numeric|min:0';
-        }
-
         $this->validate($rules);
 
+        // الراتب الشهري من الملف الوظيفي فقط — لا نكتب قيمة عقد مالية هنا.
         $data = [
             'employee_id' => $this->employee_id,
             'start_date' => $this->start_date,
             'end_date' => $this->end_date,
             'status' => $this->status,
         ];
-
-        if ($this->canViewValue() && $this->value !== '') {
-            $data['value'] = $this->value;
-        }
 
         if ($this->contractFile) {
             if ($this->existingContractFile) {
@@ -139,7 +146,11 @@ class ContractsIndex extends Component
 
         $this->showModal = false;
         $this->resetForm();
-        $this->dispatch('toast', type: 'success', message: $isEdit ? 'تم تحديث العقد' : 'تم إنشاء العقد');
+        $message = $isEdit ? 'تم تحديث العقد' : 'تم إنشاء العقد';
+        if ($this->contractFile) {
+            $message .= ' — تم رفع ملف العقد';
+        }
+        $this->dispatch('toast', type: 'success', message: $message);
     }
 
     public function delete(int $id): void
@@ -148,6 +159,64 @@ class ContractsIndex extends Component
         $this->authorize('delete', $contract);
         $contract->delete();
         $this->dispatch('toast', type: 'success', message: 'تم حذف العقد');
+    }
+
+    public function openRenew(int $id): void
+    {
+        $contract = Contract::findOrFail($id);
+        $this->authorize('update', $contract);
+
+        if (! $contract->isRenewable()) {
+            $this->dispatch('toast', type: 'error', message: 'التجديد متاح فقط للعقود المنتهية أو التي تنتهي خلال 30 يومًا');
+
+            return;
+        }
+
+        $this->renewingContractId = $contract->id;
+        $this->renewEndDate = $contract->end_date
+            ? $contract->end_date->copy()->addYear()->format('Y-m-d')
+            : '';
+        $this->showRenewModal = true;
+        $this->resetValidation('renewEndDate');
+    }
+
+    public function closeRenewModal(): void
+    {
+        $this->showRenewModal = false;
+        $this->renewingContractId = null;
+        $this->renewEndDate = '';
+        $this->resetValidation('renewEndDate');
+    }
+
+    public function renew(): void
+    {
+        if (! $this->renewingContractId) {
+            return;
+        }
+
+        $contract = Contract::findOrFail($this->renewingContractId);
+        $this->authorize('update', $contract);
+
+        if (! $contract->isRenewable()) {
+            $this->addError('renewEndDate', 'التجديد متاح فقط للعقود المنتهية أو التي تنتهي خلال 30 يومًا');
+
+            return;
+        }
+
+        $this->validate([
+            'renewEndDate' => 'required|date',
+        ]);
+
+        try {
+            app(ContractService::class)->renew($contract, $this->renewEndDate, auth()->user());
+        } catch (\InvalidArgumentException $e) {
+            $this->addError('renewEndDate', $e->getMessage());
+
+            return;
+        }
+
+        $this->closeRenewModal();
+        $this->dispatch('toast', type: 'success', message: 'مُدّد العقد وسُجّلت فترة التجديد');
     }
 
     public function closeModal(): void
@@ -172,11 +241,19 @@ class ContractsIndex extends Component
             return '—';
         }
 
-        if ($this->canViewValue()) {
-            return $contract->value !== null ? number_format((float) $contract->value, 2) : '—';
+        if (! $this->canViewValue()) {
+            return '****';
         }
 
-        return '****';
+        $employee = $contract->employee;
+        if (! $employee) {
+            return '—';
+        }
+
+        $monthly = app(\App\Services\SalaryService::class)->monthlyFromComponents($employee);
+        $base = (float) ($monthly['base'] ?? 0);
+
+        return $base > 0 ? number_format($base, 2).' ر.س' : '— عيّن الراتب من الملف';
     }
 
     protected function fillForm(Contract $contract): void
@@ -210,7 +287,7 @@ class ContractsIndex extends Component
         return view('livewire.contracts.contracts-index', [
             'contracts' => Contract::query()
                 ->select(['id', 'employee_id', 'start_date', 'end_date', 'value', 'contract_file', 'status', 'created_at'])
-                ->with('employee:id,name')
+                ->with(['employee:id,name'])
                 ->when($this->search, fn ($q) => $q->whereHas(
                     'employee',
                     fn ($eq) => $eq->where('name', 'like', '%'.$this->search.'%')
@@ -220,6 +297,7 @@ class ContractsIndex extends Component
                 ->paginate(10),
             'employees' => User::query()->select(['id', 'name'])->orderBy('name')->get(),
             'statusOptions' => Contract::STATUSES,
+            'statusLabels' => Contract::STATUS_LABELS,
             'canViewValue' => $this->canViewValue(),
         ])->layout('layouts.app', ['title' => 'العقود']);
     }

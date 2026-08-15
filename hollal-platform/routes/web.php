@@ -60,7 +60,6 @@ use App\Livewire\Reports\ReportsIndex;
 use App\Livewire\Settings\ExpenseSettingsIndex;
 use App\Livewire\Settings\GrantsIndex;
 use App\Livewire\Settings\MailSettingsIndex;
-use App\Livewire\Settings\RolesIndex;
 use App\Livewire\Settings\SettingsIndex;
 use App\Livewire\Structure\CommitteesIndex;
 use App\Livewire\Structure\JobsIndex;
@@ -209,9 +208,9 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:structure.view|structure.departments.view|structure.manage')
         ->name('structure.org-tree');
 
-    Route::get('/settings/roles', RolesIndex::class)
-        ->middleware('permission:roles.view')
-        ->name('settings.roles');
+    Route::get('/settings/roles', function () {
+        return redirect()->route('settings.grants', ['tab' => 'entities']);
+    })->middleware('permission:roles.view')->name('settings.roles');
 
     Route::get('/settings/expenses', ExpenseSettingsIndex::class)
         ->middleware('permission:settings.manage')

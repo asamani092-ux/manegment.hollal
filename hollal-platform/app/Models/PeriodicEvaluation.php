@@ -15,12 +15,19 @@ class PeriodicEvaluation extends Model
 
     public const STATUS_PUBLISHED = 'منشور';
 
+    public const STATUS_ARCHIVED = 'مؤرشف';
+
     /** @var list<string> */
     protected $fillable = ['employee_id', 'period', 'evaluator_id', 'status', 'employee_comment'];
 
     public function isPublished(): bool
     {
         return $this->status === self::STATUS_PUBLISHED;
+    }
+
+    public function isArchived(): bool
+    {
+        return $this->status === self::STATUS_ARCHIVED;
     }
 
     /** @return HasMany<EvaluationScore, $this> */
