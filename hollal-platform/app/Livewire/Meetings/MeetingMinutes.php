@@ -36,9 +36,15 @@ class MeetingMinutes extends Component
 
     public string $status = 'open';
 
+    public bool $showApproveModal = false;
+
+    public bool $allowMissingSignatures = false;
+
+    public string $missingSignaturesReason = '';
+
     public function mount(Meeting $meeting): void
     {
-        $this->meeting = $meeting->load(['chair:id,name', 'secretary:id,name', 'attendees.profile:id,user_id,job_title']);
+        $this->meeting = $meeting->load(['chair:id,name', 'secretary:id,name', 'attendees:id,name,electronic_signature']);
         $this->authorize('view', $this->meeting);
     }
 
@@ -67,14 +73,41 @@ class MeetingMinutes extends Component
         $this->showItemModal = true;
     }
 
+    public function openApproveModal(): void
+    {
+        $this->authorize('update', $this->meeting);
+        $this->allowMissingSignatures = false;
+        $this->missingSignaturesReason = '';
+        $this->showApproveModal = true;
+    }
+
     public function approveMinutes(): void
     {
         $this->authorize('update', $this->meeting);
 
         try {
-            app(\App\Services\MeetingService::class)->approveMinutes($this->meeting, auth()->user());
+            app(\App\Services\MeetingService::class)->approveMinutes(
+                $this->meeting,
+                auth()->user(),
+                $this->allowMissingSignatures,
+                $this->missingSignaturesReason ?: null,
+            );
             $this->meeting->refresh();
+            $this->showApproveModal = false;
             $this->dispatch('toast', type: 'success', message: 'تم اعتماد المحضر');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
+    public function confirmMyAttendance(): void
+    {
+        $this->authorize('view', $this->meeting);
+
+        try {
+            app(\App\Services\MeetingService::class)->confirmAttendance($this->meeting, auth()->user());
+            $this->meeting->load('attendees');
+            $this->dispatch('toast', type: 'success', message: 'تم تأكيد حضورك وإضافة التوقيع');
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
@@ -196,10 +229,10 @@ class MeetingMinutes extends Component
 
         try {
             Mail::to($recipients->all())->queue(new MeetingMinutesMailable($this->meeting));
-            $this->dispatch('toast', type: 'success', message: 'تم إدراج إرسال المحضر (يُسجَّل في السجل عند MAIL_MAILER=log أو يُرسل عبر SMTP)');
+            $this->dispatch('toast', type: 'success', message: 'تم إدراج إرسال المحضر في قائمة الانتظار (يتطلب SMTP)');
         } catch (\Throwable $exception) {
             report($exception);
-            $this->dispatch('toast', type: 'error', message: 'تعذّر الإرسال — تحقق من إعداد البريد');
+            $this->dispatch('toast', type: 'error', message: 'تعذّر الإرسال — تحقق من إعداد SMTP');
         }
     }
 
@@ -235,6 +268,8 @@ class MeetingMinutes extends Component
 
     public function render(): View
     {
+        $this->meeting->loadMissing(['chair:id,name', 'secretary:id,name', 'attendees']);
+
         $items = MeetingItem::query()
             ->select(['id', 'meeting_id', 'topic', 'discussion_summary', 'decision', 'responsible_id', 'due_date', 'status', 'task_id'])
             ->where('meeting_id', $this->meeting->id)
@@ -245,7 +280,7 @@ class MeetingMinutes extends Component
         return view('livewire.meetings.meeting-minutes', [
             'items' => $items,
             'users' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'attendees' => $this->meeting->attendees()->with('profile:id,user_id,job_title')->orderBy('name')->get(),
+            'unsignedCount' => $this->meeting->attendees->filter(fn ($u) => blank($u->pivot->confirmed_at ?? null))->count(),
         ])->layout('layouts.app', ['title' => 'محضر — '.$this->meeting->title]);
     }
 }

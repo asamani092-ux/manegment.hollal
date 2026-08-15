@@ -63,7 +63,7 @@ class MeetingMinutesPdfTest extends TestCase
         $this->actingAs($this->authorized)
             ->get(route('meetings.minutes', $this->meeting))
             ->assertOk()
-            ->assertSee('حفظ PDF', false)
-            ->assertSee('طباعة', false);
+            ->assertSee('طباعة القالب', false)
+            ->assertSee('بنود المحضر', false);
     }
 }

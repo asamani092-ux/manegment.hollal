@@ -25,14 +25,14 @@
 
     <section class="ds-section-spaced">
         <h2 class="ds-section-heading">الاجتماعات القادمة</h2>
-        <div class="ds-meeting-list">
+        <div class="ds-meeting-cards-grid">
             @forelse ($upcomingMeetings as $meeting)
-                <article class="ds-meeting-card" wire:key="upcoming-{{ $meeting->id }}">
+                <article class="ds-meeting-card is-square" wire:key="upcoming-{{ $meeting->id }}">
                     <div>
                         <h3 class="ds-task-card-title">{{ $meeting->title }}</h3>
                         <p class="ds-text-muted ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</p>
                         @if ($meeting->agenda)
-                            <p class="ds-text-muted">{{ \Illuminate\Support\Str::limit($meeting->agenda, 120) }}</p>
+                            <p class="ds-text-muted">{{ \Illuminate\Support\Str::limit($meeting->agenda, 80) }}</p>
                         @endif
                     </div>
                     <div class="ds-toolbar-actions">
@@ -57,14 +57,21 @@
 
     <section class="ds-section-spaced">
         <h2 class="ds-section-heading">الاجتماعات السابقة</h2>
-        <div class="ds-meeting-list">
+        <x-ds-table>
+            <x-slot:head>
+                <tr>
+                    <th>العنوان</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th>إجراءات</th>
+                </tr>
+            </x-slot:head>
             @forelse ($pastMeetings as $meeting)
-                <article class="ds-meeting-card" wire:key="past-{{ $meeting->id }}">
-                    <div>
-                        <h3 class="ds-task-card-title">{{ $meeting->title }}</h3>
-                        <p class="ds-text-muted ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</p>
-                    </div>
-                    <div class="ds-toolbar-actions">
+                <tr wire:key="past-{{ $meeting->id }}">
+                    <td>{{ $meeting->title }}</td>
+                    <td class="ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</td>
+                    <td>{{ $meeting->status ?? '—' }}</td>
+                    <td>
                         <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes', $meeting) }}">المحضر</a>
                         <x-ds-action-icons
                             :show-view="true"
@@ -75,12 +82,12 @@
                             :delete-action="'delete('.$meeting->id.')'"
                             delete-confirm="حذف هذا الاجتماع؟"
                         />
-                    </div>
-                </article>
+                    </td>
+                </tr>
             @empty
-                <x-ds-empty-state message="لا توجد اجتماعات سابقة" icon="fa-calendar-alt" />
+                <tr><td colspan="4"><x-ds-empty-state message="لا توجد اجتماعات سابقة" icon="fa-calendar-alt" /></td></tr>
             @endforelse
-        </div>
+        </x-ds-table>
         {{ $pastMeetings->links() }}
     </section>
 

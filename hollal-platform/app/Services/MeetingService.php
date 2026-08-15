@@ -16,21 +16,70 @@ use Illuminate\Support\Facades\Storage;
  */
 class MeetingService
 {
-    public function approveMinutes(Meeting $meeting, User $chair): Meeting
-    {
+    public function approveMinutes(
+        Meeting $meeting,
+        User $chair,
+        bool $allowMissingSignatures = false,
+        ?string $missingReason = null,
+    ): Meeting {
         if ($meeting->isApproved()) {
             throw new \RuntimeException('المحضر معتمد بالفعل.');
+        }
+
+        $meeting->load('attendees');
+        $unsigned = $meeting->attendees->filter(fn (User $u) => blank($u->pivot->confirmed_at ?? null));
+
+        if ($unsigned->isNotEmpty() && ! $allowMissingSignatures) {
+            throw new \RuntimeException('يوجد حضور بلا توقيع. أكّد مع سبب النقص أو انتظر التأكيدات.');
+        }
+
+        if ($unsigned->isNotEmpty() && blank($missingReason)) {
+            throw new \RuntimeException('يلزم ذكر سبب نقص التوقيع (غائب / لا يلزم توقيع…).');
         }
 
         $meeting->update([
             'approval_status' => Meeting::APPROVAL_APPROVED,
             'approved_by' => $chair->id,
             'approved_at' => now(),
+            'minutes_missing_signatures_reason' => $unsigned->isNotEmpty() ? $missingReason : null,
         ]);
 
         $this->archiveMinutes($meeting, $chair);
 
         return $meeting;
+    }
+
+    /**
+     * Attendee confirms minutes and stamps electronic signature from profile.
+     * Time: O(1) | Space: O(1)
+     */
+    public function confirmAttendance(Meeting $meeting, User $user): void
+    {
+        if ($meeting->isApproved()) {
+            throw new \RuntimeException('المحضر معتمد ولا يمكن تأكيد الحضور.');
+        }
+
+        if (! $meeting->attendees()->where('users.id', $user->id)->exists()
+            && (int) $meeting->chair_id !== (int) $user->id
+            && (int) $meeting->secretary_id !== (int) $user->id) {
+            throw new \RuntimeException('لست من حضور هذا الاجتماع.');
+        }
+
+        $signature = $user->electronic_signature ?: $user->name;
+
+        if (! $meeting->attendees()->where('users.id', $user->id)->exists()) {
+            $meeting->attendees()->attach($user->id, [
+                'confirmed_at' => now(),
+                'signature_text' => $signature,
+            ]);
+
+            return;
+        }
+
+        $meeting->attendees()->updateExistingPivot($user->id, [
+            'confirmed_at' => now(),
+            'signature_text' => $signature,
+        ]);
     }
 
     /**

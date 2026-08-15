@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\Meeting;
 use App\Models\MeetingItem;
-use App\Support\PdfArabic;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 /**
@@ -19,7 +18,6 @@ class MeetingMinutesPdfService
             'chair:id,name',
             'secretary:id,name',
             'attendees:id,name,email',
-            'attendees.profile:id,user_id,job_title',
             'items' => fn ($q) => $q->with(['responsible:id,name'])->orderBy('id'),
         ]);
 
@@ -32,18 +30,13 @@ class MeetingMinutesPdfService
             ->limit(20)
             ->get();
 
-        $pdf = Pdf::loadView('pdf.meeting-minutes', [
+        return Pdf::loadView('pdf.meeting-minutes', [
             'meeting' => $meeting,
             'openDecisions' => $openDecisions,
-            'pdfFontFace' => PdfArabic::fontFace(),
-            'pdfDefaultFont' => PdfArabic::defaultFont(),
-        ])->setPaper('a4');
-
-        foreach (PdfArabic::pdfOptions() as $key => $value) {
-            $pdf->setOption($key, $value);
-        }
-
-        return $pdf;
+        ])
+            ->setPaper('a4')
+            ->setOption('isRemoteEnabled', false)
+            ->setOption('defaultFont', 'amiri');
     }
 
     public function output(Meeting $meeting): string
