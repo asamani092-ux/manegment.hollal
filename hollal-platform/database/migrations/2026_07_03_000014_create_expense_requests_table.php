@@ -17,7 +17,7 @@ return new class extends Migration
             $table->text('reason');
             $table->string('payment_method');
             $table->string('attachment')->nullable();
-            $table->enum('status', ['draft', 'pending', 'approved', 'paid', 'rejected'])->default('draft');
+            $table->enum('status', ['draft', 'pending', 'approved', 'paid', 'rejected', 'returned'])->default('draft');
             $table->foreignId('approver_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamp('approved_at')->nullable();
             $table->text('rejection_reason')->nullable();

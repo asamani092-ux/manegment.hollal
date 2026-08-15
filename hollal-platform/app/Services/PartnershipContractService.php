@@ -87,6 +87,7 @@ class PartnershipContractService
             'signed_at' => now(),
             'status' => PartnershipContract::STATUS_SIGNED,
         ])->save();
+        $this->markAwaitingInternalApproval($contract);
 
         $this->auditSignature($contract, PartnershipContract::METHOD_MANUAL_UPLOAD);
 
@@ -142,6 +143,7 @@ class PartnershipContractService
             'signed_at' => now(),
             'status' => PartnershipContract::STATUS_SIGNED,
         ])->save();
+        $this->markAwaitingInternalApproval($contract);
 
         $this->auditSignature($contract, PartnershipContract::METHOD_IN_LINK);
 
@@ -249,6 +251,10 @@ class PartnershipContractService
                 'confirmed_by' => $confirmer->id,
                 'confirmed_at' => now(),
             ])->save();
+            $contract->partnership->forceFill([
+                'awaiting_internal_approval' => false,
+                'internal_approval_notes' => null,
+            ])->save();
 
             app(PartnershipPipelineService::class)->moveTo(
                 $contract->partnership,
@@ -259,6 +265,43 @@ class PartnershipContractService
 
             return $contract;
         });
+    }
+
+    public function returnForRevision(
+        PartnershipContract $contract,
+        User $returner,
+        string $notes,
+    ): PartnershipContract {
+        if (! $contract->hasSignedCopy()) {
+            throw new \RuntimeException('لا يمكن إرجاع عقد لم يوقعه الشريك');
+        }
+
+        $contract->forceFill([
+            'status' => PartnershipContract::STATUS_AWAITING_SIGNATURE,
+            'signed_pdf_path' => null,
+            'signed_pdf_hash' => null,
+            'signature_name' => null,
+            'signature_position' => null,
+            'signature_method' => null,
+            'signature_image_path' => null,
+            'signature_device' => null,
+            'signed_at' => null,
+        ])->save();
+
+        $contract->partnership->forceFill([
+            'awaiting_internal_approval' => false,
+            'internal_approval_notes' => $notes,
+        ])->save();
+
+        return $contract->fresh();
+    }
+
+    private function markAwaitingInternalApproval(PartnershipContract $contract): void
+    {
+        $contract->partnership->forceFill([
+            'awaiting_internal_approval' => true,
+            'internal_approval_notes' => null,
+        ])->save();
     }
 
     public function firstPaymentConfirmed(PartnershipContract $contract): bool

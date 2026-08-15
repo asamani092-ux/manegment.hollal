@@ -27,7 +27,7 @@ class ExpenseApproved extends Notification implements ShouldQueue
             'message' => 'تمت الموافقة على طلب المصروف',
             'expense_request_id' => $this->expenseRequest->id,
             'amount' => (string) $this->expenseRequest->amount,
-            'approver_name' => $this->expenseRequest->approver?->name,
+            'url' => \App\Support\RecordUrl::expense($this->expenseRequest->id),
         ];
     }
 }

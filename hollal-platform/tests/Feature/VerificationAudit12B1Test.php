@@ -151,7 +151,7 @@ class VerificationAudit12B1Test extends TestCase
     {
         $exempt = [
             'dashboard', 'password.change', 'password.change.update', 'logout', 'login',
-            'partnership.guest', 'partner.portal', 'partner.portal.contract.pdf',
+            'partner.portal', 'partner.portal.contract.pdf',
             'duties.download', 'tasks.files.download', 'contracts.files.download',
             'expenses.files.download', 'documents.files.download',
         ];

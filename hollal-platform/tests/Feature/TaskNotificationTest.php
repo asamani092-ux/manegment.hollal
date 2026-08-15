@@ -61,7 +61,10 @@ class TaskNotificationTest extends TestCase
 
         $notification = $this->assignee->fresh()->notifications->first();
         $this->assertStringContainsString('مهمة للإشعار', $notification->data['message']);
-        $this->assertSame(route('tasks.index'), $notification->data['url']);
+        $this->assertSame(
+            route('tasks.index', ['open' => $notification->data['task_id']], absolute: false),
+            $notification->data['url']
+        );
     }
 
     public function test_manager_is_notified_after_forty_eight_hours_overdue(): void

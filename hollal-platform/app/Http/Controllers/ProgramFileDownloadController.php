@@ -18,9 +18,12 @@ class ProgramFileDownloadController extends Controller
         abort_unless($request->user()?->can('projects.programs.view'), 403);
         abort_unless(Storage::disk('local')->exists($programFile->path), 404);
 
+        $filename = basename($programFile->path);
+
         return response()->streamDownload(
             fn () => print (Storage::disk('local')->get($programFile->path)),
-            basename($programFile->path),
+            $filename,
+            ['Content-Disposition' => \App\Support\DownloadHeaders::contentDisposition($filename)],
         );
     }
 }

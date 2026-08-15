@@ -3,9 +3,11 @@
 namespace Tests\Feature;
 
 use App\Models\Custody;
+use App\Models\Task;
 use App\Models\User;
 use App\Services\CustodyService;
 use App\Services\OffboardingService;
+use App\Services\TaskLifecycleService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -24,7 +26,7 @@ class CustodyTest extends TestCase
 
         $custody = $service->request($employee, 1000, 'شراء مستلزمات', null, null, null, $employee);
         $service->approve($custody, $executive);
-        $service->disburse($custody);
+        $service->disburse($custody, 'custodies/disbursements/demo-proof.pdf');
 
         $this->assertSame('1000.00', $custody->fresh()->disbursed_amount);
 
@@ -42,7 +44,7 @@ class CustodyTest extends TestCase
 
         $custody = $service->request($employee, 1000, 'عهدة', null, null, null, $employee);
         $service->approve($custody, User::factory()->create());
-        $service->disburse($custody);
+        $service->disburse($custody, 'custodies/disbursements/demo-proof.pdf');
         $service->addSettlementItem($custody, 'بند', 800);
 
         $this->expectException(\RuntimeException::class);
@@ -55,13 +57,16 @@ class CustodyTest extends TestCase
         $service = app(CustodyService::class);
         $custody = $service->request($employee, 500, 'عهدة مفتوحة', null, null, null, $employee);
         $service->approve($custody, User::factory()->create());
-        $service->disburse($custody);
+        $service->disburse($custody, 'custodies/disbursements/demo-proof.pdf');
 
         $holds = app(OffboardingService::class)->holds($employee);
         $this->assertNotEmpty($holds);
 
+        $actor = User::factory()->create();
+        app(OffboardingService::class)->offboard($employee, $actor);
+
         $this->expectException(\RuntimeException::class);
-        app(OffboardingService::class)->offboard($employee, User::factory()->create());
+        app(OffboardingService::class)->complete($employee, $actor);
     }
 
     public function test_offboarding_allowed_after_custody_closed(): void
@@ -70,11 +75,16 @@ class CustodyTest extends TestCase
         $service = app(CustodyService::class);
         $custody = $service->request($employee, 500, 'عهدة', null, null, null, $employee);
         $service->approve($custody, User::factory()->create());
-        $service->disburse($custody);
+        $service->disburse($custody, 'custodies/disbursements/demo-proof.pdf');
         $service->addSettlementItem($custody, 'بند', 500);
         $service->close($custody);
 
-        app(OffboardingService::class)->offboard($employee, User::factory()->create());
+        $actor = User::factory()->create();
+        app(OffboardingService::class)->offboard($employee, $actor);
+        Task::query()
+            ->where('related_user_id', $employee->id)
+            ->update(['status' => TaskLifecycleService::STATUS_COMPLETED]);
+        app(OffboardingService::class)->complete($employee, $actor);
 
         $this->assertSame('منتهية_علاقته', $employee->fresh()->employment_status);
     }

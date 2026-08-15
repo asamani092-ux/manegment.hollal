@@ -39,9 +39,12 @@ class DocumentsIndex extends Component
 
     public ?TemporaryUploadedFile $uploadFile = null;
 
+    public ?int $open = null;
+
     protected $queryString = [
         'search' => ['except' => ''],
         'categoryFilter' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function mount(): void
@@ -126,7 +129,8 @@ class DocumentsIndex extends Component
                 ->select(['id', 'title', 'category', 'project_id', 'confidentiality', 'uploader_id', 'path', 'created_at'])
                 ->with(['project:id,name', 'uploader:id,name'])
                 ->visibleTo($user)
-                ->when($this->search, fn ($q) => $q->where('title', 'like', '%'.$this->search.'%'))
+                ->when($this->open, fn ($q) => $q->where('id', $this->open))
+                ->when($this->search && ! $this->open, fn ($q) => $q->where('title', 'like', '%'.$this->search.'%'))
                 ->when($this->categoryFilter, fn ($q) => $q->where('category', $this->categoryFilter))
                 ->latest()
                 ->paginate(10),

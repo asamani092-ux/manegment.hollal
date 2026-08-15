@@ -28,6 +28,8 @@ class DepartmentsIndex extends Component
 
     public string $name = '';
 
+    public ?int $ownerUserId = null;
+
     protected $queryString = ['search' => ['except' => '']];
 
     public function mount(): void
@@ -53,6 +55,7 @@ class DepartmentsIndex extends Component
         $this->authorize('update', $department);
         $this->departmentId = $department->id;
         $this->name = $department->name;
+        $this->ownerUserId = $department->owner_user_id;
         $this->viewOnly = false;
         $this->showModal = true;
     }
@@ -63,6 +66,7 @@ class DepartmentsIndex extends Component
         $this->authorize('view', $department);
         $this->departmentId = $department->id;
         $this->name = $department->name;
+        $this->ownerUserId = $department->owner_user_id;
         $this->viewOnly = true;
         $this->showModal = true;
     }
@@ -84,9 +88,13 @@ class DepartmentsIndex extends Component
 
         $this->validate([
             'name' => 'required|string|max:255|unique:departments,name,'.($this->departmentId ?? 'NULL'),
-        ]);
+            'ownerUserId' => 'nullable|exists:users,id',
+        ], [], ['ownerUserId' => 'مسؤول القسم']);
 
-        Department::updateOrCreate(['id' => $this->departmentId], ['name' => $this->name]);
+        Department::updateOrCreate(['id' => $this->departmentId], [
+            'name' => $this->name,
+            'owner_user_id' => $this->ownerUserId,
+        ]);
 
         $this->showModal = false;
         $this->resetForm();
@@ -111,6 +119,7 @@ class DepartmentsIndex extends Component
     {
         $this->departmentId = null;
         $this->name = '';
+        $this->ownerUserId = null;
         $this->viewOnly = false;
         $this->resetValidation();
     }
@@ -119,10 +128,12 @@ class DepartmentsIndex extends Component
     {
         return view('livewire.departments.departments-index', [
             'departments' => Department::query()
-                ->select(['id', 'name', 'created_at'])
+                ->select(['id', 'name', 'owner_user_id', 'created_at'])
+                ->with('owner:id,name')
                 ->when($this->search, fn ($q) => $q->where('name', 'like', '%'.$this->search.'%'))
                 ->orderBy('name')
                 ->paginate(10),
+            'users' => \App\Models\User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
         ])->layout('layouts.app', ['title' => 'الأقسام']);
     }
 }

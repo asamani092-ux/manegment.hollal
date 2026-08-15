@@ -19,7 +19,9 @@ class ExpenseRequest extends Model
     use SoftDeletes;
 
     /** @var list<string> */
-    public const STATUSES = ['draft', 'pending', 'approved', 'paid', 'rejected'];
+    public const STATUSES = ['draft', 'pending', 'approved', 'paid', 'rejected', 'returned'];
+
+    public const STATUS_RETURNED = 'returned';
 
     /** @var list<string> */
     public const SPEND_STATUSES = ['approved', 'paid'];
@@ -28,7 +30,7 @@ class ExpenseRequest extends Model
     public const PRIORITIES = ['low', 'normal', 'high', 'urgent'];
 
     /** @var list<string> */
-    public const PAYMENT_METHODS = ['transfer', 'pos', 'cheque', 'other'];
+    public const PAYMENT_METHODS = ['transfer', 'pos', 'cheque', 'cash', 'other'];
 
     protected $fillable = [
         'requester_id',
@@ -51,6 +53,16 @@ class ExpenseRequest extends Model
         'paid_ready_at',
         'rejection_reason',
     ];
+
+    public function requiresPaymentProof(): bool
+    {
+        return $this->payment_method !== 'cash';
+    }
+
+    public function isEditableByRequester(): bool
+    {
+        return in_array($this->status, ['draft', self::STATUS_RETURNED], true);
+    }
 
     protected function casts(): array
     {

@@ -115,4 +115,9 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    | Real SMTP apply/test is deferred until production publish (13-B1).
+    */
+    'smtp_live' => env('MAIL_SMTP_LIVE', false),
+
 ];

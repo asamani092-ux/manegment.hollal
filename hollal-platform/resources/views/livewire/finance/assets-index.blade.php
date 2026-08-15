@@ -28,6 +28,9 @@
             <tr>
                 <th scope="col">الرمز</th>
                 <th scope="col">الاسم</th>
+                <th scope="col">الفئة</th>
+                <th scope="col">الموقع</th>
+                <th scope="col">قيمة الشراء</th>
                 <th scope="col">الحالة</th>
                 <th scope="col">حامل العهدة</th>
                 <th scope="col">منذ</th>
@@ -38,6 +41,9 @@
             <tr wire:key="asset-{{ $asset->id }}">
                 <td class="ds-ltr-num">{{ $asset->code }}</td>
                 <td>{{ $asset->name_ar }}</td>
+                <td>{{ $asset->category?->name_ar ?? '—' }}</td>
+                <td>{{ $asset->location ?? '—' }}</td>
+                <td class="ds-ltr-num">{{ $asset->purchase_amount !== null ? number_format((float) $asset->purchase_amount, 2) : '—' }}</td>
                 <td><x-ds-status-badge :status="$asset->condition" /></td>
                 <td>{{ $asset->currentHolder?->name ?? '—' }}</td>
                 <td class="ds-ltr-num">{{ $asset->holder_since?->format('Y-m-d') ?? '—' }}</td>
@@ -51,7 +57,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="6"><x-ds-empty-state message="لا توجد أصول مسجّلة" icon="fa-boxes-stacked" /></td></tr>
+            <tr><td colspan="9"><x-ds-empty-state message="لا توجد أصول مسجّلة" icon="fa-boxes-stacked" /></td></tr>
         @endforelse
     </x-ds-table>
 
@@ -61,11 +67,35 @@
         <x-ds-form-group label="اسم الأصل" :error="$errors->first('name_ar')">
             <input type="text" class="ds-input" wire:model="name_ar">
         </x-ds-form-group>
+        <x-ds-form-group label="الوصف" :error="$errors->first('description')">
+            <textarea class="ds-input" rows="2" wire:model="description"></textarea>
+        </x-ds-form-group>
         <x-ds-form-group label="الفئة">
             <select class="ds-input" wire:model="category_id">
                 <option value="">— بدون —</option>
                 @foreach ($categories as $category)
                     <option value="{{ $category->id }}">{{ $category->name_ar }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+        <x-ds-form-group label="قيمة الشراء" :error="$errors->first('purchase_amount')">
+            <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="purchase_amount">
+        </x-ds-form-group>
+        <x-ds-form-group label="الموقع" :error="$errors->first('location')">
+            <input type="text" class="ds-input" wire:model="location">
+        </x-ds-form-group>
+        <x-ds-form-group label="الحالة" :error="$errors->first('condition')">
+            <select class="ds-input" wire:model="condition">
+                @foreach ($conditionOptions as $opt)
+                    <option value="{{ $opt }}">{{ $opt }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+        <x-ds-form-group label="الحامل" :error="$errors->first('create_holder_id')">
+            <select class="ds-input" wire:model="create_holder_id">
+                <option value="">— بدون —</option>
+                @foreach ($employees as $employee)
+                    <option value="{{ $employee->id }}">{{ $employee->name }}</option>
                 @endforeach
             </select>
         </x-ds-form-group>

@@ -19,6 +19,7 @@
             <x-slot:head>
                 <tr>
                     <th>الاسم</th>
+                    <th>مسؤول القسم</th>
                     <th>تاريخ الإنشاء</th>
                     <th>إجراءات</th>
                 </tr>
@@ -26,6 +27,7 @@
             @forelse ($departments as $department)
                 <tr wire:key="dept-{{ $department->id }}">
                     <td>{{ $department->name }}</td>
+                    <td>{{ $department->owner?->name ?? '—' }}</td>
                     <td>{{ $department->created_at?->format('Y-m-d') }}</td>
                     <td>
                         <x-ds-action-icons
@@ -41,7 +43,7 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="3" class="ds-text-muted ds-table-empty">لا توجد أقسام</td>
+                    <td colspan="4" class="ds-text-muted ds-table-empty">لا توجد أقسام</td>
                 </tr>
             @endforelse
         </x-ds-table>
@@ -67,6 +69,14 @@
                 <div class="ds-modal-body">
                     <x-ds-form-group label="اسم القسم" :error="$errors->first('name')">
                         <input type="text" class="ds-input" wire:model="name" @disabled($viewOnly)>
+                    </x-ds-form-group>
+                    <x-ds-form-group label="مسؤول القسم" :error="$errors->first('ownerUserId')">
+                        <select class="ds-input" wire:model="ownerUserId" @disabled($viewOnly)>
+                            <option value="">—</option>
+                            @foreach ($users as $user)
+                                <option value="{{ $user->id }}">{{ $user->name }}</option>
+                            @endforeach
+                        </select>
                     </x-ds-form-group>
                 </div>
                 <div class="ds-modal-footer">

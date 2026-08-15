@@ -6,7 +6,7 @@
             </svg>
         </button>
         <a href="{{ route('dashboard') }}" class="ds-navbar-brand">
-            <img src="{{ asset('assets/logos/logo.svg') }}" alt="منصة حلل" class="ds-logo-img">
+            <img src="{{ asset('brand/logos/logo.svg') }}" alt="منصة حلل" class="ds-logo-img">
         </a>
         <div class="ds-navbar-title">{{ $title ?? 'الرئيسية' }}</div>
     </div>

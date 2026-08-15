@@ -21,7 +21,7 @@ class Asset extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'code', 'name_ar', 'category_id', 'can_be_custody', 'purchase_date',
+        'code', 'name_ar', 'description', 'category_id', 'can_be_custody', 'purchase_date',
         'purchase_amount', 'purchase_expense_id', 'location', 'condition',
         'current_holder_id', 'holder_since',
     ];
@@ -47,5 +47,11 @@ class Asset extends Model
     public function currentHolder(): BelongsTo
     {
         return $this->belongsTo(User::class, 'current_holder_id');
+    }
+
+    /** @return BelongsTo<AssetCategory, $this> */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(AssetCategory::class, 'category_id');
     }
 }

@@ -29,6 +29,7 @@ class PolicyReviewDue extends Notification implements ShouldQueue
     {
         return [
             'message' => 'حان موعد مراجعة السياسة: '.$this->document->title,
+            'url' => \App\Support\RecordUrl::document($this->document->id),
             'document_id' => $this->document->id,
             'review_date' => $this->document->review_date?->toDateString(),
         ];

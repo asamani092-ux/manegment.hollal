@@ -26,7 +26,7 @@ class PayrollReturnedToHr extends Notification implements ShouldQueue
     {
         return [
             'message' => 'أُعيد مسيّر رواتب شهر '.$this->run->month.' للتصحيح: '.($this->run->notes ?? ''),
-            'url' => route('payroll-runs.index'),
+            'url' => \App\Support\RecordUrl::payrollRun($this->run->id),
             'payroll_run_id' => $this->run->id,
         ];
     }

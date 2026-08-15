@@ -57,7 +57,11 @@ class AuthController extends Controller
 
         $this->auditLog->record('auth.login_success', actor: $request->user());
 
-        return redirect()->intended(route('dashboard'));
+        if ($request->user()->must_change_password) {
+            return redirect()->route('password.change');
+        }
+
+        return redirect()->intended(route('dashboard'))->with('success', 'تم تسجيل الدخول بنجاح');
     }
 
     public function logout(Request $request): RedirectResponse

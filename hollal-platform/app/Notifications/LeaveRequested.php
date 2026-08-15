@@ -29,7 +29,7 @@ class LeaveRequested extends Notification implements ShouldQueue
             'type' => $this->leaveRequest->type,
             'from_date' => $this->leaveRequest->from_date?->format('Y-m-d'),
             'to_date' => $this->leaveRequest->to_date?->format('Y-m-d'),
-            'url' => route('leaves.index'),
+            'url' => \App\Support\RecordUrl::leave($this->leaveRequest->id),
         ];
     }
 }

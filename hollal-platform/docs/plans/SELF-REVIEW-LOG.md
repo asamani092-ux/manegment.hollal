@@ -96,3 +96,254 @@
 **تسليم نهائي للوكيل الرئيسي:** جاهز بعد جولة عبدالله اليدوية. **لا دمج main** من هذا الفرع حتى المراجعة النهائية.
 
 **ROADMAP (خارج النطاق):** KPI cache · API برامج · واتساب · CSP · ZATCA Phase B · قوالب needs_review
+
+---
+
+## الدفعة 0 — GEN — `fix/report-round-1`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| GEN-1 | المستمع يقبل `toast` و`ds-toast` · toast دخول · زر «جاري تسجيل الدخول» · `<x-ds-toast />` في guest | AuthTest + شاشة الدخول |
+| GEN-2 | روابط عميقة `?open=` للمهمة/الصرف/العهدة/الإجازة + ملف الشراكة | TaskNotificationTest |
+| GEN-3 | زر رجوع في partnership/organization/program show | بصري |
+| GEN-5 / DOC-1 | `DownloadHeaders` + عنوان المستند في التنزيل | DownloadHeadersTest |
+| GEN-6 | طي الشريط على سطح المكتب + `localStorage` | CSS/JS |
+| GEN-7 | نسيت كلمة المرور (جوال/بريد) بسائق log | ForgotPasswordTest |
+
+لا دمج `main`.
+
+---
+
+## الدفعة 1 — HR — `fix/report-round-1`
+
+تعارض موثّق: spec-01 §3 يقول التجديد ينشئ سجلًا جديدًا؛ أمر الجولة 1 (HR-8) يمدد نفس العقد + `renewal_history`. نُفّذ أمر الجولة 1. الملحق 1.1 لا يحسم البند.
+
+تغيير سلوك عام (التوقيع كما هو): `OffboardingService::offboard()` يبدأ المهام ولا يعطّل الحساب — التعطيل في `complete()`.
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| HR-1 | زر «تعديل» نصي في جدول الدليل + زر تعديل في الملف الوظيفي | ReportRound1HrTest |
+| HR-2 | ربط سلم/درجة في الملف · الراتب مشتق · خصم ثابت للنظامي فقط · سبب إلزامي للمتغير | SalaryService + PayrollRunService |
+| HR-3 | شرح الحضور + تفعيل لكل موظف · المسير يسحب الإضافي من الحضور | Attendance + PayrollRunTest/ReportRound1HrTest |
+| HR-4 | درجات /5 لكل مسؤولية · اطلاع وتعليق بعد النشر · عرض في الملف | EvaluationsIndex + الملف |
+| HR-5 | 4 مهام إنهاء في إسناد · الموانع تمنع الإغلاق · التعطيل آخرًا | HrLifecycleTest / Custody / Asset |
+| HR-6 | نافذة تفاصيل المسير + بند متغير بسبب + قبول/رفض مالية | PayrollRunsIndex |
+| HR-7 | عمود عدد الموظفين في سلم الرواتب | PayScalesIndex |
+| HR-8 | ساري/منتهي/مكتمل/معلق · معاينة PDF · رسائل رفع · تجديد يمدد + سجل | ContractService |
+| إجازات | طلب←إشعار←رصيد قائم (LeaveRequestTest) | تحقق دون أمر منفصل |
+
+لا دمج `main`.
+
+---
+
+## الدفعة 2 — FIN — `fix/report-round-1`
+
+صلاحية جديدة `finance.budgets.manage` للمدير العام فقط (اعتماد إضافة الموازنة). المالية تطلب الإضافة ولا تعتمدها.
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| FIN-2 | رفض عهدة بسبب · حالة `مرفوضة` · نص المسار طلب←اعتماد تنفيذي←صرف | ReportRound1FinTest + CustodyTest |
+| FIN-3 | وصف/فئة/قيمة شراء/موقع/حالة/حامل في نموذج الأصل | ReportRound1FinTest + AssetTest |
+| FIN-4 | مرفق شاهد إيراد · مصدر الموازنة · إضافة باعتماد التنفيذي | ReportRound1FinTest + BudgetAndFinancialReportTest |
+| FIN-5 | قائمة جهة/رقم ضريبي + خيار «جديد» | ReportRound1FinTest + TaxInvoiceTest |
+| FIN-6 | PDF بخط Amiri + شعار + جدول (`PdfArabic`) | ReportRound1FinTest |
+| FIN-1 | تحقق فقط — عرض مزدوج موجود | بدون تغيير |
+
+لا دمج `main`.
+
+---
+
+## الدفعة 3 — PART + MEET — `fix/report-round-1`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| PART-1 | نوع «أخرى» يظهر حقل نص حر `type_other` | ReportRound1PartMeetTest |
+| PART-2 | `Project::STATUS_LABELS` + زر رجوع في ملف المشروع وصفحة الجهة | ReportRound1PartMeetTest |
+| PART-3 | قسم «عقد الشراكة» ظاهر بلا شرط مرحلة — لا إعادة بناء | assertSee |
+| PART-4 | بريد للجهة عند نقل المرحلة (سائق log) | Notification::assertSentOnDemand |
+| PART-5 | حُذف `PartnershipGuestView` ومسار الضيف · بوابة الشريك فقط | PartnershipMagicLinkTest |
+| MEET-1 | إغلاق يدوي بسبب · إغلاق تلقائي عند اكتمال المهمة | ReportRound1PartMeetTest + TaskLifecycleTest |
+
+لا دمج `main`.
+
+---
+
+## الدفعة 4 — PROJ / DOC / REP — `fix/report-round-1`
+
+`MeetingService::amend()` بقي كما هو (نسخة معتمدة فورية). أُضيف `requestAmendment` / `approveAmendment` لمسار الطلب←الموافقة.
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| PROJ-2 | رفع مرفق من ملف المشروع مربوط `project_id` | ReportRound1ProjDocRepTest |
+| PROJ-3 | روابط تنفيذ/زيارات/قياس + قبلي/بعدي في النظرة العامة | ReportRound1ProjDocRepTest |
+| PROJ-4 | زر معاينة قالب الخطة | ReportRound1ProjDocRepTest |
+| DOC-2 | مسار طلب←موافقة←نسخة موسومة في أرشيف المحاضر | ReportRound1ProjDocRepTest |
+| REP-1 | خريطة عربية لمفاتيح سجل النشاط مع بقاء الفهارس | AuditLog + DocumentsAndReportsTest |
+| REP-2 | زر طباعة + `@media print` للتقرير الأسبوعي | ReportRound1ProjDocRepTest |
+| REP-3 | رابط متبادل مركز التقارير ↔ المستودع | ReportRound1ProjDocRepTest |
+| PROJ-1 | تحقق فقط — عرض مزدوج موجود | بدون تغيير |
+
+لا دمج `main`.
+
+---
+
+## الدفعة 5 — STRUCT / ROLE / SET / MOB — `fix/report-round-1`
+
+تغيير سلوك عام (التوقيع كما هو): `MailSetting::applyToConfig()` لا يطبّق SMTP إلا إذا `MAIL_SMTP_LIVE=true` (`config('mail.smtp_live')`). الحقول تُحفظ. زر الاختبار مخفي/موقوف حتى النشر (13-B1).
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| STRUCT-1 | `departments.owner_user_id` + اختيار مسؤول القسم | ReportRound1StructSetTest |
+| STRUCT-2 | حُذف «الوظائف» و«اللجان» من التنقّل · تبويبات داخل الهيكل · المسارات بقيت | OperationalRolesTest + OrgTreeIndex |
+| STRUCT-3 | لون مميز لكل إدارة في الشجرة (`border-inline-start`) | org-node + adminColors |
+| STRUCT-4 | `.ds-profile-head` في `components.css` | CSS |
+| ROLE-1 | توسيع صلاحيات الأدوار التشغيلية | OperationalRolesTest |
+| ROLE-2 | قائمة بحث منسدلة بدل أزرار الأدوار في GrantsIndex | ReportRound1StructSetTest |
+| SET-1 | تلميح عربي تحت كل حقل إعدادات (`ds-form-group` hint) | SettingsIndex::helpFor |
+| SET-2 | SMTP حفظ فقط حتى `MAIL_SMTP_LIVE` | ReportRound1StructSetTest + NotificationChannelsTest |
+| MOB-1 | `flex-shrink: 0` لأيقونة الحساب + `inset-inline-end` للقائمة | layout.css |
+| أدوات غير مجرّبة | فتح + CRUD دخان: متكررة · مستندات مالية · قوالب · نسخ · سياسات · إعدادات مالية | ReportRound1ToolsSmokeTest |
+| SMTP إرسال حقيقي | لا يُجرَّب | متعمّد |
+
+لا دمج `main`.
+
+---
+
+## الدفعة 1 — HR + حضور (تصميم) — `fix/report-round-2`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| HR-a | إزالة «تعديل» من بطاقة الموظف في `users-index` فقط (رابط الجدول بقي) | مراجعة Blade |
+| HR-b | تجديد العقد عبر نافذة منفصلة؛ الزر يظهر للمنتهي أو خلال 30 يومًا (`Contract::isRenewable`) | ReportRound2HrTest |
+| HR-c | نص مساعدة عربي + قائمة الموظفين المرتبطين بالسلم مع رابط الملف | ReportRound2HrTest |
+| HR-d | تعديل/حذف بنود متغيرة في مسودة/معاد + تحسين تسميات التفاصيل ومبلغ الإضافي | PayrollRunsIndex + PayrollRunService |
+| مزامنة رواتب | `syncFromMonthlyPayroll` + زر «مزامنة إلى مسير الشهر» وشرح أن المسيّر مسار الاعتماد | ReportRound2HrTest |
+| تقييمات | فقرة دورة الحياة أعلى الصفحة؛ عرض القائمة لـ `hr.employees.view`؛ إرشاد فراغ عربي | ReportRound2HrTest |
+| حضور QR | `docs/plans/ATTENDANCE-BARCODE-DESIGN.md` تصميم دورة حياة فقط | مستند |
+
+لا دمج `main`.
+
+---
+
+## الدفعة 2 — FIN — `fix/report-round-2`
+
+**تعارض موثّق مع spec-04 §5:** المواصفة تقول إن المنصة لا تصدر فواتير ضريبية (تُرفع من نظام فوترة خارجي). Phase A (04-B7 + قرار عبدالله للجولة): المنصة تُصدر فواتير ضريبية سعودية Phase A. نُفّذ Phase A هنا.
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| FN-a صرف | رفض ظاهر موبايل+سطح مكتب · حالة `returned` / معاد للمراجعة مع سبب وإعادة إرسال · إثبات دفع إلزامي لغير النقد (+ نقد) · `canApprove` بصلاحية المرحلة (Super Admin وغيرها) · نص عربي لعدم الاعتماد | ReportRound2FinTest |
+| FN-b عهد | `disbursement_proof_path` + رفع عند الصرف | ReportRound2FinTest + CustodyTest |
+| FN-c إيرادات | حفظ الشاهد + `RevenueFileDownloadController` · إزالة نموذج إضافة الموازنة من الإيرادات (رابط للوحة الموازنات) | ReportRound2FinTest |
+| FN-d فواتير | بائع من CompanyProfile · قائمة جهات+جديد · PDF Amiri + TLV · VAT جهات في DemoPartnerships | ReportRound2FinTest |
+| موازنات | نص مصدر عربي · `finance.budgets.manage` للمدير التنفيذي والمدير العام | RoleSeeder |
+| تقارير/مستندات | شعار CompanyProfile · بذور أدلة + روابط تنزيل | DemoFinanceSeeder |
+
+لا دمج `main`.
+
+---
+
+## الدفعة 3 — إسناد + اجتماعات — `fix/report-round-2`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| ES-a | خلفية خضراء كاملة لبطاقات `.ds-task-card.is-completed` · روابط تنزيل المرفق/الشاهد في نافذة العرض حتى بعد الإكمال | ReportRound2EsnadMeetTest |
+| ES-b | نافذة تفاصيل من مهام الفريق: شواهد، ملاحظات، سجل حالات، اعتماد/إرجاع من التفاصيل | ReportRound2EsnadMeetTest |
+| ES-c | تقويم شهري 7 أعمدة (سبت→جمعة) · تنقّل أشهر · شرائح مهام/إجازات · نقر يفتح تفاصيل | ReportRound2EsnadMeetTest |
+| ES-d | قائمة آخر النسخ المولَّدة لكل قالب متكرر · لوحة أحمال: قوالب متكررة + زر «تذكير» (`TaskReminder`) | ReportRound2EsnadMeetTest |
+| MT-a | حقول المكان + رابط عن بُعد (`location`/`link`) في الإنشاء/التعديل · `MeetingInvite` للحاضرين | ReportRound2EsnadMeetTest |
+| MT-b | جدول أعمال أوضح · جدول حضور/توقيع في PDF والطباعة · نص مسار الاعتماد · toast إرسال مع log | مراجعة Blade + PDF |
+| قرارات | نص مساعدة عن الإنشاء من المحضر · تبويب مؤرشف للحالة `done` مع `close_reason` | ReportRound2EsnadMeetTest |
+
+لا دمج `main`.
+
+
+---
+
+## الدفعة 4 — شراكات — `fix/report-round-2`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| بوابة ذاتية | كتالوج برامج + مشاركة رابط + أيام تنفيذ | ReportRound2PartnershipTest |
+| اعتماد داخلي | طابور اعتماد العقود + صلاحية مدير المشروع للمراجعة | ReportRound2PartnershipTest |
+| دورة حياة | مسار الشراكة مغلق لهذه الجولة (كتالوج→عقد→اعتماد→تنفيذ) | مغلق |
+
+لا دمج `main`.
+
+---
+
+## الدفعة 5 — مشاريع + مستندات/تقارير + هيكلة — `fix/report-round-2`
+
+| أمر | ما نُفّذ | تحقق |
+|---|---|---|
+| انحدار Batch 4 | middleware صلاحية على `revenues.files.download` (`finance.revenues.view\|manage`) | ReportRound2Batch5Test + ReportRound2FinTest |
+| PJ ملفات | نص مصدر الملفات من المستودع المرتبط بالمشروع + رفع يعمل | ReportRound2Batch5Test |
+| PJ تنفيذ | زر أساسي «فتح مساحة التنفيذ» من صفحة المشروع | ReportRound2Batch5Test |
+| PJ عقد | رفع ملف PDF بدل رابط URL في نموذج الشراكة داخل محفظة المشاريع | ReportRound2Batch5Test |
+| PJ زيارات/قياس | إرشاد عربي في صفحة المشروع + تبويبات التنفيذ + شاشات الزيارات/القياس | Blade |
+| PJ قالب | معاينة القالب من الجولة 1 ما زالت تعمل | ReportRound2Batch5Test |
+| DR روابط | مركز التقارير ↔ المستودع (قائم) | Blade |
+| DR أرشفة | توليد أسبوعي / تصدير المركز ينشئ Document بتصنيف «تقرير» تراكميًا | ReportRound2Batch5Test |
+| DR تنزيل | `DownloadHeaders` لاسم عربي | ReportRound2Batch5Test |
+| DR محاضر | مسار طلب←موافقة←نسخة موسومة ظاهر | قائم (جولة 1) |
+| DR سجل | توسيع ACTION_LABELS + عمود الحالة + فلتر إجراءات مخزّن/محدود | ReportRound2Batch5Test |
+| ST/RL | تحقق STRUCT من الجولة 1 + توسيع OperationalRolesTest | OperationalRolesTest |
+| أدوات دخان | ReportRound1ToolsSmokeTest + رفع نسخة مستند | ReportRound1ToolsSmokeTest |
+| شراكات | دورة حياة الشراكة **مغلقة** في الدفعة 4 | — |
+
+**مؤجّل عمدًا:** إرسال SMTP حقيقي · تنفيذ حضور QR (تصميم فقط) · Phase B فوترة ضريبية · دمج `main`.
+
+لا دمج `main`.
+
+
+---
+
+## التجربة الثالثة — حتى المالية — `cursor/uat-round3-finance-d8fc` (2026-08-14)
+
+نطاق: تنقّل + دخول + موارد بشرية (جزئي) + مالية. ما بعد المالية مؤجّل.
+
+| # | الملاحظة | الإصلاح |
+|---|----------|---------|
+| 1 | إشعار → صفحة سوداء | روابط نسبية في `RecordUrl` + تطبيع المسار في `NotificationBell` (تجاوز `APP_URL=localhost`) |
+| 2 | قائمة الحساب تزاح الواجهة | قائمة الجوال: `fixed` بحافة واحدة + عرض محدود + إخفاء تمرير أفقي |
+| 3 | رسالة نجاح ثابتة | (سابق) إخفاء toast بعد 4ث |
+| 4 | تكرار بطاقات+جدول صرف | `display:none !important` للبطاقات على سطح المكتب ضد `.ds-task-cards` |
+| 5 | إرجاع صرف CHECK `returned` | هجرة SQLite تعيد بناء `expense_approval_logs` بـ CHECK يشمل returned |
+| 6 | `/assets` Not Found | نقل الشعارات إلى `public/brand/logos` حتى لا يحجب المجلد المسار |
+| 7 | رواتب شهرية لا تنعكس | إنشاء مسيّر مسودة تلقائيًا + مرآة إلى `SalaryComponent` في الملف الوظيفي |
+| 8 | شاهد إيراد لا يُحفظ | شاهد إلزامي + انتظار رفع Livewire قبل الحفظ |
+| 9 | إثبات عهدة «إلزامي» رغم الاختيار | انتظار اكتمال الرفع + تعطيل الزر أثناء الرفع |
+| 10 | PDF عربي مقطّع | عائلة الخط `amiri` تطابق `installed-fonts.json` |
+| 11 | فواتير/تقارير PDF | زر طباعة (inline) + تصدير Excel CSV للتقرير المالي |
+| 12 | قيمة العقد vs راتب | توضيح التسمية والنص المساعد في عقود العاملين |
+
+**مؤجّل عمدًا (بعد المالية / طلب المقيّم):** مسؤوليات، إجازات من حساب موظف، دورة حياة، حضور (إعادة دراسة)، تقييمات معاينة كاملة، إسناد/اجتماعات المتقدمة، شراكات→نهاية التقرير.
+
+لا دمج `main`.
+
+### الرئيسية — حذف الحضور/الانصراف (UAT3)
+
+أزرار «تسجيل حضور / تسجيل انصراف» أُزيلت من `/dashboard` بعد الاعتماد على مسار خارجي/باركود لاحقًا. تبويب `/attendance` وخدمات الحضور تبقى. ملف المهام الرسمي في الرئيسية يبقى إن وُجد.
+
+### دفعة قرارات المقيّم (تنقّل + HR) — نفس الفرع
+
+| # | القرار / المشكلة | التنفيذ |
+|---|------------------|---------|
+| 1 | إشعار يفتح `/tasks` بلا `?open=` | `NotificationBell::resolveTarget` يفضّل `task_id` عبر `RecordUrl::task` |
+| 2 | Toast يسار | أعلى الوسط (`left:50%` + `translateX(-50%)`) |
+| 3أ | «يحتاج تدخلك» | قابل للطي — مطوي افتراضيًا |
+| 4 | راتب فقط بلا قيمة عقد | عمود/نص «الراتب الشهري» من الملف؛ لا حفظ `value` من نموذج العقد |
+| 5 | دمج الرواتب | إزالة تبويب «الرواتب الشهرية»؛ `/payroll` → `payroll-runs` |
+| 6 | نشر التقييم | معاينة قبل النشر؛ النشر = ظهور للموظف للتعليق |
+| 7–8 | حضور كامل | تفعيل من الشاشة · تأخر مقابل `attendance.office_start_time` · طباعة شهرية؛ الورديات/QR لاحقًا |
+
+### نموذج UAT — 3 مراحل مقفلة
+
+`/uat/tools`: المرحلة التالية لا تُفتح حتى كل أدوات الحالية = «يعتمد».
+
+| مرحلة | التبويبات | ~عدد الأدوات |
+|--------|-----------|--------------|
+| 1 الأساس والموارد | تنقّل · دخول · HR · هيكل · أدوار | ~24 |
+| 2 التشغيل والمالية | إسناد · اجتماعات · مالية · تقارير | ~19 |
+| 3 النمو والمحتوى | شراكات · مشاريع · مستندات · إعدادات | ~21 |
+
+**حالة الإكمال:** ليست كل أدوات التجربة منتهية — أُصلحت ملاحظات المرحلة 1 جزئيًا فقط؛ بقية أدوات المرحلة 1 (إجازات، دورة حياة، مسؤوليات…) والمراحل 2–3 لم تُغلق بعد.

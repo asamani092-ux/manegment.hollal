@@ -76,10 +76,35 @@ class ExpenseApprovalService
 
         return match ($expense->current_approval_stage) {
             self::STAGE_DEPARTMENT_MANAGER => $this->isDepartmentManager($user, $expense),
-            self::STAGE_EXECUTIVE => $user->hasRole('Executive Manager') && $user->can('finance.expenses.approve'),
+            // Permission gate (not role name alone): Super Admin / GM / Executive with finance.expenses.approve
+            self::STAGE_EXECUTIVE => $user->can('finance.expenses.approve'),
             self::STAGE_FINANCE => $user->can('finance.expenses.pay'),
             default => false,
         };
+    }
+
+    /**
+     * Arabic hint when the request is pending but the viewer cannot act on the current stage.
+     */
+    public function cannotApproveReason(User $user, ExpenseRequest $expense): ?string
+    {
+        if ($expense->status !== 'pending' || ! $expense->current_approval_stage) {
+            return null;
+        }
+
+        if ($this->canApprove($user, $expense)) {
+            return null;
+        }
+
+        $stageLabels = [
+            self::STAGE_DEPARTMENT_MANAGER => 'مدير القسم المباشر',
+            self::STAGE_EXECUTIVE => 'المدير التنفيذي / صاحب صلاحية الاعتماد',
+            self::STAGE_FINANCE => 'المالية (صلاحية الصرف)',
+        ];
+
+        $stage = $stageLabels[$expense->current_approval_stage] ?? $expense->current_approval_stage;
+
+        return 'لا يمكنك اعتماد هذا الطلب لأن مرحلته الحالية («'.$stage.'») خارج صلاحيتك أو ليست دورك في السلسلة.';
     }
 
     public function approve(User $approver, ExpenseRequest $expense): void
@@ -160,6 +185,37 @@ class ExpenseApprovalService
         ], $approver);
     }
 
+    /**
+     * Return for revision (معاد للمراجعة): requester may edit and resubmit.
+     */
+    public function returnForRevision(User $approver, ExpenseRequest $expense, string $reason): void
+    {
+        $stage = $expense->current_approval_stage ?? 'unknown';
+
+        ExpenseApprovalLog::create([
+            'expense_request_id' => $expense->id,
+            'stage' => $stage,
+            'approver_id' => $approver->id,
+            'action' => 'returned',
+            'notes' => $reason,
+            'acted_at' => now(),
+        ]);
+
+        $expense->update([
+            'status' => ExpenseRequest::STATUS_RETURNED,
+            'current_approval_stage' => null,
+            'approver_id' => $approver->id,
+            'approved_at' => now(),
+            'rejection_reason' => $reason,
+            'paid_ready_at' => null,
+        ]);
+
+        $this->auditLog->record('expense.returned', $expense, [
+            'stage' => $stage,
+            'reason' => $reason,
+        ], $approver);
+    }
+
     protected function isDepartmentManager(User $user, ExpenseRequest $expense): bool
     {
         $expense->loadMissing('requester');
@@ -188,8 +244,7 @@ class ExpenseApprovalService
             self::STAGE_DEPARTMENT_MANAGER => collect([
                 $expense->requester?->manager,
             ])->filter(),
-            self::STAGE_EXECUTIVE => User::role('Executive Manager')
-                ->permission('finance.expenses.approve')
+            self::STAGE_EXECUTIVE => User::permission('finance.expenses.approve')
                 ->where('is_active', true)
                 ->get(),
             self::STAGE_FINANCE => User::permission('finance.expenses.pay')

@@ -36,6 +36,7 @@ class AuthTest extends TestCase
         ]);
 
         $response->assertRedirect(route('dashboard'));
+        $response->assertSessionHas('success', 'تم تسجيل الدخول بنجاح');
         $this->assertAuthenticatedAs($user);
     }
 

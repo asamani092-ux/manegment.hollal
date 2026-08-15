@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Partnership;
 use App\Models\PartnershipStageLog;
 use App\Models\User;
+use App\Notifications\PartnershipStageChanged;
 use App\Notifications\PartnershipStale;
 use App\Support\Setting;
 use Illuminate\Support\Collection;
@@ -50,8 +51,32 @@ class PartnershipPipelineService
 
             $partnership->forceFill($attributes)->save();
 
+            DB::afterCommit(function () use ($partnership, $from, $stage) {
+                $this->notifyOrganization($partnership->fresh(['organization.contacts']), $from, $stage);
+            });
+
             return $log;
         });
+    }
+
+    /**
+     * Mail the organization's contacts (log driver in trial). Time: O(c) contacts.
+     */
+    private function notifyOrganization(?Partnership $partnership, ?int $from, int $to): void
+    {
+        if ($partnership === null) {
+            return;
+        }
+
+        $emails = collect($partnership->organization?->contacts?->pluck('email') ?? [])
+            ->filter(fn ($email) => is_string($email) && $email !== '')
+            ->unique()
+            ->values();
+
+        foreach ($emails as $email) {
+            Notification::route('mail', $email)
+                ->notify(new PartnershipStageChanged($partnership, $from, $to));
+        }
     }
 
     /** Kanban columns keyed by stage. */
@@ -82,7 +107,7 @@ class PartnershipPipelineService
         $threshold = $this->staleThresholdDays();
 
         return Partnership::query()
-            ->whereIn('stage', Partnership::PIPELINE_STAGES)
+            ->whereIn('stage', array_diff(Partnership::PIPELINE_STAGES, [Partnership::STAGE_EXECUTION]))
             ->get()
             ->filter(fn (Partnership $p) => $p->stageAgeDays() >= $threshold)
             ->values();

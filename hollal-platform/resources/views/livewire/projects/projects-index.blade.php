@@ -134,7 +134,7 @@
                         <th>المشروع</th>
                         <th>الحالة</th>
                         <th>المبلغ</th>
-                        <th>رابط الضيف</th>
+                        <th>بوابة الشريك</th>
                         <th>إجراءات</th>
                     </tr>
                 </x-slot:head>
@@ -145,10 +145,13 @@
                         <td>{{ $partnershipStatusLabels[$partnership->status] ?? $partnership->status }}</td>
                         <td>{{ $partnership->pricing_amount !== null ? number_format((float) $partnership->pricing_amount, 2) : '—' }}</td>
                         <td>
-                            @if ($partnership->magic_link_token && $partnership->token_expires_at?->isFuture())
-                                <a class="ds-link" href="{{ route('partnership.guest', $partnership->magic_link_token) }}" target="_blank" rel="noopener">فتح</a>
+                            @php
+                                $portalLink = $partnership->links->first(fn ($link) => $link->isUsable());
+                            @endphp
+                            @if ($portalLink)
+                                <a class="ds-link" href="{{ route('partner.portal', $portalLink->token) }}" target="_blank" rel="noopener">فتح</a>
                             @else
-                                <span class="ds-text-muted">منتهي</span>
+                                <span class="ds-text-muted">لا يوجد رابط ساري</span>
                             @endif
                         </td>
                         <td>
@@ -334,11 +337,14 @@
                                 @endforeach
                             </select>
                         </x-ds-form-group>
-                        <x-ds-form-group label="رابط العقد (PDF)" :error="$errors->first('contract_pdf')">
-                            <input type="text" class="ds-input" wire:model="contract_pdf" @disabled($partnershipViewOnly)>
+                        <x-ds-form-group label="ملف العقد (PDF)" :error="$errors->first('contractFile')" hint="ارفع ملف PDF للعقد — ليس رابطًا خارجيًا">
+                            @if ($contract_pdf)
+                                <p class="ds-text-muted ds-mb-2">ملف محفوظ: {{ basename($contract_pdf) }}</p>
+                            @endif
+                            <input type="file" class="ds-input" wire:model="contractFile" accept=".pdf,application/pdf" @disabled($partnershipViewOnly)>
                         </x-ds-form-group>
                     </div>
-                    <x-ds-form-group label="التزامات حلال" :error="$errors->first('halal_commitments')">
+                    <x-ds-form-group label="التزامات حلل" :error="$errors->first('halal_commitments')">
                         <textarea class="ds-input" rows="3" wire:model="halal_commitments" @disabled($partnershipViewOnly)></textarea>
                     </x-ds-form-group>
                     <x-ds-form-group label="التزامات الشريك" :error="$errors->first('partner_commitments')">

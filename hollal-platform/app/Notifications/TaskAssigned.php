@@ -25,7 +25,7 @@ class TaskAssigned extends Notification implements ShouldQueue
     {
         return [
             'message' => 'تم إسناد مهمة جديدة إليك: '.$this->task->title,
-            'url' => route('tasks.index'),
+            'url' => \App\Support\RecordUrl::task($this->task->id),
             'task_id' => $this->task->id,
         ];
     }

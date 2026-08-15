@@ -57,6 +57,8 @@ class PartnershipShow extends Component
 
     public $signedCopy;
 
+    public string $internalApprovalNotes = '';
+
     // — payments (05-B6)
     public ?int $payingScheduleId = null;
 
@@ -82,7 +84,15 @@ class PartnershipShow extends Component
 
     public function mount(Partnership $partnership): void
     {
-        $this->authorize('partnerships.pipeline.view');
+        $user = auth()->user();
+        abort_unless(
+            $user && (
+                $user->can('partnerships.pipeline.view')
+                || $user->can('partnerships.contracts.confirm')
+                || $user->can('projects.update')
+            ),
+            403,
+        );
         $this->partnership = $partnership;
         $this->resetQuoteLines();
         $this->scheduleRows = [['label' => 'الدفعة الأولى', 'amount' => '', 'due_on' => now()->toDateString()]];
@@ -221,7 +231,7 @@ class PartnershipShow extends Component
 
     public function confirmContract(int $contractId): void
     {
-        $this->authorize('partnerships.contracts.confirm');
+        $this->authorizeInternalApproval();
 
         try {
             app(PartnershipContractService::class)->confirm($this->contract($contractId), auth()->user());
@@ -230,6 +240,23 @@ class PartnershipShow extends Component
         } catch (\RuntimeException $e) {
             $this->addError('contract', $e->getMessage());
         }
+    }
+
+    public function returnContract(int $contractId): void
+    {
+        $this->authorizeInternalApproval();
+        $this->validate([
+            'internalApprovalNotes' => 'required|string|max:2000',
+        ], [], ['internalApprovalNotes' => 'ملاحظات الإرجاع']);
+
+        app(PartnershipContractService::class)->returnForRevision(
+            $this->contract($contractId),
+            auth()->user(),
+            $this->internalApprovalNotes,
+        );
+        $this->internalApprovalNotes = '';
+        $this->partnership->refresh();
+        $this->dispatch('ds-toast', message: 'أُعيد العقد للجهة مع الملاحظات');
     }
 
     // -------------------------------------------------------------- payments
@@ -279,9 +306,18 @@ class PartnershipShow extends Component
     public function issueLink(): void
     {
         $this->authorize('partnerships.links.manage');
-        app(PartnerPortalService::class)->issue($this->partnership, auth()->user());
+        $link = app(PartnerPortalService::class)->issue($this->partnership, auth()->user());
 
-        $this->dispatch('ds-toast', message: 'تم إصدار رابط الجهة');
+        $this->dispatch('ds-toast', message: 'تم إصدار رابط الجهة: '.app(PartnerPortalService::class)->portalUrl($link->token));
+    }
+
+    public function sendLinkEmail(int $linkId): void
+    {
+        $this->authorize('partnerships.links.manage');
+        $link = $this->partnership->links()->findOrFail($linkId);
+        $url = app(PartnerPortalService::class)->emailLink($link);
+
+        $this->dispatch('ds-toast', message: 'تم تسجيل إرسال الرابط بالبريد: '.$url);
     }
 
     public function revokeLink(int $linkId): void
@@ -369,5 +405,18 @@ class PartnershipShow extends Component
             'quantity' => '1',
             'unit_price' => '',
         ]];
+    }
+
+    private function authorizeInternalApproval(): void
+    {
+        $user = auth()->user();
+        abort_unless(
+            $user && (
+                $user->can('partnerships.contracts.confirm')
+                || $user->can('projects.update')
+                || $user->hasAnyRole(['Super Admin', 'Executive Manager'])
+            ),
+            403,
+        );
     }
 }

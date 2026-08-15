@@ -11,6 +11,10 @@
         <a class="ds-link" href="{{ route('projects.index') }}">تنفيذ المشروع</a>.
     </p>
 
+    <p class="ds-text-muted ds-mb-3">
+        لجدولة زيارة أو رفع تقريرها لمشروع معيّن: افتح المشروع ثم «مساحة التنفيذ» → تبويب الزيارات.
+    </p>
+
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label" for="visits-project">المشروع</label>

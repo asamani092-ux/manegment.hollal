@@ -75,16 +75,36 @@ class HrLifecycleTest extends TestCase
         $this->assertSame(count($tasks), Task::where('assigned_by', $creator->id)->count());
     }
 
-    public function test_offboarding_disables_account(): void
+    public function test_offboarding_creates_tasks_and_disables_account_last(): void
     {
         $actor = User::factory()->create();
         $employee = User::factory()->create(['employment_status' => 'نشط', 'is_active' => true]);
 
         app(OffboardingService::class)->offboard($employee, $actor);
 
+        $this->assertSame('نشط', $employee->fresh()->employment_status);
+        $this->assertTrue((bool) $employee->fresh()->is_active);
+        $this->assertNotNull($employee->fresh()->offboarding_started_at);
+        $this->assertSame(4, Task::where('related_user_id', $employee->id)->count());
+        $this->assertDatabaseHas('tasks', ['assigned_by' => $actor->id, 'priority' => 'high']);
+
+        $this->expectException(\RuntimeException::class);
+        app(OffboardingService::class)->complete($employee, $actor);
+    }
+
+    public function test_offboarding_complete_disables_after_tasks_done(): void
+    {
+        $actor = User::factory()->create();
+        $employee = User::factory()->create(['employment_status' => 'نشط', 'is_active' => true]);
+
+        app(OffboardingService::class)->offboard($employee, $actor);
+        Task::query()
+            ->where('related_user_id', $employee->id)
+            ->update(['status' => \App\Services\TaskLifecycleService::STATUS_COMPLETED]);
+        app(OffboardingService::class)->complete($employee, $actor);
+
         $this->assertSame('منتهية_علاقته', $employee->fresh()->employment_status);
         $this->assertFalse((bool) $employee->fresh()->is_active);
-        $this->assertDatabaseHas('tasks', ['assigned_by' => $actor->id, 'priority' => 'high']);
     }
 
     public function test_published_duties_file_surfaces_on_dashboard(): void

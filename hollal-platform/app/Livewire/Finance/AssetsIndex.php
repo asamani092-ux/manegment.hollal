@@ -28,7 +28,17 @@ class AssetsIndex extends Component
 
     public string $name_ar = '';
 
+    public string $description = '';
+
     public ?int $category_id = null;
+
+    public string $purchase_amount = '';
+
+    public string $location = '';
+
+    public string $condition = \App\Models\Asset::CONDITION_GOOD;
+
+    public ?int $create_holder_id = null;
 
     public ?int $holder_id = null;
 
@@ -64,7 +74,8 @@ class AssetsIndex extends Component
     public function openCreateModal(): void
     {
         abort_unless(auth()->user()->can('finance.assets.manage'), 403);
-        $this->reset(['name_ar', 'category_id']);
+        $this->reset(['name_ar', 'description', 'category_id', 'purchase_amount', 'location', 'create_holder_id']);
+        $this->condition = Asset::CONDITION_GOOD;
         $this->showCreateModal = true;
     }
 
@@ -73,10 +84,30 @@ class AssetsIndex extends Component
         abort_unless(auth()->user()->can('finance.assets.manage'), 403);
         $this->validate([
             'name_ar' => 'required|string|max:255',
+            'description' => 'nullable|string|max:2000',
             'category_id' => 'nullable|exists:asset_categories,id',
+            'purchase_amount' => 'nullable|numeric|min:0',
+            'location' => 'nullable|string|max:255',
+            'condition' => 'required|in:'.implode(',', [
+                Asset::CONDITION_GOOD,
+                Asset::CONDITION_MAINTENANCE,
+                Asset::CONDITION_DAMAGED,
+                Asset::CONDITION_RETIRED,
+            ]),
+            'create_holder_id' => 'nullable|exists:users,id',
         ]);
 
-        app(AssetService::class)->create($this->name_ar, $this->category_id);
+        $asset = app(AssetService::class)->create($this->name_ar, $this->category_id, [
+            'description' => $this->description !== '' ? $this->description : null,
+            'purchase_amount' => $this->purchase_amount !== '' ? (float) $this->purchase_amount : null,
+            'location' => $this->location !== '' ? $this->location : null,
+            'condition' => $this->condition,
+        ]);
+
+        if ($this->create_holder_id) {
+            app(AssetService::class)->handover($asset, User::findOrFail($this->create_holder_id), 'تسجيل أولي');
+        }
+
         $this->showCreateModal = false;
         $this->dispatch('toast', type: 'success', message: 'تم تسجيل الأصل');
     }
@@ -121,8 +152,8 @@ class AssetsIndex extends Component
     {
         return view('livewire.finance.assets-index', [
             'assets' => Asset::query()
-                ->select(['id', 'code', 'name_ar', 'condition', 'current_holder_id', 'holder_since', 'can_be_custody'])
-                ->with('currentHolder:id,name')
+                ->select(['id', 'code', 'name_ar', 'description', 'category_id', 'condition', 'purchase_amount', 'location', 'current_holder_id', 'holder_since', 'can_be_custody'])
+                ->with(['currentHolder:id,name', 'category:id,name_ar'])
                 ->when($this->search, fn ($q) => $q->where(
                     fn ($w) => $w->where('name_ar', 'like', '%'.$this->search.'%')
                         ->orWhere('code', 'like', '%'.$this->search.'%')

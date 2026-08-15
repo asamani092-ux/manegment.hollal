@@ -26,7 +26,7 @@ class PayrollExecuted extends Notification implements ShouldQueue
     {
         return [
             'message' => 'تم تنفيذ مسيّر رواتب شهر '.$this->run->month.' بالكامل من المالية',
-            'url' => route('payroll-runs.index'),
+            'url' => \App\Support\RecordUrl::payrollRun($this->run->id),
             'payroll_run_id' => $this->run->id,
         ];
     }

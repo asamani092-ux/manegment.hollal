@@ -7,10 +7,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MeetingAmendment extends Model
 {
+    public const STATUS_PENDING = 'معلق';
+
+    public const STATUS_APPROVED = 'معتمد';
+
     public $timestamps = false;
 
     /** @var list<string> */
-    protected $fillable = ['meeting_id', 'version', 'note', 'requested_by', 'approved_by', 'created_at'];
+    protected $fillable = ['meeting_id', 'version', 'note', 'status', 'requested_by', 'approved_by', 'created_at'];
 
     /** @return array<string, string> */
     protected function casts(): array

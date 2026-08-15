@@ -33,11 +33,14 @@ class LeavesIndex extends Component
 
     public string $search = '';
 
+    public ?int $open = null;
+
     /** @var array<string, array<string, string>> */
     protected $queryString = [
         'statusFilter' => ['except' => ''],
         'typeFilter' => ['except' => ''],
         'search' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function updatingStatusFilter(): void
@@ -162,7 +165,8 @@ class LeavesIndex extends Component
             ->with(['employee:id,name,manager_id', 'approver:id,name'])
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->typeFilter, fn ($q) => $q->where('type', $this->typeFilter))
-            ->when($this->search, fn ($q) => $q->whereHas(
+            ->when($this->open, fn ($q) => $q->where('id', $this->open))
+            ->when($this->search && ! $this->open, fn ($q) => $q->whereHas(
                 'employee',
                 fn ($e) => $e->where('name', 'like', '%'.$this->search.'%')
             ))

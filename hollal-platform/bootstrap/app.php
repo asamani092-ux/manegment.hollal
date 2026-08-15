@@ -1,16 +1,9 @@
 <?php
 
-use App\Http\Middleware\EnsurePasswordIsChanged;
-use App\Http\Middleware\EnsureUatToolsEnabled;
-use App\Http\Middleware\MaintenanceMode;
-use App\Http\Middleware\SecurityHeadersMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
-use Spatie\Permission\Middleware\PermissionMiddleware;
-use Spatie\Permission\Middleware\RoleMiddleware;
-use Spatie\Permission\Middleware\RoleOrPermissionMiddleware;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -21,15 +14,15 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: '*');
 
-        $middleware->append(SecurityHeadersMiddleware::class);
+        $middleware->append(\App\Http\Middleware\SecurityHeadersMiddleware::class);
 
         $middleware->alias([
-            'role' => RoleMiddleware::class,
-            'permission' => PermissionMiddleware::class,
-            'role_or_permission' => RoleOrPermissionMiddleware::class,
-            'password.changed' => EnsurePasswordIsChanged::class,
-            'maintenance' => MaintenanceMode::class,
-            'uat.enabled' => EnsureUatToolsEnabled::class,
+            'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+            'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+            'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+            'password.changed' => \App\Http\Middleware\EnsurePasswordIsChanged::class,
+            'maintenance' => \App\Http\Middleware\MaintenanceMode::class,
+            'uat.enabled' => \App\Http\Middleware\EnsureUatToolsEnabled::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

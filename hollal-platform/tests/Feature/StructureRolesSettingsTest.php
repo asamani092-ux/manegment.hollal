@@ -274,6 +274,31 @@ class StructureRolesSettingsTest extends TestCase
         $this->assertSame(0, ExceptionalGrant::count());
     }
 
+    public function test_exception_permission_picker_is_searchable(): void
+    {
+        $admin = $this->admin();
+
+        Livewire::actingAs($admin)->test(GrantsIndex::class)
+            ->call('setTab', 'exceptions')
+            ->assertSee('ابحث واختر صلاحية', false)
+            ->assertSee('ابحث واختر موظفاً', false)
+            ->set('grantPermission', 'hr.leaves.request')
+            ->assertSet('grantPermission', 'hr.leaves.request')
+            ->set('grantUserId', $admin->id)
+            ->assertSet('grantUserId', $admin->id);
+    }
+
+    public function test_exception_user_picker_is_searchable(): void
+    {
+        $match = User::factory()->create(['name' => 'نورة المالية', 'phone' => '0555111222', 'must_change_password' => false]);
+
+        Livewire::actingAs($this->admin())->test(GrantsIndex::class)
+            ->call('setTab', 'exceptions')
+            ->assertViewHas('userOptions', fn ($rows) => collect($rows)->contains(fn ($r) => (int) $r['id'] === (int) $match->id))
+            ->set('grantUserId', $match->id)
+            ->assertSet('grantUserId', $match->id);
+    }
+
     public function test_matrix_export_is_authorized(): void
     {
         $stranger = User::factory()->create(['must_change_password' => false]);

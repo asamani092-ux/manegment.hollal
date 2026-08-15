@@ -27,7 +27,7 @@ class ExpensePaidReady extends Notification implements ShouldQueue
             'message' => 'طلب المصروف جاهز للدفع',
             'expense_request_id' => $this->expenseRequest->id,
             'amount' => (string) $this->expenseRequest->amount,
-            'paid_ready_at' => $this->expenseRequest->paid_ready_at?->toIso8601String(),
+            'url' => \App\Support\RecordUrl::expense($this->expenseRequest->id),
         ];
     }
 }

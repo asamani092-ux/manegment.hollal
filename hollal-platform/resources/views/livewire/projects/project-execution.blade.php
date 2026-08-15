@@ -1,5 +1,5 @@
 <x-ds-page>
-    <x-ds-page-header :title="$project->name" />
+    <x-ds-page-header :title="$project->name" :back-url="route('projects.show', $project)" back-label="رجوع" />
 
     <section class="ds-section ds-filter-bar">
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'plan')">الخطة والفريق</button>
@@ -90,6 +90,10 @@
     @endif
 
     @if ($tab === 'visits')
+        <p class="ds-text-muted ds-mb-3">
+            جدولة الزيارة ورفع تقريرها من هنا. للقائمة العامة لكل المشاريع استخدم
+            <a class="ds-link" href="{{ route('visits.index') }}">شاشة الزيارات</a>.
+        </p>
         <section class="ds-section ds-stat-row">
             @foreach ($quotas as $service => $quota)
                 <div class="ds-stat-mini" wire:key="quota-{{ $service }}">
@@ -185,6 +189,11 @@
     @endif
 
     @if ($tab === 'measurement')
+        <p class="ds-text-muted ds-mb-3">
+            سجّل القياس القبلي قبل التنفيذ والقياس البعدي بعده من النموذج أدناه (مرحلة قبلي/بعدي).
+            قائمة نماذج القياس العامة:
+            <a class="ds-link" href="{{ route('measurement.index') }}">القياس والأثر</a>.
+        </p>
         <section class="ds-section ds-stat-row">
             <div class="ds-stat-mini">
                 <span class="ds-stat-mini-label">القياس القبلي</span>

@@ -79,7 +79,10 @@ class AssetTest extends TestCase
 
         $this->assertNotEmpty(app(OffboardingService::class)->holds($holder));
 
+        $actor = User::factory()->create();
+        app(OffboardingService::class)->offboard($holder, $actor);
+
         $this->expectException(\RuntimeException::class);
-        app(OffboardingService::class)->offboard($holder, User::factory()->create());
+        app(OffboardingService::class)->complete($holder, $actor);
     }
 }

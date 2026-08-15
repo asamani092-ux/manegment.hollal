@@ -5,8 +5,10 @@ namespace App\Console\Commands;
 use App\Models\ExpenseRequest;
 use App\Models\Project;
 use App\Models\Task;
+use App\Models\User;
 use App\Models\WeeklyReport;
 use App\Notifications\WeeklyReportGenerated;
+use App\Services\ReportDocumentService;
 use App\Support\WeeklyReportNotificationHelper;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Schema;
@@ -33,7 +35,13 @@ class GenerateWeeklyReport extends Command
             'generated_at' => now(),
         ]);
 
-        foreach (WeeklyReportNotificationHelper::managers() as $manager) {
+        $managers = WeeklyReportNotificationHelper::managers();
+        $archiver = $managers->first() ?? User::query()->orderBy('id')->first();
+        if ($archiver) {
+            app(ReportDocumentService::class)->archiveWeeklyReport($report, $archiver);
+        }
+
+        foreach ($managers as $manager) {
             $manager->notify(new WeeklyReportGenerated($report));
         }
 

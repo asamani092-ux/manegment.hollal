@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('expense_request_id')->constrained()->cascadeOnDelete();
             $table->string('stage');
             $table->foreignId('approver_id')->constrained('users')->cascadeOnDelete();
-            $table->enum('action', ['approved', 'rejected']);
+            $table->enum('action', ['approved', 'rejected', 'returned']);
             $table->text('notes')->nullable();
             $table->timestamp('acted_at');
             $table->timestamps();

@@ -13,9 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('expense_requests', function (Blueprint $table) {
-            if (! Schema::hasColumn('expense_requests', 'payment_proof_path')) {
-                $table->string('payment_proof_path')->nullable()->after('attachment');
-            }
+            $table->string('payment_proof_path')->nullable()->after('attachment');
         });
 
         if (Schema::getConnection()->getDriverName() === 'mysql') {
@@ -24,9 +22,7 @@ return new class extends Migration
         }
 
         Schema::table('custodies', function (Blueprint $table) {
-            if (! Schema::hasColumn('custodies', 'disbursement_proof_path')) {
-                $table->string('disbursement_proof_path')->nullable()->after('disbursed_amount');
-            }
+            $table->string('disbursement_proof_path')->nullable()->after('disbursed_amount');
         });
     }
 

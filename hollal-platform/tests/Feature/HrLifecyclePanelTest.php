@@ -42,10 +42,10 @@ class HrLifecyclePanelTest extends TestCase
             ->assertSet('detailTab', 'holds')
             ->assertSee('متابعة إنهاء العلاقة', false)
             ->assertSee('موظف اختبار إنهاء', false)
-            ->assertSee('الموانع', false)
+            ->assertSee('مهام إنهاء غير مكتملة', false)
             ->call('setDetailTab', 'tasks')
             ->assertSet('detailTab', 'tasks')
-            ->assertSee('المهام', false)
+            ->assertSee('تسليم الأعمال الجارية', false)
             ->call('closeDetails')
             ->assertSet('detailUserId', null);
     }

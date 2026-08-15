@@ -23,7 +23,6 @@
             <tr>
                 <th>النوع</th>
                 <th>الشهر</th>
-                <th>رفع بواسطة</th>
                 <th>المستند</th>
             </tr>
         </x-slot:head>
@@ -31,11 +30,16 @@
             <tr wire:key="fin-doc-{{ $loop->index }}">
                 <td>{{ $doc['label'] }}</td>
                 <td dir="ltr">{{ $doc['month'] ?? '—' }}</td>
-                <td>{{ $doc['uploader'] ?? '—' }}</td>
-                <td dir="ltr">{{ basename($doc['path']) }}</td>
+                <td>
+                    @if (! empty($doc['download_url']))
+                        <a class="ds-link" href="{{ $doc['download_url'] }}">{{ basename($doc['path']) }}</a>
+                    @else
+                        <span dir="ltr">{{ basename($doc['path']) }}</span>
+                    @endif
+                </td>
             </tr>
         @empty
-            <tr><td colspan="4" class="ds-text-muted ds-table-empty">لا توجد مستندات مالية</td></tr>
+            <tr><td colspan="3" class="ds-text-muted ds-table-empty">لا توجد مستندات مالية</td></tr>
         @endforelse
     </x-ds-table>
 </x-ds-page>

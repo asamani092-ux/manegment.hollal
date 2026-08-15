@@ -1,5 +1,5 @@
 <x-ds-page>
-    <x-ds-page-header :title="$program->name" />
+    <x-ds-page-header :title="$program->name" :back-url="route('programs.index')" back-label="رجوع" />
 
     <section class="ds-section">
         <p class="ds-text-muted">{{ $program->description }}</p>

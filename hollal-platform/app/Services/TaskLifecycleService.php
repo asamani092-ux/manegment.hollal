@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\MeetingItem;
 use App\Models\Task;
 use App\Models\TaskStatusLog;
 use App\Models\User;
@@ -72,6 +73,15 @@ class TaskLifecycleService
         if ($task->recurring_template_id !== null) {
             app(RecurringTaskService::class)->onInstanceCompleted($task);
         }
+
+        MeetingItem::query()
+            ->where('task_id', $task->id)
+            ->where('status', '!=', 'done')
+            ->update([
+                'status' => 'done',
+                'close_reason' => 'أُغلق تلقائيًا باكتمال المهمة المربوطة',
+                'closed_at' => now(),
+            ]);
 
         return $task;
     }

@@ -8,6 +8,8 @@ use App\Services\CustodyService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
@@ -17,6 +19,7 @@ use Livewire\WithPagination;
 class CustodiesIndex extends Component
 {
     use AuthorizesRequests;
+    use WithFileUploads;
     use WithPagination;
 
     public bool $showRequestModal = false;
@@ -27,13 +30,24 @@ class CustodiesIndex extends Component
 
     public ?int $employee_id = null;
 
+    public string $rejectReason = '';
+
+    public ?int $rejectingId = null;
+
+    public ?int $disbursingId = null;
+
+    public ?TemporaryUploadedFile $disbursementProof = null;
+
     public string $statusFilter = '';
 
     public string $search = '';
 
+    public ?int $open = null;
+
     protected $queryString = [
         'statusFilter' => ['except' => ''],
         'search' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function updatingStatusFilter(): void
@@ -98,21 +112,80 @@ class CustodiesIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'تم اعتماد العهدة');
     }
 
-    public function disburseCustody(int $id): void
+    public function openReject(int $id): void
+    {
+        abort_unless(auth()->user()->can('finance.custodies.approve'), 403);
+        $this->rejectingId = $id;
+        $this->rejectReason = '';
+    }
+
+    public function rejectCustody(): void
+    {
+        abort_unless(auth()->user()->can('finance.custodies.approve'), 403);
+        $this->validate([
+            'rejectingId' => 'required|exists:custodies,id',
+            'rejectReason' => 'required|string|min:3|max:500',
+        ]);
+
+        try {
+            app(CustodyService::class)->reject(Custody::findOrFail($this->rejectingId), auth()->user(), $this->rejectReason);
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
+        $this->rejectingId = null;
+        $this->rejectReason = '';
+        $this->dispatch('toast', type: 'success', message: 'رُفض طلب العهدة');
+    }
+
+    public function openDisburse(int $id): void
     {
         abort_unless(auth()->user()->can('finance.custodies.disburse'), 403);
-        $custody = Custody::findOrFail($id);
-        app(CustodyService::class)->disburse($custody);
+        $this->disbursingId = $id;
+        $this->disbursementProof = null;
+    }
+
+    public function disburseCustody(): void
+    {
+        abort_unless(auth()->user()->can('finance.custodies.disburse'), 403);
+        $this->validate([
+            'disbursingId' => 'required|exists:custodies,id',
+            'disbursementProof' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
+        ], [
+            'disbursementProof.required' => 'إثبات الصرف إلزامي — انتظر اكتمال رفع الملف (الشاهد) قبل التأكيد',
+        ]);
+
+        if (! $this->disbursementProof instanceof TemporaryUploadedFile) {
+            $this->addError('disbursementProof', 'انتظر اكتمال رفع إثبات الصرف ثم أكّد');
+
+            return;
+        }
+
+        $path = $this->disbursementProof->store('custodies/disbursements', 'local');
+
+        try {
+            app(CustodyService::class)->disburse(Custody::findOrFail($this->disbursingId), $path);
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
+        $this->disbursingId = null;
+        $this->disbursementProof = null;
         $this->dispatch('toast', type: 'success', message: 'تم صرف العهدة');
     }
 
     public function render(): View
     {
         $query = Custody::query()
-            ->select(['id', 'employee_id', 'amount', 'purpose', 'status', 'due_date', 'created_at'])
+            ->select(['id', 'employee_id', 'amount', 'purpose', 'status', 'due_date', 'rejection_reason', 'created_at'])
             ->with('employee:id,name')
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
-            ->when($this->search, fn ($q) => $q->whereHas(
+            ->when($this->open, fn ($q) => $q->where('id', $this->open))
+            ->when($this->search && ! $this->open, fn ($q) => $q->whereHas(
                 'employee',
                 fn ($e) => $e->where('name', 'like', '%'.$this->search.'%')
             ))
@@ -133,6 +206,7 @@ class CustodiesIndex extends Component
                 Custody::STATUS_DISBURSED,
                 Custody::STATUS_SETTLING,
                 Custody::STATUS_CLOSED,
+                Custody::STATUS_REJECTED,
             ],
             'canApprove' => auth()->user()->can('finance.custodies.approve'),
             'canDisburse' => auth()->user()->can('finance.custodies.disburse'),

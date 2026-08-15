@@ -29,6 +29,8 @@ class ProjectExecution extends Component
 
     public string $tab = 'plan'; // plan|visits|measurement|closure
 
+    protected $queryString = ['tab' => ['except' => 'plan']];
+
     // visits
     public ?string $visitDate = null;
 

@@ -4,6 +4,9 @@ namespace App\Livewire\Partnerships;
 
 use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\Organization;
+use App\Models\Program;
+use App\Models\User;
+use App\Services\PartnershipQuickCreateService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -25,13 +28,22 @@ class OrganizationsIndex extends Component
 
     public bool $showModal = false;
 
+    public bool $showQuickPartnershipModal = false;
+
     public ?int $editingId = null;
+
+    public ?int $quickOrganizationId = null;
+
+    public ?int $quickOwnerId = null;
+
+    /** @var list<int|string> */
+    public array $quickProgramIds = [];
 
     public string $name = '';
 
     public ?string $type = null;
 
-    public ?string $typeDetail = null;
+    public ?string $typeOther = null;
 
     public ?string $city = null;
 
@@ -39,15 +51,6 @@ class OrganizationsIndex extends Component
 
     /** @var list<string> */
     public array $roles = [];
-
-    public function toggleRole(string $role): void
-    {
-        if (in_array($role, $this->roles, true)) {
-            $this->roles = array_values(array_filter($this->roles, fn ($r) => $r !== $role));
-        } else {
-            $this->roles[] = $role;
-        }
-    }
 
     /** @var list<string> */
     public const TYPES = ['جمعية تحفيظ', 'مدرسة', 'شركة تعليمية', 'وقف', 'جهة حكومية', 'أخرى'];
@@ -80,7 +83,7 @@ class OrganizationsIndex extends Component
         $this->editingId = $organization->id;
         $this->name = $organization->name;
         $this->type = $organization->type;
-        $this->typeDetail = $organization->type_detail;
+        $this->typeOther = $organization->type_other;
         $this->city = $organization->city;
         $this->notes = $organization->notes;
         $this->roles = $organization->roles ?? [];
@@ -94,20 +97,17 @@ class OrganizationsIndex extends Component
         $data = $this->validate([
             'name' => 'required|string|max:255',
             'type' => 'nullable|in:'.implode(',', self::TYPES),
-            'typeDetail' => 'nullable|string|max:255|required_if:type,أخرى',
+            'typeOther' => 'required_if:type,أخرى|nullable|string|max:100',
             'city' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'roles' => 'array',
             'roles.*' => 'in:'.implode(',', self::ROLES),
-        ], [], [
-            'name' => 'اسم الجهة',
-            'typeDetail' => 'تفاصيل النوع',
-        ]);
+        ], [], ['name' => 'اسم الجهة', 'typeOther' => 'النوع الآخر']);
 
         $payload = [
             'name' => $data['name'],
             'type' => $data['type'] ?? null,
-            'type_detail' => ($data['type'] ?? null) === 'أخرى' ? ($data['typeDetail'] ?? null) : null,
+            'type_other' => ($data['type'] ?? null) === 'أخرى' ? $data['typeOther'] : null,
             'city' => $data['city'] ?? null,
             'notes' => $data['notes'] ?? null,
             'roles' => $data['roles'] ?? [],
@@ -133,6 +133,42 @@ class OrganizationsIndex extends Component
         $this->dispatch('ds-toast', message: 'تمت أرشفة الجهة مع الحفاظ على سجلها');
     }
 
+    public function openQuickPartnership(int $organizationId): void
+    {
+        $this->authorize('partnerships.organizations.manage');
+        $this->quickOrganizationId = $organizationId;
+        $this->quickOwnerId = auth()->id();
+        $this->quickProgramIds = [];
+        $this->showQuickPartnershipModal = true;
+    }
+
+    public function createQuickPartnership(): void
+    {
+        $this->authorize('partnerships.organizations.manage');
+        $this->validate([
+            'quickOrganizationId' => 'required|exists:organizations,id',
+            'quickOwnerId' => 'required|exists:users,id',
+            'quickProgramIds' => 'required|array|min:1',
+            'quickProgramIds.*' => 'integer|exists:programs,id',
+        ], [], ['quickProgramIds' => 'البرامج المسموحة', 'quickOwnerId' => 'المتابع']);
+
+        try {
+            $partnership = app(PartnershipQuickCreateService::class)->create(
+                Organization::findOrFail($this->quickOrganizationId),
+                User::findOrFail($this->quickOwnerId),
+                $this->quickProgramIds,
+            );
+        } catch (\RuntimeException $exception) {
+            $this->addError('quickProgramIds', $exception->getMessage());
+
+            return;
+        }
+
+        $this->showQuickPartnershipModal = false;
+        $this->dispatch('ds-toast', message: 'تم إنشاء الشراكة وعرض السعر المسودة');
+        $this->redirectRoute('partnerships.show', ['partnership' => $partnership->id]);
+    }
+
     public function render(): View
     {
         $organizations = Organization::query()
@@ -146,6 +182,13 @@ class OrganizationsIndex extends Component
             'organizations' => $organizations,
             'types' => self::TYPES,
             'roleOptions' => self::ROLES,
+            'owners' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'programs' => Program::query()
+                ->where('stage', Program::STAGE_ACTIVE)
+                ->whereHas('prices', fn ($query) => $query->where('is_active', true))
+                ->withCount('prices')
+                ->orderBy('name')
+                ->get(['id', 'name']),
         ])->layout('layouts.app', ['title' => 'الجهات الشريكة']);
     }
 
@@ -154,7 +197,7 @@ class OrganizationsIndex extends Component
         $this->editingId = null;
         $this->name = '';
         $this->type = null;
-        $this->typeDetail = null;
+        $this->typeOther = null;
         $this->city = null;
         $this->notes = null;
         $this->roles = [];

@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use App\Models\BudgetAddition;
 use App\Models\Project;
+use App\Models\Revenue;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\BudgetThresholdAlert;
@@ -115,5 +117,43 @@ class BudgetService
         }
 
         return $recipients->unique('id')->values();
+    }
+
+    /**
+     * Request adding an amount to a project budget. Applied only after CEO approval.
+     * Time: O(1) | Space: O(1)
+     */
+    public function requestAddition(Project $project, float $amount, User $actor, ?string $note = null, ?Revenue $revenue = null): BudgetAddition
+    {
+        if ($amount <= 0) {
+            throw new \InvalidArgumentException('مبلغ الإضافة يجب أن يكون أكبر من صفر.');
+        }
+
+        return BudgetAddition::create([
+            'project_id' => $project->id,
+            'revenue_id' => $revenue?->id,
+            'amount' => $amount,
+            'note' => $note,
+            'status' => BudgetAddition::STATUS_PENDING,
+            'requested_by' => $actor->id,
+        ]);
+    }
+
+    public function approveAddition(BudgetAddition $addition, User $ceo): BudgetAddition
+    {
+        if ($addition->status !== BudgetAddition::STATUS_PENDING) {
+            throw new \InvalidArgumentException('لا يمكن اعتماد إضافة ليست معلّقة.');
+        }
+
+        $addition->update([
+            'status' => BudgetAddition::STATUS_APPROVED,
+            'approved_by' => $ceo->id,
+            'approved_at' => now(),
+        ]);
+
+        $project = $addition->project;
+        $project->update(['budget' => (float) $project->budget + (float) $addition->amount]);
+
+        return $addition;
     }
 }

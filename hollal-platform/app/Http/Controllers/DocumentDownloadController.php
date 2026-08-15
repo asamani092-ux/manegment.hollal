@@ -25,11 +25,15 @@ class DocumentDownloadController extends Controller
 
         $this->auditFileDownload('document', $document);
 
-        $filename = basename($document->path);
+        $extension = pathinfo($document->path, PATHINFO_EXTENSION);
+        $filename = trim((string) $document->title) !== ''
+            ? $document->title.($extension ? '.'.$extension : '')
+            : basename($document->path);
 
         return response()->streamDownload(
             fn () => print(Storage::disk('local')->get($document->path)),
-            $filename
+            $filename,
+            ['Content-Disposition' => \App\Support\DownloadHeaders::contentDisposition($filename)]
         );
     }
 }

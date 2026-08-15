@@ -21,7 +21,7 @@
                 </h2>
 
                 @foreach ($settings as $setting)
-                    <x-ds-form-group :label="$setting->label_ar ?? $setting->key" :for="'set-'.$setting->id">
+                    <x-ds-form-group :label="$setting->label_ar ?? $setting->key" :for="'set-'.$setting->id" :hint="\App\Livewire\Settings\SettingsIndex::helpFor($setting->key)">
                         @php($fieldKey = \App\Livewire\Settings\SettingsIndex::safeKey($setting->key))
                         @if ($setting->type === 'boolean')
                             <label class="ds-checkbox-label">
@@ -33,7 +33,6 @@
                                    wire:model="values.{{ $fieldKey }}"
                                    @if (in_array($setting->type, ['integer'], true)) inputmode="numeric" @endif>
                         @endif
-                        <small class="ds-text-muted" dir="ltr">{{ $setting->key }}</small>
                     </x-ds-form-group>
                 @endforeach
             </section>

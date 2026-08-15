@@ -6,6 +6,7 @@ use App\Models\Organization;
 use App\Models\Project;
 use App\Models\ReportSnapshot;
 use App\Services\ReportCenterService;
+use App\Services\ReportDocumentService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -55,8 +56,9 @@ class ReportsCenter extends Component
         abort_unless($this->canAccessCenter(), 403);
 
         $service = app(ReportCenterService::class);
+        $user = auth()->user();
 
-        match ($this->tab) {
+        $snapshot = match ($this->tab) {
             'project' => $this->projectId
                 ? $service->snapshot(
                     ReportSnapshot::KIND_PROJECT_DASHBOARD,
@@ -64,7 +66,7 @@ class ReportsCenter extends Component
                     $service->projectDashboard(Project::findOrFail($this->projectId)),
                     null,
                     $this->projectId,
-                    auth()->user(),
+                    $user,
                 )
                 : null,
             'impact' => $service->snapshot(
@@ -73,7 +75,7 @@ class ReportsCenter extends Component
                 $service->impact($this->organizationId ? Organization::find($this->organizationId) : null),
                 null,
                 $this->organizationId,
-                auth()->user(),
+                $user,
             ),
             'kpi' => $service->snapshot(
                 ReportSnapshot::KIND_KPI,
@@ -81,7 +83,7 @@ class ReportsCenter extends Component
                 $service->kpis(),
                 null,
                 null,
-                auth()->user(),
+                $user,
             ),
             default => $service->snapshot(
                 ReportSnapshot::KIND_MONTHLY,
@@ -89,9 +91,19 @@ class ReportsCenter extends Component
                 $service->monthly($this->month),
                 $this->month,
                 null,
-                auth()->user(),
+                $user,
             ),
         };
+
+        if ($snapshot) {
+            app(ReportDocumentService::class)->archiveCenterExport(
+                $this->tab,
+                $snapshot->label,
+                $snapshot->payload ?? [],
+                $user,
+                $snapshot,
+            );
+        }
 
         $this->dispatch('ds-toast', message: 'حُفظت لقطة التقرير (غير قابلة للتعديل)');
     }
@@ -102,15 +114,20 @@ class ReportsCenter extends Component
 
         $service = app(ReportCenterService::class);
         $month = preg_match('/^\d{4}-\d{2}$/', $this->month) === 1 ? $this->month : now()->format('Y-m');
-
-        $sheets = [
-            'شهري' => ($service->monthly($month)),
-            'مؤشرات' => $service->kpis(),
-            'أثر' => $service->impact($this->organizationId ? Organization::find($this->organizationId) : null),
-        ];
-        if ($this->projectId) {
-            $sheets['مشروع'] = $service->projectDashboard(Project::findOrFail($this->projectId));
-        }
+        $label = match ($this->tab) {
+            'project' => 'لوحة مشروع',
+            'impact' => 'تقرير الأثر',
+            'kpi' => 'مؤشرات الأداء',
+            default => 'التقرير الشهري',
+        };
+        $payload = match ($this->tab) {
+            'project' => $this->projectId
+                ? $service->projectDashboard(Project::findOrFail($this->projectId))
+                : [],
+            'impact' => $service->impact($this->organizationId ? Organization::find($this->organizationId) : null),
+            'kpi' => $service->kpis(),
+            default => $service->monthly($month),
+        };
 
         \App\Models\AuditLog::create([
             'actor_id' => auth()->id(),
@@ -118,31 +135,26 @@ class ReportsCenter extends Component
             'target_type' => ReportSnapshot::class,
             'target_id' => null,
             'ip_address' => request()->ip(),
-            'metadata' => ['tab' => $this->tab, 'month' => $month, 'format' => 'xlsx-xml'],
+            'metadata' => ['tab' => $this->tab, 'month' => $month],
             'created_at' => now(),
         ]);
 
-        $xml = '<?xml version="1.0" encoding="UTF-8"?>'
-            .'<?mso-application progid="Excel.Sheet"?>'
-            .'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"'
-            .' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">';
+        app(ReportDocumentService::class)->archiveCenterExport(
+            $this->tab,
+            $label,
+            $payload,
+            auth()->user(),
+        );
 
-        foreach ($sheets as $name => $payload) {
-            $xml .= '<Worksheet ss:Name="'.e($name).'"><Table>';
-            $xml .= '<Row><Cell><Data ss:Type="String">المفتاح</Data></Cell><Cell><Data ss:Type="String">القيمة</Data></Cell></Row>';
+        return response()->streamDownload(function () use ($payload) {
+            $handle = fopen('php://output', 'w');
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, ['المفتاح', 'القيمة']);
             foreach ($payload as $key => $value) {
-                $val = is_scalar($value) ? (string) $value : json_encode($value, JSON_UNESCAPED_UNICODE);
-                $xml .= '<Row><Cell><Data ss:Type="String">'.e((string) $key).'</Data></Cell>'
-                    .'<Cell><Data ss:Type="String">'.e($val).'</Data></Cell></Row>';
+                fputcsv($handle, [(string) $key, is_scalar($value) ? (string) $value : json_encode($value, JSON_UNESCAPED_UNICODE)]);
             }
-            $xml .= '</Table></Worksheet>';
-        }
-        $xml .= '</Workbook>';
-
-        return response($xml, 200, [
-            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
-            'Content-Disposition' => 'attachment; filename="report-'.now()->format('Ymd-His').'.xls"',
-        ]);
+            fclose($handle);
+        }, 'report-'.$this->tab.'-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
     public function render(): View

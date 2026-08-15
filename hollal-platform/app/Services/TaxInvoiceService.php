@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\CompanyProfile;
 use App\Models\TaxInvoice;
 use App\Models\TaxInvoiceItem;
 use App\Models\TaxInvoiceNote;
@@ -44,14 +45,15 @@ class TaxInvoiceService
         return DB::transaction(function () use ($items, $buyer, $issuer, $sourceType, $sourceId, $invoiceType) {
             $sequence = $this->nextSequence(self::SCOPE_INVOICE);
             $lines = $this->buildLines($items);
+            $seller = $this->sellerFromCompanyProfile();
 
             $invoice = TaxInvoice::create([
                 'sequence' => $sequence,
                 'number' => $this->formatNumber('INV', $sequence),
                 'invoice_type' => $invoiceType ?? TaxInvoice::TYPE_STANDARD,
                 'mode' => $this->mode(),
-                'seller_name' => (string) Setting::get('finance.tax.seller_name', 'مؤسسة حلّل'),
-                'seller_vat_number' => (string) Setting::get('finance.tax.seller_vat_number', '300000000000003'),
+                'seller_name' => $seller['name'],
+                'seller_vat_number' => $seller['vat_number'],
                 'buyer_name' => $buyer['name'],
                 'buyer_vat_number' => $buyer['vat_number'] ?? null,
                 'organization_id' => $buyer['organization_id'] ?? null,
@@ -80,6 +82,24 @@ class TaxInvoiceService
 
             return $invoice->fresh(['items']);
         });
+    }
+
+    /**
+     * Seller identity from CompanyProfile (Saudi Phase A), with settings fallback.
+     *
+     * @return array{name: string, vat_number: string, commercial_register: ?string, address: ?string, logo_path: ?string}
+     */
+    public function sellerFromCompanyProfile(): array
+    {
+        $company = CompanyProfile::current();
+
+        return [
+            'name' => (string) ($company->name ?: Setting::get('finance.tax.seller_name', 'مؤسسة حلّل')),
+            'vat_number' => (string) ($company->tax_number ?: Setting::get('finance.tax.seller_vat_number', '300000000000003')),
+            'commercial_register' => $company->commercial_register,
+            'address' => $company->address,
+            'logo_path' => $company->logo_path,
+        ];
     }
 
     /**

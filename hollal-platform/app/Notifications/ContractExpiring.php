@@ -31,7 +31,7 @@ class ContractExpiring extends Notification implements ShouldQueue
 
         return [
             'message' => 'ينتهي عقد «'.$employeeName.'» خلال '.$this->daysRemaining.' يوم (بتاريخ '.$endDate.')',
-            'url' => route('contracts.index'),
+            'url' => \App\Support\RecordUrl::contract($this->contract->id),
             'contract_id' => $this->contract->id,
             'days_remaining' => $this->daysRemaining,
         ];

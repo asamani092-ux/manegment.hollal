@@ -23,6 +23,7 @@ class Task extends Model
         'recurring_pattern',
         'assigned_by',
         'assigned_to',
+        'related_user_id',
         'project_id',
         'meeting_id',
         'priority',

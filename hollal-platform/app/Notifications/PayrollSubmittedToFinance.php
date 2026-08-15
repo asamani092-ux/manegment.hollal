@@ -26,7 +26,7 @@ class PayrollSubmittedToFinance extends Notification implements ShouldQueue
     {
         return [
             'message' => 'تم رفع مسيّر رواتب شهر '.$this->run->month.' للمالية للاعتماد والتنفيذ',
-            'url' => route('payroll-runs.index'),
+            'url' => \App\Support\RecordUrl::payrollRun($this->run->id),
             'payroll_run_id' => $this->run->id,
         ];
     }

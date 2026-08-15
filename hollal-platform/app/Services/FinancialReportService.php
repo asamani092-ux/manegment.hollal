@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\ExpenseRequest;
 use App\Models\PayrollRunItem;
 use App\Models\Revenue;
+use App\Support\PdfArabic;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
 
@@ -88,26 +89,53 @@ class FinancialReportService
     {
         $report = $this->monthly($month);
 
-        $html = '<div dir="rtl" style="font-family: amiri, dejavu sans;">'
-            .'<h2>التقرير المالي الشهري — '.e($month).'</h2>'
-            .'<table border="1" cellspacing="0" cellpadding="4" width="100%">'
-            .'<tr><th>البند</th><th>القيمة</th></tr>'
+        $html = PdfArabic::header('التقرير المالي الشهري — '.$month, includeCr: true)
+            .'<div dir="rtl">'
+            .'<table><thead><tr><th>البند</th><th>المبلغ</th></tr></thead><tbody>'
             .'<tr><td>إجمالي المصروفات</td><td>'.number_format($report['expenses_total'], 2).'</td></tr>'
             .'<tr><td>إجمالي الإيرادات</td><td>'.number_format($report['revenues_total'], 2).'</td></tr>'
             .'<tr><td>إجمالي الرواتب</td><td>'.number_format($report['payroll_total'], 2).'</td></tr>'
-            .'<tr><td>الصافي</td><td>'.number_format($report['net'], 2).'</td></tr>'
-            .'</table>';
+            .'<tr><td><strong>الصافي</strong></td><td><strong>'.number_format($report['net'], 2).'</strong></td></tr>'
+            .'</tbody></table></div>';
 
-        $html .= '<h3>المصروفات حسب التصنيف</h3><table border="1" cellspacing="0" cellpadding="4" width="100%"><tr><th>التصنيف</th><th>المبلغ</th></tr>';
-        foreach ($report['expenses_by_category'] as $row) {
-            $html .= '<tr><td>'.e((string) ($row['category_id'] ?? 'بدون')).'</td><td>'.number_format((float) $row['total'], 2).'</td></tr>';
+        $pdf = Pdf::loadHTML($html)->setPaper('a4');
+        foreach (PdfArabic::pdfOptions() as $key => $value) {
+            $pdf->setOption($key, $value);
         }
-        $html .= '</table><h3>الإيرادات حسب التصنيف</h3><table border="1" cellspacing="0" cellpadding="4" width="100%"><tr><th>التصنيف</th><th>المبلغ</th></tr>';
-        foreach ($report['revenues_by_category'] as $row) {
-            $html .= '<tr><td>'.e((string) ($row['category_id'] ?? 'بدون')).'</td><td>'.number_format((float) $row['total'], 2).'</td></tr>';
-        }
-        $html .= '</table></div>';
 
-        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'amiri')->output();
+        return $pdf->output();
+    }
+
+    /**
+     * UTF-8 CSV with BOM for Excel. Sheets simulated as sections.
+     * Time: O(n) | Space: O(n)
+     */
+    public function exportMonthlyCsv(string $month): string
+    {
+        $report = $this->monthly($month);
+        $lines = [];
+        $lines[] = ['القسم', 'البند', 'المبلغ'];
+        $lines[] = ['ملخص', 'إجمالي المصروفات', number_format((float) $report['expenses_total'], 2, '.', '')];
+        $lines[] = ['ملخص', 'إجمالي الإيرادات', number_format((float) $report['revenues_total'], 2, '.', '')];
+        $lines[] = ['ملخص', 'إجمالي الرواتب', number_format((float) $report['payroll_total'], 2, '.', '')];
+        $lines[] = ['ملخص', 'الصافي', number_format((float) $report['net'], 2, '.', '')];
+
+        foreach ($report['expenses_by_category'] as $line) {
+            $lines[] = ['مصروفات حسب التصنيف', (string) ($line['category_id'] ?? 'غير مصنّف'), number_format((float) $line['total'], 2, '.', '')];
+        }
+        foreach ($report['revenues_by_category'] as $line) {
+            $lines[] = ['إيرادات حسب التصنيف', (string) ($line['category_id'] ?? 'غير مصنّف'), number_format((float) $line['total'], 2, '.', '')];
+        }
+
+        $fh = fopen('php://temp', 'r+');
+        fwrite($fh, "\xEF\xBB\xBF");
+        foreach ($lines as $row) {
+            fputcsv($fh, $row);
+        }
+        rewind($fh);
+        $csv = stream_get_contents($fh) ?: '';
+        fclose($fh);
+
+        return $csv;
     }
 }

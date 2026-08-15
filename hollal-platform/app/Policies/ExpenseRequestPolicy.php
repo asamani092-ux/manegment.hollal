@@ -38,7 +38,7 @@ class ExpenseRequestPolicy
     public function update(User $user, ExpenseRequest $expenseRequest): bool
     {
         return $user->id === $expenseRequest->requester_id
-            && $expenseRequest->status === 'draft'
+            && $expenseRequest->isEditableByRequester()
             && $user->can('finance.expenses.create');
     }
 

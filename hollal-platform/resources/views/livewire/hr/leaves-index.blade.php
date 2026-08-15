@@ -36,7 +36,7 @@
 
     <div class="ds-task-cards ds-list-cards-mobile">
         @forelse ($leaves as $leave)
-            <article class="ds-task-card" wire:key="leave-card-{{ $leave->id }}">
+            <article class="ds-task-card {{ $open === $leave->id ? 'is-open-record' : '' }}" wire:key="leave-card-{{ $leave->id }}">
                 <h3 class="ds-task-card-title">{{ $leave->employee?->name ?? '—' }} — {{ $leave->type }}</h3>
                 <div class="ds-task-card-meta">
                     <span class="ds-ltr-num">{{ $leave->from_date?->format('Y-m-d') }}</span>
@@ -70,7 +70,7 @@
                 </tr>
             </x-slot:head>
             @forelse ($leaves as $leave)
-                <tr wire:key="leave-{{ $leave->id }}">
+                <tr wire:key="leave-{{ $leave->id }}" class="{{ $open === $leave->id ? 'is-open-record' : '' }}">
                     <td>{{ $leave->employee?->name ?? '—' }}</td>
                     <td>{{ $leave->type }}</td>
                     <td class="ds-ltr-num">{{ $leave->from_date?->format('Y-m-d') }}</td>
