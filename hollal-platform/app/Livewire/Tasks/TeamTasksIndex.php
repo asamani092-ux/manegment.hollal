@@ -11,8 +11,8 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 /**
- * 02-B2 — team tasks, overdue (own/team scope), and the approval queue
- * («بانتظار اعتمادي») with in-place approve / return.
+ * Team tasks, overdue, approval queue; managers may set status for reports.
+ * Time: O(n) | Space: O(n)
  */
 class TeamTasksIndex extends Component
 {
@@ -20,15 +20,37 @@ class TeamTasksIndex extends Component
 
     public string $tab = 'approval';
 
-    /** @var array<int, string> per-task final rating input */
+    /** @var array<int, string> */
     public array $approveRating = [];
 
-    /** @var array<int, string> per-task note input */
+    /** @var array<int, string> */
     public array $approveNote = [];
+
+    /** @var array<int, string> */
+    public array $managerStatus = [];
+
+    public bool $showDetail = false;
+
+    public ?int $detailTaskId = null;
 
     public function mount(): void
     {
         $this->authorize('esnad.tasks.view');
+    }
+
+    public function openDetail(int $taskId): void
+    {
+        $task = Task::findOrFail($taskId);
+        $this->authorize('view', $task);
+        $this->detailTaskId = $task->id;
+        $this->managerStatus[$taskId] = $task->status;
+        $this->showDetail = true;
+    }
+
+    public function closeDetail(): void
+    {
+        $this->showDetail = false;
+        $this->detailTaskId = null;
     }
 
     public function approveFromForm(int $taskId): void
@@ -49,6 +71,9 @@ class TeamTasksIndex extends Component
         try {
             app(TaskLifecycleService::class)->recordFinalRating($task, auth()->user(), $rating, $notes);
             $this->dispatch('toast', type: 'success', message: 'تم اعتماد المهمة');
+            if ($this->detailTaskId === $taskId) {
+                $this->closeDetail();
+            }
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
@@ -62,9 +87,32 @@ class TeamTasksIndex extends Component
         try {
             app(TaskLifecycleService::class)->requestRevision($task, auth()->user(), $note);
             $this->dispatch('toast', type: 'success', message: 'أُعيدت المهمة للتعديل');
+            if ($this->detailTaskId === $taskId) {
+                $this->closeDetail();
+            }
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
+    }
+
+    public function managerUpdateStatus(int $taskId): void
+    {
+        $this->authorize('esnad.tasks.team.view');
+        $task = Task::findOrFail($taskId);
+        $to = $this->managerStatus[$taskId] ?? '';
+
+        try {
+            app(TaskLifecycleService::class)->managerSetStatus($task, auth()->user(), $to);
+            $this->dispatch('toast', type: 'success', message: 'تم تحديث حالة المهمة');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
+    public function managerComplete(int $taskId): void
+    {
+        $this->managerStatus[$taskId] = 'completed';
+        $this->managerUpdateStatus($taskId);
     }
 
     /** @return Collection<int, Task> */
@@ -90,6 +138,19 @@ class TeamTasksIndex extends Component
     {
         /** @var User $user */
         $user = auth()->user();
+        $overdue = $this->overdueTasks($user);
+
+        $detailTask = null;
+        if ($this->detailTaskId) {
+            $detailTask = Task::query()
+                ->with([
+                    'assignee:id,name',
+                    'assigner:id,name',
+                    'project:id,name',
+                    'notes.author:id,name',
+                ])
+                ->find($this->detailTaskId);
+        }
 
         return view('livewire.tasks.team-tasks-index', [
             'approvalQueue' => Task::query()
@@ -100,8 +161,17 @@ class TeamTasksIndex extends Component
             'teamTasks' => $user->can('esnad.tasks.team.view')
                 ? Task::query()->teamOf($user)->with(['assignee:id,name', 'project:id,name'])->latest()->get()
                 : new Collection,
-            'overdueTasks' => $this->overdueTasks($user),
+            'overdueTasks' => $overdue,
+            'overdueCount' => $overdue->count(),
             'ratings' => Task::RATINGS,
+            'detailTask' => $detailTask,
+            'statusLabels' => [
+                'new' => 'جديدة',
+                'in_progress' => 'قيد التنفيذ',
+                'pending_review' => 'بانتظار المراجعة',
+                'completed' => 'مكتملة',
+                'overdue' => 'متأخرة',
+            ],
         ])->layout('layouts.app', ['title' => 'مهام الفريق']);
     }
 }

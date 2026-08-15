@@ -4,13 +4,15 @@ namespace App\Livewire\Tasks;
 
 use App\Models\Project;
 use App\Models\RecurringTaskTemplate;
+use App\Models\Task;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 /**
- * 02-B3 — manage recurring task templates.
+ * Recurring templates with start/end dates and follow-up report.
+ * Time: O(n) | Space: O(n)
  */
 class RecurringTasksIndex extends Component
 {
@@ -32,7 +34,15 @@ class RecurringTasksIndex extends Component
 
     public ?int $day_of_month = null;
 
+    public ?string $starts_on = null;
+
+    public ?string $ends_on = null;
+
     public string $required_evidence = '';
+
+    public int $instancesLimit = 8;
+
+    public ?int $followUpUserId = null;
 
     public function mount(): void
     {
@@ -42,8 +52,9 @@ class RecurringTasksIndex extends Component
     public function openCreate(): void
     {
         $this->authorize('esnad.tasks.create');
-        $this->reset(['title', 'description', 'assigned_to_id', 'project_id', 'day_of_week', 'day_of_month', 'required_evidence']);
+        $this->reset(['title', 'description', 'assigned_to_id', 'project_id', 'day_of_week', 'day_of_month', 'required_evidence', 'starts_on', 'ends_on']);
         $this->pattern = 'أسبوعي';
+        $this->starts_on = now()->toDateString();
         $this->showModal = true;
     }
 
@@ -58,6 +69,8 @@ class RecurringTasksIndex extends Component
             'pattern' => 'required|in:أسبوعي,شهري',
             'day_of_week' => 'nullable|integer|min:0|max:6|required_if:pattern,أسبوعي',
             'day_of_month' => 'nullable|integer|min:1|max:31|required_if:pattern,شهري',
+            'starts_on' => 'nullable|date',
+            'ends_on' => 'nullable|date|after_or_equal:starts_on',
         ]);
 
         RecurringTaskTemplate::create([
@@ -70,6 +83,8 @@ class RecurringTasksIndex extends Component
             'pattern' => $this->pattern,
             'day_of_week' => $this->pattern === 'أسبوعي' ? $this->day_of_week : null,
             'day_of_month' => $this->pattern === 'شهري' ? $this->day_of_month : null,
+            'starts_on' => $this->starts_on ?: null,
+            'ends_on' => $this->ends_on ?: null,
             'is_active' => true,
         ]);
 
@@ -86,10 +101,49 @@ class RecurringTasksIndex extends Component
 
     public function render(): View
     {
+        $limit = max(1, min(30, $this->instancesLimit));
+        $user = auth()->user();
+
+        $templatesQuery = RecurringTaskTemplate::with([
+            'assignee:id,name',
+            'generatedTasks' => fn ($q) => $q->latest()->limit($limit)->select([
+                'id', 'title', 'status', 'due_date', 'recurring_template_id', 'assigned_to',
+            ]),
+        ])->latest();
+
+        if (! $user->can('esnad.tasks.all.view')) {
+            $subIds = User::query()->where('manager_id', $user->id)->pluck('id')->push($user->id);
+            $templatesQuery->where(function ($q) use ($user, $subIds) {
+                $q->where('created_by', $user->id)
+                    ->orWhereIn('assigned_to_id', $subIds);
+            });
+        }
+
+        $templates = $templatesQuery->get();
+
+        $followUp = collect();
+        if ($this->followUpUserId) {
+            $followUp = Task::query()
+                ->whereNotNull('recurring_template_id')
+                ->where('assigned_to', $this->followUpUserId)
+                ->with('assignee:id,name')
+                ->latest()
+                ->limit(40)
+                ->get(['id', 'title', 'status', 'due_date', 'assigned_to', 'recurring_template_id', 'completed_at']);
+        }
+
         return view('livewire.tasks.recurring-tasks-index', [
-            'templates' => RecurringTaskTemplate::with('assignee:id,name')->latest()->get(),
+            'templates' => $templates,
             'users' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'projects' => Project::orderBy('name')->get(['id', 'name']),
+            'followUp' => $followUp,
+            'statusLabels' => [
+                'new' => 'جديدة',
+                'in_progress' => 'قيد التنفيذ',
+                'pending_review' => 'بانتظار المراجعة',
+                'completed' => 'مكتملة',
+                'overdue' => 'متأخرة',
+            ],
         ])->layout('layouts.app', ['title' => 'المهام المتكررة']);
     }
 }
