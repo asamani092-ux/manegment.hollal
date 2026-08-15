@@ -796,6 +796,10 @@
   flex-wrap: nowrap;
 }
 
+.ds-actions .ds-actions--inline {
+  display: contents;
+}
+
 .ds-btn-icon {
   display: inline-flex;
   align-items: center;
