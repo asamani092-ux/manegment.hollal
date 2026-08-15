@@ -35,9 +35,14 @@
                             <p class="ds-text-muted">{{ \Illuminate\Support\Str::limit($meeting->agenda, 80) }}</p>
                         @endif
                     </div>
-                    <div class="ds-toolbar-actions">
-                        <a class="ds-btn ds-btn-primary ds-btn-sm" href="{{ route('meetings.minutes', $meeting) }}">المحضر</a>
+                    <div class="ds-actions">
+                        <a class="ds-btn-icon" href="{{ route('meetings.minutes', $meeting) }}" title="المحضر" aria-label="المحضر">
+                            <svg class="ds-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                            </svg>
+                        </a>
                         <x-ds-action-icons
+                            class="ds-actions--inline"
                             :show-view="true"
                             :show-edit="auth()->user()->can('update', $meeting)"
                             :show-delete="auth()->user()->can('delete', $meeting)"
@@ -72,16 +77,23 @@
                     <td class="ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</td>
                     <td>{{ $meeting->status ?? '—' }}</td>
                     <td>
-                        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes', $meeting) }}">المحضر</a>
-                        <x-ds-action-icons
-                            :show-view="true"
-                            :show-edit="auth()->user()->can('update', $meeting)"
-                            :show-delete="auth()->user()->can('delete', $meeting)"
-                            :view-action="'openView('.$meeting->id.')'"
-                            :edit-action="'openEdit('.$meeting->id.')'"
-                            :delete-action="'delete('.$meeting->id.')'"
-                            delete-confirm="حذف هذا الاجتماع؟"
-                        />
+                        <div class="ds-actions">
+                            <a class="ds-btn-icon" href="{{ route('meetings.minutes', $meeting) }}" title="المحضر" aria-label="المحضر">
+                                <svg class="ds-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+                                </svg>
+                            </a>
+                            <x-ds-action-icons
+                                class="ds-actions--inline"
+                                :show-view="true"
+                                :show-edit="auth()->user()->can('update', $meeting)"
+                                :show-delete="auth()->user()->can('delete', $meeting)"
+                                :view-action="'openView('.$meeting->id.')'"
+                                :edit-action="'openEdit('.$meeting->id.')'"
+                                :delete-action="'delete('.$meeting->id.')'"
+                                delete-confirm="حذف هذا الاجتماع؟"
+                            />
+                        </div>
                     </td>
                 </tr>
             @empty
