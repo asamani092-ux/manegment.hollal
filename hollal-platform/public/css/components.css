@@ -1470,37 +1470,6 @@
   border: 1px solid var(--ds-border, #e8eef5);
   border-radius: 8px;
   box-shadow: var(--ds-shadow-md, 0 8px 24px rgba(15, 52, 70, 0.12));
-
-/* Searchable single-field select (combobox) */
-.ds-search-select { position: relative; }
-.ds-search-select__control { position: relative; }
-.ds-search-select__clear {
-  position: absolute;
-  inset-inline-start: 0.5rem;
-  top: 50%;
-  transform: translateY(-50%);
-  border: 0;
-  background: transparent;
-  font-size: 1.25rem;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--ds-text-muted, #667);
-  padding: 0.15rem 0.35rem;
-}
-.ds-search-select__list {
-  position: absolute;
-  z-index: 40;
-  inset-inline: 0;
-  top: calc(100% + 0.25rem);
-  max-height: 240px;
-  overflow: auto;
-  margin: 0;
-  padding: 0;
-  list-style: none;
-  background: var(--ds-card, #fff);
-  border: 1px solid var(--ds-border, #e8eef5);
-  border-radius: 8px;
-  box-shadow: var(--ds-shadow-md, 0 8px 24px rgba(15, 52, 70, 0.12));
 }
 .ds-search-select__option {
   padding: 0.55rem 0.75rem;
