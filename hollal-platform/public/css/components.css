@@ -914,6 +914,12 @@
   gap: 0.75rem;
 }
 
+.ds-meeting-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
 .ds-meeting-card {
   background: var(--ds-card);
   border: 1px solid var(--ds-border);
@@ -924,6 +930,14 @@
   align-items: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
+}
+
+.ds-meeting-card.is-square {
+  aspect-ratio: 1 / 1;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  min-height: 220px;
 }
 
 .ds-minute-item-card {

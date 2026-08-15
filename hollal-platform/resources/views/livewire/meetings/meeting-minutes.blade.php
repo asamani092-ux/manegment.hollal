@@ -8,9 +8,6 @@
       <a href="{{ route('meetings.index') }}" class="ds-link">العودة للاجتماعات</a>
       <h1 class="ds-page-title">{{ $meeting->title }}</h1>
       <p class="ds-text-muted">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</p>
-      @if ($meeting->agenda)
-        <p class="ds-text-muted">{{ $meeting->agenda }}</p>
-      @endif
       @if ($meeting->isApproved())
         <span class="ds-badge ds-badge-success">محضر معتمد — {{ $meeting->approved_at?->format('Y-m-d') }}</span>
       @endif
@@ -18,29 +15,15 @@
     <div class="ds-toolbar-actions">
       @if (! $meeting->isApproved())
         @can('update', $meeting)
-          <button type="button" class="ds-btn ds-btn-teal" wire:click="approveMinutes" wire:loading.attr="disabled" wire:confirm="اعتماد المحضر؟ لن يُسمح بالتعديل المباشر بعد الاعتماد.">
-            <i class="fas fa-check-circle" aria-hidden="true"></i>
-            <span wire:loading.remove wire:target="approveMinutes">اعتماد المحضر</span>
-            <span wire:loading wire:target="approveMinutes">جاري الاعتماد…</span>
+          <button type="button" class="ds-btn ds-btn-teal" wire:click="openApproveModal">
+            <i class="fas fa-check-circle" aria-hidden="true"></i> اعتماد المحضر
           </button>
         @endcan
+        <button type="button" class="ds-btn ds-btn-outline" wire:click="confirmMyAttendance">تأكيد حضوري وتوقيعي</button>
       @endif
       @can('downloadPdf', $meeting)
         <button type="button" class="ds-btn ds-btn-outline" onclick="window.print()">
-          <i class="fas fa-print" aria-hidden="true"></i>
-          طباعة
-        </button>
-        <a href="{{ route('meetings.minutes.pdf', $meeting) }}" class="ds-btn ds-btn-outline" target="_blank" rel="noopener">
-          <svg class="ds-icon ds-icon-sm" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
-          </svg>
-          حفظ PDF
-        </a>
-        <button type="button" class="ds-btn ds-btn-outline" wire:click="sendMinutesByEmail" wire:loading.attr="disabled">
-          <svg class="ds-icon ds-icon-sm" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/>
-          </svg>
-          إرسال بالإيميل للحضور
+          <i class="fas fa-print" aria-hidden="true"></i> طباعة القالب
         </button>
       @endcan
       @can('update', $meeting)
@@ -53,57 +36,141 @@
     </div>
   </div>
 
-  @forelse ($items as $item)
-    <article class="ds-minute-item-card" wire:key="item-{{ $item->id }}">
-      <h3 class="ds-task-card-title">{{ $item->topic }}</h3>
-      @if ($item->discussion_summary)
-        <p><strong>النقاش:</strong> {{ $item->discussion_summary }}</p>
-      @endif
-      @if ($item->decision)
-        <p><strong>القرار:</strong> {{ $item->decision }}</p>
-      @endif
-      <div class="ds-task-card-meta">
-        <span>المسؤول: {{ $item->responsible?->name ?? '—' }}</span>
-        <span>الاستحقاق: {{ $item->due_date?->format('Y-m-d') ?? '—' }}</span>
-        <span>الحالة: {{ $itemStatusLabels[$item->status] ?? $item->status }}</span>
+  {{-- Printable 5-zone template (screen + print) --}}
+  <div class="ds-minutes-print-template">
+    <section class="ds-minutes-zone">
+      <div class="ds-filters-row">
+        <strong>منصة حلّل</strong>
+        <span class="ds-text-muted ds-ltr-num">اجتماع: {{ $meeting->scheduled_at?->format('Y-m-d') }} · طباعة: {{ now()->format('Y-m-d H:i') }}</span>
       </div>
-      <div class="ds-task-card-actions">
-        @if ($item->decision && ! $item->task_id && $meeting->isApproved() && auth()->user()->can('update', $meeting) && auth()->user()->can('esnad.tasks.create'))
-          <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="convertToTask({{ $item->id }})">
-            تحويل إلى مهمة
-          </button>
+      <h2 class="ds-section-heading">محضر: {{ $meeting->title }}</h2>
+    </section>
+
+    <section class="ds-minutes-zone">
+      <h3 class="ds-section-heading">تفاصيل الاجتماع</h3>
+      <x-ds-table>
+        <tr><th>العنوان</th><td>{{ $meeting->title }}</td></tr>
+        <tr><th>الوقت</th><td class="ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</td></tr>
+        <tr><th>المكان</th><td>{{ $meeting->link ? 'عن بعد' : ($meeting->location ?: '—') }}</td></tr>
+        <tr><th>الرئيس</th><td>{{ $meeting->chair?->name ?? '—' }}</td></tr>
+        <tr><th>محرر الاجتماع</th><td>{{ $meeting->secretary?->name ?? '—' }}</td></tr>
+        <tr><th>الحضور</th><td>{{ $meeting->attendees->pluck('name')->implode('، ') ?: '—' }}</td></tr>
+      </x-ds-table>
+    </section>
+
+    <section class="ds-minutes-zone">
+      <h3 class="ds-section-heading">جدول الأعمال</h3>
+      <x-ds-table>
+        <x-slot:head><tr><th>#</th><th>البند</th></tr></x-slot:head>
+        @php $agendaLines = collect(preg_split('/\r\n|\r|\n/', (string) $meeting->agenda))->map(fn ($l) => trim($l))->filter()->values(); @endphp
+        @forelse ($agendaLines as $i => $line)
+          <tr><td>{{ $i + 1 }}</td><td>{{ $line }}</td></tr>
+        @empty
+          <tr><td colspan="2">—</td></tr>
+        @endforelse
+      </x-ds-table>
+    </section>
+
+    <section class="ds-minutes-zone">
+      <h3 class="ds-section-heading">بنود المحضر</h3>
+      <x-ds-table>
+        <x-slot:head><tr><th>البند</th><th>القرار أو التوصية</th></tr></x-slot:head>
+        @forelse ($items as $item)
+          <tr wire:key="print-item-{{ $item->id }}">
+            <td>{{ $item->topic }}</td>
+            <td>{{ $item->decision ?? '—' }}</td>
+          </tr>
+        @empty
+          <tr><td colspan="2">لا توجد بنود</td></tr>
+        @endforelse
+      </x-ds-table>
+    </section>
+
+    <section class="ds-minutes-zone">
+      <h3 class="ds-section-heading">الحضور والتوقيع</h3>
+      <x-ds-table>
+        <x-slot:head><tr><th>الاسم</th><th>التوقيع</th></tr></x-slot:head>
+        @forelse ($meeting->attendees as $attendee)
+          <tr wire:key="sig-{{ $attendee->id }}">
+            <td>{{ $attendee->name }}</td>
+            <td style="min-height:2rem">{{ $attendee->pivot->signature_text ?? '' }}</td>
+          </tr>
+        @empty
+          <tr><td colspan="2">—</td></tr>
+        @endforelse
+      </x-ds-table>
+      @if ($meeting->minutes_missing_signatures_reason)
+        <p class="ds-text-muted">سبب نقص التوقيع: {{ $meeting->minutes_missing_signatures_reason }}</p>
+      @endif
+    </section>
+  </div>
+
+  <div class="ds-no-print ds-section-spaced">
+    <h2 class="ds-section-heading">تحرير البنود</h2>
+    @forelse ($items as $item)
+      <article class="ds-minute-item-card" wire:key="item-{{ $item->id }}">
+        <h3 class="ds-task-card-title">{{ $item->topic }}</h3>
+        @if ($item->discussion_summary)
+          <p><strong>النقاش:</strong> {{ $item->discussion_summary }}</p>
         @endif
-        @if ($item->task_id)
-          <span class="ds-badge ds-badge-success">مرتبط بمهمة: {{ $item->task?->title }}</span>
+        @if ($item->decision)
+          <p><strong>القرار:</strong> {{ $item->decision }}</p>
         @endif
-        <x-ds-action-icons
-          :show-view="true"
-          :show-edit="auth()->user()->can('update', $meeting)"
-          :show-delete="auth()->user()->can('update', $meeting)"
-          :view-action="'openItemView('.$item->id.')'"
-          :edit-action="'openItemEdit('.$item->id.')'"
-          :delete-action="'deleteItem('.$item->id.')'"
-          delete-confirm="حذف هذا البند؟"
-        />
+        <div class="ds-task-card-meta">
+          <span>المسؤول: {{ $item->responsible?->name ?? '—' }}</span>
+          <span>الحالة: {{ $itemStatusLabels[$item->status] ?? $item->status }}</span>
+        </div>
+        <div class="ds-task-card-actions">
+          @if ($item->decision && ! $item->task_id && $meeting->isApproved() && auth()->user()->can('update', $meeting) && auth()->user()->can('esnad.tasks.create'))
+            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="convertToTask({{ $item->id }})">تحويل إلى مهمة</button>
+          @endif
+          <x-ds-action-icons
+            :show-view="true"
+            :show-edit="auth()->user()->can('update', $meeting)"
+            :show-delete="auth()->user()->can('update', $meeting)"
+            :view-action="'openItemView('.$item->id.')'"
+            :edit-action="'openItemEdit('.$item->id.')'"
+            :delete-action="'deleteItem('.$item->id.')'"
+            delete-confirm="حذف هذا البند؟"
+          />
+        </div>
+      </article>
+    @empty
+      <p class="ds-text-muted">لا توجد بنود</p>
+    @endforelse
+  </div>
+
+  @if ($showApproveModal)
+    <div class="ds-modal-overlay ds-no-print" wire:click.self="$set('showApproveModal', false)" style="z-index:1300">
+      <div class="ds-modal" role="dialog" dir="rtl" wire:click.stop>
+        <div class="ds-modal-header">
+          <h3>اعتماد المحضر</h3>
+          <button type="button" class="ds-modal-close" wire:click="$set('showApproveModal', false)">&times;</button>
+        </div>
+        <div class="ds-modal-body">
+          <p>عدد الحضور بلا توقيع: {{ $unsignedCount }}</p>
+          <label class="ds-label">
+            <input type="checkbox" wire:model.live="allowMissingSignatures"> السماح بالاعتماد مع نقص توقيع
+          </label>
+          @if ($allowMissingSignatures)
+            <x-ds-form-group label="سبب النقص" :error="$errors->first('missingSignaturesReason')">
+              <input type="text" class="ds-input" wire:model="missingSignaturesReason" placeholder="غائب عن الاجتماع / لا يلزم توقيع…">
+            </x-ds-form-group>
+          @endif
+        </div>
+        <div class="ds-modal-footer">
+          <button type="button" class="ds-btn ds-btn-primary" wire:click="approveMinutes">تأكيد الاعتماد</button>
+          <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('showApproveModal', false)">إلغاء</button>
+        </div>
       </div>
-    </article>
-  @empty
-    <p class="ds-text-muted ds-table-empty">لا توجد بنود في المحضر — أضف بنداً لتوثيق النقاش والقرارات.</p>
-  @endforelse
+    </div>
+  @endif
 
   @if ($showItemModal)
-    <div class="ds-modal-overlay" wire:click.self="closeItemModal">
+    <div class="ds-modal-overlay ds-no-print" wire:click.self="closeItemModal">
       <div class="ds-modal ds-modal-lg" role="dialog" dir="rtl">
         <div class="ds-modal-header">
-          <h3>
-            @if ($itemViewOnly)
-              عرض بند
-            @elseif ($itemId)
-              تعديل بند
-            @else
-              بند جديد
-            @endif
-          </h3>
+          <h3>{{ $itemViewOnly ? 'عرض بند' : ($itemId ? 'تعديل بند' : 'بند جديد') }}</h3>
           <button type="button" class="ds-modal-close" wire:click="closeItemModal">&times;</button>
         </div>
         <div class="ds-modal-body">
@@ -132,10 +199,7 @@
         </div>
         <div class="ds-modal-footer">
           @if (! $itemViewOnly)
-            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveItem" wire:loading.attr="disabled" wire:target="saveItem">
-              <span wire:loading.remove wire:target="saveItem"><i class="fas fa-save" aria-hidden="true"></i> حفظ</span>
-              <span wire:loading wire:target="saveItem" class="ds-btn-loading">جاري الحفظ…</span>
-            </button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveItem">حفظ</button>
           @endif
           <button type="button" class="ds-btn ds-btn-outline" wire:click="closeItemModal">إغلاق</button>
         </div>
