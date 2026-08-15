@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\FinancialReportService;
+use App\Support\DownloadHeaders;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -19,8 +20,14 @@ class FinancialReportPdfController extends Controller
         $month = (string) $request->query('month', now()->format('Y-m'));
         abort_unless(preg_match('/^\d{4}-\d{2}$/', $month) === 1, 404);
 
+        $type = $request->query('type', 'summary') === 'detailed' ? 'detailed' : 'summary';
         $disposition = $request->boolean('print') ? 'inline' : 'attachment';
+        $filename = 'financial-report-'.($type === 'detailed' ? 'detailed-' : '').$month.'.pdf';
 
-        return response($reports->exportMonthlyPdf($month), 200, \App\Support\DownloadHeaders::pdf('financial-report-'.$month.'.pdf', $disposition));
+        $bytes = $type === 'detailed'
+            ? $reports->exportDetailedPdf($month)
+            : $reports->exportMonthlyPdf($month);
+
+        return response($bytes, 200, DownloadHeaders::pdf($filename, $disposition));
     }
 }

@@ -15,6 +15,7 @@ use App\Notifications\BudgetThresholdAlert;
 use App\Services\BudgetService;
 use App\Services\FinancialReportService;
 use Database\Seeders\PermissionSeeder;
+use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Livewire\Livewire;
@@ -74,7 +75,7 @@ class BudgetAndFinancialReportTest extends TestCase
     {
         Notification::fake();
         $this->seed(PermissionSeeder::class);
-        $this->seed(\Database\Seeders\RoleSeeder::class);
+        $this->seed(RoleSeeder::class);
 
         $finance = User::factory()->create();
         $finance->assignRole('Finance');
@@ -202,5 +203,83 @@ class BudgetAndFinancialReportTest extends TestCase
             ->get(route('financial-reports.pdf', ['month' => now()->format('Y-m')]))
             ->assertOk()
             ->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_detailed_report_lists_every_movement_and_reconciles_to_the_summary(): void
+    {
+        $month = now()->format('Y-m');
+        $project = Project::factory()->create(['budget' => 100000, 'name' => 'مشروع التفاصيل']);
+        $catA = ExpenseCategory::create(['name_ar' => 'تشغيلي']);
+
+        $this->spend($project, 1500, 'paid', $catA->id);
+        $this->spend($project, 999, 'rejected', $catA->id); // excluded from both views
+
+        Revenue::create([
+            'source_type' => Revenue::SOURCE_MANUAL,
+            'amount' => 4000,
+            'status' => Revenue::STATUS_CONFIRMED,
+            'confirmed_at' => now(),
+        ]);
+
+        $run = PayrollRun::create(['month' => $month, 'status' => PayrollRun::STATUS_EXECUTED]);
+        $item = new PayrollRunItem(['employee_id' => User::factory()->create()->id, 'base' => 700, 'net' => 700]);
+        $item->payroll_run_id = $run->id;
+        $item->save();
+
+        $service = app(FinancialReportService::class);
+        $summary = $service->monthly($month);
+        $detailed = $service->detailed($month);
+
+        // 2 movements: the paid expense + the confirmed revenue + the payroll item.
+        $this->assertCount(3, $detailed['movements']);
+        $this->assertSame(1500.0, $detailed['totals']['expenses']);
+        $this->assertSame(4000.0, $detailed['totals']['revenues']);
+        $this->assertSame(700.0, $detailed['totals']['payroll']);
+        $this->assertTrue($service->detailedReconciles($detailed, $summary));
+
+        $types = $detailed['movements']->pluck('type')->all();
+        $this->assertContains('مصروف', $types);
+        $this->assertContains('إيراد', $types);
+        $this->assertContains('رواتب', $types);
+
+        $expenseRow = $detailed['movements']->firstWhere('type', 'مصروف');
+        $this->assertSame('مشروع التفاصيل', $expenseRow['project']);
+    }
+
+    public function test_detailed_report_pdf_is_downloadable(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $user = User::factory()->create(['must_change_password' => false]);
+        $user->givePermissionTo('finance.reports.view');
+
+        $this->actingAs($user)
+            ->get(route('financial-reports.pdf', ['month' => now()->format('Y-m'), 'type' => 'detailed']))
+            ->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_detailed_report_csv_is_downloadable(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $user = User::factory()->create(['must_change_password' => false]);
+        $user->givePermissionTo('finance.reports.view');
+
+        $response = $this->actingAs($user)
+            ->get(route('financial-reports.excel', ['month' => now()->format('Y-m'), 'type' => 'detailed']))
+            ->assertOk();
+
+        $this->assertStringStartsWith('text/csv', $response->headers->get('Content-Type'));
+    }
+
+    public function test_reports_screen_exposes_both_tabs(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $user = User::factory()->create();
+        $user->givePermissionTo('finance.reports.view');
+
+        Livewire::actingAs($user)->test(FinancialReportsIndex::class)
+            ->assertSet('reportTab', 'summary')
+            ->set('reportTab', 'detailed')
+            ->assertSet('reportTab', 'detailed');
     }
 }
