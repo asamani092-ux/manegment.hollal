@@ -3,20 +3,26 @@
 namespace Tests\Feature;
 
 use App\Livewire\Finance\TaxInvoicesIndex;
+use App\Models\CompanyProfile;
 use App\Models\TaxInvoice;
 use App\Models\TaxInvoiceNote;
+use App\Models\TaxInvoiceTemplate;
 use App\Models\User;
+use App\Services\TaxInvoicePdfService;
 use App\Services\TaxInvoiceService;
 use App\Support\Setting;
 use App\Support\TlvQr;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * 04-B7 — tax invoicing Phase A: unbroken sequence, derived totals, TLV QR,
- * credit/debit notes, issue-from-payment, internal/external mode.
+ * 04-B7 / Wave D-deep — tax invoicing Phase A: unbroken sequence, derived
+ * totals, TLV QR, credit/debit notes, issue-from-payment, internal/external
+ * mode, uploadable per-type letterhead templates.
  */
 class TaxInvoiceTest extends TestCase
 {
@@ -197,5 +203,117 @@ class TaxInvoiceTest extends TestCase
             ->get(route('tax-invoices.pdf', $invoice->id))
             ->assertOk()
             ->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_screen_can_issue_a_simplified_invoice(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $user = User::factory()->create();
+        $user->givePermissionTo(['finance.tax_invoices.view', 'finance.tax_invoices.issue']);
+
+        Livewire::actingAs($user)->test(TaxInvoicesIndex::class)
+            ->call('openIssueModal')
+            ->set('buyerName', 'عميل نقاط بيع')
+            ->set('invoiceType', TaxInvoice::TYPE_SIMPLIFIED)
+            ->set('lines', [['description' => 'خدمة', 'quantity' => '1', 'unit_price' => '100']])
+            ->call('issue')
+            ->assertHasNoErrors();
+
+        $invoice = TaxInvoice::firstOrFail();
+        $this->assertSame(TaxInvoice::TYPE_SIMPLIFIED, $invoice->invoice_type);
+    }
+
+    public function test_templates_default_to_no_letterhead(): void
+    {
+        $templates = $this->service()->templates();
+
+        $this->assertCount(2, $templates);
+        $this->assertTrue($templates->every(fn (TaxInvoiceTemplate $t) => $t->letterhead_path === null));
+        $this->assertEqualsCanonicalizing(
+            [TaxInvoice::TYPE_STANDARD, TaxInvoice::TYPE_SIMPLIFIED],
+            $templates->pluck('type')->all(),
+        );
+    }
+
+    public function test_uploading_a_letterhead_persists_the_path_per_type(): void
+    {
+        $template = $this->service()->saveTemplateLetterhead(TaxInvoice::TYPE_STANDARD, 'tax-invoice-templates/full.png');
+
+        $this->assertSame('tax-invoice-templates/full.png', $template->letterhead_path);
+        $this->assertDatabaseHas('tax_invoice_templates', [
+            'type' => TaxInvoice::TYPE_STANDARD,
+            'letterhead_path' => 'tax-invoice-templates/full.png',
+        ]);
+
+        // The simplified template is untouched by the full-type upload.
+        $simplified = TaxInvoiceTemplate::forType(TaxInvoice::TYPE_SIMPLIFIED);
+        $this->assertNull($simplified);
+    }
+
+    public function test_removing_a_letterhead_clears_the_path_only_for_that_type(): void
+    {
+        $this->service()->saveTemplateLetterhead(TaxInvoice::TYPE_STANDARD, 'a.png');
+        $this->service()->saveTemplateLetterhead(TaxInvoice::TYPE_SIMPLIFIED, 'b.png');
+
+        $this->service()->removeTemplateLetterhead(TaxInvoice::TYPE_STANDARD);
+
+        $this->assertNull(TaxInvoiceTemplate::forType(TaxInvoice::TYPE_STANDARD)->letterhead_path);
+        $this->assertSame('b.png', TaxInvoiceTemplate::forType(TaxInvoice::TYPE_SIMPLIFIED)->letterhead_path);
+    }
+
+    public function test_invalid_template_type_is_rejected(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->service()->saveTemplateLetterhead('غير معروف', 'x.png');
+    }
+
+    public function test_pdf_html_includes_letterhead_background_when_uploaded(): void
+    {
+        Storage::fake('public');
+        $file = UploadedFile::fake()->create('letterhead.png', 10, 'image/png');
+        $path = $file->store('tax-invoice-templates', 'public');
+        $this->service()->saveTemplateLetterhead(TaxInvoice::TYPE_STANDARD, $path);
+
+        $invoice = $this->issue();
+        $html = app(TaxInvoicePdfService::class)->buildHtml($invoice);
+
+        $this->assertStringContainsString('tax-invoice-letterhead', $html);
+        $this->assertStringContainsString('position:fixed', $html);
+    }
+
+    public function test_pdf_html_has_no_letterhead_image_without_an_upload(): void
+    {
+        $invoice = $this->issue();
+        $html = app(TaxInvoicePdfService::class)->buildHtml($invoice);
+
+        $this->assertStringNotContainsString('tax-invoice-letterhead', $html);
+    }
+
+    public function test_pdf_html_labels_simplified_invoices_distinctly(): void
+    {
+        $invoice = $this->service()->issue(
+            items: [['description' => 'خدمة', 'quantity' => 1, 'unit_price' => 50]],
+            buyer: ['name' => 'عميل'],
+            invoiceType: TaxInvoice::TYPE_SIMPLIFIED,
+        );
+
+        $html = app(TaxInvoicePdfService::class)->buildHtml($invoice);
+
+        $this->assertStringContainsString('فاتورة ضريبية مبسطة', $html);
+    }
+
+    public function test_pdf_html_surfaces_company_data_from_the_profile(): void
+    {
+        CompanyProfile::current()->update([
+            'name' => 'مؤسسة الاختبار',
+            'tax_number' => '399999999900003',
+            'address' => 'الرياض، حي الاختبار',
+        ]);
+
+        $invoice = $this->issue();
+        $html = app(TaxInvoicePdfService::class)->buildHtml($invoice);
+
+        $this->assertStringContainsString('مؤسسة الاختبار', $html);
+        $this->assertStringContainsString('الرياض، حي الاختبار', $html);
     }
 }

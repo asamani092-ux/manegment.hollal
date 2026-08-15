@@ -1,18 +1,35 @@
 <x-ds-page>
-    <x-ds-page-header
-        title="الفواتير الضريبية"
-        :show-button="true"
-        button-label="إصدار فاتورة"
-        button-permission="finance.tax_invoices.issue"
-        wire:click="openIssueModal"
-    />
+    <x-ds-page-header title="الفواتير الضريبية">
+        <x-slot:actions>
+            @can('finance.tax_invoices.issue')
+                <button type="button" class="ds-btn ds-btn-outline" wire:click="openTemplatesModal">
+                    <i class="fas fa-file-image"></i> قوالب الفواتير
+                </button>
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="openIssueModal">
+                    <i class="fas fa-plus"></i> إصدار فاتورة
+                </button>
+            @endcan
+        </x-slot:actions>
+    </x-ds-page-header>
 
-    <p class="ds-text-muted">وضع الفوترة الحالي: <strong>{{ $mode }}</strong></p>
+    <div class="ds-card ds-mb-3" style="padding:.85rem 1rem">
+        <p class="ds-text-muted" style="margin:0 0 .35rem">وضع الفوترة الحالي: <strong>{{ $mode }}</strong></p>
+        <p style="margin:0"><strong>{{ $seller['name'] }}</strong> — الرقم الضريبي: <span class="ds-ltr-num">{{ $seller['vat_number'] ?: '—' }}</span>
+            @if ($seller['commercial_register'])
+                — السجل التجاري: <span class="ds-ltr-num">{{ $seller['commercial_register'] }}</span>
+            @endif
+        </p>
+        @if ($seller['address'])
+            <p class="ds-text-muted" style="margin:.25rem 0 0">{{ $seller['address'] }}</p>
+        @endif
+        <p class="ds-help-text" style="margin:.35rem 0 0">بيانات الشركة تُقرأ من إعدادات المنصة وتظهر تلقائيًا على كل فاتورة.</p>
+    </div>
 
     <x-ds-table>
         <x-slot:head>
             <tr>
                 <th>الرقم</th>
+                <th>النوع</th>
                 <th>المشتري</th>
                 <th>قبل الضريبة</th>
                 <th>الضريبة</th>
@@ -25,6 +42,7 @@
         @forelse ($invoices as $invoice)
             <tr wire:key="tax-invoice-{{ $invoice->id }}">
                 <td dir="ltr">{{ $invoice->number }}</td>
+                <td>{{ $invoice->invoice_type }}</td>
                 <td>{{ $invoice->buyer_name }}</td>
                 <td class="ds-ltr-num">{{ number_format((float) $invoice->subtotal, 2) }}</td>
                 <td class="ds-ltr-num">{{ number_format((float) $invoice->vat_total, 2) }}</td>
@@ -41,7 +59,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="8" class="ds-text-muted ds-table-empty">لا توجد فواتير ضريبية</td></tr>
+            <tr><td colspan="9" class="ds-text-muted ds-table-empty">لا توجد فواتير ضريبية</td></tr>
         @endforelse
     </x-ds-table>
 
@@ -72,6 +90,14 @@
 
         <x-ds-form-group label="الرقم الضريبي للمشتري" :error="$errors->first('buyerVatNumber')">
             <input type="text" class="ds-input" wire:model="buyerVatNumber" dir="ltr">
+        </x-ds-form-group>
+
+        <x-ds-form-group label="نوع الفاتورة" :error="$errors->first('invoiceType')">
+            <select class="ds-input" wire:model="invoiceType">
+                @foreach ($invoiceTypes as $type)
+                    <option value="{{ $type }}">{{ $type === 'مبسطة' ? 'مبسطة (نقاط بيع/أفراد)' : 'ضريبية كاملة (منشآت)' }}</option>
+                @endforeach
+            </select>
         </x-ds-form-group>
 
         @foreach ($lines as $index => $line)
@@ -118,6 +144,47 @@
         <x-slot:footer>
             <button type="button" class="ds-btn" wire:click="$set('showNoteModal', false)">إلغاء</button>
             <button type="button" class="ds-btn ds-btn-primary" wire:click="issueNote">إصدار الإشعار</button>
+        </x-slot:footer>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$showTemplatesModal" title="قوالب الفواتير" size="lg" close-action="$set('showTemplatesModal', false)">
+        <x-slot:header><h2>قوالب الفواتير</h2></x-slot:header>
+        <p class="ds-text-muted">خلفية/ترويسة قابلة للرفع لكل نوع فاتورة. بيانات الشركة والعميل والبنود والضريبة تبقى مُعبَّأة تلقائيًا من المنصة — القالب يضبط الشكل فقط.</p>
+
+        @foreach ($templates as $template)
+            <div class="ds-card ds-mb-3" style="padding:.85rem 1rem" wire:key="template-{{ $template->type }}">
+                <h3 class="ds-section-title" style="margin-top:0">{{ $template->type === 'مبسطة' ? 'القالب المبسّط' : 'القالب الضريبي الكامل' }}</h3>
+
+                @if ($template->letterhead_path)
+                    <p class="ds-badge ds-badge-success">يوجد خلفية مرفوعة</p>
+                @else
+                    <p class="ds-badge ds-badge-muted">بلا خلفية — يُستخدم الشكل الافتراضي</p>
+                @endif
+
+                @if ($template->type === \App\Models\TaxInvoice::TYPE_STANDARD)
+                    <x-ds-form-group label="رفع خلفية جديدة" :error="$errors->first('standardLetterhead')">
+                        <input type="file" class="ds-input" wire:model="standardLetterhead" accept="image/*">
+                        <div wire:loading wire:target="standardLetterhead" class="ds-help-text">جاري الرفع…</div>
+                    </x-ds-form-group>
+                    <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="uploadStandardLetterhead" wire:loading.attr="disabled" wire:target="standardLetterhead,uploadStandardLetterhead">حفظ الخلفية</button>
+                    @if ($template->letterhead_path)
+                        <button type="button" class="ds-btn ds-btn-sm ds-btn-outline" wire:click="removeStandardLetterhead">إزالة الخلفية</button>
+                    @endif
+                @else
+                    <x-ds-form-group label="رفع خلفية جديدة" :error="$errors->first('simplifiedLetterhead')">
+                        <input type="file" class="ds-input" wire:model="simplifiedLetterhead" accept="image/*">
+                        <div wire:loading wire:target="simplifiedLetterhead" class="ds-help-text">جاري الرفع…</div>
+                    </x-ds-form-group>
+                    <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="uploadSimplifiedLetterhead" wire:loading.attr="disabled" wire:target="simplifiedLetterhead,uploadSimplifiedLetterhead">حفظ الخلفية</button>
+                    @if ($template->letterhead_path)
+                        <button type="button" class="ds-btn ds-btn-sm ds-btn-outline" wire:click="removeSimplifiedLetterhead">إزالة الخلفية</button>
+                    @endif
+                @endif
+            </div>
+        @endforeach
+
+        <x-slot:footer>
+            <button type="button" class="ds-btn" wire:click="$set('showTemplatesModal', false)">إغلاق</button>
         </x-slot:footer>
     </x-ds-modal>
 </x-ds-page>

@@ -6,9 +6,11 @@ use App\Models\CompanyProfile;
 use App\Models\TaxInvoice;
 use App\Models\TaxInvoiceItem;
 use App\Models\TaxInvoiceNote;
+use App\Models\TaxInvoiceTemplate;
 use App\Models\User;
 use App\Support\Setting;
 use App\Support\TlvQr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -205,6 +207,52 @@ class TaxInvoiceService
     public function vatRate(): float
     {
         return (float) Setting::get('finance.tax_rate', 0.15);
+    }
+
+    /** @return list<string> the two supported template/invoice types. */
+    public function templateTypes(): array
+    {
+        return [TaxInvoice::TYPE_STANDARD, TaxInvoice::TYPE_SIMPLIFIED];
+    }
+
+    /**
+     * One row per template type, always in a stable order — never null so
+     * the UI can render both upload slots without an extra existence check.
+     *
+     * @return Collection<int, TaxInvoiceTemplate>
+     */
+    public function templates(): Collection
+    {
+        $existing = TaxInvoiceTemplate::query()->get()->keyBy('type');
+
+        return collect($this->templateTypes())
+            ->map(fn (string $type) => $existing->get($type) ?? new TaxInvoiceTemplate(['type' => $type]));
+    }
+
+    /**
+     * Store the uploaded letterhead path against a template type. The
+     * previous file (if any) is left on disk — templates are a design
+     * asset, not a financial record, so no history is required here.
+     */
+    public function saveTemplateLetterhead(string $type, string $storedPath, ?User $actor = null): TaxInvoiceTemplate
+    {
+        if (! in_array($type, $this->templateTypes(), true)) {
+            throw new \InvalidArgumentException('نوع القالب غير صالح');
+        }
+
+        $template = TaxInvoiceTemplate::firstOrNew(['type' => $type]);
+        $template->fill([
+            'letterhead_path' => $storedPath,
+            'updated_by' => $actor?->id,
+        ])->save();
+
+        return $template;
+    }
+
+    public function removeTemplateLetterhead(string $type): void
+    {
+        $template = TaxInvoiceTemplate::forType($type);
+        $template?->update(['letterhead_path' => null]);
     }
 
     /**
