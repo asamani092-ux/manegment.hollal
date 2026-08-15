@@ -6,11 +6,12 @@ use App\Models\CustodySettlementItem;
 use App\Models\ExpenseRequest;
 use App\Models\PayrollRunItem;
 use App\Models\Revenue;
-use App\Models\User;
 use Illuminate\Support\Collection;
 
 /**
- * Read-only aggregation of financial attachments with uploader display.
+ * 04-B4 — read-only aggregation of every financial attachment across the system
+ * (expense invoices, revenue docs, custody invoices, payroll proofs). No upload
+ * happens here; documents are attached from their own modules.
  */
 class FinancialDocumentsService
 {
@@ -25,45 +26,29 @@ class FinancialDocumentsService
         $rows = $rows->merge(
             ExpenseRequest::query()
                 ->whereNotNull('official_document_path')
-                ->with('requester:id,name')
-                ->get(['id', 'official_document_path', 'project_id', 'created_at', 'requester_id'])
-                ->map(fn ($e) => $this->row(
-                    'expense_invoice',
-                    'فاتورة مصروف',
-                    $e->official_document_path,
-                    $e->created_at,
-                    $e->project_id,
-                    $e->requester?->name
-                ))
+                ->get(['id', 'official_document_path', 'project_id', 'created_at'])
+                ->map(fn ($e) => $this->row('expense_invoice', 'فاتورة مصروف', $e->official_document_path, $e->created_at, $e->project_id, $e->id))
         );
 
         $rows = $rows->merge(
             Revenue::query()
                 ->whereNotNull('external_document_path')
-                ->with('confirmer:id,name')
-                ->get(['id', 'external_document_path', 'created_at', 'confirmed_by'])
-                ->map(fn ($r) => $this->row(
-                    'revenue_document',
-                    'مستند إيراد',
-                    $r->external_document_path,
-                    $r->created_at,
-                    null,
-                    $r->confirmer?->name ?? '—'
-                ))
+                ->get(['id', 'external_document_path', 'created_at'])
+                ->map(fn ($r) => $this->row('revenue_document', 'مستند إيراد', $r->external_document_path, $r->created_at, null, $r->id))
         );
 
         $rows = $rows->merge(
             CustodySettlementItem::query()
                 ->whereNotNull('invoice_file')
                 ->get(['id', 'invoice_file', 'created_at'])
-                ->map(fn ($c) => $this->row('custody_invoice', 'فاتورة عهدة', $c->invoice_file, $c->created_at))
+                ->map(fn ($c) => $this->row('custody_invoice', 'فاتورة عهدة', $c->invoice_file, $c->created_at, null, $c->id))
         );
 
         $rows = $rows->merge(
             PayrollRunItem::query()
                 ->whereNotNull('proof_file')
                 ->get(['id', 'proof_file', 'created_at'])
-                ->map(fn ($p) => $this->row('payroll_proof', 'إثبات صرف راتب', $p->proof_file, $p->created_at))
+                ->map(fn ($p) => $this->row('payroll_proof', 'إثبات صرف راتب', $p->proof_file, $p->created_at, null, $p->id))
         );
 
         if (! empty($filters['type'])) {
@@ -82,14 +67,8 @@ class FinancialDocumentsService
     }
 
     /** @return array<string, mixed> */
-    private function row(
-        string $type,
-        string $label,
-        string $path,
-        $date,
-        ?int $projectId = null,
-        ?string $uploader = null,
-    ): array {
+    private function row(string $type, string $label, string $path, $date, ?int $projectId = null, ?int $sourceId = null): array
+    {
         return [
             'type' => $type,
             'label' => $label,
@@ -97,7 +76,10 @@ class FinancialDocumentsService
             'date' => $date,
             'month' => $date?->format('Y-m'),
             'project_id' => $projectId,
-            'uploader' => $uploader ?? '—',
+            'source_id' => $sourceId,
+            'download_url' => $sourceId
+                ? route('financial-documents.files.download', ['type' => $type, 'id' => $sourceId])
+                : null,
         ];
     }
 }

@@ -13,8 +13,8 @@ use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
- * Manual revenue entry + listing with evidence preview/download.
- * Time: O(n) | Space: O(page)
+ * 04-B4 UI — manual revenue entry + listing.
+ * Time: O(n) list | Space: O(page size).
  */
 class RevenuesIndex extends Component
 {
@@ -38,10 +38,13 @@ class RevenuesIndex extends Component
 
     public string $dateTo = '';
 
+    public ?int $open = null;
+
     protected $queryString = [
         'sourceFilter' => ['except' => ''],
         'dateFrom' => ['except' => ''],
         'dateTo' => ['except' => ''],
+        'open' => ['except' => null],
     ];
 
     public function updatingSourceFilter(): void
@@ -83,18 +86,27 @@ class RevenuesIndex extends Component
             'category_id' => 'nullable|exists:revenue_categories,id',
             'received_at' => 'required|date',
             'evidence' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
+        ], [
+            'evidence.required' => 'شاهد الإيراد إلزامي — انتظر اكتمال رفع الملف قبل الحفظ',
         ]);
 
-        $path = $this->evidence->store('revenues/evidence', 'local');
+        if (! $this->evidence instanceof TemporaryUploadedFile) {
+            $this->addError('evidence', 'انتظر اكتمال رفع الملف ثم احفظ');
+
+            return;
+        }
+
+        $path = $this->evidence->store('revenues', 'local');
 
         app(RevenueService::class)->recordManual(
             (float) $this->amount,
             $this->category_id,
             $this->received_at,
-            $path,
+            $path
         );
 
         $this->showCreateModal = false;
+        $this->reset(['amount', 'category_id', 'evidence']);
         $this->dispatch('toast', type: 'success', message: 'تم تسجيل الإيراد');
     }
 
@@ -103,6 +115,7 @@ class RevenuesIndex extends Component
         return view('livewire.finance.revenues-index', [
             'revenues' => Revenue::query()
                 ->select(['id', 'source_type', 'amount', 'received_at', 'status', 'external_document_path', 'created_at'])
+                ->when($this->open, fn ($q) => $q->where('id', $this->open))
                 ->when($this->sourceFilter, fn ($q) => $q->where('source_type', $this->sourceFilter))
                 ->when($this->dateFrom, fn ($q) => $q->whereDate('received_at', '>=', $this->dateFrom))
                 ->when($this->dateTo, fn ($q) => $q->whereDate('received_at', '<=', $this->dateTo))
@@ -114,6 +127,7 @@ class RevenuesIndex extends Component
                 Revenue::SOURCE_MANUAL,
             ],
             'canManage' => auth()->user()->can('finance.revenues.manage'),
+            'canViewBudgets' => auth()->user()->can('finance.budgets.view'),
         ])->layout('layouts.app', ['title' => 'الإيرادات']);
     }
 }

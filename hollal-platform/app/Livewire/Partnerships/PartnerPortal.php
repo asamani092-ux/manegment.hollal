@@ -31,6 +31,15 @@ class PartnerPortal extends Component
 
     public string $interestedPrograms = '';
 
+    /** @var list<int|string> */
+    public array $selectedProgramIds = [];
+
+    /** @var array<int|string, string> */
+    public array $programQuantities = [];
+
+    /** @var array<int|string, string> */
+    public array $programServices = [];
+
     public string $diagnosisAudience = '';
 
     public string $diagnosisCount = '';
@@ -59,6 +68,7 @@ class PartnerPortal extends Component
         abort_if($link === null, 404);
 
         $this->link = $link;
+        $this->initializeCatalogSelection();
         $this->log('portal.opened');
     }
 
@@ -89,12 +99,75 @@ class PartnerPortal extends Component
 
     public function acceptQuote(int $quoteId): void
     {
-        $quote = $this->scopedQuote($quoteId);
+        $quote = $this->saveProgramSelection($quoteId);
 
         app(QuoteService::class)->accept($quote);
         $this->log('portal.quote_accepted', ['quote_id' => $quote->id]);
 
         $this->dispatch('ds-toast', message: 'تم قبول العرض');
+    }
+
+    /**
+     * Rebuild the quote from the allowed catalog. Drafts are updated in place;
+     * any already-issued quote becomes a new version before acceptance.
+     */
+    public function saveProgramSelection(int $quoteId): Quote
+    {
+        $quote = $this->scopedQuote($quoteId);
+        $allowedPrograms = $this->allowedPrograms();
+        $allowedIds = $allowedPrograms->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $selectedIds = collect($this->selectedProgramIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->validate([
+            'selectedProgramIds' => 'required|array|min:1',
+            'programQuantities' => 'array',
+            'programServices' => 'array',
+        ], [], ['selectedProgramIds' => 'البرامج المختارة']);
+
+        if (array_diff($selectedIds, $allowedIds) !== []) {
+            throw new \RuntimeException('لا يمكن اختيار برنامج خارج كتالوج الشراكة');
+        }
+
+        $items = [];
+        foreach ($selectedIds as $programId) {
+            $program = $allowedPrograms->firstWhere('id', $programId);
+            $service = (string) ($this->programServices[$programId] ?? $program?->prices->first()?->service_type);
+            $price = $program?->prices->firstWhere('service_type', $service);
+
+            if (! $price) {
+                throw new \RuntimeException('لا يوجد سعر نشط للخدمة المختارة');
+            }
+
+            $quantity = (float) ($this->programQuantities[$programId] ?? 1);
+            if ($quantity < 0.01) {
+                throw new \RuntimeException('يجب أن تكون الكمية أكبر من صفر');
+            }
+
+            $items[] = [
+                'program_id' => $programId,
+                'service_type' => $price->service_type,
+                'quantity' => $quantity,
+                'unit_price' => (float) $price->unit_price,
+            ];
+        }
+
+        $service = app(QuoteService::class);
+        $updated = $quote->status === Quote::STATUS_DRAFT
+            ? $service->updateDraft($quote, $items)
+            : $service->revise($quote, $items);
+
+        $this->log('portal.programs_selected', [
+            'quote_id' => $updated->id,
+            'program_ids' => $selectedIds,
+            'quantities' => $this->programQuantities,
+        ]);
+
+        return $updated;
     }
 
     public function noteQuote(int $quoteId): void
@@ -201,17 +274,9 @@ class PartnerPortal extends Component
 
         return view('livewire.partnerships.partner-portal', [
             'partnership' => $partnership,
-            'features' => array_merge([
-                'programs' => true,
-                'diagnosis' => true,
-                'quotes' => true,
-                'payments' => true,
-                'contract' => true,
-            ], $partnership->portal_features ?? []),
-            'programs' => Program::where('stage', Program::STAGE_ACTIVE)
-                ->orderBy('name')
-                ->get(['id', 'name', 'description', 'target_audience', 'sessions_count', 'hours_count']),
+            'programs' => $this->allowedPrograms(),
             'quotes' => $partnership->quotes->whereIn('status', [
+                Quote::STATUS_DRAFT,
                 Quote::STATUS_SENT, Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED,
             ]),
         ])->layout('layouts.guest', ['title' => 'بوابة الجهة']);
@@ -221,6 +286,44 @@ class PartnerPortal extends Component
     private function log(string $action, array $metadata = []): void
     {
         app(PartnerPortalService::class)->log($this->link, $action, $metadata, request()->ip());
+    }
+
+    private function initializeCatalogSelection(): void
+    {
+        $quote = $this->link->partnership()
+            ->with('quotes.items')
+            ->firstOrFail()
+            ->quotes
+            ->first();
+
+        foreach ($quote?->items ?? [] as $item) {
+            if ($item->program_id === null) {
+                continue;
+            }
+
+            $this->selectedProgramIds[] = $item->program_id;
+            $this->programQuantities[$item->program_id] = (string) $item->quantity;
+            $this->programServices[$item->program_id] = $item->service_type;
+        }
+
+        if ($this->selectedProgramIds === []) {
+            $first = $this->allowedPrograms()->first();
+            if ($first) {
+                $this->selectedProgramIds = [$first->id];
+                $this->programQuantities[$first->id] = '1';
+                $this->programServices[$first->id] = (string) $first->prices->first()?->service_type;
+            }
+        }
+    }
+
+    private function allowedPrograms()
+    {
+        return $this->link->partnership()
+            ->firstOrFail()
+            ->allowedPrograms()
+            ->where('programs.stage', Program::STAGE_ACTIVE)
+            ->with(['prices' => fn ($query) => $query->where('is_active', true)->orderBy('id')])
+            ->get(['programs.id', 'programs.name', 'programs.description', 'programs.target_audience', 'programs.sessions_count', 'programs.hours_count']);
     }
 
     private function scopedQuote(int $quoteId): Quote

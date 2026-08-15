@@ -2,31 +2,49 @@
     <h1 class="ds-page-title">بوابة الجهة — {{ $partnership->organization?->name ?? $partnership->entity_name ?? '' }}</h1>
     <p class="ds-text-muted">المرحلة الحالية: {{ $partnership->stageLabel() }}</p>
 
-    <section class="ds-section" @if (! ($features['programs'] ?? true)) style="display:none" @endif>
-        <h2 class="ds-section-title">البرامج المتاحة</h2>
+    <section class="ds-section">
+        <h2 class="ds-section-title">اختيار البرامج والكميات</h2>
         <x-ds-table>
             <x-slot:head>
-                <tr><th>البرنامج</th><th>الفئة المستهدفة</th><th>اللقاءات</th><th>الساعات</th></tr>
+                <tr><th>اختيار</th><th>البرنامج</th><th>الخدمة</th><th>الكمية</th><th>سعر الوحدة</th></tr>
             </x-slot:head>
             @forelse ($programs as $program)
                 <tr wire:key="portal-program-{{ $program->id }}">
-                    <td>{{ $program->name }}</td>
-                    <td>{{ $program->target_audience ?? '—' }}</td>
-                    <td class="ds-ltr-num">{{ $program->sessions_count ?? '—' }}</td>
-                    <td class="ds-ltr-num">{{ $program->hours_count ?? '—' }}</td>
+                    <td>
+                        <input type="checkbox" value="{{ $program->id }}" wire:model.live="selectedProgramIds">
+                    </td>
+                    <td>
+                        <strong>{{ $program->name }}</strong>
+                        <small class="ds-text-muted">{{ $program->target_audience ?? '—' }}</small>
+                    </td>
+                    <td>
+                        <select class="ds-input" wire:model.live="programServices.{{ $program->id }}">
+                            @foreach ($program->prices as $price)
+                                <option value="{{ $price->service_type }}">{{ $price->service_type }}</option>
+                            @endforeach
+                        </select>
+                    </td>
+                    <td>
+                        <input type="number" min="0.01" step="0.01" class="ds-input ds-ltr-num"
+                               wire:model.live="programQuantities.{{ $program->id }}">
+                    </td>
+                    <td class="ds-ltr-num">
+                        {{ number_format((float) ($program->prices->firstWhere('service_type', $programServices[$program->id] ?? null)?->unit_price ?? $program->prices->first()?->unit_price ?? 0), 2) }}
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="ds-text-muted ds-table-empty">لا توجد برامج متاحة حاليًا</td></tr>
+                <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد برامج متاحة حاليًا</td></tr>
             @endforelse
         </x-ds-table>
-
-        <x-ds-form-group label="البرامج محل اهتمامكم" :error="$errors->first('interestedPrograms')">
-            <textarea class="ds-input" wire:model="interestedPrograms"></textarea>
-        </x-ds-form-group>
-        <button type="button" class="ds-btn ds-btn-primary" wire:click="submitInterest">إرسال الاهتمام</button>
+        @if ($quotes->isNotEmpty())
+            <p class="ds-text-muted">تُحتسب الضريبة من إعدادات المنصة بعد حفظ الاختيار.</p>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveProgramSelection({{ $quotes->first()->id }})">
+                تحديث العرض والمعاينة
+            </button>
+        @endif
     </section>
 
-    <section class="ds-section" @if (! ($features['diagnosis'] ?? true)) style="display:none" @endif>
+    <section class="ds-section">
         <h2 class="ds-section-title">استبانة التشخيص</h2>
         <x-ds-form-group label="الفئة" :error="$errors->first('diagnosisAudience')">
             <input type="text" class="ds-input" wire:model="diagnosisAudience">
@@ -40,14 +58,22 @@
         <button type="button" class="ds-btn ds-btn-primary" wire:click="submitDiagnosis">إرسال الاستبانة</button>
     </section>
 
-    <section class="ds-section" @if (! ($features['quotes'] ?? true)) style="display:none" @endif>
+    <section class="ds-section">
         <h2 class="ds-section-title">عروض الأسعار</h2>
         @forelse ($quotes as $quote)
             <div class="ds-kanban-card" wire:key="portal-quote-{{ $quote->id }}">
                 <p>نسخة <span class="ds-ltr-num">{{ $quote->version }}</span> — الحالة: {{ $quote->status }}</p>
+                @foreach ($quote->items as $item)
+                    <p class="ds-text-muted">
+                        {{ $item->description }} × <span class="ds-ltr-num">{{ number_format((float) $item->quantity, 2) }}</span>
+                        = <span class="ds-ltr-num">{{ number_format((float) $item->line_total, 2) }}</span>
+                    </p>
+                @endforeach
                 <p>الإجمالي شامل الضريبة:
                     <span class="ds-ltr-num">{{ number_format((float) $quote->total, 2) }}</span></p>
-                <button type="button" class="ds-btn ds-btn-primary" wire:click="acceptQuote({{ $quote->id }})">قبول العرض</button>
+                @if ($quote->status !== \App\Models\Quote::STATUS_ACCEPTED)
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="acceptQuote({{ $quote->id }})">قبول العرض</button>
+                @endif
                 <x-ds-form-group label="ملاحظات على العرض" :error="$errors->first('quoteNotes')">
                     <textarea class="ds-input" wire:model="quoteNotes"></textarea>
                 </x-ds-form-group>
@@ -58,12 +84,10 @@
         @endforelse
     </section>
 
-    @if (($features['contract'] ?? true) || ($features['payments'] ?? true))
     <section class="ds-section">
         <h2 class="ds-section-title">العقد والدفعات</h2>
         @foreach ($partnership->partnershipContracts as $contract)
             <div class="ds-kanban-card" wire:key="portal-contract-{{ $contract->id }}">
-                @if ($features['contract'] ?? true)
                 <p>عقد #{{ $contract->id }} — الحالة: {{ $contract->status }}</p>
                 <a class="ds-btn ds-btn-sm" href="{{ route('partner.portal.contract.pdf', ['token' => $link->token, 'contract' => $contract->id]) }}">
                     تنزيل العقد
@@ -134,9 +158,7 @@
                         رفع العقد الموقع
                     </button>
                 @endif
-                @endif
 
-                @if ($features['payments'] ?? true)
                 <x-ds-table>
                     <x-slot:head>
                         <tr><th>الدفعة</th><th>المبلغ</th><th>الاستحقاق</th><th>تسجيل</th></tr>
@@ -156,12 +178,10 @@
                         </tr>
                     @endforeach
                 </x-ds-table>
-                @endif
             </div>
         @endforeach
         @if ($partnership->partnershipContracts->isEmpty())
             <p class="ds-text-muted">لا يوجد عقد بعد</p>
         @endif
     </section>
-    @endif
 </div>

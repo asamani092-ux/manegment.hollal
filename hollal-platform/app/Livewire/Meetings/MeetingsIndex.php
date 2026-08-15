@@ -5,7 +5,6 @@ namespace App\Livewire\Meetings;
 use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\Meeting;
 use App\Models\User;
-use App\Notifications\MeetingInvite;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -31,28 +30,14 @@ class MeetingsIndex extends Component
 
     public string $agenda = '';
 
-    public string $location = '';
-
-    /** Maps to meetings.link (remote meeting URL). */
-    public string $remote_link = '';
-
     /** @var array<int> */
     public array $attendeeIds = [];
 
-    public ?int $open = null;
-
-    protected $queryString = [
-        'search' => ['except' => ''],
-        'open' => ['except' => null],
-    ];
+    protected $queryString = ['search' => ['except' => '']];
 
     public function mount(): void
     {
         $this->authorize('meetings.view');
-
-        if ($this->open) {
-            $this->openView($this->open);
-        }
     }
 
     public function updatingSearch(): void
@@ -98,8 +83,6 @@ class MeetingsIndex extends Component
             'title' => 'required|string|max:255',
             'scheduled_at' => 'required|date',
             'agenda' => 'nullable|string',
-            'location' => 'nullable|string|max:255',
-            'remote_link' => 'nullable|string|max:500',
             'attendeeIds' => 'array',
             'attendeeIds.*' => 'integer|exists:users,id',
         ], [
@@ -107,54 +90,31 @@ class MeetingsIndex extends Component
             'scheduled_at.required' => 'تاريخ ووقت الاجتماع مطلوب',
         ]);
 
-        $payload = [
-            'title' => $this->title,
-            'scheduled_at' => $this->scheduled_at,
-            'agenda' => $this->agenda ?: null,
-            'location' => $this->location ?: null,
-            'link' => $this->remote_link ?: null,
-        ];
-
-        $previousAttendeeIds = [];
-
         if ($isEdit) {
-            $meeting = Meeting::with('attendees:id')->findOrFail($this->meetingId);
+            $meeting = Meeting::findOrFail($this->meetingId);
             $this->authorize('update', $meeting);
-            $previousAttendeeIds = $meeting->attendees->pluck('id')->all();
-            $meeting->update($payload);
+            $meeting->update([
+                'title' => $this->title,
+                'scheduled_at' => $this->scheduled_at,
+                'agenda' => $this->agenda ?: null,
+            ]);
         } else {
             $this->authorize('meetings.create');
-            $meeting = Meeting::create($payload + [
+            $meeting = Meeting::create([
+                'title' => $this->title,
+                'scheduled_at' => $this->scheduled_at,
+                'agenda' => $this->agenda ?: null,
                 'status' => 'scheduled',
                 'chair_id' => auth()->id(),
             ]);
         }
 
-        if (auth()->user()->can('update', $meeting) || ! $isEdit) {
+        if (auth()->user()->can('update', $meeting)) {
             $meeting->attendees()->sync($this->attendeeIds);
         }
 
-        $meeting->refresh()->load('attendees');
-        $this->notifyAttendees($meeting, $previousAttendeeIds, ! $isEdit);
-
         $this->closeModal();
         $this->dispatch('toast', type: 'success', message: $isEdit ? 'تم تحديث الاجتماع' : 'تم إنشاء الاجتماع');
-    }
-
-    /**
-     * On create: invite all attendees. On update: invite newly added attendees.
-     *
-     * @param  list<int>  $previousAttendeeIds
-     */
-    private function notifyAttendees(Meeting $meeting, array $previousAttendeeIds, bool $isCreate): void
-    {
-        $targets = $isCreate
-            ? $meeting->attendees
-            : $meeting->attendees->whereNotIn('id', $previousAttendeeIds);
-
-        foreach ($targets as $attendee) {
-            $attendee->notify(new MeetingInvite($meeting));
-        }
     }
 
     public function delete(int $id): void
@@ -177,8 +137,6 @@ class MeetingsIndex extends Component
         $this->title = $meeting->title;
         $this->scheduled_at = $meeting->scheduled_at?->format('Y-m-d\TH:i');
         $this->agenda = $meeting->agenda ?? '';
-        $this->location = $meeting->location ?? '';
-        $this->remote_link = $meeting->link ?? '';
         $this->attendeeIds = $meeting->attendees->pluck('id')->all();
     }
 
@@ -189,8 +147,6 @@ class MeetingsIndex extends Component
         $this->title = '';
         $this->scheduled_at = null;
         $this->agenda = '';
-        $this->location = '';
-        $this->remote_link = '';
         $this->attendeeIds = [];
         $this->resetValidation();
     }
@@ -198,7 +154,7 @@ class MeetingsIndex extends Component
     protected function meetingQuery(bool $upcoming)
     {
         return Meeting::query()
-            ->select(['id', 'title', 'scheduled_at', 'agenda', 'location', 'link', 'status'])
+            ->select(['id', 'title', 'scheduled_at', 'agenda', 'status'])
             ->when($this->search, fn ($q) => $q->where('title', 'like', '%'.$this->search.'%'))
             ->when(
                 $upcoming,

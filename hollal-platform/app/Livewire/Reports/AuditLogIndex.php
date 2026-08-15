@@ -6,6 +6,7 @@ use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\AuditLog;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Cache;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -41,7 +42,6 @@ class AuditLogIndex extends Component
     public function query()
     {
         return AuditLog::query()
-            ->select(['id', 'actor_id', 'action', 'target_type', 'target_id', 'metadata', 'created_at'])
             ->when($this->actionFilter !== '', fn ($q) => $q->where('action', 'like', '%'.$this->actionFilter.'%'))
             ->when($this->actorFilter !== '', fn ($q) => $q->whereHas('actor', fn ($a) => $a->where('name', 'like', '%'.$this->actorFilter.'%')))
             ->when($this->fromDate !== '', fn ($q) => $q->whereDate('created_at', '>=', $this->fromDate))
@@ -72,16 +72,16 @@ class AuditLogIndex extends Component
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
             fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
-            fputcsv($handle, ['التاريخ', 'الإجراء', 'المنفذ', 'الهدف', 'الحالة', 'سبب الفشل']);
+            fputcsv($handle, ['التاريخ', 'الإجراء', 'الحالة', 'المنفذ', 'الهدف', 'العنوان IP']);
 
             foreach ($rows as $row) {
                 fputcsv($handle, [
                     $row->created_at?->format('Y-m-d H:i:s'),
                     $row->actionLabel(),
+                    $row->displayStatus() ?? '—',
                     $row->actor?->name ?? '—',
-                    trim(class_basename((string) $row->target_type).' #'.($row->target_id ?? '')),
-                    $row->outcomeStatus(),
-                    $row->outcomeReason() ?? '—',
+                    trim(($row->target_type ?? '').' #'.($row->target_id ?? '')),
+                    $row->ip_address ?? '—',
                 ]);
             }
 
@@ -89,11 +89,32 @@ class AuditLogIndex extends Component
         }, 'audit-log-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
+    /**
+     * Distinct action keys for the filter — cached / limited to avoid full-table scans.
+     *
+     * @return \Illuminate\Support\Collection<int, string>
+     */
+    protected function distinctActions()
+    {
+        return Cache::remember('audit_log.distinct_actions', 300, function () {
+            $known = array_keys(AuditLog::ACTION_LABELS);
+            $recent = AuditLog::query()
+                ->orderByDesc('id')
+                ->limit(200)
+                ->pluck('action')
+                ->unique()
+                ->values()
+                ->all();
+
+            return collect(array_unique(array_merge($known, $recent)))->sort()->values();
+        });
+    }
+
     public function render(): View
     {
         return view('livewire.reports.audit-log-index', [
             'logs' => $this->query()->with('actor')->paginate(25),
-            'actions' => AuditLog::query()->distinct()->orderBy('action')->pluck('action'),
+            'actions' => $this->distinctActions(),
         ])->layout('layouts.app', ['title' => 'سجل النشاط']);
     }
 }

@@ -136,18 +136,6 @@ class AssetsIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'تم تسجيل التسليم');
     }
 
-    public function receiveAsset(int $assetId): void
-    {
-        abort_unless(auth()->user()->can('finance.assets.manage'), 403);
-
-        try {
-            app(AssetService::class)->receive(Asset::findOrFail($assetId), 'استلام من الموظف');
-            $this->dispatch('toast', type: 'success', message: 'تم استلام الأصل — مرتبط بإنهاء العلاقة عند وجود عهدة');
-        } catch (\Throwable $e) {
-            $this->dispatch('toast', type: 'error', message: $e->getMessage());
-        }
-    }
-
     public function render(): View
     {
         return view('livewire.finance.assets-index', [

@@ -11,7 +11,16 @@ class Organization extends Model
     use SoftDeletes;
 
     /** @var list<string> */
-    protected $fillable = ['name', 'type', 'type_detail', 'city', 'roles', 'notes'];
+    protected $fillable = ['name', 'type', 'type_other', 'city', 'tax_number', 'roles', 'notes'];
+
+    public function typeLabel(): string
+    {
+        if ($this->type === 'أخرى' && filled($this->type_other)) {
+            return (string) $this->type_other;
+        }
+
+        return $this->type ?? '—';
+    }
 
     /** @return array<string, string> */
     protected function casts(): array

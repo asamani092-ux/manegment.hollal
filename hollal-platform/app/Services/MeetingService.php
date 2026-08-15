@@ -141,54 +141,9 @@ class MeetingService
             'meeting_id' => $meeting->id,
             'version' => $newVersion,
             'note' => $note,
-            'status' => MeetingAmendment::STATUS_APPROVED,
             'approved_by' => $approver->id,
             'created_at' => now(),
         ]);
-
-        $meeting->update(['version' => $newVersion]);
-
-        return $amendment;
-    }
-
-    /**
-     * DOC-2 — request an amendment; version is tagged only after approval.
-     * Time: O(1) | Space: O(1)
-     */
-    public function requestAmendment(Meeting $meeting, User $requester, string $note): MeetingAmendment
-    {
-        if (! $meeting->isApproved()) {
-            throw new \RuntimeException('لا يمكن تعديل محضر غير معتمد؛ عدّله مباشرة.');
-        }
-
-        if ($meeting->amendments()->where('status', MeetingAmendment::STATUS_PENDING)->exists()) {
-            throw new \RuntimeException('يوجد طلب تعديل معلّق على هذا المحضر.');
-        }
-
-        return MeetingAmendment::create([
-            'meeting_id' => $meeting->id,
-            'version' => $meeting->version + 1,
-            'note' => $note,
-            'status' => MeetingAmendment::STATUS_PENDING,
-            'requested_by' => $requester->id,
-            'created_at' => now(),
-        ]);
-    }
-
-    public function approveAmendment(MeetingAmendment $amendment, User $approver): MeetingAmendment
-    {
-        if ($amendment->status !== MeetingAmendment::STATUS_PENDING) {
-            throw new \RuntimeException('لا يمكن اعتماد طلب غير معلّق.');
-        }
-
-        $meeting = $amendment->meeting;
-        $newVersion = $meeting->version + 1;
-
-        $amendment->forceFill([
-            'status' => MeetingAmendment::STATUS_APPROVED,
-            'approved_by' => $approver->id,
-            'version' => $newVersion,
-        ])->save();
 
         $meeting->update(['version' => $newVersion]);
 

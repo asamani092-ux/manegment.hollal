@@ -73,15 +73,6 @@ class PartnershipShow extends Component
 
     public ?int $generateManagerId = null;
 
-    /** @var array{programs?: bool, diagnosis?: bool, quotes?: bool, payments?: bool, contract?: bool} */
-    public array $portalFeatures = [
-        'programs' => true,
-        'diagnosis' => true,
-        'quotes' => true,
-        'payments' => true,
-        'contract' => true,
-    ];
-
     public function mount(Partnership $partnership): void
     {
         $user = auth()->user();
@@ -96,8 +87,6 @@ class PartnershipShow extends Component
         $this->partnership = $partnership;
         $this->resetQuoteLines();
         $this->scheduleRows = [['label' => 'الدفعة الأولى', 'amount' => '', 'due_on' => now()->toDateString()]];
-        $features = $partnership->portal_features ?? [];
-        $this->portalFeatures = array_merge($this->portalFeatures, is_array($features) ? $features : []);
     }
 
     // ---------------------------------------------------------------- quotes
@@ -326,13 +315,6 @@ class PartnershipShow extends Component
         app(PartnerPortalService::class)->revoke($this->partnership->links()->findOrFail($linkId));
 
         $this->dispatch('ds-toast', message: 'تم إبطال الرابط');
-    }
-
-    public function savePortalFeatures(): void
-    {
-        $this->authorize('partnerships.links.manage');
-        $this->partnership->forceFill(['portal_features' => $this->portalFeatures])->save();
-        $this->dispatch('ds-toast', message: 'تم حفظ إعدادات بوابة الشريك');
     }
 
     // ------------------------------------------------------------ generation
