@@ -20,12 +20,31 @@
         }
 
         toggle?.addEventListener('click', function () {
-            if (sidebar?.classList.contains('open')) {
-                closeSidebar();
-            } else {
-                openSidebar();
+            if (window.innerWidth <= 768) {
+                if (sidebar?.classList.contains('open')) {
+                    closeSidebar();
+                } else {
+                    openSidebar();
+                }
+                return;
             }
+
+            var layout = document.querySelector('.ds-main-layout');
+            var collapsed = layout?.classList.toggle('is-sidebar-collapsed');
+            toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            toggle.setAttribute('aria-label', collapsed ? 'توسيع القائمة' : 'طي القائمة');
+            try {
+                window.localStorage.setItem('ds-sidebar-collapsed', collapsed ? '1' : '0');
+            } catch (e) { /* التخزين المحلي معطّل */ }
         });
+
+        try {
+            if (window.innerWidth > 768 && window.localStorage.getItem('ds-sidebar-collapsed') === '1') {
+                document.querySelector('.ds-main-layout')?.classList.add('is-sidebar-collapsed');
+                toggle?.setAttribute('aria-expanded', 'false');
+                toggle?.setAttribute('aria-label', 'توسيع القائمة');
+            }
+        } catch (e) { /* التخزين المحلي معطّل */ }
 
         backdrop?.addEventListener('click', closeSidebar);
 

@@ -38,10 +38,80 @@ class UatToolsChecklistTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('uat.tools'))
             ->assertOk()
-            ->assertSee('تقييم أدوات المنصة (UAT)', false)
+            ->assertSee('تقييم أدوات المنصة (UAT) — 3 مراحل', false)
             ->assertSee('نسخ التقرير كاملاً', false)
+            ->assertSee('تحميل آخر تقييم (20:27)', false)
+            ->assertSee('تقييم 19:04', false)
+            ->assertSee('2026-08-14 20:27', false)
+            ->assertSee('المرحلة 1 — الأساس والموارد', false)
+            ->assertSee('المرحلة 2 — التشغيل والمالية', false)
+            ->assertSee('المرحلة 3 — النمو والمحتوى', false)
             ->assertSee('دليل العاملين', false)
-            ->assertSee('الملاحظة', false);
+            ->assertSee('الملاحظة', false)
+            ->assertSee('قاعدة المراحل', false);
+    }
+
+    public function test_phases_cover_all_groups_without_overlap(): void
+    {
+        $phases = config('uat_tools.phases');
+        $groups = collect(config('uat_tools.groups'));
+
+        $this->assertCount(3, $phases);
+
+        $assigned = collect($phases)->flatMap(fn (array $p) => $p['group_ids'])->sort()->values();
+        $allIds = $groups->pluck('id')->sort()->values();
+
+        $this->assertSame($allIds->all(), $assigned->all());
+
+        foreach ($groups as $group) {
+            $this->assertContains($group['phase'], [1, 2, 3]);
+            $phase = collect($phases)->firstWhere('id', $group['phase']);
+            $this->assertContains($group['id'], $phase['group_ids']);
+        }
+
+        $counts = [];
+        foreach ($phases as $phase) {
+            $counts[$phase['id']] = $groups
+                ->whereIn('id', $phase['group_ids'])
+                ->sum(fn (array $g) => count($g['items']));
+        }
+
+        // Balanced within ~±5 of mean (~21)
+        foreach ($counts as $n) {
+            $this->assertGreaterThanOrEqual(18, $n);
+            $this->assertLessThanOrEqual(25, $n);
+        }
+    }
+
+    public function test_baseline_round4_is_default_and_covers_prior_verdicts(): void
+    {
+        $baseline = config('uat_tools.baseline');
+
+        $this->assertSame('2026-08-14 20:27', $baseline['date']);
+        $this->assertSame('يعتمد', $baseline['verdicts']['bell']);
+        $this->assertSame('يعتمد', $baseline['verdicts']['sidebar']);
+        $this->assertSame('يعتمد', $baseline['verdicts']['attendance']);
+        $this->assertSame('غير مجرّب', $baseline['verdicts']['smtp']);
+        $this->assertSame('يحتاج تحسين', $baseline['verdicts']['evaluations']);
+        $this->assertStringContainsString('أرشفة', $baseline['notes']['evaluations']);
+        $this->assertGreaterThanOrEqual(60, count($baseline['verdicts']));
+    }
+
+    public function test_baseline_round3_remains_available(): void
+    {
+        $round3 = config('uat_tools.baseline_round3');
+
+        $this->assertSame('2026-08-14 19:04', $round3['date']);
+        $this->assertSame('يحتاج تحسين', $round3['verdicts']['attendance']);
+    }
+
+    public function test_baseline_round2_remains_available(): void
+    {
+        $round2 = config('uat_tools.baseline_round2');
+
+        $this->assertSame('2026-08-13 15:22', $round2['date']);
+        $this->assertSame('يحتاج تحسين', $round2['verdicts']['bell']);
+        $this->assertStringContainsString('صفحة سوداء', $round2['notes']['bell']);
     }
 
     public function test_disabled_page_returns_not_found_and_leaves_nav(): void
