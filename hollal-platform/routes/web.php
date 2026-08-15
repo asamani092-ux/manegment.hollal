@@ -31,7 +31,6 @@ use App\Livewire\Reports\ReportsIndex;
 use App\Livewire\Settings\ExpenseSettingsIndex;
 use App\Livewire\Settings\MailSettingsIndex;
 use App\Livewire\Settings\SettingsIndex;
-use App\Livewire\Tasks\RecurringTasksIndex;
 use App\Livewire\Tasks\TasksCalendar;
 use App\Livewire\Tasks\TasksIndex;
 use App\Livewire\Tasks\TeamTasksIndex;
@@ -126,12 +125,12 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:esnad.tasks.view')
         ->name('tasks-calendar.index');
 
-    Route::get('/recurring-tasks', RecurringTasksIndex::class)
-        ->middleware('permission:esnad.tasks.create')
+    Route::get('/recurring-tasks', fn () => redirect()->route('workload-board.index', ['tab' => 'recurring']))
+        ->middleware('permission:esnad.tasks.create|esnad.tasks.team.view')
         ->name('recurring-tasks.index');
 
     Route::get('/workload-board', WorkloadBoard::class)
-        ->middleware('permission:esnad.tasks.team.view')
+        ->middleware('permission:esnad.tasks.team.view|esnad.tasks.create')
         ->name('workload-board.index');
 
     Route::get('/expenses', ExpensesIndex::class)

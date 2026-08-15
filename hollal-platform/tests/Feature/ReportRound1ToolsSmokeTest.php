@@ -7,7 +7,7 @@ use App\Livewire\Documents\DocumentTemplatesIndex;
 use App\Livewire\Documents\DocumentVersionsIndex;
 use App\Livewire\Finance\FinancialDocumentsIndex;
 use App\Livewire\Settings\ExpenseSettingsIndex;
-use App\Livewire\Tasks\RecurringTasksIndex;
+use App\Livewire\Tasks\WorkloadBoard;
 use App\Models\Document;
 use App\Models\DocumentTemplate;
 use App\Models\ExpenseSetting;
@@ -61,12 +61,13 @@ class ReportRound1ToolsSmokeTest extends TestCase
         $assignee = User::factory()->create(['is_active' => true]);
 
         Livewire::actingAs($admin)
-            ->test(RecurringTasksIndex::class)
+            ->test(WorkloadBoard::class, ['tab' => 'recurring'])
             ->call('openCreate')
             ->set('title', 'تقرير أسبوعي تجريبي')
             ->set('assigned_to_id', $assignee->id)
             ->set('pattern', 'أسبوعي')
             ->set('day_of_week', 0)
+            ->set('starts_on', now()->toDateString())
             ->call('save')
             ->assertHasNoErrors();
 
