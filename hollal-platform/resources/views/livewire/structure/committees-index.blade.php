@@ -42,7 +42,15 @@
                     <td><x-ds-status-badge :status="$committee->is_active ? 'نشطة' : 'موقوفة'" /></td>
                     <td>
                         @if ($canManage)
-                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openManage({{ $committee->id }})">الأعضاء والضيوف</button>
+                            <div class="ds-toolbar-actions" style="flex-wrap:wrap;gap:.35rem">
+                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openManage({{ $committee->id }})">الأعضاء والضيوف</button>
+                                @if ($committee->is_active)
+                                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="deactivateCommittee({{ $committee->id }})">إيقاف</button>
+                                @else
+                                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="activateCommittee({{ $committee->id }})">تفعيل</button>
+                                @endif
+                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDelete({{ $committee->id }})">حذف</button>
+                            </div>
                         @endif
                     </td>
                 </tr>
@@ -127,4 +135,30 @@
             </div>
         @endif
     </x-ds-modal>
+
+    @if ($deleteConfirmId && $deleteTarget)
+        <div class="ds-modal-overlay" wire:key="committee-delete-{{ $deleteConfirmId }}" wire:click.self="cancelDelete" wire:keydown.escape.window="cancelDelete" style="z-index:1300">
+            <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl" wire:click.stop>
+                <div class="ds-modal-header">
+                    <h3>تأكيد حذف اللجنة</h3>
+                    <button type="button" class="ds-modal-close" wire:click="cancelDelete" aria-label="إغلاق">&times;</button>
+                </div>
+                <div class="ds-modal-body">
+                    <p>حذف اللجنة «{{ $deleteTarget->name }}»؟ سيُزال الأعضاء والضيوف من السجل.</p>
+                    @if (($deleteTarget->meetings_count ?? 0) > 0)
+                        <p class="ds-badge ds-badge-warning">مرتبط بـ {{ $deleteTarget->meetings_count }} اجتماع — لن يُسمح بالحذف؛ استخدم الإيقاف بدلاً منه.</p>
+                    @endif
+                    <div class="ds-toolbar-actions">
+                        <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelDelete">إلغاء</button>
+                        <button
+                            type="button"
+                            class="ds-btn ds-btn-primary"
+                            wire:click="deleteCommittee({{ $deleteConfirmId }})"
+                            @disabled(($deleteTarget->meetings_count ?? 0) > 0)
+                        >تأكيد الحذف</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
 </x-ds-page>

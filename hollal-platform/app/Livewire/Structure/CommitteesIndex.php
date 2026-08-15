@@ -41,6 +41,8 @@ class CommitteesIndex extends Component
 
     public ?int $manage = null;
 
+    public ?int $deleteConfirmId = null;
+
     public function mount(): void
     {
         abort_unless(
@@ -139,22 +141,84 @@ class CommitteesIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'أُزيل الضيف');
     }
 
+    public function askDelete(int $id): void
+    {
+        abort_unless(auth()->user()->can('structure.committees.manage'), 403);
+        $this->deleteConfirmId = $id;
+        $this->closeManage();
+    }
+
+    public function cancelDelete(): void
+    {
+        $this->deleteConfirmId = null;
+    }
+
+    /**
+     * Soft-delete committee and detach members. O(1) + pivot detach.
+     */
+    public function deleteCommittee(int $id): void
+    {
+        abort_unless(auth()->user()->can('structure.committees.manage'), 403);
+
+        $committee = Committee::query()->withCount('meetings')->findOrFail($id);
+
+        if ($committee->meetings_count > 0) {
+            $this->deleteConfirmId = null;
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                message: 'لا يمكن حذف اللجنة لوجود '.$committee->meetings_count.' اجتماع مرتبط — أوقفها بدل الحذف أو أزل الارتباط أولاً'
+            );
+
+            return;
+        }
+
+        $committee->members()->detach();
+        $committee->delete();
+
+        if ($this->managingId === $id) {
+            $this->closeManage();
+        }
+
+        $this->deleteConfirmId = null;
+        $this->dispatch('toast', type: 'success', message: 'تم حذف اللجنة');
+    }
+
+    public function deactivateCommittee(int $id): void
+    {
+        abort_unless(auth()->user()->can('structure.committees.manage'), 403);
+        Committee::findOrFail($id)->forceFill(['is_active' => false])->save();
+        $this->dispatch('toast', type: 'success', message: 'أُوقفت اللجنة');
+    }
+
+    public function activateCommittee(int $id): void
+    {
+        abort_unless(auth()->user()->can('structure.committees.manage'), 403);
+        Committee::findOrFail($id)->forceFill(['is_active' => true])->save();
+        $this->dispatch('toast', type: 'success', message: 'فُعّلت اللجنة');
+    }
+
     public function render(): View
     {
         $managing = $this->managingId
             ? Committee::with(['members:id,name', 'chair:id,name'])->find($this->managingId)
             : null;
 
+        $deleteTarget = $this->deleteConfirmId
+            ? Committee::query()->select(['id', 'name'])->withCount('meetings')->find($this->deleteConfirmId)
+            : null;
+
         return view('livewire.structure.committees-index', [
             'committees' => Committee::query()
                 ->select(['id', 'name', 'mandate', 'chair_id', 'is_active', 'guests', 'created_at'])
                 ->with(['chair:id,name', 'members:id,name'])
-                ->withCount('members')
+                ->withCount(['members', 'meetings'])
                 ->when($this->search, fn ($q) => $q->where('name', 'like', '%'.$this->search.'%'))
                 ->when($this->activeFilter !== '', fn ($q) => $q->where('is_active', $this->activeFilter === '1'))
                 ->latest()
                 ->paginate(20),
             'managing' => $managing,
+            'deleteTarget' => $deleteTarget,
             'users' => User::query()->select(['id', 'name'])->where('is_active', true)->orderBy('name')->get(),
             'canManage' => auth()->user()->can('structure.committees.manage'),
         ]);

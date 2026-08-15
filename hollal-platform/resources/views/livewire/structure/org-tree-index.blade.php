@@ -143,24 +143,59 @@
 
         <x-ds-table>
             <x-slot:head>
-                <tr><th>اللجنة</th><th>الرئيس</th><th>الأعضاء</th><th>الاجتماعات</th><th>إجراءات</th></tr>
+                <tr><th>اللجنة</th><th>الرئيس</th><th>الأعضاء</th><th>الاجتماعات</th><th>الحالة</th><th>إجراءات</th></tr>
             </x-slot:head>
             @forelse ($committees as $committee)
                 <tr wire:key="committee-{{ $committee->id }}">
                     <td>{{ $committee->name }}</td>
                     <td>{{ $committee->chair?->name ?? '—' }}</td>
                     <td class="ds-ltr-num">{{ $committee->members->count() }}</td>
-                    <td class="ds-ltr-num">{{ $committee->meetings()->count() }}</td>
+                    <td class="ds-ltr-num">{{ $committee->meetings_count }}</td>
+                    <td><x-ds-status-badge :status="$committee->is_active ? 'نشطة' : 'موقوفة'" /></td>
                     <td>
                         @can('structure.committees.manage')
-                            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.committees', ['manage' => $committee->id]) }}">الأعضاء والضيوف</a>
+                            <div class="ds-toolbar-actions" style="flex-wrap:wrap;gap:.35rem">
+                                <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.committees', ['manage' => $committee->id]) }}">الأعضاء والضيوف</a>
+                                @if ($committee->is_active)
+                                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="deactivateCommittee({{ $committee->id }})">إيقاف</button>
+                                @else
+                                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="activateCommittee({{ $committee->id }})">تفعيل</button>
+                                @endif
+                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDeleteCommittee({{ $committee->id }})">حذف</button>
+                            </div>
                         @endcan
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد لجان</td></tr>
+                <tr><td colspan="6" class="ds-text-muted ds-table-empty">لا توجد لجان</td></tr>
             @endforelse
         </x-ds-table>
+
+        @if ($committeeDeleteConfirmId && $committeeDeleteTarget)
+            <div class="ds-modal-overlay" wire:key="org-committee-delete-{{ $committeeDeleteConfirmId }}" wire:click.self="cancelDeleteCommittee" wire:keydown.escape.window="cancelDeleteCommittee" style="z-index:1300">
+                <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl" wire:click.stop>
+                    <div class="ds-modal-header">
+                        <h3>تأكيد حذف اللجنة</h3>
+                        <button type="button" class="ds-modal-close" wire:click="cancelDeleteCommittee" aria-label="إغلاق">&times;</button>
+                    </div>
+                    <div class="ds-modal-body">
+                        <p>حذف اللجنة «{{ $committeeDeleteTarget->name }}»؟ سيُزال الأعضاء والضيوف من السجل.</p>
+                        @if (($committeeDeleteTarget->meetings_count ?? 0) > 0)
+                            <p class="ds-badge ds-badge-warning">مرتبط بـ {{ $committeeDeleteTarget->meetings_count }} اجتماع — لن يُسمح بالحذف؛ استخدم الإيقاف بدلاً منه.</p>
+                        @endif
+                        <div class="ds-toolbar-actions">
+                            <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelDeleteCommittee">إلغاء</button>
+                            <button
+                                type="button"
+                                class="ds-btn ds-btn-primary"
+                                wire:click="deleteCommittee({{ $committeeDeleteConfirmId }})"
+                                @disabled(($committeeDeleteTarget->meetings_count ?? 0) > 0)
+                            >تأكيد الحذف</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
     @endif
 
     <x-ds-modal :show="$showUnitModal">

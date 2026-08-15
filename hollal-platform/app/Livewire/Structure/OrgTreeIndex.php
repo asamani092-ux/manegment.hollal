@@ -47,6 +47,8 @@ class OrgTreeIndex extends Component
 
     public ?string $committeeMandate = null;
 
+    public ?int $committeeDeleteConfirmId = null;
+
     public ?int $viewingJobId = null;
 
     public function mount(): void
@@ -144,15 +146,75 @@ class OrgTreeIndex extends Component
         $this->dispatch('ds-toast', message: 'أُنشئت اللجنة');
     }
 
+    public function askDeleteCommittee(int $id): void
+    {
+        abort_unless(auth()->user()->can('structure.committees.manage'), 403);
+        $this->committeeDeleteConfirmId = $id;
+    }
+
+    public function cancelDeleteCommittee(): void
+    {
+        $this->committeeDeleteConfirmId = null;
+    }
+
+    /**
+     * Soft-delete committee; block when meetings exist. Time: O(1) | Space: O(1)
+     */
+    public function deleteCommittee(int $id): void
+    {
+        abort_unless(auth()->user()->can('structure.committees.manage'), 403);
+
+        $committee = Committee::query()->withCount('meetings')->findOrFail($id);
+
+        if ($committee->meetings_count > 0) {
+            $this->committeeDeleteConfirmId = null;
+            $this->dispatch(
+                'toast',
+                type: 'error',
+                message: 'لا يمكن حذف اللجنة لوجود '.$committee->meetings_count.' اجتماع مرتبط — أوقفها بدل الحذف'
+            );
+
+            return;
+        }
+
+        $committee->members()->detach();
+        $committee->delete();
+        $this->committeeDeleteConfirmId = null;
+        $this->dispatch('toast', type: 'success', message: 'تم حذف اللجنة');
+    }
+
+    public function deactivateCommittee(int $id): void
+    {
+        abort_unless(auth()->user()->can('structure.committees.manage'), 403);
+        Committee::findOrFail($id)->forceFill(['is_active' => false])->save();
+        $this->dispatch('toast', type: 'success', message: 'أُوقفت اللجنة');
+    }
+
+    public function activateCommittee(int $id): void
+    {
+        abort_unless(auth()->user()->can('structure.committees.manage'), 403);
+        Committee::findOrFail($id)->forceFill(['is_active' => true])->save();
+        $this->dispatch('toast', type: 'success', message: 'فُعّلت اللجنة');
+    }
+
     public function render(): View
     {
         $tree = app(OrgStructureService::class)->tree();
+
+        $deleteTarget = $this->committeeDeleteConfirmId
+            ? Committee::query()->select(['id', 'name'])->withCount('meetings')->find($this->committeeDeleteConfirmId)
+            : null;
 
         return view('livewire.structure.org-tree-index', [
             'tree' => $tree,
             'transfers' => \App\Models\EmployeeTransfer::with(['employee', 'fromUnit', 'toUnit'])
                 ->orderByDesc('id')->limit(50)->get(),
-            'committees' => Committee::with(['chair', 'members'])->orderBy('name')->get(),
+            'committees' => Committee::query()
+                ->with(['chair:id,name', 'members:id,name'])
+                ->withCount('meetings')
+                ->orderBy('name')
+                ->get(['id', 'name', 'chair_id', 'is_active', 'guests']),
+            'committeeDeleteTarget' => $deleteTarget,
             'users' => User::orderBy('name')->get(['id', 'name']),
             'units' => OrgUnit::orderBy('name')->get(['id', 'name', 'level']),
             'departments' => Department::orderBy('name')->get(['id', 'name']),
