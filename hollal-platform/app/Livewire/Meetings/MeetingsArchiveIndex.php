@@ -86,7 +86,7 @@ class MeetingsArchiveIndex extends Component
     {
         return view('livewire.meetings.meetings-archive-index', [
             'meetings' => Meeting::query()
-                ->select(['id', 'title', 'scheduled_at', 'approval_status', 'version', 'updated_at'])
+                ->select(['id', 'title', 'scheduled_at', 'approval_status', 'version', 'updated_at', 'signed_document_id'])
                 ->where('approval_status', Meeting::APPROVAL_APPROVED)
                 ->with(['amendments' => fn ($q) => $q->orderByDesc('id')])
                 ->when($this->search, fn ($q) => $q->where('title', 'like', '%'.$this->search.'%'))

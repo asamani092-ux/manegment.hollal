@@ -1,6 +1,11 @@
 <x-ds-page class="ds-printable-minutes">
   @php
     $itemStatusLabels = ['open' => 'مفتوح', 'in_progress' => 'قيد التنفيذ', 'done' => 'منجز'];
+    $myId = auth()->id();
+    $isParticipant = $meeting->attendees->contains('id', $myId)
+      || in_array($myId, [$meeting->chair_id, $meeting->secretary_id], true);
+    $myConfirmedAtRaw = optional($meeting->attendees->firstWhere('id', $myId))->pivot->confirmed_at ?? null;
+    $myConfirmedAt = $myConfirmedAtRaw ? \Illuminate\Support\Carbon::parse($myConfirmedAtRaw) : null;
   @endphp
 
   <div class="ds-page-toolbar ds-no-print">
@@ -19,14 +24,28 @@
             <i class="fas fa-check-circle" aria-hidden="true"></i> اعتماد المحضر
           </button>
         @endcan
-        <button type="button" class="ds-btn ds-btn-outline" wire:click="confirmMyAttendance">تأكيد حضوري وتوقيعي</button>
+        @if ($meeting->hasEnded() && $isParticipant)
+          @if ($myConfirmedAt)
+            <span class="ds-badge ds-badge-success">أكّدتَ الاطلاع — {{ $myConfirmedAt->format('Y-m-d H:i') }}</span>
+          @else
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="confirmMyAttendance">اطّلعت على المحضر وأؤكّد</button>
+          @endif
+        @endif
       @endif
       @can('downloadPdf', $meeting)
         <button type="button" class="ds-btn ds-btn-outline" onclick="window.print()">
           <i class="fas fa-print" aria-hidden="true"></i> طباعة القالب
         </button>
+        @if ($meeting->signed_document_id)
+          <a class="ds-btn ds-btn-outline" href="{{ route('meetings.minutes.signed', $meeting) }}">
+            <i class="fas fa-file-signature" aria-hidden="true"></i> النسخة الموقعة
+          </a>
+        @endif
       @endcan
       @can('update', $meeting)
+        <button type="button" class="ds-btn ds-btn-outline" wire:click="openSignedUploadModal">
+          <i class="fas fa-upload" aria-hidden="true"></i> رفع نسخة موقعة
+        </button>
         @if (! $meeting->isApproved())
           <button type="button" class="ds-btn ds-btn-primary" wire:click="openItemCreate">
             <i class="fas fa-plus" aria-hidden="true"></i> بند جديد
@@ -93,7 +112,9 @@
         @forelse ($meeting->attendees as $attendee)
           <tr wire:key="sig-{{ $attendee->id }}">
             <td>{{ $attendee->name }}</td>
-            <td style="min-height:2rem">{{ $attendee->pivot->signature_text ?? '' }}</td>
+            <td style="min-height:2rem">
+              <x-signature-cell :path="$attendee->pivot->signature_image_path ?? null" :text="$attendee->pivot->signature_text ?? null" />
+            </td>
           </tr>
         @empty
           <tr><td colspan="2">—</td></tr>
@@ -103,6 +124,25 @@
         <p class="ds-text-muted">سبب نقص التوقيع: {{ $meeting->minutes_missing_signatures_reason }}</p>
       @endif
     </section>
+
+    @if ($meeting->guests->isNotEmpty())
+      <section class="ds-minutes-zone">
+        <h3 class="ds-section-heading">الضيوف الخارجيون</h3>
+        <x-ds-table>
+          <x-slot:head><tr><th>الاسم</th><th>البريد</th><th>التأكيد</th><th>التوقيع</th></tr></x-slot:head>
+          @foreach ($meeting->guests as $guest)
+            <tr wire:key="guest-sig-{{ $guest->id }}">
+              <td>{{ $guest->name }}</td>
+              <td class="ds-ltr-num">{{ $guest->email }}</td>
+              <td>{{ $guest->confirmed_at?->format('Y-m-d H:i') ?? '—' }}</td>
+              <td style="min-height:2rem">
+                <x-signature-cell :path="$guest->signature_image_path" />
+              </td>
+            </tr>
+          @endforeach
+        </x-ds-table>
+      </section>
+    @endif
   </div>
 
   <div class="ds-no-print ds-section-spaced">
@@ -202,6 +242,50 @@
             <button type="button" class="ds-btn ds-btn-primary" wire:click="saveItem">حفظ</button>
           @endif
           <button type="button" class="ds-btn ds-btn-outline" wire:click="closeItemModal">إغلاق</button>
+        </div>
+      </div>
+    </div>
+  @endif
+
+  @if ($showSignatureModal)
+    <div class="ds-modal-overlay ds-no-print" wire:click.self="$set('showSignatureModal', false)" style="z-index:1300">
+      <div class="ds-modal" role="dialog" dir="rtl" wire:click.stop>
+        <div class="ds-modal-header">
+          <h3>حفظ توقيعك الإلكتروني</h3>
+          <button type="button" class="ds-modal-close" wire:click="$set('showSignatureModal', false)">&times;</button>
+        </div>
+        <div class="ds-modal-body">
+          <p class="ds-text-muted">لم تُسجّل صورة توقيعك بعد. ارفعها لتُحفظ في ملفك الشخصي وتُدرج بجانب اسمك في محاضر الاجتماعات.</p>
+          <x-ds-form-group label="صورة التوقيع" :error="$errors->first('signatureFile')">
+            <input type="file" class="ds-input" wire:model="signatureFile" accept="image/*">
+          </x-ds-form-group>
+          <div wire:loading wire:target="signatureFile" class="ds-text-muted">جارٍ التحميل…</div>
+        </div>
+        <div class="ds-modal-footer">
+          <button type="button" class="ds-btn ds-btn-primary" wire:click="saveSignatureAndConfirm">حفظ التوقيع والتأكيد</button>
+          <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('showSignatureModal', false)">إلغاء</button>
+        </div>
+      </div>
+    </div>
+  @endif
+
+  @if ($showSignedUploadModal)
+    <div class="ds-modal-overlay ds-no-print" wire:click.self="$set('showSignedUploadModal', false)" style="z-index:1300">
+      <div class="ds-modal" role="dialog" dir="rtl" wire:click.stop>
+        <div class="ds-modal-header">
+          <h3>رفع نسخة موقعة يدويًا</h3>
+          <button type="button" class="ds-modal-close" wire:click="$set('showSignedUploadModal', false)">&times;</button>
+        </div>
+        <div class="ds-modal-body">
+          <p class="ds-text-muted">ارفع ملف PDF لنسخة المحضر الموقعة يدويًا (طباعة + توقيع) لربطها بالأرشيف إلى جانب النسخة الإلكترونية.</p>
+          <x-ds-form-group label="ملف PDF" :error="$errors->first('signedPdfFile')">
+            <input type="file" class="ds-input" wire:model="signedPdfFile" accept="application/pdf">
+          </x-ds-form-group>
+          <div wire:loading wire:target="signedPdfFile" class="ds-text-muted">جارٍ التحميل…</div>
+        </div>
+        <div class="ds-modal-footer">
+          <button type="button" class="ds-btn ds-btn-primary" wire:click="uploadSignedMinutes">رفع وربط بالأرشيف</button>
+          <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('showSignedUploadModal', false)">إلغاء</button>
         </div>
       </div>
     </div>

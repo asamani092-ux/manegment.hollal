@@ -19,6 +19,7 @@ class MeetingMinutesPdfService
             'chair:id,name',
             'secretary:id,name',
             'attendees:id,name,email',
+            'guests',
             'items' => fn ($q) => $q->with(['responsible:id,name'])->orderBy('id'),
         ]);
 

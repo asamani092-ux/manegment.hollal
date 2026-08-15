@@ -3,11 +3,16 @@
 namespace App\Livewire\Meetings;
 
 use App\Livewire\Concerns\UsesDsPagination;
+use App\Models\Committee;
 use App\Models\Meeting;
+use App\Models\MeetingGuest;
 use App\Models\User;
+use App\Notifications\MeetingGuestInvite;
 use App\Notifications\MeetingInvite;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Str;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -38,6 +43,19 @@ class MeetingsIndex extends Component
 
     /** @var array<int> */
     public array $attendeeIds = [];
+
+    /** P2 wave C — searchable employee pick; consumed then reset. */
+    public ?int $pickEmployeeId = null;
+
+    /** P2 wave C — choosing a committee bulk-adds its members. */
+    public ?int $pickCommitteeId = null;
+
+    /**
+     * P2 wave C — external guests (no employee account) queued for this save.
+     *
+     * @var list<array{name: string, email: string}>
+     */
+    public array $guestRows = [];
 
     public ?int $open = null;
 
@@ -86,6 +104,74 @@ class MeetingsIndex extends Component
         $this->showModal = true;
     }
 
+    /**
+     * P2 wave C — searchable employee combobox: pick, append, reset the picker.
+     * Time: O(1) | Space: O(1)
+     */
+    public function updatedPickEmployeeId(): void
+    {
+        if ($this->pickEmployeeId && ! in_array($this->pickEmployeeId, $this->attendeeIds, true)) {
+            $this->attendeeIds[] = $this->pickEmployeeId;
+        }
+
+        $this->pickEmployeeId = null;
+    }
+
+    /**
+     * P2 wave C — choosing a committee bulk-adds its members to attendees.
+     * Time: O(m) members | Space: O(m)
+     */
+    public function updatedPickCommitteeId(): void
+    {
+        if (! $this->pickCommitteeId) {
+            return;
+        }
+
+        $memberIds = Committee::with('members:id')->find($this->pickCommitteeId)
+            ?->members->pluck('id')->map(fn ($id) => (int) $id)->all() ?? [];
+
+        $this->attendeeIds = array_values(array_unique(array_merge($this->attendeeIds, $memberIds)));
+        $this->pickCommitteeId = null;
+    }
+
+    /** Allow removing individually — whether hand-picked or added via a committee. */
+    public function removeAttendee(int $userId): void
+    {
+        $this->attendeeIds = array_values(array_filter(
+            $this->attendeeIds,
+            fn ($id) => $id !== $userId
+        ));
+    }
+
+    public function addGuestRow(): void
+    {
+        $this->guestRows[] = ['name' => '', 'email' => ''];
+    }
+
+    public function removeGuestRow(int $index): void
+    {
+        unset($this->guestRows[$index]);
+        $this->guestRows = array_values($this->guestRows);
+    }
+
+    /** Remove an already-persisted guest invite (blocked once they've confirmed). */
+    public function removeGuest(int $guestId): void
+    {
+        $meeting = Meeting::findOrFail($this->meetingId);
+        $this->authorize('update', $meeting);
+
+        $guest = MeetingGuest::where('meeting_id', $meeting->id)->findOrFail($guestId);
+
+        if ($guest->confirmed_at !== null) {
+            $this->dispatch('toast', type: 'error', message: 'لا يمكن حذف ضيف أكّد الاطلاع بالفعل');
+
+            return;
+        }
+
+        $guest->delete();
+        $this->dispatch('toast', type: 'success', message: 'أُزيل الضيف');
+    }
+
     public function save(): void
     {
         if ($this->viewOnly) {
@@ -102,9 +188,13 @@ class MeetingsIndex extends Component
             'remote_link' => 'nullable|string|max:500',
             'attendeeIds' => 'array',
             'attendeeIds.*' => 'integer|exists:users,id',
+            'guestRows.*.name' => 'nullable|string|max:255|required_with:guestRows.*.email',
+            'guestRows.*.email' => 'nullable|email|max:255|required_with:guestRows.*.name',
         ], [
             'title.required' => 'عنوان الاجتماع مطلوب',
             'scheduled_at.required' => 'تاريخ ووقت الاجتماع مطلوب',
+            'guestRows.*.name.required_with' => 'اسم الضيف مطلوب عند إدخال البريد',
+            'guestRows.*.email.required_with' => 'بريد الضيف مطلوب عند إدخال الاسم',
         ]);
 
         $payload = [
@@ -136,6 +226,7 @@ class MeetingsIndex extends Component
 
         $meeting->refresh()->load('attendees');
         $this->notifyAttendees($meeting, $previousAttendeeIds, ! $isEdit);
+        $this->persistGuests($meeting);
 
         $this->closeModal();
         $this->dispatch('toast', type: 'success', message: $isEdit ? 'تم تحديث الاجتماع' : 'تم إنشاء الاجتماع');
@@ -155,6 +246,33 @@ class MeetingsIndex extends Component
         foreach ($targets as $attendee) {
             $attendee->notify(new MeetingInvite($meeting));
         }
+    }
+
+    /**
+     * P2 wave C — persist queued external guest rows and email each an
+     * invite carrying their unique short link. Existing guests are left
+     * untouched (cumulative — removal only via the explicit removeGuest()
+     * action). Time: O(g) queued guests | Space: O(g)
+     */
+    private function persistGuests(Meeting $meeting): void
+    {
+        $rows = collect($this->guestRows)
+            ->filter(fn ($row) => trim($row['name'] ?? '') !== '' && trim($row['email'] ?? '') !== '')
+            ->values();
+
+        foreach ($rows as $row) {
+            $guest = MeetingGuest::create([
+                'meeting_id' => $meeting->id,
+                'name' => $row['name'],
+                'email' => $row['email'],
+                'token' => Str::random(48),
+                'invited_by' => auth()->id(),
+            ]);
+
+            Notification::route('mail', $guest->email)->notify(new MeetingGuestInvite($meeting, $guest));
+        }
+
+        $this->guestRows = [];
     }
 
     public function delete(int $id): void
@@ -180,6 +298,9 @@ class MeetingsIndex extends Component
         $this->location = $meeting->location ?? '';
         $this->remote_link = $meeting->link ?? '';
         $this->attendeeIds = $meeting->attendees->pluck('id')->all();
+        $this->guestRows = [];
+        $this->pickEmployeeId = null;
+        $this->pickCommitteeId = null;
     }
 
     protected function resetForm(): void
@@ -192,6 +313,9 @@ class MeetingsIndex extends Component
         $this->location = '';
         $this->remote_link = '';
         $this->attendeeIds = [];
+        $this->guestRows = [];
+        $this->pickEmployeeId = null;
+        $this->pickCommitteeId = null;
         $this->resetValidation();
     }
 
@@ -209,10 +333,18 @@ class MeetingsIndex extends Component
 
     public function render(): View
     {
+        $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
+
         return view('livewire.meetings.meetings-index', [
             'upcomingMeetings' => $this->meetingQuery(true)->paginate(6, pageName: 'upcomingPage'),
             'pastMeetings' => $this->meetingQuery(false)->paginate(6, pageName: 'pastPage'),
-            'users' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'users' => $users,
+            'pickableUsers' => $users->whereNotIn('id', $this->attendeeIds)->values(),
+            'attendeeUsers' => $users->whereIn('id', $this->attendeeIds),
+            'committees' => Committee::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'existingGuests' => $this->meetingId
+                ? MeetingGuest::where('meeting_id', $this->meetingId)->orderBy('id')->get()
+                : collect(),
         ])->layout('layouts.app', ['title' => 'الاجتماعات']);
     }
 }

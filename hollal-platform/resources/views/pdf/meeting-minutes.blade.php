@@ -108,9 +108,7 @@
                     <tr>
                         <td>{{ $attendee->name }}</td>
                         <td class="sig-box">
-                            @if (! blank($attendee->pivot->signature_text ?? null))
-                                {{ $attendee->pivot->signature_text }}
-                            @endif
+                            <x-signature-cell :path="$attendee->pivot->signature_image_path ?? null" :text="$attendee->pivot->signature_text ?? null" />
                         </td>
                     </tr>
                 @empty
@@ -122,5 +120,24 @@
             <p class="meta">ملاحظة اعتماد مع نقص توقيع: {{ $meeting->minutes_missing_signatures_reason }}</p>
         @endif
     </div>
+
+    @if ($meeting->guests->isNotEmpty())
+        <div class="zone">
+            <h2>الضيوف الخارجيون</h2>
+            <table>
+                <thead><tr><th>الاسم</th><th>البريد</th><th>التأكيد</th><th>التوقيع</th></tr></thead>
+                <tbody>
+                    @foreach ($meeting->guests as $guest)
+                        <tr>
+                            <td>{{ $guest->name }}</td>
+                            <td>{{ $guest->email }}</td>
+                            <td>{{ $guest->confirmed_at?->format('Y-m-d H:i') ?? '—' }}</td>
+                            <td class="sig-box"><x-signature-cell :path="$guest->signature_image_path" /></td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    @endif
 </body>
 </html>

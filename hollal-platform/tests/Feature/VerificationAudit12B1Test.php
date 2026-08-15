@@ -10,14 +10,15 @@ use App\Livewire\Projects\ProjectExecution;
 use App\Models\Consultation;
 use App\Models\Custody;
 use App\Models\Organization;
-use App\Models\Partnership;
 use App\Models\PartnerLink;
+use App\Models\Partnership;
 use App\Models\Program;
 use App\Models\Project;
 use App\Models\ProjectVisit;
 use App\Models\User;
 use App\Services\PartnerPortalService;
 use Database\Seeders\PermissionSeeder;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Route;
@@ -154,6 +155,10 @@ class VerificationAudit12B1Test extends TestCase
             'partner.portal', 'partner.portal.contract.pdf',
             'duties.download', 'tasks.files.download', 'contracts.files.download',
             'expenses.files.download', 'documents.files.download',
+            // P2 wave C — minutes access is Policy-gated (MeetingPolicy::view),
+            // not the global meetings.view permission, so invited attendees
+            // without that permission can still open/download them.
+            'meetings.minutes', 'meetings.minutes.pdf', 'meetings.minutes.signed',
         ];
 
         foreach (Route::getRoutes() as $route) {
@@ -178,7 +183,7 @@ class VerificationAudit12B1Test extends TestCase
 
     public function test_scheduled_sweeps_are_registered(): void
     {
-        $commands = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+        $commands = collect(app(Schedule::class)->events())
             ->map(fn ($event) => $event->command)
             ->filter()
             ->implode(' ');

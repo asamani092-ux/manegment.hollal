@@ -33,6 +33,9 @@
                 <td>
                     @can('meetings.view')
                         <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes', $meeting) }}">المحضر</a>
+                        @if ($meeting->signed_document_id)
+                            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes.signed', $meeting) }}">النسخة الموقعة</a>
+                        @endif
                     @endcan
                     @can('meetings.update')
                         <button type="button" class="ds-btn ds-btn-sm" wire:click="openAmendRequest({{ $meeting->id }})">طلب تعديل</button>
