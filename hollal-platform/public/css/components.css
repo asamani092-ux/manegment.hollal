@@ -1708,3 +1708,6 @@
 .org-node--admin { background: color-mix(in srgb, #0F3446 8%, white); border-inline-start: 4px solid #0F3446; }
 .org-node--unit { background: color-mix(in srgb, #1a6b5c 5%, white); border-inline-start: 4px solid #1a6b5c; }
 .org-node--job { background: transparent; border-inline-start: 4px solid #c5d0d8; }
+.ds-cal-chip-meeting {
+  background: #5b4b8a;
+}
