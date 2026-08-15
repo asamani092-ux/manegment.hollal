@@ -994,6 +994,13 @@
   color: #fff;
 }
 
+.ds-meeting-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 280px));
+  gap: 1rem;
+  justify-content: start;
+}
+
 .ds-meeting-card {
   background: var(--ds-card);
   border: 1px solid var(--ds-border);
@@ -1011,7 +1018,9 @@
   flex-direction: column;
   justify-content: space-between;
   align-items: stretch;
-  min-height: 220px;
+  width: 100%;
+  max-width: 280px;
+  min-height: 0;
 }
 
 .ds-minute-item-card {
