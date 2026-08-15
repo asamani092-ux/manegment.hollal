@@ -8,7 +8,7 @@ use App\Models\Partnership;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\User;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\PdfArabic;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
@@ -93,19 +93,16 @@ class ProjectClosureService
         $progress = app(ProjectProgressService::class)->summary($project);
         $results = app(MeasurementService::class)->results($project);
 
-        $html = '<div dir="rtl" style="font-family: dejavu sans;">'
-            .'<h2>التقرير الختامي — '.e($project->name).'</h2>'
-            .'<p>نسبة الإنجاز الموزونة: '.number_format($progress['weighted_percent'], 2).'%</p>'
+        $body = '<p>نسبة الإنجاز الموزونة: '.number_format($progress['weighted_percent'], 2).'%</p>'
             .'<p>عدد المهام: '.(int) $progress['total'].' — المقيّمة نهائيًا: '.(int) $progress['evaluated'].'</p>'
             .'<p>المستفيدون: '.(int) $results['beneficiaries'].'</p>'
             .'<p>القياس القبلي: '.($results['pre_percent'] !== null ? number_format($results['pre_percent'], 2).'%' : '—').'</p>'
             .'<p>القياس البعدي: '.($results['post_percent'] !== null ? number_format($results['post_percent'], 2).'%' : '—').'</p>'
             .'<p>نسبة التحسن: '.($results['improvement_percent'] !== null ? number_format($results['improvement_percent'], 2).'%' : '—').'</p>'
             .'<p>الرضا: '.($results['satisfaction_percent'] !== null ? number_format($results['satisfaction_percent'], 2).'%' : '—').'</p>'
-            .'<p>درس مستفاد: '.e((string) $project->lesson_learned).'</p>'
-            .'</div>';
+            .'<p>درس مستفاد: '.e((string) $project->lesson_learned).'</p>';
 
-        $pdf = Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'dejavu sans')->output();
+        $pdf = PdfArabic::render('التقرير الختامي — '.$project->name, $body);
         $path = 'projects/'.$project->id.'/final-report.pdf';
         Storage::disk('local')->put($path, $pdf);
 

@@ -163,7 +163,7 @@ class ReportRound2FinTest extends TestCase
 
         $pdf = app(TaxInvoicePdfService::class)->render($invoice);
         $this->assertStringStartsWith('%PDF', $pdf);
-        $this->assertSame('Amiri', PdfArabic::defaultFont());
+        $this->assertSame('amiri', PdfArabic::defaultFont());
         $this->assertSame('300000000000003', $invoice->seller_vat_number);
         $this->assertTrue(is_file(resource_path('fonts/Amiri-Regular.ttf')));
         $this->assertNotEmpty($invoice->qr_payload);

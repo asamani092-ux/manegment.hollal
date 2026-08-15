@@ -2,14 +2,13 @@
 
 namespace App\Services;
 
-use App\Models\CompanyProfile;
 use App\Models\Partnership;
 use App\Models\Program;
 use App\Models\ProgramPrice;
 use App\Models\Quote;
 use App\Models\User;
 use App\Support\Setting;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\PdfArabic;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -164,7 +163,6 @@ class QuoteService
     public function renderPdf(Quote $quote): string
     {
         $quote->loadMissing(['items.program', 'partnership.organization']);
-        $company = CompanyProfile::current();
 
         $rows = '';
         foreach ($quote->items as $item) {
@@ -177,20 +175,16 @@ class QuoteService
                 .'</tr>';
         }
 
-        $html = '<div dir="rtl" style="font-family: dejavu sans;">'
-            .'<h2>عرض سعر — نسخة '.(int) $quote->version.'</h2>'
-            .'<p>'.e($company->name).' — الرقم الضريبي: '.e((string) $company->tax_number).'</p>'
-            .'<p>الجهة: '.e($quote->partnership->organization?->name ?? $quote->partnership->entity_name ?? '—').'</p>'
+        $body = '<p>الجهة: '.e($quote->partnership->organization?->name ?? $quote->partnership->entity_name ?? '—').'</p>'
             .'<table border="1" cellspacing="0" cellpadding="4" width="100%">'
             .'<thead><tr><th>البند</th><th>الخدمة</th><th>الكمية</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead>'
             .'<tbody>'.$rows.'</tbody></table>'
             .'<p>المجموع: '.number_format((float) $quote->subtotal, 2).'</p>'
             .'<p>الخصم: '.number_format((float) $quote->discount, 2).'</p>'
             .'<p>الضريبة ('.number_format((float) $quote->tax_rate * 100, 2).'%): '.number_format((float) $quote->tax_total, 2).'</p>'
-            .'<p><strong>الإجمالي شامل الضريبة: '.number_format((float) $quote->total, 2).'</strong></p>'
-            .'</div>';
+            .'<p><strong>الإجمالي شامل الضريبة: '.number_format((float) $quote->total, 2).'</strong></p>';
 
-        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'dejavu sans')->output();
+        return PdfArabic::render('عرض سعر — نسخة '.(int) $quote->version, $body, includeCr: true);
     }
 
     /** @param list<array<string, mixed>> $items */

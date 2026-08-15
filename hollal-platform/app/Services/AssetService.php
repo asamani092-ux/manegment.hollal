@@ -6,7 +6,7 @@ use App\Models\Asset;
 use App\Models\AssetCategory;
 use App\Models\AssetMovement;
 use App\Models\User;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\PdfArabic;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -111,19 +111,20 @@ class AssetService
 
     private function generateHandoverPdf(Asset $asset, AssetMovement $movement, User $toHolder): string
     {
-        $html = view()->exists('pdf.asset-handover')
-            ? view('pdf.asset-handover', compact('asset', 'movement', 'toHolder'))->render()
-            : '<div dir="rtl" style="font-family: dejavu sans;">'
-                .'<h2>محضر تسليم واستلام أصل</h2>'
-                .'<p>الأصل: '.e($asset->name_ar).' ('.e($asset->code).')</p>'
+        if (view()->exists('pdf.asset-handover')) {
+            $html = view('pdf.asset-handover', compact('asset', 'movement', 'toHolder'))->render();
+            $bytes = PdfArabic::applyOptions(
+                \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4')
+            )->output();
+        } else {
+            $body = '<p>الأصل: '.e($asset->name_ar).' ('.e($asset->code).')</p>'
                 .'<p>المستلم: '.e($toHolder->name).'</p>'
-                .'<p>التاريخ: '.$movement->moved_at->format('Y-m-d').'</p>'
-                .'</div>';
-
-        $pdf = Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'dejavu sans');
+                .'<p>التاريخ: '.$movement->moved_at->format('Y-m-d').'</p>';
+            $bytes = PdfArabic::render('محضر تسليم واستلام أصل', $body);
+        }
 
         $path = 'assets/handovers/'.$asset->code.'-'.$movement->id.'.pdf';
-        Storage::disk('local')->put($path, $pdf->output());
+        Storage::disk('local')->put($path, $bytes);
 
         return $path;
     }
