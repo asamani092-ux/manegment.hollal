@@ -51,6 +51,29 @@ class AssetService
         return $movement;
     }
 
+    /**
+     * Return asset from employee to organization. Time: O(1) | Space: O(1)
+     */
+    public function receive(Asset $asset, ?string $reason = null): AssetMovement
+    {
+        if ($asset->current_holder_id === null) {
+            throw new \RuntimeException('الأصل غير مسلَّم لموظف.');
+        }
+
+        $movement = AssetMovement::create([
+            'asset_id' => $asset->id,
+            'from_holder_id' => $asset->current_holder_id,
+            'to_holder_id' => null,
+            'moved_at' => now(),
+            'reason' => $reason,
+            'movement_type' => 'استلام',
+        ]);
+
+        $asset->update(['current_holder_id' => null, 'holder_since' => null]);
+
+        return $movement;
+    }
+
     public function updateCondition(Asset $asset, string $condition): Asset
     {
         $old = $asset->condition;

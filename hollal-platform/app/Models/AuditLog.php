@@ -12,31 +12,6 @@ class AuditLog extends Model
 {
     public $timestamps = false;
 
-    /** @var array<string, string> keep stored keys; Arabic is display-only. */
-    public const ACTION_LABELS = [
-        'audit_log.exported' => 'تصدير سجل النشاط',
-        'asset.condition_changed' => 'تغيير حالة أصل',
-        'structure.transfer' => 'نقل هيكلي',
-        'permissions.exceptional_granted' => 'منح صلاحية استثنائية',
-        'permissions.exceptional_revoked' => 'سحب صلاحية استثنائية',
-        'permissions.role_synced' => 'مزامنة صلاحيات دور',
-        'backup.created' => 'إنشاء نسخة احتياطية',
-        'settings.updated' => 'تحديث إعدادات',
-        'report.exported' => 'تصدير تقرير',
-        'report.document_archived' => 'أرشفة تقرير في المستودع',
-        'weekly_report.generated' => 'توليد تقرير أسبوعي',
-        'expense.approved' => 'اعتماد صرف',
-        'expense.rejected' => 'رفض صرف',
-        'expense.returned' => 'إعادة صرف للمراجعة',
-        'expense.paid' => 'صرف مدفوع',
-        'role.updated' => 'تحديث دور',
-        'role.deleted' => 'حذف دور',
-        'file.download' => 'تنزيل ملف',
-        'auth.login_failure' => 'فشل تسجيل الدخول',
-        'auth.login_success' => 'تسجيل دخول ناجح',
-        'partnership_contract.signed' => 'توقيع عقد شراكة',
-    ];
-
     protected $fillable = [
         'actor_id',
         'action',
@@ -45,6 +20,20 @@ class AuditLog extends Model
         'metadata',
         'ip_address',
         'created_at',
+    ];
+
+    /** @var array<string, string> */
+    public const ACTION_LABELS = [
+        'expense.paid' => 'تسجيل دفع مصروف',
+        'expense.approved' => 'اعتماد مصروف',
+        'expense.rejected' => 'رفض مصروف',
+        'report.exported' => 'تصدير تقرير',
+        'audit_log.exported' => 'تصدير سجل النشاط',
+        'asset.condition_changed' => 'تغيير حالة أصل',
+        'structure.transfer' => 'نقل موظف',
+        'permissions.exceptional_granted' => 'منح استثناء صلاحية',
+        'login' => 'تسجيل دخول',
+        'logout' => 'تسجيل خروج',
     ];
 
     protected function casts(): array
@@ -70,35 +59,21 @@ class AuditLog extends Model
         return self::ACTION_LABELS[$action] ?? $action;
     }
 
-    /** Human-readable status derived from metadata when present. */
-    public function displayStatus(): ?string
+    /** success|failure from metadata */
+    public function outcomeStatus(): string
     {
-        $meta = $this->metadata;
-        if (! is_array($meta) || $meta === []) {
-            return null;
+        $meta = $this->metadata ?? [];
+        if (($meta['failed'] ?? false) === true || ($meta['success'] ?? null) === false) {
+            return 'فشل';
         }
 
-        if (isset($meta['status']) && is_scalar($meta['status'])) {
-            return (string) $meta['status'];
-        }
+        return 'نجاح';
+    }
 
-        if (! empty($meta['final'])) {
-            return 'نهائي';
-        }
+    public function outcomeReason(): ?string
+    {
+        $meta = $this->metadata ?? [];
 
-        if (isset($meta['stage']) && is_scalar($meta['stage'])) {
-            $stage = (string) $meta['stage'];
-            if (isset($meta['next_stage']) && is_scalar($meta['next_stage'])) {
-                return $stage.' ← '.(string) $meta['next_stage'];
-            }
-
-            return 'مرحلة: '.$stage;
-        }
-
-        if (isset($meta['file_type']) && is_scalar($meta['file_type'])) {
-            return (string) $meta['file_type'];
-        }
-
-        return null;
+        return $meta['error'] ?? $meta['reason'] ?? $meta['failure_reason'] ?? null;
     }
 }

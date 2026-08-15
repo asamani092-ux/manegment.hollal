@@ -7,13 +7,6 @@
         wire:click="openCreateModal"
     />
 
-    @if ($canViewBudgets)
-        <p class="ds-text-muted ds-mb-3">
-            طلب إضافة للموازنة يتم من
-            <a class="ds-link" href="{{ route('budgets.index') }}">لوحة الموازنات</a>.
-        </p>
-    @endif
-
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label" for="revenue-source">المصدر</label>
@@ -52,7 +45,12 @@
                 <td><x-ds-status-badge :status="$revenue->status" /></td>
                 <td>
                     @if ($revenue->external_document_path)
-                        <a class="ds-link" href="{{ route('revenues.files.download', $revenue) }}">تحميل / معاينة</a>
+                        <a class="ds-btn ds-btn-outline ds-btn-sm" title="معاينة" target="_blank" rel="noopener" href="{{ route('revenues.files.download', ['revenue' => $revenue->id, 'inline' => 1]) }}">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </a>
+                        <a class="ds-btn ds-btn-outline ds-btn-sm" title="تحميل" href="{{ route('revenues.files.download', $revenue) }}">
+                            <i class="fas fa-download" aria-hidden="true"></i>
+                        </a>
                     @else
                         —
                     @endif
@@ -80,11 +78,11 @@
         <x-ds-form-group label="تاريخ الاستلام" :error="$errors->first('received_at')">
             <input type="date" class="ds-input" wire:model="received_at">
         </x-ds-form-group>
-        <x-ds-form-group label="شاهد الإيراد" :error="$errors->first('evidence')">
+        <x-ds-form-group label="مرفق الشاهد (إلزامي)" :error="$errors->first('evidence')">
             <input type="file" class="ds-input" wire:model="evidence" accept=".pdf,.jpg,.jpeg,.png">
-            <div wire:loading wire:target="evidence" class="ds-help-text">جاري رفع الشاهد…</div>
+            <div wire:loading wire:target="evidence" class="ds-text-muted">جاري الرفع…</div>
             @if ($evidence)
-                <p class="ds-help-text">تم تجهيز الملف: {{ $evidence->getClientOriginalName() }}</p>
+                <p class="ds-badge ds-badge-success">{{ $evidence->getClientOriginalName() }}</p>
             @endif
         </x-ds-form-group>
 

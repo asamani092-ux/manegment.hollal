@@ -36,19 +36,17 @@ class ExpensesIndex extends Component
 
     public bool $showRejectModal = false;
 
-    public bool $showReturnModal = false;
-
     public bool $showPayModal = false;
+
+    public ?int $payExpenseId = null;
+
+    public ?TemporaryUploadedFile $paymentProof = null;
 
     public bool $expenseViewOnly = false;
 
     public ?int $expenseId = null;
 
     public ?int $rejectExpenseId = null;
-
-    public ?int $returnExpenseId = null;
-
-    public ?int $payExpenseId = null;
 
     public string $type = 'operational';
 
@@ -76,19 +74,12 @@ class ExpensesIndex extends Component
 
     public ?string $existingAttachmentPath = null;
 
-    public ?TemporaryUploadedFile $paymentProof = null;
-
     public string $rejectionReason = '';
-
-    public string $returnReason = '';
-
-    public ?int $open = null;
 
     protected $queryString = [
         'activeTab' => ['except' => 'my'],
         'statusFilter' => ['except' => ''],
         'projectFilter' => ['except' => ''],
-        'open' => ['except' => null],
     ];
 
     public function mount(): void
@@ -97,10 +88,6 @@ class ExpensesIndex extends Component
 
         if ($this->activeTab === 'all' && ! auth()->user()->can('finance.expenses.view')) {
             $this->activeTab = 'my';
-        }
-
-        if ($this->open) {
-            $this->openExpenseView($this->open);
         }
     }
 
@@ -186,7 +173,7 @@ class ExpensesIndex extends Component
             'reason' => 'required|string',
             'category_id' => 'required|exists:expense_categories,id',
             'priority' => 'nullable|in:low,normal,high,urgent',
-            'payment_method' => 'nullable|in:transfer,pos,cheque,cash,other',
+            'payment_method' => 'nullable|in:transfer,pos,cheque,other',
             'project_id' => 'nullable|exists:projects,id',
             'department_id' => 'nullable|exists:departments,id',
             'officialDocument' => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png',
@@ -207,7 +194,6 @@ class ExpensesIndex extends Component
             'department_id' => $this->department_id,
             'category_id' => $this->category_id,
             'status' => 'draft',
-            'rejection_reason' => null,
         ];
 
         if ($this->attachment) {
@@ -283,30 +269,6 @@ class ExpensesIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'تم رفض الطلب');
     }
 
-    public function openReturnModal(int $id): void
-    {
-        $expense = ExpenseRequest::findOrFail($id);
-        $this->authorize('reject', $expense);
-        $this->returnExpenseId = $id;
-        $this->returnReason = '';
-        $this->showReturnModal = true;
-    }
-
-    public function confirmReturnExpense(): void
-    {
-        $expense = ExpenseRequest::findOrFail($this->returnExpenseId);
-        $this->authorize('reject', $expense);
-
-        $this->validate([
-            'returnReason' => 'required|string|min:3',
-        ]);
-
-        app(ExpenseApprovalService::class)->returnForRevision(auth()->user(), $expense, $this->returnReason);
-
-        $this->closeReturnModal();
-        $this->dispatch('toast', type: 'success', message: 'أُعيد الطلب للمراجعة');
-    }
-
     public function openPayModal(int $id): void
     {
         $expense = ExpenseRequest::findOrFail($id);
@@ -316,33 +278,29 @@ class ExpensesIndex extends Component
         $this->showPayModal = true;
     }
 
-    public function markExpensePaid(?int $id = null): void
+    public function markExpensePaid(int $id): void
     {
-        $expenseId = $id ?? $this->payExpenseId;
-        $expense = ExpenseRequest::findOrFail($expenseId);
+        $expense = ExpenseRequest::findOrFail($id);
         $this->authorize('pay', $expense);
 
-        $rules = [];
-        if ($expense->requiresPaymentProof()) {
-            $rules['paymentProof'] = 'required|file|max:5120|mimes:pdf,jpg,jpeg,png';
-        } else {
-            $rules['paymentProof'] = 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png';
-        }
-
-        $this->validate($rules, [
-            'paymentProof.required' => 'إثبات الدفع إلزامي لغير النقد',
+        $this->validate([
+            'paymentProof' => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png',
         ]);
 
-        $data = ['status' => 'paid'];
-        if ($this->paymentProof) {
-            $data['payment_proof_path'] = $this->paymentProof->store('expenses/proofs', 'local');
-        }
+        $path = $this->paymentProof
+            ? $this->paymentProof->store('expenses/payment-proofs', 'local')
+            : null;
 
-        $expense->update($data);
+        $expense->update([
+            'status' => 'paid',
+            'payment_proof_path' => $path ?? $expense->payment_proof_path,
+        ]);
 
         app(AuditLogService::class)->record('expense.paid', $expense);
 
-        $this->closePayModal();
+        $this->showPayModal = false;
+        $this->payExpenseId = null;
+        $this->paymentProof = null;
         $this->dispatch('toast', type: 'success', message: 'تم تسجيل الدفع');
     }
 
@@ -365,22 +323,6 @@ class ExpensesIndex extends Component
         $this->showRejectModal = false;
         $this->rejectExpenseId = null;
         $this->rejectionReason = '';
-        $this->resetValidation();
-    }
-
-    public function closeReturnModal(): void
-    {
-        $this->showReturnModal = false;
-        $this->returnExpenseId = null;
-        $this->returnReason = '';
-        $this->resetValidation();
-    }
-
-    public function closePayModal(): void
-    {
-        $this->showPayModal = false;
-        $this->payExpenseId = null;
-        $this->paymentProof = null;
         $this->resetValidation();
     }
 
@@ -451,7 +393,6 @@ class ExpensesIndex extends Component
     {
         $userId = auth()->id();
         $canViewAll = auth()->user()->can('finance.expenses.view');
-        $approval = app(ExpenseApprovalService::class);
 
         return view('livewire.expenses.expenses-index', [
             'myExpenses' => $this->expenseQuery($userId, 'my')->paginate(8, pageName: 'myExpensesPage'),
@@ -464,8 +405,6 @@ class ExpensesIndex extends Component
             'companyTaxNumberMissing' => blank(\App\Support\Setting::get('company.tax_number')),
             'statusOptions' => ExpenseRequest::STATUSES,
             'canViewAll' => $canViewAll,
-            'approvalService' => $approval,
-            'payExpense' => $this->payExpenseId ? ExpenseRequest::find($this->payExpenseId) : null,
         ])->layout('layouts.app', ['title' => 'طلبات الصرف المالي']);
     }
 }
