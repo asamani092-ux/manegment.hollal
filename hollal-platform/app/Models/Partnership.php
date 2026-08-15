@@ -70,6 +70,7 @@ class Partnership extends Model
         'contract_pdf',
         'project_id',
         'status',
+        'portal_features',
     ];
 
     protected function casts(): array
@@ -80,6 +81,7 @@ class Partnership extends Model
             'pricing_amount' => 'decimal:2',
             'expected_value' => 'decimal:2',
             'stage' => 'integer',
+            'portal_features' => 'array',
         ];
     }
 

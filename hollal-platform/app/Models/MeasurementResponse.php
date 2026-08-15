@@ -39,6 +39,12 @@ class MeasurementResponse extends Model
         return $this->belongsTo(BeneficiaryGroup::class, 'beneficiary_group_id');
     }
 
+    /** @return BelongsTo<Project, $this> */
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
+    }
+
     public function percent(): float
     {
         return (float) $this->max_score > 0

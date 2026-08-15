@@ -31,12 +31,23 @@ class OrganizationsIndex extends Component
 
     public ?string $type = null;
 
+    public ?string $typeDetail = null;
+
     public ?string $city = null;
 
     public ?string $notes = null;
 
     /** @var list<string> */
     public array $roles = [];
+
+    public function toggleRole(string $role): void
+    {
+        if (in_array($role, $this->roles, true)) {
+            $this->roles = array_values(array_filter($this->roles, fn ($r) => $r !== $role));
+        } else {
+            $this->roles[] = $role;
+        }
+    }
 
     /** @var list<string> */
     public const TYPES = ['جمعية تحفيظ', 'مدرسة', 'شركة تعليمية', 'وقف', 'جهة حكومية', 'أخرى'];
@@ -69,6 +80,7 @@ class OrganizationsIndex extends Component
         $this->editingId = $organization->id;
         $this->name = $organization->name;
         $this->type = $organization->type;
+        $this->typeDetail = $organization->type_detail;
         $this->city = $organization->city;
         $this->notes = $organization->notes;
         $this->roles = $organization->roles ?? [];
@@ -82,16 +94,29 @@ class OrganizationsIndex extends Component
         $data = $this->validate([
             'name' => 'required|string|max:255',
             'type' => 'nullable|in:'.implode(',', self::TYPES),
+            'typeDetail' => 'nullable|string|max:255|required_if:type,أخرى',
             'city' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'roles' => 'array',
             'roles.*' => 'in:'.implode(',', self::ROLES),
-        ], [], ['name' => 'اسم الجهة']);
+        ], [], [
+            'name' => 'اسم الجهة',
+            'typeDetail' => 'تفاصيل النوع',
+        ]);
+
+        $payload = [
+            'name' => $data['name'],
+            'type' => $data['type'] ?? null,
+            'type_detail' => ($data['type'] ?? null) === 'أخرى' ? ($data['typeDetail'] ?? null) : null,
+            'city' => $data['city'] ?? null,
+            'notes' => $data['notes'] ?? null,
+            'roles' => $data['roles'] ?? [],
+        ];
 
         if ($this->editingId) {
-            Organization::findOrFail($this->editingId)->update($data);
+            Organization::findOrFail($this->editingId)->update($payload);
         } else {
-            Organization::create($data);
+            Organization::create($payload);
         }
 
         $this->showModal = false;
@@ -129,6 +154,7 @@ class OrganizationsIndex extends Component
         $this->editingId = null;
         $this->name = '';
         $this->type = null;
+        $this->typeDetail = null;
         $this->city = null;
         $this->notes = null;
         $this->roles = [];

@@ -139,6 +139,15 @@
         <h2 class="ds-section-title">رابط الجهة الفريد</h2>
         @can('partnerships.links.manage')
             <button type="button" class="ds-btn" wire:click="issueLink">إصدار رابط</button>
+            <div class="ds-section-spaced">
+                <h3 class="ds-section-heading">تحكم بوابة الشريك</h3>
+                <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.programs"> البرامج</label>
+                <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.diagnosis"> التشخيص</label>
+                <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.quotes"> عروض الأسعار</label>
+                <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.payments"> الدفعات</label>
+                <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.contract"> العقد</label>
+                <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="savePortalFeatures">حفظ التحكم</button>
+            </div>
         @endcan
         <x-ds-table>
             <x-slot:head>

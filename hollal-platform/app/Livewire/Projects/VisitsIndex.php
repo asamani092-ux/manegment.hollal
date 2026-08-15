@@ -4,11 +4,12 @@ namespace App\Livewire\Projects;
 
 use App\Models\Project;
 use App\Models\ProjectVisit;
+use App\Services\VisitService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-/** Cross-project visits list. Time: O(n) | Space: O(page). */
+/** Cross-project visits list + quick create. Time: O(n) | Space: O(page). */
 class VisitsIndex extends Component
 {
     use WithPagination;
@@ -21,6 +22,14 @@ class VisitsIndex extends Component
 
     public string $dateTo = '';
 
+    public bool $showCreateModal = false;
+
+    public ?int $createProjectId = null;
+
+    public string $createDate = '';
+
+    public ?string $createPurpose = null;
+
     /** @var array<string, array<string, string>> */
     protected $queryString = [
         'projectFilter' => ['except' => ''],
@@ -32,6 +41,7 @@ class VisitsIndex extends Component
     public function mount(): void
     {
         abort_unless(auth()->user()->can('projects.visits.view'), 403);
+        $this->createDate = now()->addWeek()->toDateString();
     }
 
     public function updatingProjectFilter(): void
@@ -52,6 +62,40 @@ class VisitsIndex extends Component
     public function updatingDateTo(): void
     {
         $this->resetPage();
+    }
+
+    public function openCreate(): void
+    {
+        abort_unless(auth()->user()->can('projects.visits.manage'), 403);
+        $this->createProjectId = $this->projectFilter !== '' ? (int) $this->projectFilter : null;
+        $this->createDate = now()->addWeek()->toDateString();
+        $this->createPurpose = null;
+        $this->showCreateModal = true;
+    }
+
+    public function createVisit(): void
+    {
+        abort_unless(auth()->user()->can('projects.visits.manage'), 403);
+
+        $this->validate([
+            'createProjectId' => 'required|exists:projects,id',
+            'createDate' => 'required|date',
+            'createPurpose' => 'nullable|string|max:255',
+        ], [], [
+            'createProjectId' => 'المشروع',
+            'createDate' => 'تاريخ الزيارة',
+        ]);
+
+        $project = Project::findOrFail($this->createProjectId);
+        app(VisitService::class)->schedule(
+            $project,
+            $this->createDate,
+            auth()->user(),
+            $this->createPurpose,
+        );
+
+        $this->showCreateModal = false;
+        $this->dispatch('ds-toast', message: 'تمت جدولة الزيارة');
     }
 
     public function render(): View

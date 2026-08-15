@@ -1,5 +1,15 @@
 <x-ds-page>
-    <x-ds-page-header title="الزيارات" :show-button="false" />
+    <x-ds-page-header
+        title="الزيارات"
+        :show-button="auth()->user()->can('projects.visits.manage')"
+        button-label="إنشاء زيارة"
+        wire:click="openCreate"
+    />
+
+    <p class="ds-text-muted" style="margin-bottom:1rem;">
+        يمكنك أيضاً إنشاء زيارة من تبويب الزيارات داخل
+        <a class="ds-link" href="{{ route('projects.index') }}">تنفيذ المشروع</a>.
+    </p>
 
     <div class="ds-filters-row">
         <div class="ds-filter-field">
@@ -85,4 +95,28 @@
     </div>
 
     {{ $visits->links() }}
+
+    <x-ds-modal :show="$showCreateModal" size="md">
+        <x-slot:header><h2>إنشاء زيارة من مشروع</h2></x-slot:header>
+
+        <x-ds-form-group label="المشروع" :error="$errors->first('createProjectId')">
+            <select class="ds-input" wire:model="createProjectId">
+                <option value="">— اختر —</option>
+                @foreach ($projects as $project)
+                    <option value="{{ $project->id }}">{{ $project->name }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+        <x-ds-form-group label="تاريخ الزيارة" :error="$errors->first('createDate')">
+            <input type="date" class="ds-input" wire:model="createDate">
+        </x-ds-form-group>
+        <x-ds-form-group label="الغرض" :error="$errors->first('createPurpose')">
+            <input type="text" class="ds-input" wire:model="createPurpose">
+        </x-ds-form-group>
+
+        <x-slot:footer>
+            <button type="button" class="ds-btn" wire:click="$set('showCreateModal', false)">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="createVisit">جدولة</button>
+        </x-slot:footer>
+    </x-ds-modal>
 </x-ds-page>

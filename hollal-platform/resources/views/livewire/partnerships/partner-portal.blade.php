@@ -2,7 +2,7 @@
     <h1 class="ds-page-title">بوابة الجهة — {{ $partnership->organization?->name ?? $partnership->entity_name ?? '' }}</h1>
     <p class="ds-text-muted">المرحلة الحالية: {{ $partnership->stageLabel() }}</p>
 
-    <section class="ds-section">
+    <section class="ds-section" @if (! ($features['programs'] ?? true)) style="display:none" @endif>
         <h2 class="ds-section-title">البرامج المتاحة</h2>
         <x-ds-table>
             <x-slot:head>
@@ -26,7 +26,7 @@
         <button type="button" class="ds-btn ds-btn-primary" wire:click="submitInterest">إرسال الاهتمام</button>
     </section>
 
-    <section class="ds-section">
+    <section class="ds-section" @if (! ($features['diagnosis'] ?? true)) style="display:none" @endif>
         <h2 class="ds-section-title">استبانة التشخيص</h2>
         <x-ds-form-group label="الفئة" :error="$errors->first('diagnosisAudience')">
             <input type="text" class="ds-input" wire:model="diagnosisAudience">
@@ -40,7 +40,7 @@
         <button type="button" class="ds-btn ds-btn-primary" wire:click="submitDiagnosis">إرسال الاستبانة</button>
     </section>
 
-    <section class="ds-section">
+    <section class="ds-section" @if (! ($features['quotes'] ?? true)) style="display:none" @endif>
         <h2 class="ds-section-title">عروض الأسعار</h2>
         @forelse ($quotes as $quote)
             <div class="ds-kanban-card" wire:key="portal-quote-{{ $quote->id }}">
@@ -58,10 +58,12 @@
         @endforelse
     </section>
 
+    @if (($features['contract'] ?? true) || ($features['payments'] ?? true))
     <section class="ds-section">
         <h2 class="ds-section-title">العقد والدفعات</h2>
         @foreach ($partnership->partnershipContracts as $contract)
             <div class="ds-kanban-card" wire:key="portal-contract-{{ $contract->id }}">
+                @if ($features['contract'] ?? true)
                 <p>عقد #{{ $contract->id }} — الحالة: {{ $contract->status }}</p>
                 <a class="ds-btn ds-btn-sm" href="{{ route('partner.portal.contract.pdf', ['token' => $link->token, 'contract' => $contract->id]) }}">
                     تنزيل العقد
@@ -132,7 +134,9 @@
                         رفع العقد الموقع
                     </button>
                 @endif
+                @endif
 
+                @if ($features['payments'] ?? true)
                 <x-ds-table>
                     <x-slot:head>
                         <tr><th>الدفعة</th><th>المبلغ</th><th>الاستحقاق</th><th>تسجيل</th></tr>
@@ -152,10 +156,12 @@
                         </tr>
                     @endforeach
                 </x-ds-table>
+                @endif
             </div>
         @endforeach
         @if ($partnership->partnershipContracts->isEmpty())
             <p class="ds-text-muted">لا يوجد عقد بعد</p>
         @endif
     </section>
+    @endif
 </div>

@@ -31,9 +31,25 @@
         @forelse ($organizations as $organization)
             <tr wire:key="organization-{{ $organization->id }}">
                 <td><a href="{{ route('organizations.show', $organization->id) }}">{{ $organization->name }}</a></td>
-                <td>{{ $organization->type ?? '—' }}</td>
+                <td>
+                    @if ($organization->type === 'أخرى' && $organization->type_detail)
+                        أخرى — {{ $organization->type_detail }}
+                    @else
+                        {{ $organization->type ?? '—' }}
+                    @endif
+                </td>
                 <td>{{ $organization->city ?? '—' }}</td>
-                <td>{{ $organization->roles ? implode('، ', $organization->roles) : '—' }}</td>
+                <td>
+                    @if ($organization->roles)
+                        <div class="ds-pill-select">
+                            @foreach ($organization->roles as $role)
+                                <span class="ds-pill is-selected">{{ $role }}</span>
+                            @endforeach
+                        </div>
+                    @else
+                        —
+                    @endif
+                </td>
                 <td class="ds-ltr-num">{{ $organization->partnerships_count }}</td>
                 <td>
                     @can('partnerships.organizations.manage')
@@ -57,7 +73,7 @@
         </x-ds-form-group>
 
         <x-ds-form-group label="النوع" :error="$errors->first('type')">
-            <select class="ds-input" wire:model="type">
+            <select class="ds-input" wire:model.live="type">
                 <option value="">—</option>
                 @foreach ($types as $option)
                     <option value="{{ $option }}">{{ $option }}</option>
@@ -65,16 +81,26 @@
             </select>
         </x-ds-form-group>
 
+        @if ($type === 'أخرى')
+            <x-ds-form-group label="تفاصيل النوع" :error="$errors->first('typeDetail')">
+                <input type="text" class="ds-input" wire:model="typeDetail" placeholder="اكتب نوع الجهة">
+            </x-ds-form-group>
+        @endif
+
         <x-ds-form-group label="المدينة" :error="$errors->first('city')">
             <input type="text" class="ds-input" wire:model="city">
         </x-ds-form-group>
 
         <x-ds-form-group label="الأدوار" :error="$errors->first('roles')">
-            @foreach ($roleOptions as $option)
-                <label class="ds-checkbox">
-                    <input type="checkbox" value="{{ $option }}" wire:model="roles"> {{ $option }}
-                </label>
-            @endforeach
+            <div class="ds-pill-select">
+                @foreach ($roleOptions as $option)
+                    <button
+                        type="button"
+                        class="ds-pill {{ in_array($option, $roles ?? [], true) ? 'is-selected' : '' }}"
+                        wire:click="toggleRole('{{ $option }}')"
+                    >{{ $option }}</button>
+                @endforeach
+            </div>
         </x-ds-form-group>
 
         <x-ds-form-group label="ملاحظات" :error="$errors->first('notes')">
