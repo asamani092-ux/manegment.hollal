@@ -41,12 +41,38 @@ class Meeting extends Model
 
     public const APPROVAL_APPROVED = 'معتمد';
 
+    public const STATUS_SCHEDULED = 'scheduled';
+
+    public const STATUS_IN_PROGRESS = 'in_progress';
+
+    public const STATUS_COMPLETED = 'completed';
+
+    public const STATUS_CANCELLED = 'cancelled';
+
+    /** @var array<string, string> */
+    public const STATUS_LABELS = [
+        self::STATUS_SCHEDULED => 'مجدول',
+        self::STATUS_IN_PROGRESS => 'جارٍ',
+        self::STATUS_COMPLETED => 'مكتمل',
+        self::STATUS_CANCELLED => 'ملغى',
+    ];
+
     protected function casts(): array
     {
         return [
             'scheduled_at' => 'datetime',
             'approved_at' => 'datetime',
         ];
+    }
+
+    /** Time: O(1) | Space: O(1) */
+    public function statusLabel(): string
+    {
+        if ($this->status === null || $this->status === '') {
+            return '—';
+        }
+
+        return self::STATUS_LABELS[$this->status] ?? $this->status;
     }
 
     public function isApproved(): bool

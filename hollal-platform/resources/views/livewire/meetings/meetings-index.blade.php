@@ -75,7 +75,7 @@
                 <tr wire:key="past-{{ $meeting->id }}">
                     <td>{{ $meeting->title }}</td>
                     <td class="ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</td>
-                    <td>{{ $meeting->status ?? '—' }}</td>
+                    <td>{{ $meeting->statusLabel() }}</td>
                     <td>
                         <div class="ds-actions">
                             <a class="ds-btn-icon" href="{{ route('meetings.minutes', $meeting) }}" title="المحضر" aria-label="المحضر">
