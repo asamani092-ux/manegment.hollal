@@ -19,7 +19,7 @@ class RecurringTaskTemplate extends Model
     protected $fillable = [
         'title', 'description', 'required_evidence', 'assigned_to_id', 'created_by',
         'project_id', 'priority', 'pattern', 'day_of_week', 'day_of_month',
-        'is_active', 'last_generated_on',
+        'is_active', 'starts_on', 'ends_on', 'last_generated_on',
     ];
 
     /** @return array<string, string> */
@@ -28,6 +28,8 @@ class RecurringTaskTemplate extends Model
         return [
             'is_active' => 'boolean',
             'last_generated_on' => 'date',
+            'starts_on' => 'date',
+            'ends_on' => 'date',
             'day_of_week' => 'integer',
             'day_of_month' => 'integer',
         ];
@@ -36,6 +38,14 @@ class RecurringTaskTemplate extends Model
     public function isDueOn(\Carbon\CarbonInterface $date): bool
     {
         if (! $this->is_active) {
+            return false;
+        }
+
+        if ($this->starts_on && $date->lt($this->starts_on)) {
+            return false;
+        }
+
+        if ($this->ends_on && $date->gt($this->ends_on)) {
             return false;
         }
 

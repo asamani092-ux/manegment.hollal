@@ -11,8 +11,8 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 /**
- * 02-B2 — team tasks, overdue (own/team scope), and the approval queue
- * («بانتظار اعتمادي») with in-place approve / return + detail modal.
+ * Team tasks, overdue, approval queue; managers may set status for reports.
+ * Time: O(n) | Space: O(n)
  */
 class TeamTasksIndex extends Component
 {
@@ -20,11 +20,14 @@ class TeamTasksIndex extends Component
 
     public string $tab = 'approval';
 
-    /** @var array<int, string> per-task final rating input */
+    /** @var array<int, string> */
     public array $approveRating = [];
 
-    /** @var array<int, string> per-task note input */
+    /** @var array<int, string> */
     public array $approveNote = [];
+
+    /** @var array<int, string> */
+    public array $managerStatus = [];
 
     public bool $showDetail = false;
 
@@ -40,6 +43,7 @@ class TeamTasksIndex extends Component
         $task = Task::findOrFail($taskId);
         $this->authorize('view', $task);
         $this->detailTaskId = $task->id;
+        $this->managerStatus[$taskId] = $task->status;
         $this->showDetail = true;
     }
 
@@ -91,6 +95,26 @@ class TeamTasksIndex extends Component
         }
     }
 
+    public function managerUpdateStatus(int $taskId): void
+    {
+        $this->authorize('esnad.tasks.team.view');
+        $task = Task::findOrFail($taskId);
+        $to = $this->managerStatus[$taskId] ?? '';
+
+        try {
+            app(TaskLifecycleService::class)->managerSetStatus($task, auth()->user(), $to);
+            $this->dispatch('toast', type: 'success', message: 'تم تحديث حالة المهمة');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
+    public function managerComplete(int $taskId): void
+    {
+        $this->managerStatus[$taskId] = 'completed';
+        $this->managerUpdateStatus($taskId);
+    }
+
     /** @return Collection<int, Task> */
     private function overdueTasks(User $user): Collection
     {
@@ -114,6 +138,7 @@ class TeamTasksIndex extends Component
     {
         /** @var User $user */
         $user = auth()->user();
+        $overdue = $this->overdueTasks($user);
 
         $detailTask = null;
         if ($this->detailTaskId) {
@@ -123,7 +148,6 @@ class TeamTasksIndex extends Component
                     'assigner:id,name',
                     'project:id,name',
                     'notes.author:id,name',
-                    'statusLogs' => fn ($q) => $q->orderByDesc('created_at')->limit(20),
                 ])
                 ->find($this->detailTaskId);
         }
@@ -137,7 +161,8 @@ class TeamTasksIndex extends Component
             'teamTasks' => $user->can('esnad.tasks.team.view')
                 ? Task::query()->teamOf($user)->with(['assignee:id,name', 'project:id,name'])->latest()->get()
                 : new Collection,
-            'overdueTasks' => $this->overdueTasks($user),
+            'overdueTasks' => $overdue,
+            'overdueCount' => $overdue->count(),
             'ratings' => Task::RATINGS,
             'detailTask' => $detailTask,
             'statusLabels' => [

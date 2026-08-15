@@ -53,6 +53,10 @@ class RecurringTaskService
             return null;
         }
 
+        if ($template->ends_on && today()->gt($template->ends_on)) {
+            return null;
+        }
+
         return $this->createInstance($template, today());
     }
 

@@ -97,6 +97,36 @@ class TaskLifecycleService
         return $task;
     }
 
+    /**
+     * Manager of assignee may set status (complete / change) with audit log.
+     * Time: O(1) | Space: O(1)
+     */
+    public function managerSetStatus(Task $task, User $manager, string $to, ?string $note = null): Task
+    {
+        $allowed = ['new', 'in_progress', 'pending_review', 'completed', 'overdue'];
+        if (! in_array($to, $allowed, true)) {
+            throw new \InvalidArgumentException('حالة غير صالحة.');
+        }
+
+        $assignee = User::query()->find($task->assigned_to);
+        if (! $assignee || (int) $assignee->manager_id !== (int) $manager->id) {
+            if (! $manager->can('esnad.tasks.all.view')) {
+                throw new \RuntimeException('تغيير الحالة يقتصر على مدير المكلَّف.');
+            }
+        }
+
+        $this->transition($task, $to, $manager, $note ?? 'تغيير حالة من مدير الفريق');
+
+        if ($to === self::STATUS_COMPLETED) {
+            $task->update(['completed_at' => now()]);
+            if ($task->recurring_template_id !== null) {
+                app(RecurringTaskService::class)->onInstanceCompleted($task);
+            }
+        }
+
+        return $task->fresh();
+    }
+
     private function transition(Task $task, string $to, User $changedBy, ?string $note): void
     {
         TaskStatusLog::create([

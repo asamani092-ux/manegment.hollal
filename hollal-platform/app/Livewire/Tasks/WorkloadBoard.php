@@ -12,12 +12,14 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
 
 /**
- * 02-B3 — workload board: per-team-member open/overdue/due-this-week counts and
- * last-30-day rating distribution, with an overload badge + recurring reminders.
+ * Workload board with tabs: loads, recurring follow-up, reminders.
+ * Time: O(n) | Space: O(n)
  */
 class WorkloadBoard extends Component
 {
     use AuthorizesRequests;
+
+    public string $tab = 'loads';
 
     public function mount(): void
     {
@@ -69,15 +71,36 @@ class WorkloadBoard extends Component
         $manager = auth()->user();
         $subordinateIds = User::query()->where('manager_id', $manager->id)->pluck('id');
 
+        $recurringTemplates = RecurringTaskTemplate::query()
+            ->whereIn('assigned_to_id', $subordinateIds)
+            ->with(['assignee:id,name'])
+            ->withCount([
+                'generatedTasks as open_instances_count' => fn ($q) => $q->whereNotIn('status', ['completed']),
+                'generatedTasks as completed_instances_count' => fn ($q) => $q->where('status', 'completed'),
+            ])
+            ->latest()
+            ->get();
+
+        $overdueForTeam = Task::query()
+            ->overdue()
+            ->whereIn('assigned_to', $subordinateIds)
+            ->with('assignee:id,name')
+            ->latest('due_date')
+            ->limit(30)
+            ->get();
+
         return view('livewire.tasks.workload-board', [
             'rows' => $service->board($manager),
             'threshold' => $service->threshold(),
-            'recurringTemplates' => RecurringTaskTemplate::query()
-                ->whereIn('assigned_to_id', $subordinateIds)
-                ->where('is_active', true)
-                ->with('assignee:id,name')
-                ->latest()
-                ->get(),
+            'recurringTemplates' => $recurringTemplates,
+            'overdueForTeam' => $overdueForTeam,
+            'statusLabels' => [
+                'new' => 'جديدة',
+                'in_progress' => 'قيد التنفيذ',
+                'pending_review' => 'بانتظار المراجعة',
+                'completed' => 'مكتملة',
+                'overdue' => 'متأخرة',
+            ],
         ])->layout('layouts.app', ['title' => 'عبء عمل الفريق']);
     }
 }

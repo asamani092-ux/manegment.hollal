@@ -67,6 +67,7 @@ return [
 
         'esnad.tasks.view' => 'عرض المهام',
         'esnad.tasks.team.view' => 'عرض مهام الفريق',
+        'esnad.tasks.all.view' => 'عرض كل المهام',
         'esnad.tasks.create' => 'إنشاء مهمة',
         'esnad.tasks.update' => 'تعديل مهمة',
         'esnad.tasks.delete' => 'حذف مهمة',

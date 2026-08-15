@@ -28,6 +28,7 @@ class RoleSeeder extends Seeder
         'partnerships.view',
         'esnad.tasks.view',
         'esnad.tasks.team.view',
+        'esnad.tasks.all.view',
         'meetings.view',
         'finance.expenses.view',
         'finance.expenses.approve',

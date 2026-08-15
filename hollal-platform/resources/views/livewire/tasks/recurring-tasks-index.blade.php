@@ -1,21 +1,74 @@
 <x-ds-page>
     <x-ds-page-header title="المهام المتكررة" :show-button="true" button-label="قالب جديد" button-icon="fa-repeat" wire:click="openCreate" />
 
+    <section class="ds-section-spaced">
+        <h2 class="ds-section-heading">تقرير متابعة موظف</h2>
+        <div class="ds-filters-row">
+            <div class="ds-filter-field">
+                <label class="ds-label">الموظف</label>
+                <select class="ds-input" wire:model.live="followUpUserId">
+                    <option value="">— اختر —</option>
+                    @foreach ($users as $u)
+                        <option value="{{ $u->id }}">{{ $u->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+        </div>
+        @if ($followUpUserId)
+            <x-ds-table>
+                <x-slot:head>
+                    <tr>
+                        <th>المهمة</th>
+                        <th>الحالة</th>
+                        <th>الاستحقاق</th>
+                        <th>الإكمال</th>
+                    </tr>
+                </x-slot:head>
+                @forelse ($followUp as $task)
+                    <tr wire:key="fu-{{ $task->id }}">
+                        <td>{{ $task->title }}</td>
+                        <td>{{ $statusLabels[$task->status] ?? $task->status }}</td>
+                        <td class="ds-ltr-num">{{ $task->due_date?->format('Y-m-d') ?? '—' }}</td>
+                        <td class="ds-ltr-num">{{ $task->completed_at?->format('Y-m-d') ?? '—' }}</td>
+                    </tr>
+                @empty
+                    <tr><td colspan="4" class="ds-text-muted">لا دورات مولّدة لهذا الموظف</td></tr>
+                @endforelse
+            </x-ds-table>
+        @endif
+    </section>
+
     <x-ds-table>
         <x-slot:head>
             <tr>
                 <th>العنوان</th>
                 <th>المكلَّف</th>
                 <th>النمط</th>
+                <th>من</th>
+                <th>إلى</th>
+                <th>آخر توليد</th>
                 <th>الحالة</th>
                 <th>إجراءات</th>
             </tr>
         </x-slot:head>
         @forelse ($templates as $template)
             <tr wire:key="tpl-{{ $template->id }}">
-                <td>{{ $template->title }}</td>
+                <td>
+                    {{ $template->title }}
+                    @if ($template->generatedTasks->isNotEmpty())
+                        <div class="ds-text-muted" style="font-size:.8rem">
+                            آخر الدورات:
+                            @foreach ($template->generatedTasks->take(3) as $inst)
+                                {{ $statusLabels[$inst->status] ?? $inst->status }}@if (! $loop->last)، @endif
+                            @endforeach
+                        </div>
+                    @endif
+                </td>
                 <td>{{ $template->assignee?->name ?? '—' }}</td>
                 <td>{{ $template->pattern }}</td>
+                <td class="ds-ltr-num">{{ $template->starts_on?->format('Y-m-d') ?? '—' }}</td>
+                <td class="ds-ltr-num">{{ $template->ends_on?->format('Y-m-d') ?? '—' }}</td>
+                <td class="ds-ltr-num">{{ $template->last_generated_on?->format('Y-m-d') ?? '—' }}</td>
                 <td>
                     <span class="ds-badge {{ $template->is_active ? 'ds-badge-success' : 'ds-badge-pending' }}">
                         {{ $template->is_active ? 'مفعّل' : 'موقوف' }}
@@ -42,7 +95,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد قوالب متكررة</td></tr>
+            <tr><td colspan="8" class="ds-text-muted ds-table-empty">لا توجد قوالب متكررة</td></tr>
         @endforelse
     </x-ds-table>
 
@@ -78,6 +131,12 @@
                             <input type="number" min="1" max="31" class="ds-input" wire:model="day_of_month" dir="ltr">
                         </x-ds-form-group>
                     @endif
+                    <x-ds-form-group label="تاريخ البداية" :error="$errors->first('starts_on')">
+                        <input type="date" class="ds-input" wire:model="starts_on" dir="ltr">
+                    </x-ds-form-group>
+                    <x-ds-form-group label="تاريخ النهاية" :error="$errors->first('ends_on')">
+                        <input type="date" class="ds-input" wire:model="ends_on" dir="ltr">
+                    </x-ds-form-group>
                     <x-ds-form-group label="الدليل المطلوب (اختياري)">
                         <input type="text" class="ds-input" wire:model="required_evidence">
                     </x-ds-form-group>
