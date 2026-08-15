@@ -1598,3 +1598,102 @@
   display: none;
 }
 
+/* ── Tasks calendar (monthly grid) ── */
+.ds-cal-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.ds-cal-nav-label {
+  font-weight: 700;
+  font-size: 1.1rem;
+  min-width: 9rem;
+  text-align: center;
+}
+
+.ds-cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--ds-border);
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  overflow: hidden;
+}
+
+.ds-cal-dow {
+  background: var(--ds-surface-alt, #f0f4f7);
+  color: var(--ds-text-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+  padding: 0.5rem 0.25rem;
+}
+
+.ds-cal-cell {
+  background: var(--ds-card);
+  min-height: 6.5rem;
+  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ds-cal-cell.is-outside {
+  background: color-mix(in srgb, var(--ds-border) 35%, var(--ds-card));
+  opacity: 0.65;
+}
+
+.ds-cal-cell.is-today {
+  outline: 2px solid var(--ds-primary, #005c7b);
+  outline-offset: -2px;
+  z-index: 1;
+}
+
+.ds-cal-daynum {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--ds-text-muted);
+  margin-bottom: 0.15rem;
+}
+
+.ds-cal-chip {
+  display: block;
+  width: 100%;
+  text-align: right;
+  border: 0;
+  border-radius: 4px;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #fff;
+}
+
+.ds-cal-chip-task {
+  background: #0d7a8c;
+}
+
+.ds-cal-chip-task.is-completed {
+  background: var(--ds-success);
+}
+
+.ds-cal-chip-task.is-overdue,
+.ds-cal-chip-task.is-pending_review {
+  background: #c45c26;
+}
+
+.ds-cal-chip-leave {
+  background: #b8860b;
+}
+
+.ds-cal-chip-meeting {
+  background: #5b4b8a;
+}
+

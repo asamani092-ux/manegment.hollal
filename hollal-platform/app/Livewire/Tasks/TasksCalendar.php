@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
 /**
- * Monthly calendar: task due dates, approved leaves, and meetings for the user.
+ * Monthly calendar grid: task due dates, approved leaves, and meetings.
  * Time: O(n) | Space: O(n)
  */
 class TasksCalendar extends Component
@@ -21,6 +21,12 @@ class TasksCalendar extends Component
     use AuthorizesRequests;
 
     public string $month = '';
+
+    public ?int $selectedTaskId = null;
+
+    public ?int $selectedLeaveId = null;
+
+    public ?int $selectedMeetingId = null;
 
     public function mount(): void
     {
@@ -31,11 +37,47 @@ class TasksCalendar extends Component
     public function previousMonth(): void
     {
         $this->month = $this->resolveMonthStart()->copy()->subMonth()->format('Y-m');
+        $this->closePeek();
     }
 
     public function nextMonth(): void
     {
         $this->month = $this->resolveMonthStart()->copy()->addMonth()->format('Y-m');
+        $this->closePeek();
+    }
+
+    public function goToday(): void
+    {
+        $this->month = now()->format('Y-m');
+        $this->closePeek();
+    }
+
+    public function openTask(int $taskId): void
+    {
+        $this->selectedLeaveId = null;
+        $this->selectedMeetingId = null;
+        $this->selectedTaskId = $taskId;
+    }
+
+    public function openLeave(int $leaveId): void
+    {
+        $this->selectedTaskId = null;
+        $this->selectedMeetingId = null;
+        $this->selectedLeaveId = $leaveId;
+    }
+
+    public function openMeeting(int $meetingId): void
+    {
+        $this->selectedTaskId = null;
+        $this->selectedLeaveId = null;
+        $this->selectedMeetingId = $meetingId;
+    }
+
+    public function closePeek(): void
+    {
+        $this->selectedTaskId = null;
+        $this->selectedLeaveId = null;
+        $this->selectedMeetingId = null;
     }
 
     private function resolveMonthStart(): Carbon
@@ -62,7 +104,7 @@ class TasksCalendar extends Component
         }
         $scopeIds = $scopeIds->unique()->values();
 
-        $tasksByDay = Task::query()
+        $tasks = Task::query()
             ->whereIn('assigned_to', $scopeIds)
             ->whereNotNull('due_date')
             ->whereBetween('due_date', [$start, $end])
@@ -72,6 +114,7 @@ class TasksCalendar extends Component
             ->groupBy(fn (Task $task) => $task->due_date->format('Y-m-d'));
 
         $leavesByDay = [];
+        $leavesById = collect();
         if (Schema::hasTable('leave_requests')) {
             $leaves = LeaveRequest::query()
                 ->select(['id', 'employee_id', 'type', 'from_date', 'to_date', 'status'])
@@ -81,6 +124,8 @@ class TasksCalendar extends Component
                 ->whereDate('to_date', '>=', $start)
                 ->with('employee:id,name')
                 ->get();
+
+            $leavesById = $leaves->keyBy('id');
 
             foreach ($leaves as $leave) {
                 $cursor = $leave->from_date->copy()->max($start);
@@ -93,6 +138,7 @@ class TasksCalendar extends Component
         }
 
         $meetingsByDay = [];
+        $meetingsById = collect();
         if (Schema::hasTable('meetings') && Schema::hasTable('meeting_user')) {
             $meetings = Meeting::query()
                 ->select(['id', 'title', 'scheduled_at', 'location', 'link', 'status'])
@@ -105,16 +151,49 @@ class TasksCalendar extends Component
                 ->orderBy('scheduled_at')
                 ->get();
 
+            $meetingsById = $meetings->keyBy('id');
+
             foreach ($meetings as $meeting) {
                 $meetingsByDay[$meeting->scheduled_at->format('Y-m-d')][] = $meeting;
             }
         }
 
+        // Saudi week: Saturday → Friday.
+        $gridStart = $start->copy()->startOfWeek(Carbon::SATURDAY);
+        $gridEnd = $end->copy()->endOfWeek(Carbon::FRIDAY);
+        $cells = [];
+        $cursor = $gridStart->copy();
+        while ($cursor->lte($gridEnd)) {
+            $key = $cursor->format('Y-m-d');
+            $cells[] = [
+                'date' => $key,
+                'day' => (int) $cursor->day,
+                'inMonth' => $cursor->month === $start->month,
+                'isToday' => $cursor->isToday(),
+                'tasks' => $tasks[$key] ?? collect(),
+                'leaves' => $leavesByDay[$key] ?? [],
+                'meetings' => $meetingsByDay[$key] ?? [],
+            ];
+            $cursor->addDay();
+        }
+
+        $selectedTask = $this->selectedTaskId
+            ? Task::query()->with('assignee:id,name')->find($this->selectedTaskId)
+            : null;
+        $selectedLeave = $this->selectedLeaveId
+            ? ($leavesById->get($this->selectedLeaveId) ?? LeaveRequest::with('employee:id,name')->find($this->selectedLeaveId))
+            : null;
+        $selectedMeeting = $this->selectedMeetingId
+            ? ($meetingsById->get($this->selectedMeetingId) ?? Meeting::query()->find($this->selectedMeetingId))
+            : null;
+
         return view('livewire.tasks.tasks-calendar', [
-            'tasksByDay' => $tasksByDay,
-            'leavesByDay' => $leavesByDay,
-            'meetingsByDay' => $meetingsByDay,
             'monthLabel' => $start->translatedFormat('F Y'),
+            'dayHeaders' => ['السبت', 'الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة'],
+            'cells' => $cells,
+            'selectedTask' => $selectedTask,
+            'selectedLeave' => $selectedLeave,
+            'selectedMeeting' => $selectedMeeting,
         ])->layout('layouts.app', ['title' => 'تقويم المهام']);
     }
 }
