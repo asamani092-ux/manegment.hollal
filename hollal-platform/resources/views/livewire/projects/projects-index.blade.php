@@ -9,6 +9,8 @@
         <div class="ds-page-toolbar">
             <h2 class="ds-section-heading">المشاريع</h2>
             <div class="ds-toolbar-actions">
+                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm {{ $viewMode === 'cards' ? 'ds-btn-primary' : '' }}" wire:click="$set('viewMode','cards')">بطاقات</button>
+                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm {{ $viewMode === 'table' ? 'ds-btn-primary' : '' }}" wire:click="$set('viewMode','table')">جدول</button>
                 @can('projects.create')
                     <button type="button" class="ds-btn ds-btn-primary" wire:click="openProjectCreate">
                         <i class="fas fa-plus"></i> مشروع جديد
@@ -24,7 +26,7 @@
             </div>
         </div>
 
-        <div class="ds-task-cards ds-list-cards-mobile">
+        <div class="ds-task-cards {{ $viewMode === 'cards' ? '' : 'ds-list-cards-mobile' }}">
             @forelse ($projects as $project)
                 <article class="ds-task-card" wire:key="project-card-{{ $project->id }}">
                     <h3 class="ds-task-card-title">{{ $project->name }}</h3>
@@ -48,6 +50,7 @@
             @endforelse
         </div>
 
+        @if ($viewMode === 'table')
         <div class="ds-list-table-desktop">
         <x-ds-table>
                 <x-slot:head>
@@ -98,6 +101,7 @@
                 @endforelse
             </x-ds-table>
         </div>
+        @endif
 
         {{ $projects->links() }}
     </section>

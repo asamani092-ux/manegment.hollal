@@ -31,21 +31,28 @@
         @forelse ($organizations as $organization)
             <tr wire:key="organization-{{ $organization->id }}">
                 <td><a href="{{ route('organizations.show', $organization->id) }}">{{ $organization->name }}</a></td>
-                <td>{{ $organization->typeLabel() }}</td>
+                <td>
+                    @if ($organization->type === 'أخرى' && $organization->type_detail)
+                        أخرى — {{ $organization->type_detail }}
+                    @else
+                        {{ $organization->type ?? '—' }}
+                    @endif
+                </td>
                 <td>{{ $organization->city ?? '—' }}</td>
                 <td>
-                    @forelse ($organization->roles ?? [] as $role)
-                        <span class="ds-badge ds-badge-info">{{ $role }}</span>
-                    @empty
+                    @if ($organization->roles)
+                        <div class="ds-pill-select">
+                            @foreach ($organization->roles as $role)
+                                <span class="ds-pill is-selected">{{ $role }}</span>
+                            @endforeach
+                        </div>
+                    @else
                         —
-                    @endforelse
+                    @endif
                 </td>
                 <td class="ds-ltr-num">{{ $organization->partnerships_count }}</td>
                 <td>
                     @can('partnerships.organizations.manage')
-                        <button type="button" class="ds-btn ds-btn-sm" wire:click="openQuickPartnership({{ $organization->id }})">
-                            شراكة سريعة
-                        </button>
                         <button type="button" class="ds-btn ds-btn-sm" wire:click="edit({{ $organization->id }})">تعديل</button>
                         <button type="button" class="ds-btn ds-btn-sm" wire:click="archive({{ $organization->id }})">أرشفة</button>
                     @endcan
@@ -75,8 +82,8 @@
         </x-ds-form-group>
 
         @if ($type === 'أخرى')
-            <x-ds-form-group label="تحديد النوع" :error="$errors->first('typeOther')">
-                <input type="text" class="ds-input" wire:model="typeOther" placeholder="اكتب نوع الجهة">
+            <x-ds-form-group label="تفاصيل النوع" :error="$errors->first('typeDetail')">
+                <input type="text" class="ds-input" wire:model="typeDetail" placeholder="اكتب نوع الجهة">
             </x-ds-form-group>
         @endif
 
@@ -85,11 +92,15 @@
         </x-ds-form-group>
 
         <x-ds-form-group label="الأدوار" :error="$errors->first('roles')">
-            @foreach ($roleOptions as $option)
-                <label class="ds-checkbox">
-                    <input type="checkbox" value="{{ $option }}" wire:model="roles"> {{ $option }}
-                </label>
-            @endforeach
+            <div class="ds-pill-select">
+                @foreach ($roleOptions as $option)
+                    <button
+                        type="button"
+                        class="ds-pill {{ in_array($option, $roles ?? [], true) ? 'is-selected' : '' }}"
+                        wire:click="toggleRole('{{ $option }}')"
+                    >{{ $option }}</button>
+                @endforeach
+            </div>
         </x-ds-form-group>
 
         <x-ds-form-group label="ملاحظات" :error="$errors->first('notes')">
@@ -99,34 +110,6 @@
         <x-slot:footer>
             <button type="button" class="ds-btn" wire:click="$set('showModal', false)">إلغاء</button>
             <button type="button" class="ds-btn ds-btn-primary" wire:click="save">حفظ</button>
-        </x-slot:footer>
-    </x-ds-modal>
-
-    <x-ds-modal :show="$showQuickPartnershipModal" size="lg">
-        <x-slot:header><h2>إنشاء شراكة سريعة</h2></x-slot:header>
-        <p class="ds-text-muted">تُنشأ الشراكة في مرحلة عرض السعر مع عرض مسودة من أسعار البرامج المختارة.</p>
-
-        <x-ds-form-group label="المتابع" :error="$errors->first('quickOwnerId')">
-            <select class="ds-input" wire:model="quickOwnerId">
-                <option value="">—</option>
-                @foreach ($owners as $owner)
-                    <option value="{{ $owner->id }}">{{ $owner->name }}</option>
-                @endforeach
-            </select>
-        </x-ds-form-group>
-
-        <x-ds-form-group label="البرامج المسموحة للجهة" :error="$errors->first('quickProgramIds')">
-            @foreach ($programs as $program)
-                <label class="ds-checkbox">
-                    <input type="checkbox" value="{{ $program->id }}" wire:model="quickProgramIds">
-                    {{ $program->name }} ({{ $program->prices_count }} أسعار نشطة)
-                </label>
-            @endforeach
-        </x-ds-form-group>
-
-        <x-slot:footer>
-            <button type="button" class="ds-btn" wire:click="$set('showQuickPartnershipModal', false)">إلغاء</button>
-            <button type="button" class="ds-btn ds-btn-primary" wire:click="createQuickPartnership">إنشاء</button>
         </x-slot:footer>
     </x-ds-modal>
 </x-ds-page>

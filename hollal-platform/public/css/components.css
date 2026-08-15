@@ -954,10 +954,26 @@
   gap: 0.75rem;
 }
 
-.ds-meeting-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
+.ds-pill-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ds-pill {
+  border: 1px solid var(--ds-border);
+  background: var(--ds-card);
+  color: var(--ds-text);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ds-pill.is-selected {
+  background: var(--ds-secondary);
+  border-color: var(--ds-secondary);
+  color: #fff;
 }
 
 .ds-meeting-card {
