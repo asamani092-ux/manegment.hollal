@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Settings\GrantsIndex;
+use App\Livewire\Structure\CommitteesIndex;
 use App\Livewire\Structure\OrgTreeIndex;
 use App\Models\Committee;
 use App\Models\Department;
@@ -43,6 +44,7 @@ class StructureRolesSettingsTest extends TestCase
         $user = User::factory()->create(['must_change_password' => false]);
         $user->givePermissionTo([
             'structure.departments.view', 'structure.departments.create', 'structure.departments.update',
+            'structure.committees.manage', 'structure.view',
             'roles.view', 'roles.update', 'settings.manage',
         ]);
 
@@ -118,6 +120,49 @@ class StructureRolesSettingsTest extends TestCase
         $this->assertSame(1, $committee->meetings()->count());
         $this->assertSame($committee->id, $meeting->fresh()->committee_id);
         $this->assertSame(1, $committee->members()->count());
+    }
+
+    public function test_committee_can_be_soft_deleted_from_committees_index(): void
+    {
+        $admin = $this->admin();
+        $committee = Committee::create(['name' => 'لجنة مؤقتة', 'chair_id' => $admin->id]);
+        $committee->members()->attach($admin->id, ['role_label' => 'عضو']);
+
+        Livewire::actingAs($admin)->test(CommitteesIndex::class)
+            ->call('askDelete', $committee->id)
+            ->call('deleteCommittee', $committee->id)
+            ->assertDispatched('toast');
+
+        $this->assertSoftDeleted('committees', ['id' => $committee->id]);
+        $this->assertDatabaseMissing('committee_user', ['committee_id' => $committee->id]);
+    }
+
+    public function test_committee_with_meetings_cannot_be_deleted(): void
+    {
+        $admin = $this->admin();
+        $committee = Committee::create(['name' => 'لجنة باجتماع', 'chair_id' => $admin->id]);
+        $meeting = Meeting::factory()->create();
+        $meeting->forceFill(['committee_id' => $committee->id])->save();
+
+        Livewire::actingAs($admin)->test(CommitteesIndex::class)
+            ->call('deleteCommittee', $committee->id)
+            ->assertDispatched('toast');
+
+        $this->assertDatabaseHas('committees', ['id' => $committee->id, 'deleted_at' => null]);
+    }
+
+    public function test_org_tree_can_delete_committee_without_meetings(): void
+    {
+        $admin = $this->admin();
+        $committee = Committee::create(['name' => 'لجنة من الشجرة', 'chair_id' => $admin->id]);
+
+        Livewire::actingAs($admin)->test(OrgTreeIndex::class)
+            ->set('tab', 'committees')
+            ->call('askDeleteCommittee', $committee->id)
+            ->call('deleteCommittee', $committee->id)
+            ->assertDispatched('toast');
+
+        $this->assertSoftDeleted('committees', ['id' => $committee->id]);
     }
 
     public function test_structure_screen_creates_a_unit(): void

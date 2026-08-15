@@ -3,6 +3,7 @@
 
     <section class="ds-section ds-filter-bar">
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'tree')">الشجرة</button>
+        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'jobs')">الوظائف</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'transfers')">النقل</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'committees')">اللجان</button>
         @can('structure.departments.create')
@@ -17,7 +18,11 @@
                     <tr><th>الوحدة</th><th>المستوى</th><th>المسؤول</th><th>الأعضاء</th><th>إجراءات</th></tr>
                 </x-slot:head>
                 @forelse ($tree as $root)
-                    @include('livewire.structure.partials.org-node', ['node' => $root, 'depth' => 0])
+                    @include('livewire.structure.partials.org-node', [
+                        'node' => $root,
+                        'depth' => 0,
+                        'adminColor' => $adminColors[$root->id] ?? '#0F3446',
+                    ])
                 @empty
                     <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا يوجد هيكل بعد</td></tr>
                 @endforelse
@@ -34,6 +39,38 @@
                         <li>{{ $responsibility }}</li>
                     @endforeach
                 </ul>
+            </section>
+        @endif
+    @endif
+
+    @if ($tab === 'jobs')
+        <section class="ds-section">
+            <x-ds-table>
+                <x-slot:head>
+                    <tr><th>الوظيفة</th><th>التابع لـ</th><th>المسؤول</th><th>الغرض</th><th>إجراءات</th></tr>
+                </x-slot:head>
+                @forelse ($jobs as $job)
+                    <tr wire:key="job-{{ $job->id }}">
+                        <td>{{ $job->name }}</td>
+                        <td>{{ $job->parent?->name ?? '—' }}</td>
+                        <td>{{ $job->manager?->name ?? '—' }}</td>
+                        <td>{{ $job->job_purpose ?? '—' }}</td>
+                        <td>
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="viewJobCard({{ $job->id }})">بطاقة الوظيفة</button>
+                            @can('structure.positions.manage')
+                                <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.jobs', ['edit' => $job->id]) }}">تعديل البطاقة</a>
+                            @endcan
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد وظائف</td></tr>
+                @endforelse
+            </x-ds-table>
+        </section>
+        @if ($jobCard)
+            <section class="ds-section">
+                <h2 class="ds-section-title">بطاقة الوظيفة — {{ $jobCard->name }}</h2>
+                <p>الغرض: {{ $jobCard->job_purpose ?? '—' }}</p>
             </section>
         @endif
     @endif
@@ -106,19 +143,59 @@
 
         <x-ds-table>
             <x-slot:head>
-                <tr><th>اللجنة</th><th>الرئيس</th><th>الأعضاء</th><th>الاجتماعات</th></tr>
+                <tr><th>اللجنة</th><th>الرئيس</th><th>الأعضاء</th><th>الاجتماعات</th><th>الحالة</th><th>إجراءات</th></tr>
             </x-slot:head>
             @forelse ($committees as $committee)
                 <tr wire:key="committee-{{ $committee->id }}">
                     <td>{{ $committee->name }}</td>
                     <td>{{ $committee->chair?->name ?? '—' }}</td>
                     <td class="ds-ltr-num">{{ $committee->members->count() }}</td>
-                    <td class="ds-ltr-num">{{ $committee->meetings()->count() }}</td>
+                    <td class="ds-ltr-num">{{ $committee->meetings_count }}</td>
+                    <td><x-ds-status-badge :status="$committee->is_active ? 'نشطة' : 'موقوفة'" /></td>
+                    <td>
+                        @can('structure.committees.manage')
+                            <div class="ds-toolbar-actions" style="flex-wrap:wrap;gap:.35rem">
+                                <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.committees', ['manage' => $committee->id]) }}">الأعضاء والضيوف</a>
+                                @if ($committee->is_active)
+                                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="deactivateCommittee({{ $committee->id }})">إيقاف</button>
+                                @else
+                                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="activateCommittee({{ $committee->id }})">تفعيل</button>
+                                @endif
+                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDeleteCommittee({{ $committee->id }})">حذف</button>
+                            </div>
+                        @endcan
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="ds-text-muted ds-table-empty">لا توجد لجان</td></tr>
+                <tr><td colspan="6" class="ds-text-muted ds-table-empty">لا توجد لجان</td></tr>
             @endforelse
         </x-ds-table>
+
+        @if ($committeeDeleteConfirmId && $committeeDeleteTarget)
+            <div class="ds-modal-overlay" wire:key="org-committee-delete-{{ $committeeDeleteConfirmId }}" wire:click.self="cancelDeleteCommittee" wire:keydown.escape.window="cancelDeleteCommittee" style="z-index:1300">
+                <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl" wire:click.stop>
+                    <div class="ds-modal-header">
+                        <h3>تأكيد حذف اللجنة</h3>
+                        <button type="button" class="ds-modal-close" wire:click="cancelDeleteCommittee" aria-label="إغلاق">&times;</button>
+                    </div>
+                    <div class="ds-modal-body">
+                        <p>حذف اللجنة «{{ $committeeDeleteTarget->name }}»؟ سيُزال الأعضاء والضيوف من السجل.</p>
+                        @if (($committeeDeleteTarget->meetings_count ?? 0) > 0)
+                            <p class="ds-badge ds-badge-warning">مرتبط بـ {{ $committeeDeleteTarget->meetings_count }} اجتماع — لن يُسمح بالحذف؛ استخدم الإيقاف بدلاً منه.</p>
+                        @endif
+                        <div class="ds-toolbar-actions">
+                            <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelDeleteCommittee">إلغاء</button>
+                            <button
+                                type="button"
+                                class="ds-btn ds-btn-primary"
+                                wire:click="deleteCommittee({{ $committeeDeleteConfirmId }})"
+                                @disabled(($committeeDeleteTarget->meetings_count ?? 0) > 0)
+                            >تأكيد الحذف</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
     @endif
 
     <x-ds-modal :show="$showUnitModal">
