@@ -47,7 +47,7 @@ class RtlUxPolishTest extends TestCase
 
         $this->assertStringContainsString('dir="rtl"', $html);
         $this->assertStringContainsString('ds-page-rtl', $html);
-        $this->assertStringContainsString('ds-meeting-list', $html);
+        $this->assertStringContainsString('ds-meeting-cards-grid', $html);
         $this->assertStringContainsString('ds-empty-state', $html);
     }
 

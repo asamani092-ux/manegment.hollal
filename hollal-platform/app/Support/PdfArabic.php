@@ -67,7 +67,7 @@ final class PdfArabic
     public static function defaultFont(): string
     {
         // Must match storage/fonts/installed-fonts.json family key (lowercase).
-        return self::fontPath() !== null ? 'amiri' : 'dejavu sans';
+        return self::fontPath() !== null ? 'Amiri' : 'dejavu sans';
     }
 
     /** @return array<string, mixed> */
