@@ -33,3 +33,9 @@ php artisan serve --host=0.0.0.0 --port=8000
 
 هذا الإعداد لـ **Cursor Cloud Agents** (VM معزولة + port forwarding).  
 للنشر الإنتاجي الدائم على **Hostinger** راجع `hollal-platform/docs/DEPLOYMENT.md`.
+
+## بروتوكول الاختبار للوكيل (خفيف)
+
+- نفّذ فقط `php artisan test` للنطاقات المتأثرة بالتغيير (Feature/Unit ذات الصلة).
+- **لا** تجارب يدوية GUI من الوكيل إلا إذا طُلب صراحةً؛ التجربة اليدوية للمستخدم.
+- بعد الإصلاحات: `php artisan migrate --force` عند وجود migrations جديدة.
