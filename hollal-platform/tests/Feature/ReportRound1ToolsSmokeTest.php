@@ -41,7 +41,7 @@ class ReportRound1ToolsSmokeTest extends TestCase
         $admin->assignRole('Super Admin');
 
         foreach ([
-            'recurring-tasks.index',
+            'workload-board.index',
             'financial-documents.index',
             'documents.templates',
             'documents.versions',
