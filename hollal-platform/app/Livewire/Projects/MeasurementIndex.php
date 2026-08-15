@@ -3,12 +3,13 @@
 namespace App\Livewire\Projects;
 
 use App\Models\MeasurementForm;
+use App\Models\MeasurementResponse;
 use App\Models\Program;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
 
-/** Measurement forms list. Time: O(n) | Space: O(page). */
+/** Measurement forms + recent results. Time: O(n) | Space: O(page). */
 class MeasurementIndex extends Component
 {
     use WithPagination;
@@ -48,6 +49,15 @@ class MeasurementIndex extends Component
                 ->when($this->kindFilter, fn ($q) => $q->where('kind', $this->kindFilter))
                 ->latest()
                 ->paginate(20),
+            'responses' => MeasurementResponse::query()
+                ->select(['id', 'project_id', 'measurement_form_id', 'phase', 'total_score', 'max_score', 'created_at'])
+                ->with([
+                    'form:id,title',
+                    'project:id,name',
+                ])
+                ->latest('id')
+                ->limit(25)
+                ->get(),
             'programs' => Program::orderBy('name')->get(['id', 'name']),
             'kindOptions' => [
                 MeasurementForm::KIND_TEST,

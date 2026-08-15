@@ -353,6 +353,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:finance.revenues.view|finance.revenues.manage')
         ->name('revenues.index');
 
+    Route::get('/revenues/{revenue}/files', \App\Http\Controllers\RevenueFileDownloadController::class)
+        ->middleware('permission:finance.revenues.view|finance.revenues.manage')
+        ->name('revenues.files.download');
+
     Route::get('/duties/download', DutiesFileDownloadController::class)
         ->name('duties.download');
 

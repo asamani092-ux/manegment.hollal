@@ -24,6 +24,9 @@ class ProjectsIndex extends Component
 
     public string $projectSearch = '';
 
+    /** cards | table */
+    public string $viewMode = 'table';
+
     public string $partnershipSearch = '';
 
     public bool $showProjectModal = false;

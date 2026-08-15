@@ -1,6 +1,12 @@
 <x-ds-page>
     <x-ds-page-header title="القياس والأثر" :show-button="false" />
 
+    <p class="ds-text-muted" style="margin-bottom:1rem;">
+        النماذج أدناه للقوالب المركزية. نتائج القياس لكل مشروع تُدار من تبويب
+        <strong>القياس والأثر</strong> داخل
+        <a class="ds-link" href="{{ route('projects.index') }}">تنفيذ المشروع</a>.
+    </p>
+
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label" for="measurement-program">البرنامج</label>
@@ -22,6 +28,7 @@
         </div>
     </div>
 
+    <h2 class="ds-section-heading">نماذج القياس</h2>
     <x-ds-table>
         <x-slot:head>
             <tr>
@@ -46,4 +53,36 @@
     </x-ds-table>
 
     {{ $forms->links() }}
+
+    <h2 class="ds-section-heading" style="margin-top:1.5rem;">أحدث نتائج الاختبارات</h2>
+    <x-ds-table>
+        <x-slot:head>
+            <tr>
+                <th scope="col">المشروع</th>
+                <th scope="col">النموذج</th>
+                <th scope="col">المرحلة</th>
+                <th scope="col">النتيجة</th>
+                <th scope="col">التاريخ</th>
+                <th scope="col">فتح</th>
+            </tr>
+        </x-slot:head>
+        @forelse ($responses as $response)
+            <tr wire:key="mr-{{ $response->id }}">
+                <td>{{ $response->project?->name ?? '—' }}</td>
+                <td>{{ $response->form?->title ?? '—' }}</td>
+                <td>{{ $response->phase }}</td>
+                <td class="ds-ltr-num">{{ number_format($response->percent(), 1) }}%</td>
+                <td class="ds-ltr-num">{{ $response->created_at?->format('Y-m-d') }}</td>
+                <td>
+                    @if ($response->project_id)
+                        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('projects.execution', $response->project_id) }}?tab=measurement">التنفيذ</a>
+                    @endif
+                </td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="6"><x-ds-empty-state message="لا توجد نتائج بعد" icon="fa-chart-bar" /></td>
+            </tr>
+        @endforelse
+    </x-ds-table>
 </x-ds-page>

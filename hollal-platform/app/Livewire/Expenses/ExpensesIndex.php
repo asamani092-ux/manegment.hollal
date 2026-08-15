@@ -36,6 +36,12 @@ class ExpensesIndex extends Component
 
     public bool $showRejectModal = false;
 
+    public bool $showPayModal = false;
+
+    public ?int $payExpenseId = null;
+
+    public ?TemporaryUploadedFile $paymentProof = null;
+
     public bool $expenseViewOnly = false;
 
     public ?int $expenseId = null;
@@ -263,15 +269,38 @@ class ExpensesIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'تم رفض الطلب');
     }
 
+    public function openPayModal(int $id): void
+    {
+        $expense = ExpenseRequest::findOrFail($id);
+        $this->authorize('pay', $expense);
+        $this->payExpenseId = $id;
+        $this->paymentProof = null;
+        $this->showPayModal = true;
+    }
+
     public function markExpensePaid(int $id): void
     {
         $expense = ExpenseRequest::findOrFail($id);
         $this->authorize('pay', $expense);
 
-        $expense->update(['status' => 'paid']);
+        $this->validate([
+            'paymentProof' => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png',
+        ]);
+
+        $path = $this->paymentProof
+            ? $this->paymentProof->store('expenses/payment-proofs', 'local')
+            : null;
+
+        $expense->update([
+            'status' => 'paid',
+            'payment_proof_path' => $path ?? $expense->payment_proof_path,
+        ]);
 
         app(AuditLogService::class)->record('expense.paid', $expense);
 
+        $this->showPayModal = false;
+        $this->payExpenseId = null;
+        $this->paymentProof = null;
         $this->dispatch('toast', type: 'success', message: 'تم تسجيل الدفع');
     }
 

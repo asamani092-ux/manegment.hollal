@@ -36,7 +36,7 @@ class MeetingMinutesPdfService
         ])
             ->setPaper('a4')
             ->setOption('isRemoteEnabled', false)
-            ->setOption('defaultFont', 'dejavu sans');
+            ->setOption('defaultFont', 'amiri');
     }
 
     public function output(Meeting $meeting): string

@@ -30,6 +30,7 @@ class Meeting extends Model
         'approval_status',
         'approved_by',
         'approved_at',
+        'minutes_missing_signatures_reason',
         'archived_document_id',
         'version',
     ];
@@ -86,7 +87,9 @@ class Meeting extends Model
     /** @return BelongsToMany<User, $this> */
     public function attendees(): BelongsToMany
     {
-        return $this->belongsToMany(User::class, 'meeting_user')->withTimestamps();
+        return $this->belongsToMany(User::class, 'meeting_user')
+            ->withPivot(['confirmed_at', 'signature_text'])
+            ->withTimestamps();
     }
 
     /** @return HasMany<MeetingItem, $this> */

@@ -201,6 +201,13 @@ class PartnerPortal extends Component
 
         return view('livewire.partnerships.partner-portal', [
             'partnership' => $partnership,
+            'features' => array_merge([
+                'programs' => true,
+                'diagnosis' => true,
+                'quotes' => true,
+                'payments' => true,
+                'contract' => true,
+            ], $partnership->portal_features ?? []),
             'programs' => Program::where('stage', Program::STAGE_ACTIVE)
                 ->orderBy('name')
                 ->get(['id', 'name', 'description', 'target_audience', 'sessions_count', 'hours_count']),

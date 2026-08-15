@@ -29,6 +29,10 @@ class TaxInvoicesIndex extends Component
 
     public ?string $buyerVatNumber = null;
 
+    public string $invoiceType = TaxInvoice::TYPE_STANDARD;
+
+    public ?int $editInvoiceId = null;
+
     /** @var list<array{description: string, quantity: string, unit_price: string}> */
     public array $lines = [];
 
@@ -51,7 +55,28 @@ class TaxInvoicesIndex extends Component
         $this->authorize('finance.tax_invoices.issue');
         $this->buyerName = '';
         $this->buyerVatNumber = null;
+        $this->invoiceType = TaxInvoice::TYPE_STANDARD;
+        $this->editInvoiceId = null;
         $this->resetLines();
+        $this->showIssueModal = true;
+    }
+
+    public function openEditModal(int $invoiceId): void
+    {
+        $this->authorize('finance.tax_invoices.issue');
+        $invoice = TaxInvoice::with('items')->findOrFail($invoiceId);
+        $this->editInvoiceId = $invoice->id;
+        $this->buyerName = $invoice->buyer_name;
+        $this->buyerVatNumber = $invoice->buyer_vat_number;
+        $this->invoiceType = $invoice->invoice_type ?: TaxInvoice::TYPE_STANDARD;
+        $this->lines = $invoice->items->map(fn ($item) => [
+            'description' => $item->description,
+            'quantity' => (string) $item->quantity,
+            'unit_price' => (string) $item->unit_price,
+        ])->values()->all();
+        if ($this->lines === []) {
+            $this->resetLines();
+        }
         $this->showIssueModal = true;
     }
 
@@ -76,30 +101,46 @@ class TaxInvoicesIndex extends Component
 
         $this->validate([
             'buyerName' => 'required|string|max:255',
-            'buyerVatNumber' => 'nullable|string|max:50',
+            'buyerVatNumber' => $this->invoiceType === TaxInvoice::TYPE_STANDARD ? 'required|string|max:50' : 'nullable|string|max:50',
+            'invoiceType' => 'required|in:'.TaxInvoice::TYPE_STANDARD.','.TaxInvoice::TYPE_SIMPLIFIED,
             'lines' => 'required|array|min:1',
             'lines.*.description' => 'required|string|max:255',
             'lines.*.quantity' => 'required|numeric|min:0.01',
             'lines.*.unit_price' => 'required|numeric|min:0',
         ], [], [
             'buyerName' => 'اسم المشتري',
+            'buyerVatNumber' => 'الرقم الضريبي للمشتري',
             'lines.*.description' => 'وصف البند',
             'lines.*.quantity' => 'الكمية',
             'lines.*.unit_price' => 'سعر الوحدة',
         ]);
 
-        app(TaxInvoiceService::class)->issue(
-            items: array_map(fn (array $line) => [
-                'description' => $line['description'],
-                'quantity' => (float) $line['quantity'],
-                'unit_price' => (float) $line['unit_price'],
-            ], $this->lines),
-            buyer: ['name' => $this->buyerName, 'vat_number' => $this->buyerVatNumber],
-            issuer: auth()->user(),
-        );
+        $payload = array_map(fn (array $line) => [
+            'description' => $line['description'],
+            'quantity' => (float) $line['quantity'],
+            'unit_price' => (float) $line['unit_price'],
+        ], $this->lines);
+
+        if ($this->editInvoiceId) {
+            $invoice = TaxInvoice::findOrFail($this->editInvoiceId);
+            $invoice->update([
+                'buyer_name' => $this->buyerName,
+                'buyer_vat_number' => $this->buyerVatNumber,
+                'invoice_type' => $this->invoiceType,
+            ]);
+            $this->dispatch('ds-toast', message: 'تم تحديث بيانات الفاتورة (البنود تُعدَّل عبر إشعار دائن/مدين)');
+        } else {
+            app(TaxInvoiceService::class)->issue(
+                items: $payload,
+                buyer: ['name' => $this->buyerName, 'vat_number' => $this->buyerVatNumber],
+                issuer: auth()->user(),
+                invoiceType: $this->invoiceType,
+            );
+            $this->dispatch('ds-toast', message: 'تم إصدار الفاتورة الضريبية');
+        }
 
         $this->showIssueModal = false;
-        $this->dispatch('ds-toast', message: 'تم إصدار الفاتورة الضريبية');
+        $this->editInvoiceId = null;
     }
 
     public function openNoteModal(int $invoiceId): void

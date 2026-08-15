@@ -34,6 +34,7 @@
                 <th scope="col">المبلغ</th>
                 <th scope="col">تاريخ الاستلام</th>
                 <th scope="col">الحالة</th>
+                <th scope="col">الشاهد</th>
             </tr>
         </x-slot:head>
         @forelse ($revenues as $revenue)
@@ -42,9 +43,21 @@
                 <td class="ds-ltr-num">{{ number_format((float) $revenue->amount, 2) }} ر.س</td>
                 <td class="ds-ltr-num">{{ $revenue->received_at?->format('Y-m-d') ?? '—' }}</td>
                 <td><x-ds-status-badge :status="$revenue->status" /></td>
+                <td>
+                    @if ($revenue->external_document_path)
+                        <a class="ds-btn ds-btn-outline ds-btn-sm" title="معاينة" target="_blank" rel="noopener" href="{{ route('revenues.files.download', ['revenue' => $revenue->id, 'inline' => 1]) }}">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
+                        </a>
+                        <a class="ds-btn ds-btn-outline ds-btn-sm" title="تحميل" href="{{ route('revenues.files.download', $revenue) }}">
+                            <i class="fas fa-download" aria-hidden="true"></i>
+                        </a>
+                    @else
+                        —
+                    @endif
+                </td>
             </tr>
         @empty
-            <tr><td colspan="4"><x-ds-empty-state message="لا توجد إيرادات مسجّلة" icon="fa-coins" /></td></tr>
+            <tr><td colspan="5"><x-ds-empty-state message="لا توجد إيرادات مسجّلة" icon="fa-coins" /></td></tr>
         @endforelse
     </x-ds-table>
 
@@ -65,9 +78,16 @@
         <x-ds-form-group label="تاريخ الاستلام" :error="$errors->first('received_at')">
             <input type="date" class="ds-input" wire:model="received_at">
         </x-ds-form-group>
+        <x-ds-form-group label="مرفق الشاهد (إلزامي)" :error="$errors->first('evidence')">
+            <input type="file" class="ds-input" wire:model="evidence" accept=".pdf,.jpg,.jpeg,.png">
+            <div wire:loading wire:target="evidence" class="ds-text-muted">جاري الرفع…</div>
+            @if ($evidence)
+                <p class="ds-badge ds-badge-success">{{ $evidence->getClientOriginalName() }}</p>
+            @endif
+        </x-ds-form-group>
 
         <x-slot:footer>
-            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveRevenue">حفظ</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveRevenue" wire:loading.attr="disabled" wire:target="evidence,saveRevenue">حفظ</button>
         </x-slot:footer>
     </x-ds-modal>
 </x-ds-page>

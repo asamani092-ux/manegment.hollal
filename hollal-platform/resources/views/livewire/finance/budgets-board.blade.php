@@ -1,6 +1,8 @@
 <x-ds-page>
     <x-ds-page-header title="الموازنات (محسوبة آليًا)" />
 
+    <p class="ds-text-muted">الاستهلاك = مجموع طلبات الصرف المعتمدة والمدفوعة · المصروف فعليًا = المدفوع فقط · المتبقي = الموازنة − المستهلك. المسودات والمرفوضة لا تُحسب.</p>
+
     <section class="ds-section ds-filter-bar">
         <select class="ds-input" wire:model.live="tierFilter">
             <option value="">كل المشاريع</option>

@@ -824,6 +824,33 @@
   gap: 0.65rem;
 }
 
+.ds-task-card.is-completed {
+  background: var(--ds-success);
+  border-color: var(--ds-success);
+  color: #fff;
+}
+
+.ds-task-card.is-completed .ds-task-card-title,
+.ds-task-card.is-completed .ds-task-card-meta,
+.ds-task-card.is-completed .ds-text-muted,
+.ds-task-card.is-completed .ds-link {
+  color: #fff;
+}
+
+.ds-task-card.is-completed .ds-task-card-status,
+.ds-task-card.is-completed .ds-badge {
+  background: rgba(255, 255, 255, 0.22);
+  color: #fff;
+  border-color: transparent;
+}
+
+.ds-task-card-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
 .ds-task-card-status {
   position: absolute;
   top: 0.55rem;
@@ -887,6 +914,28 @@
   gap: 0.75rem;
 }
 
+.ds-pill-select {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.ds-pill {
+  border: 1px solid var(--ds-border);
+  background: var(--ds-card);
+  color: var(--ds-text);
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  cursor: pointer;
+  font: inherit;
+}
+
+.ds-pill.is-selected {
+  background: var(--ds-secondary);
+  border-color: var(--ds-secondary);
+  color: #fff;
+}
+
 .ds-meeting-card {
   background: var(--ds-card);
   border: 1px solid var(--ds-border);
@@ -897,6 +946,14 @@
   align-items: flex-start;
   gap: 1rem;
   flex-wrap: wrap;
+}
+
+.ds-meeting-card.is-square {
+  aspect-ratio: 1 / 1;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: stretch;
+  min-height: 220px;
 }
 
 .ds-minute-item-card {

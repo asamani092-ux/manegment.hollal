@@ -156,6 +156,7 @@ class TaxInvoiceTest extends TestCase
         Livewire::actingAs($user)->test(TaxInvoicesIndex::class)
             ->call('openIssueModal')
             ->set('buyerName', 'عميل تجريبي')
+            ->set('buyerVatNumber', '300000000000003')
             ->set('lines', [['description' => 'استشارة', 'quantity' => '3', 'unit_price' => '100']])
             ->call('issue')
             ->assertHasNoErrors();

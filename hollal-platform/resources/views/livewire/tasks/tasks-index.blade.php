@@ -32,88 +32,76 @@
                 @endforeach
             </select>
         </div>
+        @if ($canSeeAll)
+            <div class="ds-filter-field">
+                <label class="ds-label">النطاق</label>
+                <select class="ds-input" wire:model.live="listScope">
+                    <option value="my">مهامي وأسندتها</option>
+                    <option value="all">كل المهام</option>
+                </select>
+            </div>
+        @endif
     </div>
 
-    <section class="ds-section-spaced">
-        <h2 class="ds-section-heading">مهامي</h2>
+    @if ($listScope === 'all' && $allTasks)
+        <section class="ds-section-spaced">
+            <h2 class="ds-section-heading">كل المهام</h2>
+            <div class="ds-task-cards">
+                @forelse ($allTasks as $task)
+                    @include('livewire.tasks.partials.task-card', [
+                        'task' => $task,
+                        'statusLabels' => $statusLabels,
+                        'priorityLabels' => $priorityLabels,
+                        'keyPrefix' => 'all',
+                        'showAssignee' => true,
+                        'showAssigner' => true,
+                    ])
+                @empty
+                    <x-ds-empty-state message="لا توجد مهام" icon="fa-tasks" />
+                @endforelse
+            </div>
+            {{ $allTasks->links() }}
+        </section>
+    @else
+        <section class="ds-section-spaced">
+            <h2 class="ds-section-heading">مهامي</h2>
+            <div class="ds-task-cards">
+                @forelse ($myTasks as $task)
+                    @include('livewire.tasks.partials.task-card', [
+                        'task' => $task,
+                        'statusLabels' => $statusLabels,
+                        'priorityLabels' => $priorityLabels,
+                        'keyPrefix' => 'my',
+                        'showAssignee' => false,
+                        'showAssigner' => true,
+                    ])
+                @empty
+                    <x-ds-empty-state message="لا توجد مهام" icon="fa-tasks" />
+                @endforelse
+            </div>
+            {{ $myTasks->links() }}
+        </section>
 
-        <div class="ds-task-cards ds-task-cards-mobile">
-            @forelse ($myTasks as $task)
-                <article class="ds-task-card" wire:key="my-card-{{ $task->id }}">
-                    @include('livewire.tasks.partials.status-badge', ['status' => $task->status])
-                    <h3 class="ds-task-card-title">{{ $task->title }}</h3>
-                    <div class="ds-task-card-meta">
-                        <span>{{ $task->project?->name ?? 'بدون مشروع' }}</span>
-                        <span>{{ $priorityLabels[$task->priority] ?? $task->priority }}</span>
-                        <span class="ds-ltr-num">{{ $task->due_date?->format('Y-m-d') ?? '—' }}</span>
-                    </div>
-                    <p class="ds-text-muted">من: {{ $task->assigner?->name ?? '—' }}</p>
-                    <div class="ds-task-card-actions">
-                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openTaskView({{ $task->id }})">عرض</button>
-                        @can('update', $task)
-                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openTaskEdit({{ $task->id }})">تعديل</button>
-                        @endcan
-                    </div>
-                </article>
-            @empty
-                <x-ds-empty-state message="لا توجد مهام" icon="fa-tasks" />
-            @endforelse
-        </div>
-
-        <div class="ds-task-table-desktop">
-            <x-ds-table>
-                <x-slot:head>
-                    <tr>
-                        <th scope="col">العنوان</th>
-                        <th scope="col">المشروع</th>
-                        <th scope="col">الأولوية</th>
-                        <th scope="col">الحالة</th>
-                        <th scope="col">الاستحقاق</th>
-                        <th scope="col">إجراءات</th>
-                    </tr>
-                </x-slot:head>
-                @foreach ($myTasks as $task)
-                    <tr wire:key="my-row-{{ $task->id }}">
-                        <td>{{ $task->title }}</td>
-                        <td>{{ $task->project?->name ?? '—' }}</td>
-                        <td>{{ $priorityLabels[$task->priority] ?? $task->priority }}</td>
-                        <td>{{ $statusLabels[$task->status] ?? $task->status }}</td>
-                        <td class="ds-ltr-num">{{ $task->due_date?->format('Y-m-d') ?? '—' }}</td>
-                        <td>
-                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openTaskView({{ $task->id }})">عرض</button>
-                        </td>
-                    </tr>
-                @endforeach
-            </x-ds-table>
-        </div>
-        {{ $myTasks->links() }}
-    </section>
-
-    <section class="ds-section-spaced">
-        <h2 class="ds-section-heading">مهام أسندتها</h2>
-        <div class="ds-task-cards ds-task-cards-mobile">
-            @forelse ($assignedByMe as $task)
-                <article class="ds-task-card" wire:key="delegated-card-{{ $task->id }}">
-                    @include('livewire.tasks.partials.status-badge', ['status' => $task->status])
-                    <h3 class="ds-task-card-title">{{ $task->title }}</h3>
-                    <div class="ds-task-card-meta">
-                        <span>إلى: {{ $task->assignee?->name ?? '—' }}</span>
-                        <span>{{ $task->project?->name ?? '—' }}</span>
-                    </div>
-                    <div class="ds-task-card-actions">
-                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openTaskView({{ $task->id }})">عرض</button>
-                        @can('update', $task)
-                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openTaskEdit({{ $task->id }})">تعديل</button>
-                            <button type="button" class="ds-btn ds-btn-danger ds-btn-sm" wire:click="deleteTask({{ $task->id }})" wire:confirm="حذف هذه المهمة؟">حذف</button>
-                        @endcan
-                    </div>
-                </article>
-            @empty
-                <x-ds-empty-state message="لا توجد مهام مسندة" icon="fa-tasks" />
-            @endforelse
-        </div>
-        {{ $assignedByMe->links() }}
-    </section>
+        <section class="ds-section-spaced">
+            <h2 class="ds-section-heading">مهام أسندتها</h2>
+            <div class="ds-task-cards">
+                @forelse ($assignedByMe as $task)
+                    @include('livewire.tasks.partials.task-card', [
+                        'task' => $task,
+                        'statusLabels' => $statusLabels,
+                        'priorityLabels' => $priorityLabels,
+                        'keyPrefix' => 'delegated',
+                        'showAssignee' => true,
+                        'showAssigner' => false,
+                        'allowDelete' => true,
+                    ])
+                @empty
+                    <x-ds-empty-state message="لا توجد مهام مسندة" icon="fa-tasks" />
+                @endforelse
+            </div>
+            {{ $assignedByMe->links() }}
+        </section>
+    @endif
 
     @if ($showTaskModal)
         <div class="ds-modal-overlay" wire:click.self="closeTaskModal">
@@ -183,9 +171,27 @@
                             <input type="file" class="ds-input" wire:model="attachment">
                             <div wire:loading wire:target="attachment" class="ds-text-muted">جاري الرفع...</div>
                         </x-ds-form-group>
+                        <x-ds-form-group label="شاهد الإنجاز" :error="$errors->first('submittedFile')">
+                            <input type="file" class="ds-input" wire:model="submittedFile">
+                            <div wire:loading wire:target="submittedFile" class="ds-text-muted">جاري الرفع...</div>
+                        </x-ds-form-group>
                     @endif
 
                     @if ($taskId && $currentTask)
+                        <div class="ds-task-files">
+                            <h4 class="ds-section-heading">الملفات</h4>
+                            @if ($existingAttachmentPath || $currentTask->attachment_path)
+                                <a class="ds-link" href="{{ route('tasks.files.download', ['task' => $currentTask->id, 'type' => 'attachment']) }}">تنزيل مرفق المهمة</a>
+                            @else
+                                <p class="ds-text-muted">لا مرفق للمهمة</p>
+                            @endif
+                            @if ($existingSubmittedPath || $currentTask->submitted_file)
+                                <a class="ds-link" href="{{ route('tasks.files.download', ['task' => $currentTask->id, 'type' => 'submitted']) }}">تنزيل شاهد الإنجاز</a>
+                            @else
+                                <p class="ds-text-muted">لا شاهد إنجاز</p>
+                            @endif
+                        </div>
+
                         <div class="ds-notes-timeline">
                             <h4 class="ds-section-heading">الملاحظات</h4>
                             @forelse ($taskNotes as $note)

@@ -29,6 +29,9 @@ class TasksIndex extends Component
 
     public string $taskSearch = '';
 
+    /** my | delegated | all */
+    public string $listScope = 'my';
+
     public bool $showTaskModal = false;
 
     public bool $taskViewOnly = false;
@@ -65,24 +68,49 @@ class TasksIndex extends Component
     protected $queryString = [
         'statusFilter' => ['except' => ''],
         'taskSearch' => ['except' => ''],
+        'listScope' => ['except' => 'my'],
+        'open' => ['except' => null],
     ];
+
+    public ?int $open = null;
 
     public function mount(): void
     {
         $this->authorize('esnad.tasks.view');
         $this->taskNotes = collect();
+
+        if (! in_array($this->listScope, ['my', 'delegated', 'all'], true)) {
+            $this->listScope = 'my';
+        }
+
+        if ($this->listScope === 'all' && ! auth()->user()->can('esnad.tasks.all.view')) {
+            $this->listScope = 'my';
+        }
+
+        if ($this->open) {
+            $this->openTaskView($this->open);
+        }
     }
 
     public function updatingStatusFilter(): void
     {
         $this->resetPage('myTasksPage');
         $this->resetPage('delegatedPage');
+        $this->resetPage('allTasksPage');
     }
 
     public function updatingTaskSearch(): void
     {
         $this->resetPage('myTasksPage');
         $this->resetPage('delegatedPage');
+        $this->resetPage('allTasksPage');
+    }
+
+    public function updatingListScope(): void
+    {
+        $this->resetPage('myTasksPage');
+        $this->resetPage('delegatedPage');
+        $this->resetPage('allTasksPage');
     }
 
     public function openTaskCreate(): void
@@ -286,14 +314,15 @@ class TasksIndex extends Component
         $query = Task::query()
             ->select(['id', 'title', 'description', 'status', 'priority', 'due_date', 'project_id', 'assigned_by', 'assigned_to', 'attachment_path', 'submitted_file'])
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
-            ->when($this->taskSearch, fn ($q) => $q->where('title', 'like', '%'.$this->taskSearch.'%'));
+            ->when($this->taskSearch, fn ($q) => $q->where('title', 'like', '%'.$this->taskSearch.'%'))
+            ->with(['project:id,name', 'assigner:id,name', 'assignee:id,name']);
 
         if ($scope === 'my') {
-            $query->where('assigned_to', $userId)
-                ->with(['project:id,name', 'assigner:id,name']);
-        } else {
-            $query->where('assigned_by', $userId)
-                ->with(['project:id,name', 'assignee:id,name']);
+            $query->where('assigned_to', $userId);
+        } elseif ($scope === 'delegated') {
+            $query->where('assigned_by', $userId);
+        } elseif ($scope === 'all') {
+            abort_unless(auth()->user()->can('esnad.tasks.all.view'), 403);
         }
 
         return $query->latest();
@@ -302,10 +331,15 @@ class TasksIndex extends Component
     public function render(): View
     {
         $userId = auth()->id();
+        $canSeeAll = auth()->user()->can('esnad.tasks.all.view');
 
         return view('livewire.tasks.tasks-index', [
             'myTasks' => $this->taskQuery($userId, 'my')->paginate(6, pageName: 'myTasksPage'),
             'assignedByMe' => $this->taskQuery($userId, 'delegated')->paginate(6, pageName: 'delegatedPage'),
+            'allTasks' => $canSeeAll && $this->listScope === 'all'
+                ? $this->taskQuery($userId, 'all')->paginate(12, pageName: 'allTasksPage')
+                : null,
+            'canSeeAll' => $canSeeAll,
             'users' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'projects' => Project::orderBy('name')->get(['id', 'name']),
             'statusOptions' => ['new', 'in_progress', 'pending_review', 'completed', 'overdue'],

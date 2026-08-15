@@ -212,7 +212,7 @@
                                     </button>
                                 @endcan
                                 @can('pay', $expense)
-                                    <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="markExpensePaid({{ $expense->id }})">
+                                    <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="openPayModal({{ $expense->id }})">
                                         تسجيل الدفع
                                     </button>
                                 @endcan
@@ -363,6 +363,32 @@
                         تأكيد الرفض
                     </button>
                     <button type="button" class="ds-btn ds-btn-outline" wire:click="closeRejectModal">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if ($showPayModal)
+        <div class="ds-modal-overlay" wire:click.self="$set('showPayModal', false)">
+            <div class="ds-modal" role="dialog" dir="rtl">
+                <div class="ds-modal-header">
+                    <h3>تسجيل الدفع</h3>
+                    <button type="button" class="ds-modal-close" wire:click="$set('showPayModal', false)">&times;</button>
+                </div>
+                <div class="ds-modal-body">
+                    <x-ds-form-group label="إثبات الدفع (اختياري)" :error="$errors->first('paymentProof')">
+                        <input type="file" class="ds-input" wire:model="paymentProof" accept=".pdf,.jpg,.jpeg,.png">
+                        <div wire:loading wire:target="paymentProof" class="ds-text-muted">جاري تجهيز الملف…</div>
+                        @if ($paymentProof)
+                            <p class="ds-badge ds-badge-success">تم تجهيز الملف: {{ $paymentProof->getClientOriginalName() }}</p>
+                        @endif
+                    </x-ds-form-group>
+                </div>
+                <div class="ds-modal-footer">
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="markExpensePaid({{ $payExpenseId }})" wire:loading.attr="disabled" wire:target="paymentProof,markExpensePaid">
+                        تأكيد الدفع
+                    </button>
+                    <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('showPayModal', false)">إلغاء</button>
                 </div>
             </div>
         </div>

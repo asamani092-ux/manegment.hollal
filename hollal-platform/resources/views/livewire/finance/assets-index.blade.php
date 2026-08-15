@@ -44,6 +44,9 @@
                 <td>
                     @if ($canManage)
                         <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openHandoverModal({{ $asset->id }})">تسليم</button>
+                        @if ($asset->current_holder_id)
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="receiveAsset({{ $asset->id }})">استلام</button>
+                        @endif
                     @endif
                 </td>
             </tr>

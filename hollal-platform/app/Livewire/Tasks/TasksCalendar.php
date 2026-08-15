@@ -3,15 +3,18 @@
 namespace App\Livewire\Tasks;
 
 use App\Models\LeaveRequest;
+use App\Models\Meeting;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Schema;
 use Livewire\Component;
 
 /**
- * 02-B3 — monthly calendar of task due dates + approved HR leaves.
+ * Monthly calendar: task due dates, approved leaves, and meetings for the user.
+ * Time: O(n) | Space: O(n)
  */
 class TasksCalendar extends Component
 {
@@ -25,7 +28,16 @@ class TasksCalendar extends Component
         $this->month = now()->format('Y-m');
     }
 
-    /** الشهر يصل من الواجهة، فأي قيمة غير Y-m ترتد إلى الشهر الحالي بدل رمي استثناء. */
+    public function previousMonth(): void
+    {
+        $this->month = $this->resolveMonthStart()->copy()->subMonth()->format('Y-m');
+    }
+
+    public function nextMonth(): void
+    {
+        $this->month = $this->resolveMonthStart()->copy()->addMonth()->format('Y-m');
+    }
+
     private function resolveMonthStart(): Carbon
     {
         try {
@@ -50,7 +62,7 @@ class TasksCalendar extends Component
         }
         $scopeIds = $scopeIds->unique()->values();
 
-        $tasks = Task::query()
+        $tasksByDay = Task::query()
             ->whereIn('assigned_to', $scopeIds)
             ->whereNotNull('due_date')
             ->whereBetween('due_date', [$start, $end])
@@ -60,7 +72,7 @@ class TasksCalendar extends Component
             ->groupBy(fn (Task $task) => $task->due_date->format('Y-m-d'));
 
         $leavesByDay = [];
-        if (\Illuminate\Support\Facades\Schema::hasTable('leave_requests')) {
+        if (Schema::hasTable('leave_requests')) {
             $leaves = LeaveRequest::query()
                 ->select(['id', 'employee_id', 'type', 'from_date', 'to_date', 'status'])
                 ->where('status', LeaveRequest::STATUS_APPROVED)
@@ -74,16 +86,34 @@ class TasksCalendar extends Component
                 $cursor = $leave->from_date->copy()->max($start);
                 $last = $leave->to_date->copy()->min($end);
                 while ($cursor->lte($last)) {
-                    $key = $cursor->format('Y-m-d');
-                    $leavesByDay[$key][] = $leave;
+                    $leavesByDay[$cursor->format('Y-m-d')][] = $leave;
                     $cursor->addDay();
                 }
             }
         }
 
+        $meetingsByDay = [];
+        if (Schema::hasTable('meetings') && Schema::hasTable('meeting_user')) {
+            $meetings = Meeting::query()
+                ->select(['id', 'title', 'scheduled_at', 'location', 'link', 'status'])
+                ->whereBetween('scheduled_at', [$start, $end])
+                ->where(function ($q) use ($scopeIds) {
+                    $q->whereIn('chair_id', $scopeIds)
+                        ->orWhereIn('secretary_id', $scopeIds)
+                        ->orWhereHas('attendees', fn ($a) => $a->whereIn('users.id', $scopeIds));
+                })
+                ->orderBy('scheduled_at')
+                ->get();
+
+            foreach ($meetings as $meeting) {
+                $meetingsByDay[$meeting->scheduled_at->format('Y-m-d')][] = $meeting;
+            }
+        }
+
         return view('livewire.tasks.tasks-calendar', [
-            'tasksByDay' => $tasks,
+            'tasksByDay' => $tasksByDay,
             'leavesByDay' => $leavesByDay,
+            'meetingsByDay' => $meetingsByDay,
             'monthLabel' => $start->translatedFormat('F Y'),
         ])->layout('layouts.app', ['title' => 'تقويم المهام']);
     }
