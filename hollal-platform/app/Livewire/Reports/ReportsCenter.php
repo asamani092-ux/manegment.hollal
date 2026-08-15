@@ -27,6 +27,9 @@ class ReportsCenter extends Component
 
     public ?int $organizationId = null;
 
+    /** Id of the frozen snapshot currently expanded for read-only preview. */
+    public ?int $previewSnapshotId = null;
+
     public function mount(): void
     {
         abort_unless($this->canAccessCenter(), 403);
@@ -108,6 +111,19 @@ class ReportsCenter extends Component
         $this->dispatch('ds-toast', message: 'حُفظت لقطة التقرير (غير قابلة للتعديل)');
     }
 
+    /** Expand a frozen snapshot inline to preview exactly what was saved. */
+    public function previewSnapshot(int $snapshotId): void
+    {
+        abort_unless($this->canAccessCenter(), 403);
+
+        $this->previewSnapshotId = $this->previewSnapshotId === $snapshotId ? null : $snapshotId;
+    }
+
+    public function closeSnapshotPreview(): void
+    {
+        $this->previewSnapshotId = null;
+    }
+
     public function exportCsv(): mixed
     {
         abort_unless(auth()->user()->can('reports.export'), 403);
@@ -146,15 +162,87 @@ class ReportsCenter extends Component
             auth()->user(),
         );
 
-        return response()->streamDownload(function () use ($payload) {
+        $sections = $this->exportSections($this->tab, $payload);
+
+        return response()->streamDownload(function () use ($sections, $label) {
             $handle = fopen('php://output', 'w');
-            fwrite($handle, "\xEF\xBB\xBF");
-            fputcsv($handle, ['المفتاح', 'القيمة']);
-            foreach ($payload as $key => $value) {
-                fputcsv($handle, [(string) $key, is_scalar($value) ? (string) $value : json_encode($value, JSON_UNESCAPED_UNICODE)]);
+            fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM — opens correctly in Excel with Arabic text
+            fputcsv($handle, [$label, 'مركز التقارير الموحّد — '.now()->format('Y-m-d H:i')]);
+
+            foreach ($sections as $sectionTitle => $rows) {
+                fputcsv($handle, []);
+                fputcsv($handle, [$sectionTitle]);
+                fputcsv($handle, ['المؤشر', 'القيمة']);
+                foreach ($rows as $key => $value) {
+                    fputcsv($handle, [
+                        (string) $key,
+                        is_scalar($value) || $value === null ? (string) ($value ?? '—') : json_encode($value, JSON_UNESCAPED_UNICODE),
+                    ]);
+                }
             }
+
             fclose($handle);
         }, 'report-'.$this->tab.'-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
+    /**
+     * Named, Arabic-labelled sections mirroring the on-screen preview — a real
+     * multi-section export rather than a raw key→value dump.
+     *
+     * @param  array<string, mixed>  $payload
+     * @return array<string, array<string, mixed>>
+     */
+    private function exportSections(string $tab, array $payload): array
+    {
+        return match ($tab) {
+            'project' => [
+                'لوحة المشروع' => [
+                    'الإنجاز الموزون %' => $payload['weighted_progress'] ?? null,
+                    'المهام' => $payload['tasks_total'] ?? null,
+                    'المقيّمة نهائيًا' => $payload['tasks_evaluated'] ?? null,
+                    'المتأخرة' => $payload['tasks_overdue'] ?? null,
+                    'الموازنة' => $payload['budget'] ?? null,
+                    'المستهلك' => $payload['consumed'] ?? null,
+                    'المتبقي' => $payload['remaining'] ?? null,
+                    'نسبة الاستهلاك %' => $payload['consumption_percent'] ?? null,
+                    'المستفيدون' => $payload['beneficiaries'] ?? null,
+                    'نسبة التحسن %' => $payload['improvement_percent'] ?? null,
+                    'نسبة الرضا %' => $payload['satisfaction_percent'] ?? null,
+                    'الزيارات المنفذة' => $payload['visits_done'] ?? null,
+                    'الاستشارات المغلقة' => $payload['consultations_closed'] ?? null,
+                ],
+            ],
+            'impact' => [
+                'تقرير الأثر' => [
+                    'عدد السجلات' => $payload['records'] ?? null,
+                    'المستفيدون' => $payload['beneficiaries'] ?? null,
+                    'متوسط التحسن %' => $payload['avg_improvement_percent'] ?? null,
+                    'متوسط الرضا %' => $payload['avg_satisfaction_percent'] ?? null,
+                ],
+            ],
+            'kpi' => [
+                'مؤشرات الأداء' => [
+                    'نسبة إنجاز المهام %' => $payload['task_completion_percent'] ?? null,
+                    'المهام المتأخرة' => $payload['overdue_tasks'] ?? null,
+                    'متوسط تقدم المشاريع %' => $payload['avg_project_progress_percent'] ?? null,
+                    'المشاريع النشطة' => $payload['active_projects'] ?? null,
+                    'الشراكات في الرحلة' => $payload['active_partnerships'] ?? null,
+                    'الموظفون' => $payload['employees'] ?? null,
+                ],
+            ],
+            default => [
+                'التقرير الشهري' => [
+                    'المهام المُنشأة' => $payload['tasks_created'] ?? null,
+                    'المهام المكتملة' => $payload['tasks_completed'] ?? null,
+                    'المهام المتأخرة' => $payload['tasks_overdue'] ?? null,
+                    'المشاريع النشطة' => $payload['projects_active'] ?? null,
+                    'المشاريع المغلقة' => $payload['projects_closed'] ?? null,
+                    'المصروف' => $payload['spend'] ?? null,
+                    'الزيارات المنفذة' => $payload['visits_done'] ?? null,
+                ],
+                'الشراكات حسب المرحلة' => $payload['partnerships_by_stage'] ?? [],
+            ],
+        };
     }
 
     public function render(): View
@@ -175,6 +263,7 @@ class ReportsCenter extends Component
             'projects' => Project::orderBy('name')->get(['id', 'name']),
             'organizations' => Organization::orderBy('name')->get(['id', 'name']),
             'snapshots' => ReportSnapshot::orderByDesc('id')->limit(25)->get(),
+            'previewedSnapshot' => $this->previewSnapshotId ? ReportSnapshot::find($this->previewSnapshotId) : null,
             'canExport' => $user->can('reports.export'),
         ])->layout('layouts.app', ['title' => 'مركز التقارير']);
     }

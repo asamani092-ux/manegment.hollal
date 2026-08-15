@@ -45,6 +45,8 @@ class AuthController extends Controller
 
             $this->auditLog->record('auth.login_failure', metadata: [
                 'phone' => $credentials['phone'],
+                'failed' => true,
+                'reason' => 'بيانات الدخول غير صحيحة',
             ]);
 
             return back()

@@ -29,6 +29,7 @@ class AuditLog extends Model
         'expense.rejected' => 'رفض صرف',
         'expense.returned' => 'إعادة صرف للمراجعة',
         'expense.paid' => 'صرف مدفوع',
+        'role.created' => 'إنشاء دور',
         'role.updated' => 'تحديث دور',
         'role.deleted' => 'حذف دور',
         'file.download' => 'تنزيل ملف',
@@ -70,35 +71,48 @@ class AuditLog extends Model
         return self::ACTION_LABELS[$action] ?? $action;
     }
 
-    /** Human-readable status derived from metadata when present. */
-    public function displayStatus(): ?string
+    /** نجح/فشل — whether the audited attempt itself succeeded. */
+    public function displayStatus(): string
     {
-        $meta = $this->metadata;
-        if (! is_array($meta) || $meta === []) {
+        return $this->isFailure() ? 'فشل' : 'نجح';
+    }
+
+    /** Failure reason, only meaningful when {@see displayStatus()} is «فشل». */
+    public function statusReason(): ?string
+    {
+        if (! $this->isFailure()) {
             return null;
         }
 
-        if (isset($meta['status']) && is_scalar($meta['status'])) {
-            return (string) $meta['status'];
+        $meta = $this->metadata;
+        $reason = is_array($meta)
+            ? ($meta['reason'] ?? $meta['error'] ?? $meta['failure_reason'] ?? null)
+            : null;
+
+        if (is_scalar($reason)) {
+            return (string) $reason;
         }
 
-        if (! empty($meta['final'])) {
-            return 'نهائي';
-        }
+        return match ($this->action) {
+            'auth.login_failure' => 'بيانات الدخول غير صحيحة',
+            default => null,
+        };
+    }
 
-        if (isset($meta['stage']) && is_scalar($meta['stage'])) {
-            $stage = (string) $meta['stage'];
-            if (isset($meta['next_stage']) && is_scalar($meta['next_stage'])) {
-                return $stage.' ← '.(string) $meta['next_stage'];
+    private function isFailure(): bool
+    {
+        $meta = $this->metadata;
+        if (is_array($meta)) {
+            if (($meta['failed'] ?? false) === true) {
+                return true;
             }
-
-            return 'مرحلة: '.$stage;
+            if (($meta['success'] ?? null) === false) {
+                return true;
+            }
         }
 
-        if (isset($meta['file_type']) && is_scalar($meta['file_type'])) {
-            return (string) $meta['file_type'];
-        }
-
-        return null;
+        return str_ends_with($this->action, '_failure')
+            || str_ends_with($this->action, '.failed')
+            || str_ends_with($this->action, '_failed');
     }
 }

@@ -198,7 +198,7 @@ class ReportRound2Batch5Test extends TestCase
         Livewire::actingAs($actor)
             ->test(AuditLogIndex::class)
             ->assertSee('اعتماد صرف')
-            ->assertSee('نهائي')
+            ->assertSee('نجح')
             ->assertSeeHtml('الحالة');
     }
 }
