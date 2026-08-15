@@ -26,29 +26,65 @@ class FinancialDocumentsService
         $rows = $rows->merge(
             ExpenseRequest::query()
                 ->whereNotNull('official_document_path')
-                ->get(['id', 'official_document_path', 'project_id', 'created_at'])
-                ->map(fn ($e) => $this->row('expense_invoice', 'فاتورة مصروف', $e->official_document_path, $e->created_at, $e->project_id, $e->id))
+                ->with('requester:id,name')
+                ->get(['id', 'official_document_path', 'project_id', 'created_at', 'requester_id'])
+                ->map(fn ($e) => $this->row(
+                    'expense_invoice',
+                    'فاتورة مصروف',
+                    $e->official_document_path,
+                    $e->created_at,
+                    $e->project_id,
+                    $e->id,
+                    $e->requester?->name
+                ))
         );
 
         $rows = $rows->merge(
             Revenue::query()
                 ->whereNotNull('external_document_path')
-                ->get(['id', 'external_document_path', 'created_at'])
-                ->map(fn ($r) => $this->row('revenue_document', 'مستند إيراد', $r->external_document_path, $r->created_at, null, $r->id))
+                ->with('confirmer:id,name')
+                ->get(['id', 'external_document_path', 'created_at', 'confirmed_by'])
+                ->map(fn ($r) => $this->row(
+                    'revenue_document',
+                    'مستند إيراد',
+                    $r->external_document_path,
+                    $r->created_at,
+                    null,
+                    $r->id,
+                    $r->confirmer?->name
+                ))
         );
 
         $rows = $rows->merge(
             CustodySettlementItem::query()
                 ->whereNotNull('invoice_file')
-                ->get(['id', 'invoice_file', 'created_at'])
-                ->map(fn ($c) => $this->row('custody_invoice', 'فاتورة عهدة', $c->invoice_file, $c->created_at, null, $c->id))
+                ->with('custody.employee:id,name')
+                ->get(['id', 'invoice_file', 'created_at', 'custody_id'])
+                ->map(fn ($c) => $this->row(
+                    'custody_invoice',
+                    'فاتورة عهدة',
+                    $c->invoice_file,
+                    $c->created_at,
+                    null,
+                    $c->id,
+                    $c->custody?->employee?->name
+                ))
         );
 
         $rows = $rows->merge(
             PayrollRunItem::query()
                 ->whereNotNull('proof_file')
-                ->get(['id', 'proof_file', 'created_at'])
-                ->map(fn ($p) => $this->row('payroll_proof', 'إثبات صرف راتب', $p->proof_file, $p->created_at, null, $p->id))
+                ->with('employee:id,name')
+                ->get(['id', 'proof_file', 'created_at', 'employee_id'])
+                ->map(fn ($p) => $this->row(
+                    'payroll_proof',
+                    'إثبات صرف راتب',
+                    $p->proof_file,
+                    $p->created_at,
+                    null,
+                    $p->id,
+                    $p->employee?->name
+                ))
         );
 
         if (! empty($filters['type'])) {
@@ -67,8 +103,19 @@ class FinancialDocumentsService
     }
 
     /** @return array<string, mixed> */
-    private function row(string $type, string $label, string $path, $date, ?int $projectId = null, ?int $sourceId = null): array
-    {
+    private function row(
+        string $type,
+        string $label,
+        string $path,
+        $date,
+        ?int $projectId = null,
+        ?int $sourceId = null,
+        ?string $uploader = null,
+    ): array {
+        $downloadUrl = $sourceId
+            ? route('financial-documents.files.download', ['type' => $type, 'id' => $sourceId])
+            : null;
+
         return [
             'type' => $type,
             'label' => $label,
@@ -77,9 +124,9 @@ class FinancialDocumentsService
             'month' => $date?->format('Y-m'),
             'project_id' => $projectId,
             'source_id' => $sourceId,
-            'download_url' => $sourceId
-                ? route('financial-documents.files.download', ['type' => $type, 'id' => $sourceId])
-                : null,
+            'uploader' => $uploader ?: '—',
+            'download_url' => $downloadUrl,
+            'preview_url' => $downloadUrl ? $downloadUrl.'?inline=1' : null,
         ];
     }
 }

@@ -99,11 +99,8 @@ class FinancialReportService
             .'</tbody></table></div>';
 
         $pdf = Pdf::loadHTML($html)->setPaper('a4');
-        foreach (PdfArabic::pdfOptions() as $key => $value) {
-            $pdf->setOption($key, $value);
-        }
 
-        return $pdf->output();
+        return PdfArabic::applyOptions($pdf)->output();
     }
 
     /**

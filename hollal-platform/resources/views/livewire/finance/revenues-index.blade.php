@@ -52,7 +52,26 @@
                 <td><x-ds-status-badge :status="$revenue->status" /></td>
                 <td>
                     @if ($revenue->external_document_path)
-                        <a class="ds-link" href="{{ route('revenues.files.download', $revenue) }}">تحميل / معاينة</a>
+                        <div class="ds-toolbar-actions" style="gap:.35rem">
+                            <a
+                                class="ds-btn ds-btn-outline ds-btn-sm"
+                                href="{{ route('revenues.files.download', $revenue) }}?inline=1"
+                                target="_blank"
+                                rel="noopener"
+                                title="معاينة"
+                                aria-label="معاينة الشاهد"
+                            >
+                                <i class="fas fa-eye" aria-hidden="true"></i>
+                            </a>
+                            <a
+                                class="ds-btn ds-btn-outline ds-btn-sm"
+                                href="{{ route('revenues.files.download', $revenue) }}"
+                                title="تحميل"
+                                aria-label="تحميل الشاهد"
+                            >
+                                <i class="fas fa-download" aria-hidden="true"></i>
+                            </a>
+                        </div>
                     @else
                         —
                     @endif
