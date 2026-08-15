@@ -2,17 +2,24 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Finance\AssetsIndex;
 use App\Models\Asset;
 use App\Models\AssetCategory;
+use App\Models\Project;
 use App\Models\User;
 use App\Services\AssetService;
+use App\Services\BudgetService;
 use App\Services\OffboardingService;
+use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * 04-B5 — asset movements + handover PDF, condition audit, offboarding hold.
+ * 04-B5 / Wave D-deep — asset movements + handover PDF, condition audit,
+ * offboarding hold, independent register (useful life + book value,
+ * active/all filtering — never feeds project budgets).
  */
 class AssetTest extends TestCase
 {
@@ -84,5 +91,102 @@ class AssetTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         app(OffboardingService::class)->complete($holder, $actor);
+    }
+
+    public function test_book_value_depreciates_straight_line_over_useful_life(): void
+    {
+        $asset = Asset::create([
+            'code' => 'AST-TEST-1',
+            'name_ar' => 'حاسب محمول',
+            'condition' => Asset::CONDITION_GOOD,
+            'purchase_amount' => 10000,
+            'useful_life_years' => 5,
+            'purchase_date' => now()->subYears(2),
+        ]);
+
+        // 2 of 5 years elapsed → ~60% of purchase value remains.
+        $this->assertEqualsWithDelta(6000.0, $asset->bookValue(), 25.0);
+    }
+
+    public function test_book_value_never_goes_below_zero_past_useful_life(): void
+    {
+        $asset = Asset::create([
+            'code' => 'AST-TEST-2',
+            'name_ar' => 'طابعة قديمة',
+            'condition' => Asset::CONDITION_GOOD,
+            'purchase_amount' => 1000,
+            'useful_life_years' => 2,
+            'purchase_date' => now()->subYears(10),
+        ]);
+
+        $this->assertSame(0.0, $asset->bookValue());
+    }
+
+    public function test_book_value_falls_back_to_purchase_amount_without_useful_life(): void
+    {
+        $asset = Asset::create([
+            'code' => 'AST-TEST-3',
+            'name_ar' => 'كرسي',
+            'condition' => Asset::CONDITION_GOOD,
+            'purchase_amount' => 500,
+        ]);
+
+        $this->assertSame(500.0, $asset->bookValue());
+    }
+
+    public function test_useful_life_is_set_at_creation_via_the_screen(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $user = User::factory()->create();
+        $user->givePermissionTo(['finance.assets.view', 'finance.assets.manage']);
+
+        Livewire::actingAs($user)->test(AssetsIndex::class)
+            ->call('openCreateModal')
+            ->set('name_ar', 'خزانة ملفات')
+            ->set('purchase_amount', '2000')
+            ->set('useful_life_years', '4')
+            ->call('saveAsset')
+            ->assertHasNoErrors();
+
+        $asset = Asset::where('name_ar', 'خزانة ملفات')->firstOrFail();
+        $this->assertSame(4, $asset->useful_life_years);
+    }
+
+    public function test_is_active_excludes_damaged_and_retired(): void
+    {
+        $good = app(AssetService::class)->create('أصل سليم', null);
+        $damaged = app(AssetService::class)->create('أصل تالف', null, ['condition' => Asset::CONDITION_DAMAGED]);
+        $retired = app(AssetService::class)->create('أصل مستبعد', null, ['condition' => Asset::CONDITION_RETIRED]);
+
+        $this->assertTrue($good->isActive());
+        $this->assertFalse($damaged->isActive());
+        $this->assertFalse($retired->isActive());
+    }
+
+    public function test_default_screen_view_excludes_damaged_and_retired_assets(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $user = User::factory()->create();
+        $user->givePermissionTo('finance.assets.view');
+
+        app(AssetService::class)->create('أصل نشط', null);
+        app(AssetService::class)->create('أصل تالف للاستبعاد', null, ['condition' => Asset::CONDITION_DAMAGED]);
+
+        Livewire::actingAs($user)->test(AssetsIndex::class)
+            ->assertSee('أصل نشط')
+            ->assertDontSee('أصل تالف للاستبعاد')
+            ->call('setStatusTab', 'all')
+            ->assertSee('أصل تالف للاستبعاد');
+    }
+
+    public function test_assets_never_appear_in_the_project_budget_formula(): void
+    {
+        $project = Project::factory()->create(['budget' => 10000]);
+        app(AssetService::class)->create('أصل غالي', null, ['purchase_amount' => 9000]);
+
+        $consumption = app(BudgetService::class)->consumption($project);
+
+        $this->assertSame(0.0, $consumption['actual_spend']);
+        $this->assertSame(0.0, $consumption['consumed']);
     }
 }

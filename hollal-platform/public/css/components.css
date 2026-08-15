@@ -533,6 +533,13 @@
   border: 1px solid rgba(148, 163, 184, 0.25);
 }
 
+/* Assets register — مستبعد (retired) */
+.ds-badge-brown {
+  background: rgba(141, 92, 58, 0.18);
+  color: #c98f5e;
+  border: 1px solid rgba(141, 92, 58, 0.32);
+}
+
 /* ── Chips (removable attendee/guest picks) ── */
 .ds-chip-list {
   display: flex;

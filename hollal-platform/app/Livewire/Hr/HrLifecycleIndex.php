@@ -34,9 +34,20 @@ class HrLifecycleIndex extends Component
     /** tasks|holds */
     public string $detailTab = 'holds';
 
+    /** Deep link support: /hr-lifecycle?open=<userId> opens the holds panel directly. */
+    public ?int $open = null;
+
+    protected $queryString = [
+        'open' => ['except' => null],
+    ];
+
     public function mount(): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        if ($this->open) {
+            $this->openDetails($this->open);
+        }
     }
 
     public function askStartOffboarding(int $userId): void

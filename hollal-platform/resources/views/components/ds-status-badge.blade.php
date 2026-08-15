@@ -36,6 +36,12 @@
         'موقوفة' => 'danger',
         'منتهية' => 'danger',
         'منتهية_علاقته' => 'danger',
+
+        // 04-B5 / Wave D-deep — asset condition colors: جيد=أخضر · صيانة=أصفر · تالف=أحمر · مستبعد=بني
+        'جيد' => 'success',
+        'صيانة' => 'warning',
+        'تالف' => 'danger',
+        'مستبعد' => 'brown',
     ];
 
     $tone = $variant ?? ($palette[trim((string) $status)] ?? 'info');
