@@ -26,31 +26,17 @@ class DashboardIndex extends Component
 {
     use AuthorizesRequests;
 
+    /** Collapsed by default so «يحتاج تدخلك» does not dominate the first viewport. */
+    public bool $actionPanelOpen = false;
+
     public function mount(): void
     {
         $this->authorize('dashboard.view');
     }
 
-    /**
-     * 00-B5 — check-in placeholder. Visible only for attendance-enabled users;
-     * timestamp persistence and full logic are wired in 01-B4.
-     */
-    public function checkIn(): void
+    public function toggleActionPanel(): void
     {
-        abort_unless((bool) auth()->user()->attendance_enabled, 403);
-
-        app(\App\Services\AttendanceService::class)->checkIn(auth()->user());
-
-        $this->dispatch('toast', type: 'success', message: 'تم تسجيل الحضور');
-    }
-
-    public function checkOut(): void
-    {
-        abort_unless((bool) auth()->user()->attendance_enabled, 403);
-
-        app(\App\Services\AttendanceService::class)->checkOut(auth()->user());
-
-        $this->dispatch('toast', type: 'success', message: 'تم تسجيل الانصراف');
+        $this->actionPanelOpen = ! $this->actionPanelOpen;
     }
 
     public function render(): View
@@ -73,7 +59,6 @@ class DashboardIndex extends Component
             'myTasksToday' => $this->myTasksToday($user),
             'myOpenTasks' => $this->myOpenTasks($user),
             'myUpcomingMeetings' => $this->myUpcomingMeetings($user),
-            'attendanceEnabled' => (bool) $user->attendance_enabled,
             'dutiesFileUrl' => $this->officialDutiesFileUrl(),
         ])->layout('layouts.app', ['title' => 'الرئيسية']);
     }
@@ -88,7 +73,7 @@ class DashboardIndex extends Component
             $items->push([
                 'kind' => 'overdue_task',
                 'label' => 'مهمة متأخرة: '.$task->title,
-                'url' => route('tasks.index'),
+                'url' => \App\Support\RecordUrl::task($task->id),
                 'meta' => 'المكلف: '.$assigneeName,
             ]);
         }
@@ -111,7 +96,7 @@ class DashboardIndex extends Component
                     $items->push([
                         'kind' => 'expense_pending',
                         'label' => 'طلب صرف بانتظار الموافقة: '.($typeLabels[$expense->type] ?? $expense->type),
-                        'url' => route('expenses.index'),
+                        'url' => \App\Support\RecordUrl::expense($expense->id),
                         'meta' => number_format((float) $expense->amount, 2).' ر.س — '.$expense->requester?->name,
                     ]);
                 });
@@ -146,7 +131,7 @@ class DashboardIndex extends Component
                     $items->push([
                         'kind' => 'custody_pending',
                         'label' => 'عهدة بانتظار الاعتماد: '.number_format((float) $custody->amount, 2).' ر.س',
-                        'url' => route('custodies.index'),
+                        'url' => \App\Support\RecordUrl::custody($custody->id),
                         'meta' => $custody->employee?->name ?? '—',
                     ]);
                 });
@@ -207,7 +192,7 @@ class DashboardIndex extends Component
                     $items->push([
                         'kind' => 'partnership_expiring',
                         'label' => 'شراكة تنتهي قريباً: '.$partnership->entity_name,
-                        'url' => route('projects.index'),
+                        'url' => \App\Support\RecordUrl::partnership($partnership->id),
                         'meta' => 'تاريخ الانتهاء: '.$expiry,
                     ]);
                 });

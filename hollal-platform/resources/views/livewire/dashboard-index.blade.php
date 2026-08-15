@@ -18,52 +18,51 @@
 
     <x-ds-page-header title="الرئيسية" />
 
-    @if ($attendanceEnabled || $dutiesFileUrl)
+    @if ($dutiesFileUrl)
         <section class="ds-section ds-section-spaced">
             <div class="ds-page-toolbar">
-                @if ($attendanceEnabled)
-                    <button type="button" class="ds-btn ds-btn-primary" wire:click="checkIn">
-                        <i class="fas fa-right-to-bracket" aria-hidden="true"></i>
-                        تسجيل حضور
-                    </button>
-                    <button type="button" class="ds-btn ds-btn-outline" wire:click="checkOut">
-                        <i class="fas fa-right-from-bracket" aria-hidden="true"></i>
-                        تسجيل انصراف
-                    </button>
-                @endif
-                @if ($dutiesFileUrl)
-                    <a href="{{ $dutiesFileUrl }}" class="ds-btn ds-btn-outline">
-                        <i class="fas fa-file-lines" aria-hidden="true"></i>
-                        ملف المهام الرسمي
-                    </a>
-                @endif
+                <a href="{{ $dutiesFileUrl }}" class="ds-btn ds-btn-outline">
+                    <i class="fas fa-file-lines" aria-hidden="true"></i>
+                    ملف المهام الرسمي
+                </a>
             </div>
         </section>
     @endif
 
     @if ($showActionSection)
-        <section class="ds-section ds-alert-warning ds-alert-spaced">
-            <h2 class="ds-section-title">
-                <i class="fas fa-bell ds-section-icon"></i>
-                يحتاج تدخلك
-            </h2>
-            <div>
-                @foreach ($actionItems as $item)
-                    <div class="ds-stat-mini" wire:key="action-{{ $item['kind'] }}-{{ $loop->index }}">
-                        <div>
-                            <i class="fas {{ $actionIcons[$item['kind']] ?? 'fa-circle' }} ds-section-icon"></i>
-                            @if ($item['url'])
-                                <a href="{{ $item['url'] }}" class="ds-link">{{ $item['label'] }}</a>
-                            @else
-                                <span>{{ $item['label'] }}</span>
-                            @endif
-                            @if ($item['meta'])
-                                <div class="ds-text-muted">{{ $item['meta'] }}</div>
-                            @endif
+        <section class="ds-section ds-alert-warning ds-alert-spaced ds-action-panel">
+            <button
+                type="button"
+                class="ds-action-panel-toggle"
+                wire:click="toggleActionPanel"
+                aria-expanded="{{ $actionPanelOpen ? 'true' : 'false' }}"
+            >
+                <span>
+                    <i class="fas fa-bell ds-section-icon" aria-hidden="true"></i>
+                    يحتاج تدخلك
+                    <span class="ds-badge ds-badge-warning">{{ $actionItems->count() }}</span>
+                </span>
+                <i class="fas {{ $actionPanelOpen ? 'fa-chevron-up' : 'fa-chevron-down' }}" aria-hidden="true"></i>
+            </button>
+            @if ($actionPanelOpen)
+                <div class="ds-action-panel-body">
+                    @foreach ($actionItems as $item)
+                        <div class="ds-stat-mini" wire:key="action-{{ $item['kind'] }}-{{ $loop->index }}">
+                            <div>
+                                <i class="fas {{ $actionIcons[$item['kind']] ?? 'fa-circle' }} ds-section-icon"></i>
+                                @if ($item['url'])
+                                    <a href="{{ $item['url'] }}" class="ds-link">{{ $item['label'] }}</a>
+                                @else
+                                    <span>{{ $item['label'] }}</span>
+                                @endif
+                                @if ($item['meta'])
+                                    <div class="ds-text-muted">{{ $item['meta'] }}</div>
+                                @endif
+                            </div>
                         </div>
-                    </div>
-                @endforeach
-            </div>
+                    @endforeach
+                </div>
+            @endif
         </section>
     @endif
 
