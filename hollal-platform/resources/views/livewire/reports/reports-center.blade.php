@@ -1,15 +1,19 @@
 <x-ds-page>
     <x-ds-page-header title="مركز التقارير الموحّد" />
 
+    <nav class="ds-tabs" role="tablist">
+        <button type="button" class="ds-tab {{ $tab === 'monthly' ? 'ds-tab-active' : '' }}" wire:click="setTab('monthly')">التقرير الشهري</button>
+        <button type="button" class="ds-tab {{ $tab === 'project' ? 'ds-tab-active' : '' }}" wire:click="setTab('project')">لوحة المشروع</button>
+        <button type="button" class="ds-tab {{ $tab === 'impact' ? 'ds-tab-active' : '' }}" wire:click="setTab('impact')">الأثر</button>
+        <button type="button" class="ds-tab {{ $tab === 'kpi' ? 'ds-tab-active' : '' }}" wire:click="setTab('kpi')">مؤشرات الأداء</button>
+    </nav>
+
     <section class="ds-section ds-filter-bar">
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('monthly')">التقرير الشهري</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('project')">لوحة المشروع</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('impact')">الأثر</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('kpi')">مؤشرات الأداء</button>
-        <button type="button" class="ds-btn ds-btn-primary" wire:click="takeSnapshot">حفظ لقطة</button>
+        <button type="button" class="ds-btn ds-btn-primary" wire:click="takeSnapshot" title="يحفظ نسخة ثابتة داخل المنصة للمراجعة لاحقاً">حفظ لقطة</button>
         @if ($canExport)
-            <button type="button" class="ds-btn ds-btn-outline" wire:click="exportCsv">تصدير CSV</button>
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="exportCsv" title="ينزّل ملف Excel متعدد الأوراق بالعربية">تصدير Excel</button>
         @endif
+        <p class="ds-text-muted" style="margin:0">اللقطة = حفظ داخل المنصة · التصدير = تنزيل ملف مفصّل</p>
     </section>
 
     @if ($tab === 'monthly' && $monthly)

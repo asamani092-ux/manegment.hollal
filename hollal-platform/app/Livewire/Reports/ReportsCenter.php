@@ -102,14 +102,15 @@ class ReportsCenter extends Component
 
         $service = app(ReportCenterService::class);
         $month = preg_match('/^\d{4}-\d{2}$/', $this->month) === 1 ? $this->month : now()->format('Y-m');
-        $payload = match ($this->tab) {
-            'project' => $this->projectId
-                ? $service->projectDashboard(Project::findOrFail($this->projectId))
-                : [],
-            'impact' => $service->impact($this->organizationId ? Organization::find($this->organizationId) : null),
-            'kpi' => $service->kpis(),
-            default => $service->monthly($month),
-        };
+
+        $sheets = [
+            'شهري' => ($service->monthly($month)),
+            'مؤشرات' => $service->kpis(),
+            'أثر' => $service->impact($this->organizationId ? Organization::find($this->organizationId) : null),
+        ];
+        if ($this->projectId) {
+            $sheets['مشروع'] = $service->projectDashboard(Project::findOrFail($this->projectId));
+        }
 
         \App\Models\AuditLog::create([
             'actor_id' => auth()->id(),
@@ -117,19 +118,31 @@ class ReportsCenter extends Component
             'target_type' => ReportSnapshot::class,
             'target_id' => null,
             'ip_address' => request()->ip(),
-            'metadata' => ['tab' => $this->tab, 'month' => $month],
+            'metadata' => ['tab' => $this->tab, 'month' => $month, 'format' => 'xlsx-xml'],
             'created_at' => now(),
         ]);
 
-        return response()->streamDownload(function () use ($payload) {
-            $handle = fopen('php://output', 'w');
-            fwrite($handle, "\xEF\xBB\xBF");
-            fputcsv($handle, ['المفتاح', 'القيمة']);
+        $xml = '<?xml version="1.0" encoding="UTF-8"?>'
+            .'<?mso-application progid="Excel.Sheet"?>'
+            .'<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"'
+            .' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">';
+
+        foreach ($sheets as $name => $payload) {
+            $xml .= '<Worksheet ss:Name="'.e($name).'"><Table>';
+            $xml .= '<Row><Cell><Data ss:Type="String">المفتاح</Data></Cell><Cell><Data ss:Type="String">القيمة</Data></Cell></Row>';
             foreach ($payload as $key => $value) {
-                fputcsv($handle, [(string) $key, is_scalar($value) ? (string) $value : json_encode($value, JSON_UNESCAPED_UNICODE)]);
+                $val = is_scalar($value) ? (string) $value : json_encode($value, JSON_UNESCAPED_UNICODE);
+                $xml .= '<Row><Cell><Data ss:Type="String">'.e((string) $key).'</Data></Cell>'
+                    .'<Cell><Data ss:Type="String">'.e($val).'</Data></Cell></Row>';
             }
-            fclose($handle);
-        }, 'report-'.$this->tab.'-'.now()->format('Ymd-His').'.csv', ['Content-Type' => 'text/csv; charset=UTF-8']);
+            $xml .= '</Table></Worksheet>';
+        }
+        $xml .= '</Workbook>';
+
+        return response($xml, 200, [
+            'Content-Type' => 'application/vnd.ms-excel; charset=UTF-8',
+            'Content-Disposition' => 'attachment; filename="report-'.now()->format('Ymd-His').'.xls"',
+        ]);
     }
 
     public function render(): View

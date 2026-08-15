@@ -41,6 +41,7 @@ class AuditLogIndex extends Component
     public function query()
     {
         return AuditLog::query()
+            ->select(['id', 'actor_id', 'action', 'target_type', 'target_id', 'metadata', 'created_at'])
             ->when($this->actionFilter !== '', fn ($q) => $q->where('action', 'like', '%'.$this->actionFilter.'%'))
             ->when($this->actorFilter !== '', fn ($q) => $q->whereHas('actor', fn ($a) => $a->where('name', 'like', '%'.$this->actorFilter.'%')))
             ->when($this->fromDate !== '', fn ($q) => $q->whereDate('created_at', '>=', $this->fromDate))
@@ -71,15 +72,16 @@ class AuditLogIndex extends Component
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
             fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
-            fputcsv($handle, ['التاريخ', 'الإجراء', 'المنفذ', 'الهدف', 'العنوان IP']);
+            fputcsv($handle, ['التاريخ', 'الإجراء', 'المنفذ', 'الهدف', 'الحالة', 'سبب الفشل']);
 
             foreach ($rows as $row) {
                 fputcsv($handle, [
                     $row->created_at?->format('Y-m-d H:i:s'),
-                    $row->action,
+                    $row->actionLabel(),
                     $row->actor?->name ?? '—',
-                    trim(($row->target_type ?? '').' #'.($row->target_id ?? '')),
-                    $row->ip_address ?? '—',
+                    trim(class_basename((string) $row->target_type).' #'.($row->target_id ?? '')),
+                    $row->outcomeStatus(),
+                    $row->outcomeReason() ?? '—',
                 ]);
             }
 

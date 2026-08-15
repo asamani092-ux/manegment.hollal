@@ -8,15 +8,18 @@ use App\Services\RevenueService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
- * 04-B4 UI — manual revenue entry + listing.
- * Time: O(n) list | Space: O(page size).
+ * Manual revenue entry + listing with evidence preview/download.
+ * Time: O(n) | Space: O(page)
  */
 class RevenuesIndex extends Component
 {
     use AuthorizesRequests;
+    use WithFileUploads;
     use WithPagination;
 
     public bool $showCreateModal = false;
@@ -26,6 +29,8 @@ class RevenuesIndex extends Component
     public ?int $category_id = null;
 
     public string $received_at = '';
+
+    public ?TemporaryUploadedFile $evidence = null;
 
     public string $sourceFilter = '';
 
@@ -65,7 +70,7 @@ class RevenuesIndex extends Component
     public function openCreateModal(): void
     {
         abort_unless(auth()->user()->can('finance.revenues.manage'), 403);
-        $this->reset(['amount', 'category_id']);
+        $this->reset(['amount', 'category_id', 'evidence']);
         $this->received_at = now()->toDateString();
         $this->showCreateModal = true;
     }
@@ -77,12 +82,16 @@ class RevenuesIndex extends Component
             'amount' => 'required|numeric|min:0.01',
             'category_id' => 'nullable|exists:revenue_categories,id',
             'received_at' => 'required|date',
+            'evidence' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
         ]);
+
+        $path = $this->evidence->store('revenues/evidence', 'local');
 
         app(RevenueService::class)->recordManual(
             (float) $this->amount,
             $this->category_id,
-            $this->received_at
+            $this->received_at,
+            $path,
         );
 
         $this->showCreateModal = false;
@@ -93,7 +102,7 @@ class RevenuesIndex extends Component
     {
         return view('livewire.finance.revenues-index', [
             'revenues' => Revenue::query()
-                ->select(['id', 'source_type', 'amount', 'received_at', 'status', 'created_at'])
+                ->select(['id', 'source_type', 'amount', 'received_at', 'status', 'external_document_path', 'created_at'])
                 ->when($this->sourceFilter, fn ($q) => $q->where('source_type', $this->sourceFilter))
                 ->when($this->dateFrom, fn ($q) => $q->whereDate('received_at', '>=', $this->dateFrom))
                 ->when($this->dateTo, fn ($q) => $q->whereDate('received_at', '<=', $this->dateTo))

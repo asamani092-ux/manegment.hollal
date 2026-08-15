@@ -88,14 +88,26 @@ class FinancialReportService
     {
         $report = $this->monthly($month);
 
-        $html = '<div dir="rtl" style="font-family: dejavu sans;">'
+        $html = '<div dir="rtl" style="font-family: amiri, dejavu sans;">'
             .'<h2>التقرير المالي الشهري — '.e($month).'</h2>'
-            .'<p>إجمالي المصروفات: '.number_format($report['expenses_total'], 2).'</p>'
-            .'<p>إجمالي الإيرادات: '.number_format($report['revenues_total'], 2).'</p>'
-            .'<p>إجمالي الرواتب: '.number_format($report['payroll_total'], 2).'</p>'
-            .'<p>الصافي: '.number_format($report['net'], 2).'</p>'
-            .'</div>';
+            .'<table border="1" cellspacing="0" cellpadding="4" width="100%">'
+            .'<tr><th>البند</th><th>القيمة</th></tr>'
+            .'<tr><td>إجمالي المصروفات</td><td>'.number_format($report['expenses_total'], 2).'</td></tr>'
+            .'<tr><td>إجمالي الإيرادات</td><td>'.number_format($report['revenues_total'], 2).'</td></tr>'
+            .'<tr><td>إجمالي الرواتب</td><td>'.number_format($report['payroll_total'], 2).'</td></tr>'
+            .'<tr><td>الصافي</td><td>'.number_format($report['net'], 2).'</td></tr>'
+            .'</table>';
 
-        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'dejavu sans')->output();
+        $html .= '<h3>المصروفات حسب التصنيف</h3><table border="1" cellspacing="0" cellpadding="4" width="100%"><tr><th>التصنيف</th><th>المبلغ</th></tr>';
+        foreach ($report['expenses_by_category'] as $row) {
+            $html .= '<tr><td>'.e((string) ($row['category_id'] ?? 'بدون')).'</td><td>'.number_format((float) $row['total'], 2).'</td></tr>';
+        }
+        $html .= '</table><h3>الإيرادات حسب التصنيف</h3><table border="1" cellspacing="0" cellpadding="4" width="100%"><tr><th>التصنيف</th><th>المبلغ</th></tr>';
+        foreach ($report['revenues_by_category'] as $row) {
+            $html .= '<tr><td>'.e((string) ($row['category_id'] ?? 'بدون')).'</td><td>'.number_format((float) $row['total'], 2).'</td></tr>';
+        }
+        $html .= '</table></div>';
+
+        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'amiri')->output();
     }
 }

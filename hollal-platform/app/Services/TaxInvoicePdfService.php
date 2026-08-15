@@ -25,8 +25,8 @@ class TaxInvoicePdfService
                 .'</tr>';
         }
 
-        $html = '<div dir="rtl" style="font-family: dejavu sans;">'
-            .'<h2>فاتورة ضريبية — '.e($invoice->number).'</h2>'
+        $html = '<div dir="rtl" style="font-family: amiri, dejavu sans;">'
+            .'<h2>فاتورة '.e($invoice->invoice_type ?? 'ضريبية').' — '.e($invoice->number).'</h2>'
             .'<p>البائع: '.e($invoice->seller_name).' — الرقم الضريبي: '.e((string) $invoice->seller_vat_number).'</p>'
             .'<p>المشتري: '.e($invoice->buyer_name).' — الرقم الضريبي: '.e((string) $invoice->buyer_vat_number).'</p>'
             .'<p>تاريخ الإصدار: '.e($invoice->issued_at?->format('Y-m-d H:i')).' — الوضع: '.e($invoice->mode).'</p>'
@@ -39,6 +39,6 @@ class TaxInvoicePdfService
             .'<p style="font-size:9px;">QR (TLV base64): '.e((string) $invoice->qr_payload).'</p>'
             .'</div>';
 
-        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'dejavu sans')->output();
+        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'amiri')->output();
     }
 }

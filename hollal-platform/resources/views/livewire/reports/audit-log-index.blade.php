@@ -5,7 +5,7 @@
         <select class="ds-input" wire:model.live="actionFilter">
             <option value="">كل الإجراءات</option>
             @foreach ($actions as $action)
-                <option value="{{ $action }}">{{ $action }}</option>
+                <option value="{{ $action }}">{{ \App\Models\AuditLog::labelFor($action) }}</option>
             @endforeach
         </select>
         <input type="search" class="ds-input" placeholder="المنفّذ" wire:model.live="actorFilter">
@@ -21,19 +21,21 @@
                 <th>الإجراء</th>
                 <th>المنفّذ</th>
                 <th>الهدف</th>
-                <th>العنوان IP</th>
+                <th>الحالة</th>
+                <th>سبب الفشل</th>
             </tr>
         </x-slot:head>
         @forelse ($logs as $log)
             <tr wire:key="audit-{{ $log->id }}">
                 <td dir="ltr">{{ $log->created_at?->format('Y-m-d H:i:s') }}</td>
-                <td>{{ $log->action }}</td>
+                <td>{{ $log->actionLabel() }}</td>
                 <td>{{ $log->actor?->name ?? '—' }}</td>
-                <td dir="ltr">{{ class_basename((string) $log->target_type) }} #{{ $log->target_id ?? '—' }}</td>
-                <td dir="ltr">{{ $log->ip_address ?? '—' }}</td>
+                <td>{{ class_basename((string) $log->target_type) }} #{{ $log->target_id ?? '—' }}</td>
+                <td>{{ $log->outcomeStatus() }}</td>
+                <td>{{ $log->outcomeReason() ?? '—' }}</td>
             </tr>
         @empty
-            <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد سجلات</td></tr>
+            <tr><td colspan="6" class="ds-text-muted ds-table-empty">لا توجد سجلات</td></tr>
         @endforelse
     </x-ds-table>
 

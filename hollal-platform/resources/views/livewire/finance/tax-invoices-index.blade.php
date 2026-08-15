@@ -34,6 +34,7 @@
                 <td>
                     <a class="ds-btn ds-btn-sm" href="{{ route('tax-invoices.pdf', $invoice->id) }}">PDF</a>
                     @can('finance.tax_invoices.issue')
+                        <button type="button" class="ds-btn ds-btn-sm" wire:click="openEditModal({{ $invoice->id }})">تعديل البيانات</button>
                         <button type="button" class="ds-btn ds-btn-sm" wire:click="openNoteModal({{ $invoice->id }})">
                             إشعار دائن/مدين
                         </button>
@@ -50,11 +51,18 @@
     <x-ds-modal :show="$showIssueModal" title="إصدار فاتورة ضريبية" size="lg">
         <x-slot:header><h2>إصدار فاتورة ضريبية</h2></x-slot:header>
 
+        <x-ds-form-group label="نوع الفاتورة" :error="$errors->first('invoiceType')">
+            <select class="ds-input" wire:model.live="invoiceType">
+                <option value="ضريبية">ضريبية كاملة</option>
+                <option value="مبسطة">مبسطة</option>
+            </select>
+        </x-ds-form-group>
+
         <x-ds-form-group label="اسم المشتري" :error="$errors->first('buyerName')">
             <input type="text" class="ds-input" wire:model="buyerName">
         </x-ds-form-group>
 
-        <x-ds-form-group label="الرقم الضريبي للمشتري" :error="$errors->first('buyerVatNumber')">
+        <x-ds-form-group :label="$invoiceType === 'ضريبية' ? 'الرقم الضريبي للمشتري (إلزامي)' : 'الرقم الضريبي للمشتري (اختياري)'" :error="$errors->first('buyerVatNumber')">
             <input type="text" class="ds-input" wire:model="buyerVatNumber" dir="ltr">
         </x-ds-form-group>
 

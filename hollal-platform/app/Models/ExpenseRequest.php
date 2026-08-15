@@ -42,6 +42,7 @@ class ExpenseRequest extends Model
         'priority',
         'payment_method',
         'attachment',
+        'payment_proof_path',
         'status',
         'current_approval_stage',
         'approval_stages',
