@@ -669,8 +669,6 @@
     padding: 0.25rem;
   }
 
-<<<<<<< HEAD
-=======
   /* Mobile: pin menus to the viewport so RTL/LTR icon side cannot clip them. */
   .ds-navbar,
   .ds-navbar-end {
@@ -695,7 +693,6 @@
     z-index: 1200 !important;
   }
 
->>>>>>> d01dff4 (fix(ui): clamp mobile account/notification menus to viewport)
   .ds-sidebar {
     top: 0;
     height: 100vh;
