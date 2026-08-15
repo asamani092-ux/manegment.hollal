@@ -131,7 +131,7 @@ class StructureRolesSettingsTest extends TestCase
         Livewire::actingAs($admin)->test(CommitteesIndex::class)
             ->call('askDelete', $committee->id)
             ->call('deleteCommittee', $committee->id)
-            ->assertDispatched('toast');
+            ->assertDispatched('ds-toast');
 
         $this->assertSoftDeleted('committees', ['id' => $committee->id]);
         $this->assertDatabaseMissing('committee_user', ['committee_id' => $committee->id]);
@@ -146,7 +146,7 @@ class StructureRolesSettingsTest extends TestCase
 
         Livewire::actingAs($admin)->test(CommitteesIndex::class)
             ->call('deleteCommittee', $committee->id)
-            ->assertDispatched('toast');
+            ->assertDispatched('ds-toast');
 
         $this->assertDatabaseHas('committees', ['id' => $committee->id, 'deleted_at' => null]);
     }
@@ -160,7 +160,7 @@ class StructureRolesSettingsTest extends TestCase
             ->set('tab', 'committees')
             ->call('askDeleteCommittee', $committee->id)
             ->call('deleteCommittee', $committee->id)
-            ->assertDispatched('toast');
+            ->assertDispatched('ds-toast');
 
         $this->assertSoftDeleted('committees', ['id' => $committee->id]);
     }
