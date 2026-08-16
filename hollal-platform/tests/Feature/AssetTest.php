@@ -189,4 +189,29 @@ class AssetTest extends TestCase
         $this->assertSame(0.0, $consumption['actual_spend']);
         $this->assertSame(0.0, $consumption['consumed']);
     }
+
+    public function test_assets_excel_and_pdf_export_respect_filters(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $user = User::factory()->create(['must_change_password' => false]);
+        $user->givePermissionTo(['finance.assets.view', 'finance.assets.manage']);
+
+        app(AssetService::class)->create('أصل تصدير', null, ['purchase_amount' => 100, 'useful_life_years' => 5]);
+
+        $excel = $this->actingAs($user)
+            ->get(route('assets.excel', ['statusTab' => 'active']))
+            ->assertOk();
+        $excel->assertHeader('Content-Type', 'text/csv; charset=UTF-8');
+        $this->assertStringContainsString('أصل تصدير', $excel->streamedContent());
+
+        $pdf = $this->actingAs($user)
+            ->get(route('assets.pdf', ['statusTab' => 'active', 'print' => 1]))
+            ->assertOk();
+        $pdf->assertHeader('Content-Type', 'application/pdf');
+        $this->assertStringContainsString(
+            'inline',
+            (string) $pdf->headers->get('Content-Disposition')
+        );
+        $this->assertGreaterThan(100, strlen($pdf->getContent()));
+    }
 }

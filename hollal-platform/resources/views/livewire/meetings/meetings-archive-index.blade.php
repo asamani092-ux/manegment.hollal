@@ -34,7 +34,8 @@
                     @can('meetings.view')
                         <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes', $meeting) }}">المحضر</a>
                         @if ($meeting->signed_document_id)
-                            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes.signed', $meeting) }}">النسخة الموقعة</a>
+                            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes.signed', ['meeting' => $meeting, 'inline' => 1]) }}" target="_blank" rel="noopener">معاينة</a>
+                            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes.signed', $meeting) }}">تنزيل الموقعة</a>
                         @endif
                     @endcan
                     @can('meetings.update')

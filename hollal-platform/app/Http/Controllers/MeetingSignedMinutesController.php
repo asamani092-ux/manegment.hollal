@@ -3,17 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Models\Meeting;
+use App\Support\DownloadHeaders;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * P2 wave C — streams the manually uploaded signed-PDF archive. Authorized
- * via MeetingPolicy::view so invited attendees (without meetings.view) can
- * still download it, same as the auto-generated PDF.
+ * P2 — streams the manually uploaded signed-PDF archive.
+ * ?inline=1 → browser preview; otherwise force download.
+ * Time: O(file size) stream | Space: O(1)
  */
 class MeetingSignedMinutesController extends Controller
 {
-    public function __invoke(Meeting $meeting): StreamedResponse
+    public function __invoke(Request $request, Meeting $meeting): StreamedResponse
     {
         $this->authorize('view', $meeting);
 
@@ -24,11 +26,11 @@ class MeetingSignedMinutesController extends Controller
         abort_unless(Storage::disk('local')->exists($document->path), 404);
 
         $filename = 'minutes-signed-'.$meeting->id.'.pdf';
+        $disposition = $request->boolean('inline') ? 'inline' : 'attachment';
 
-        return response()->streamDownload(
-            fn () => print (Storage::disk('local')->get($document->path)),
-            $filename,
-            ['Content-Type' => 'application/pdf']
-        );
+        return Storage::disk('local')->download($document->path, $filename, [
+            'Content-Disposition' => DownloadHeaders::contentDisposition($filename, $disposition),
+            'Content-Type' => 'application/pdf',
+        ], $disposition);
     }
 }

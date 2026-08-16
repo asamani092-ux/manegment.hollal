@@ -36,11 +36,25 @@
         <button type="button" class="ds-btn ds-btn-outline" onclick="window.print()">
           <i class="fas fa-print" aria-hidden="true"></i> طباعة القالب
         </button>
+        <a class="ds-btn ds-btn-outline" href="{{ route('meetings.minutes.pdf', ['meeting' => $meeting, 'print' => 1]) }}" target="_blank" rel="noopener">
+          <i class="fas fa-file-pdf" aria-hidden="true"></i> معاينة PDF
+        </a>
+        <a class="ds-btn ds-btn-outline" href="{{ route('meetings.minutes.pdf', $meeting) }}">
+          <i class="fas fa-download" aria-hidden="true"></i> تنزيل PDF
+        </a>
         @if ($meeting->signed_document_id)
+          <a class="ds-btn ds-btn-outline" href="{{ route('meetings.minutes.signed', ['meeting' => $meeting, 'inline' => 1]) }}" target="_blank" rel="noopener">
+            <i class="fas fa-eye" aria-hidden="true"></i> معاينة الموقعة
+          </a>
           <a class="ds-btn ds-btn-outline" href="{{ route('meetings.minutes.signed', $meeting) }}">
-            <i class="fas fa-file-signature" aria-hidden="true"></i> النسخة الموقعة
+            <i class="fas fa-file-signature" aria-hidden="true"></i> تنزيل الموقعة
           </a>
         @endif
+      @endcan
+      @can('view', $meeting)
+        <button type="button" class="ds-btn ds-btn-outline" wire:click="sendMinutesByEmail">
+          <i class="fas fa-envelope" aria-hidden="true"></i> إرسال بالبريد
+        </button>
       @endcan
       @can('update', $meeting)
         <button type="button" class="ds-btn ds-btn-outline" wire:click="openSignedUploadModal">

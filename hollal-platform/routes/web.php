@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\AssetExcelController;
+use App\Http\Controllers\AssetPdfController;
 use App\Http\Controllers\Auth\AuthController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
@@ -370,6 +372,12 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:finance.custodies.view|finance.custodies.approve|finance.custodies.disburse')
         ->name('custodies.index');
 
+    Route::get('/assets/excel', AssetExcelController::class)
+        ->middleware('permission:finance.assets.view|finance.assets.manage')
+        ->name('assets.excel');
+    Route::get('/assets/pdf', AssetPdfController::class)
+        ->middleware('permission:finance.assets.view|finance.assets.manage')
+        ->name('assets.pdf');
     Route::get('/assets', AssetsIndex::class)
         ->middleware('permission:finance.assets.view|finance.assets.manage')
         ->name('assets.index');

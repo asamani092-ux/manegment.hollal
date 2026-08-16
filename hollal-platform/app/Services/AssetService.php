@@ -109,13 +109,94 @@ class AssetService
         return 'AST-'.str_pad((string) $next, 4, '0', STR_PAD_LEFT);
     }
 
+    /**
+     * Registry rows for export/print. Time: O(n) | Space: O(n)
+     *
+     * @return \Illuminate\Support\Collection<int, Asset>
+     */
+    public function registryRows(string $statusTab = 'active', ?string $search = null, ?string $condition = null)
+    {
+        return Asset::query()
+            ->select(['id', 'code', 'name_ar', 'category_id', 'condition', 'purchase_amount', 'useful_life_years', 'location', 'current_holder_id', 'holder_since'])
+            ->with(['currentHolder:id,name', 'category:id,name_ar'])
+            ->when($statusTab === 'active', fn ($q) => $q->active())
+            ->when($search, fn ($q) => $q->where(
+                fn ($w) => $w->where('name_ar', 'like', '%'.$search.'%')
+                    ->orWhere('code', 'like', '%'.$search.'%')
+                    ->orWhereHas('currentHolder', fn ($h) => $h->where('name', 'like', '%'.$search.'%'))
+            ))
+            ->when($condition, fn ($q) => $q->where('condition', $condition))
+            ->orderBy('code')
+            ->get();
+    }
+
+    /** CSV with UTF-8 BOM for Excel. Time: O(n) | Space: O(n) */
+    public function exportRegistryCsv(string $statusTab = 'active', ?string $search = null, ?string $condition = null): string
+    {
+        $rows = $this->registryRows($statusTab, $search, $condition);
+        $lines = ["\xEF\xBB\xBF".'الرمز,الاسم,الفئة,الموقع,قيمة الشراء,العمر المحاسبي,القيمة الدفترية,الحالة,حامل العهدة,منذ'];
+
+        foreach ($rows as $asset) {
+            $lines[] = implode(',', [
+                $this->csvCell((string) $asset->code),
+                $this->csvCell((string) $asset->name_ar),
+                $this->csvCell((string) ($asset->category?->name_ar ?? '')),
+                $this->csvCell((string) ($asset->location ?? '')),
+                $asset->purchase_amount !== null ? number_format((float) $asset->purchase_amount, 2, '.', '') : '',
+                $asset->useful_life_years !== null ? (string) $asset->useful_life_years : '',
+                $asset->bookValue() !== null ? number_format($asset->bookValue(), 2, '.', '') : '',
+                $this->csvCell((string) $asset->condition),
+                $this->csvCell((string) ($asset->currentHolder?->name ?? '')),
+                $asset->holder_since?->format('Y-m-d') ?? '',
+            ]);
+        }
+
+        return implode("\n", $lines)."\n";
+    }
+
+    /** Printable registry PDF. Time: O(n) | Space: O(n) */
+    public function exportRegistryPdf(string $statusTab = 'active', ?string $search = null, ?string $condition = null): string
+    {
+        $rows = $this->registryRows($statusTab, $search, $condition);
+        $tr = '';
+        foreach ($rows as $asset) {
+            $tr .= '<tr>'
+                .'<td>'.e($asset->code).'</td>'
+                .'<td>'.e($asset->name_ar).'</td>'
+                .'<td>'.e($asset->category?->name_ar ?? '—').'</td>'
+                .'<td>'.e($asset->location ?? '—').'</td>'
+                .'<td>'.($asset->purchase_amount !== null ? number_format((float) $asset->purchase_amount, 2) : '—').'</td>'
+                .'<td>'.($asset->bookValue() !== null ? number_format($asset->bookValue(), 2) : '—').'</td>'
+                .'<td>'.e($asset->condition).'</td>'
+                .'<td>'.e($asset->currentHolder?->name ?? '—').'</td>'
+                .'</tr>';
+        }
+        if ($tr === '') {
+            $tr = '<tr><td colspan="8">لا توجد أصول</td></tr>';
+        }
+
+        $label = $statusTab === 'active' ? 'الأصول النشطة' : 'كل الأصول';
+        $body = '<p>تاريخ التصدير: '.e(hollal_dt(now())).'</p>'
+            .'<table><thead><tr>'
+            .'<th>الرمز</th><th>الاسم</th><th>الفئة</th><th>الموقع</th>'
+            .'<th>الشراء</th><th>دفترية</th><th>الحالة</th><th>العهدة</th>'
+            .'</tr></thead><tbody>'.$tr.'</tbody></table>';
+
+        return PdfArabic::render($label, $body);
+    }
+
+    private function csvCell(string $value): string
+    {
+        $safe = str_replace('"', '""', $value);
+
+        return '"'.$safe.'"';
+    }
+
     private function generateHandoverPdf(Asset $asset, AssetMovement $movement, User $toHolder): string
     {
         if (view()->exists('pdf.asset-handover')) {
             $html = view('pdf.asset-handover', compact('asset', 'movement', 'toHolder'))->render();
-            $bytes = PdfArabic::applyOptions(
-                \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4')
-            )->output();
+            $bytes = PdfArabic::outputFromHtml($html);
         } else {
             $body = '<p>الأصل: '.e($asset->name_ar).' ('.e($asset->code).')</p>'
                 .'<p>المستلم: '.e($toHolder->name).'</p>'

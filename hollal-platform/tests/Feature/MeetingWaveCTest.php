@@ -285,6 +285,12 @@ class MeetingWaveCTest extends TestCase
 
         $this->actingAs($this->admin)
             ->get(route('meetings.minutes.signed', $meeting))
-            ->assertOk();
+            ->assertOk()
+            ->assertHeader('Content-Disposition', \App\Support\DownloadHeaders::contentDisposition('minutes-signed-'.$meeting->id.'.pdf', 'attachment'));
+
+        $this->actingAs($this->admin)
+            ->get(route('meetings.minutes.signed', ['meeting' => $meeting, 'inline' => 1]))
+            ->assertOk()
+            ->assertHeader('Content-Disposition', \App\Support\DownloadHeaders::contentDisposition('minutes-signed-'.$meeting->id.'.pdf', 'inline'));
     }
 }

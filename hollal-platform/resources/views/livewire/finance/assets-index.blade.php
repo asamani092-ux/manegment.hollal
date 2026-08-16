@@ -7,6 +7,15 @@
         wire:click="openCreateModal"
     />
 
+    <div class="ds-filters-row ds-mb-3">
+        <a class="ds-btn ds-btn-secondary" href="{{ route('assets.pdf', ['statusTab' => $statusTab, 'search' => $search, 'condition' => $conditionFilter, 'print' => 1]) }}" target="_blank" rel="noopener">
+            <i class="fas fa-print"></i> طباعة / PDF
+        </a>
+        <a class="ds-btn ds-btn-secondary" href="{{ route('assets.excel', ['statusTab' => $statusTab, 'search' => $search, 'condition' => $conditionFilter]) }}">
+            <i class="fas fa-file-excel"></i> تصدير Excel
+        </a>
+    </div>
+
     <nav class="ds-tabs" role="tablist">
         <button type="button" class="ds-tab {{ $statusTab === 'active' ? 'ds-tab-active' : '' }}" wire:click="setStatusTab('active')">النشطة</button>
         <button type="button" class="ds-tab {{ $statusTab === 'all' ? 'ds-tab-active' : '' }}" wire:click="setStatusTab('all')">كل الأصول (بما فيها التالف والمستبعد)</button>
