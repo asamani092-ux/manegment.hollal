@@ -16,7 +16,7 @@
     </nav>
 
     @if ($tab === 'loads' && auth()->user()->can('esnad.tasks.team.view'))
-        <p class="ds-text-muted">حد التنبيه: أكثر من {{ $threshold }} مهمة مفتوحة</p>
+        <p class="ds-text-muted">حد التنبيه: أكثر من {{ $threshold }} مهمة مفتوحة — المتأخرة مدمجة أسفل كل موظف مع رابط بطاقة المهمة.</p>
         <x-ds-table>
             <x-slot:head>
                 <tr>
@@ -50,6 +50,22 @@
                         <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="sendReminder({{ $row['user']->id }})">تذكير</button>
                     </td>
                 </tr>
+                @if ($row['overdue_tasks']->isNotEmpty())
+                    <tr wire:key="workload-od-{{ $row['user']->id }}">
+                        <td colspan="6">
+                            <div class="ds-text-muted" style="margin-bottom:.35rem">مهام متأخرة — {{ $row['user']->name }}</div>
+                            @foreach ($row['overdue_tasks'] as $task)
+                                <div class="ds-stat-mini" wire:key="wl-od-task-{{ $task->id }}">
+                                    <a class="ds-link" href="{{ route('tasks.index', ['open' => $task->id]) }}">{{ $task->title }}</a>
+                                    <span class="ds-text-muted ds-ltr-num">{{ $task->due_date?->format('Y-m-d') }}</span>
+                                </div>
+                            @endforeach
+                            @if ($row['overdue'] > $row['overdue_tasks']->count())
+                                <p class="ds-text-muted">و{{ $row['overdue'] - $row['overdue_tasks']->count() }} أخرى…</p>
+                            @endif
+                        </td>
+                    </tr>
+                @endif
             @empty
                 <tr>
                     <td colspan="6" class="ds-text-muted ds-table-empty">لا يوجد أعضاء فريق</td>
@@ -102,54 +118,50 @@
         </x-ds-table>
     @else
         <section class="ds-section-spaced">
-            <h3 class="ds-section-heading">تقرير متابعة موظف (متكرر)</h3>
+            <h3 class="ds-section-heading">متابعة المهام المتكررة القائمة</h3>
+            <p class="ds-text-muted">تظهر القائمة فقط للموظفين الذين لديهم مهمة متكررة غير مكتملة.</p>
             <div class="ds-filters-row">
                 <div class="ds-filter-field">
                     <label class="ds-label">الموظف</label>
                     <select class="ds-input" wire:model.live="followUpUserId">
                         <option value="">— اختر —</option>
-                        @foreach ($users as $u)
+                        @foreach ($followUsers as $u)
                             <option value="{{ $u->id }}">{{ $u->name }}</option>
                         @endforeach
                     </select>
                 </div>
             </div>
-            @if ($followUpUserId)
+            @if ($followUsers->isEmpty())
+                <p class="ds-text-muted">لا موظفون لديهم مهام متكررة قائمة حالياً.</p>
+            @elseif ($followUpUserId)
                 <x-ds-table>
                     <x-slot:head>
                         <tr>
                             <th>المهمة</th>
                             <th>الحالة</th>
                             <th>الاستحقاق</th>
-                            <th>الإكمال</th>
+                            <th></th>
                         </tr>
                     </x-slot:head>
                     @forelse ($followUp as $task)
                         <tr wire:key="fu-{{ $task->id }}">
-                            <td>{{ $task->title }}</td>
+                            <td>
+                                <a class="ds-link" href="{{ route('tasks.index', ['open' => $task->id]) }}">{{ $task->title }}</a>
+                            </td>
                             <td>{{ $statusLabels[$task->status] ?? $task->status }}</td>
                             <td class="ds-ltr-num">{{ $task->due_date?->format('Y-m-d') ?? '—' }}</td>
-                            <td class="ds-ltr-num">{{ $task->completed_at?->format('Y-m-d') ?? '—' }}</td>
+                            <td>
+                                @can('esnad.tasks.team.view')
+                                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="sendReminder({{ $task->assigned_to }})">تذكير</button>
+                                @endcan
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="ds-text-muted">لا دورات مولّدة لهذا الموظف</td></tr>
+                        <tr><td colspan="4" class="ds-text-muted">لا مهام قائمة لهذا الموظف</td></tr>
                     @endforelse
                 </x-ds-table>
             @endif
         </section>
-
-        @can('esnad.tasks.team.view')
-            <h3 class="ds-section-heading">مهام متأخرة للفريق</h3>
-            @forelse ($overdueForTeam as $task)
-                <div class="ds-stat-mini" wire:key="wl-od-{{ $task->id }}">
-                    <strong>{{ $task->title }}</strong>
-                    <span class="ds-text-muted">{{ $task->assignee?->name }} — {{ $task->due_date?->format('Y-m-d') }}</span>
-                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="sendReminder({{ $task->assigned_to }})">تذكير</button>
-                </div>
-            @empty
-                <p class="ds-text-muted">لا مهام متأخرة</p>
-            @endforelse
-        @endcan
     @endif
 
     @if ($showModal)

@@ -6,7 +6,6 @@ use App\Models\ExpenseRequest;
 use App\Models\PayrollRunItem;
 use App\Models\Revenue;
 use App\Support\PdfArabic;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -101,9 +100,7 @@ class FinancialReportService
             .'<tr><td><strong>الصافي</strong></td><td><strong>'.number_format($report['net'], 2).'</strong></td></tr>'
             .'</tbody></table></div>';
 
-        $pdf = Pdf::loadHTML($html)->setPaper('a4');
-
-        return PdfArabic::applyOptions($pdf)->output();
+        return PdfArabic::outputFromHtml($html);
     }
 
     /**
@@ -255,9 +252,7 @@ class FinancialReportService
             .'<p>إجمالي الرواتب: '.number_format($detailed['totals']['payroll'], 2).'</p>'
             .'</div>';
 
-        $pdf = Pdf::loadHTML($html)->setPaper('a4');
-
-        return PdfArabic::applyOptions($pdf)->output();
+        return PdfArabic::outputFromHtml($html);
     }
 
     /** UTF-8 CSV with BOM for Excel — one row per movement. */

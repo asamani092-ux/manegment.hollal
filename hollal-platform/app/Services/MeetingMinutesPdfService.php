@@ -32,10 +32,12 @@ class MeetingMinutesPdfService
             ->limit(20)
             ->get();
 
-        $pdf = Pdf::loadView('pdf.meeting-minutes', [
+        $html = PdfArabic::shapeHtml(view('pdf.meeting-minutes', [
             'meeting' => $meeting,
             'openDecisions' => $openDecisions,
-        ])->setPaper('a4');
+        ])->render());
+
+        $pdf = Pdf::loadHTML($html)->setPaper('a4');
 
         return PdfArabic::applyOptions($pdf)
             ->setOption('isRemoteEnabled', false);

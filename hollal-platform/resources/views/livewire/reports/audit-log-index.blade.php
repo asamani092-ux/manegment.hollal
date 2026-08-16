@@ -22,7 +22,6 @@
                 <th>الحالة</th>
                 <th>سبب الفشل</th>
                 <th>المنفّذ</th>
-                <th>الهدف</th>
             </tr>
         </x-slot:head>
         @forelse ($logs as $log)
@@ -36,10 +35,9 @@
                 </td>
                 <td>{{ $log->statusReason() ?? '—' }}</td>
                 <td>{{ $log->actor?->name ?? '—' }}</td>
-                <td dir="ltr">{{ class_basename((string) $log->target_type) }} #{{ $log->target_id ?? '—' }}</td>
             </tr>
         @empty
-            <tr><td colspan="6" class="ds-text-muted ds-table-empty">لا توجد سجلات</td></tr>
+            <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد سجلات</td></tr>
         @endforelse
     </x-ds-table>
 

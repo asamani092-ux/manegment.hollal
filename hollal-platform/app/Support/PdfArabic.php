@@ -3,21 +3,64 @@
 namespace App\Support;
 
 use App\Models\CompanyProfile;
+use ArPHP\I18N\Arabic;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Arabic-connected PDF chrome: Amiri font + company logo + RTL table.
+ * Arabic-connected PDF chrome: Amiri font + glyph shaping + company logo + RTL.
+ * Dompdf cannot join Arabic letters; utf8Glyphs pre-shapes text for correct print.
  * Font family key MUST stay lowercase `amiri` to match installed-fonts.json.
  * Time: O(n) HTML size | Space: O(n)
  */
 final class PdfArabic
 {
+    private static ?Arabic $arabic = null;
+
     public static function fontPath(): ?string
     {
         $path = resource_path('fonts/Amiri-Regular.ttf');
 
         return is_file($path) ? $path : null;
+    }
+
+    /** Shape Arabic letters for Dompdf (disconnected → connected visual forms). */
+    public static function shape(string $text): string
+    {
+        if ($text === '' || ! preg_match('/\p{Arabic}/u', $text)) {
+            return $text;
+        }
+
+        // Already shaped to HTML entities by a prior pass.
+        if (str_contains($text, '&#x')) {
+            return $text;
+        }
+
+        // ar-php glyph table lacks Eastern Arabic digits — normalize first.
+        $text = strtr($text, [
+            '٠' => '0', '١' => '1', '٢' => '2', '٣' => '3', '٤' => '4',
+            '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
+        ]);
+
+        try {
+            self::$arabic ??= new Arabic;
+
+            return self::$arabic->utf8Glyphs($text);
+        } catch (\Throwable) {
+            return $text;
+        }
+    }
+
+    /** Shape text nodes inside HTML; leave tags/attributes untouched. */
+    public static function shapeHtml(string $html): string
+    {
+        $shaped = preg_replace_callback(
+            '/>([^<]*\p{Arabic}[^<]*)</u',
+            static fn (array $m): string => '>'.self::shape($m[1]).'<',
+            $html
+        );
+
+        return is_string($shaped) ? $shaped : $html;
     }
 
     public static function fontFace(): string
@@ -59,7 +102,7 @@ final class PdfArabic
             .' th, td { border: 1px solid #0F3446; padding: 6px; } th { background: #0F3446; color: #fff; }</style>'
             .$logo
             .'<h2>'.e($title).'</h2>'
-            .'<p>'.e($company->name).'</p>'
+            .'<p>'.e((string) $company->name).'</p>'
             .$tax
             .$cr
             .$address
@@ -79,12 +122,13 @@ final class PdfArabic
             'defaultFont' => self::defaultFont(),
             'isRemoteEnabled' => true,
             'isHtml5ParserEnabled' => true,
-            'isFontSubsettingEnabled' => true,
+            // Subsetting can drop Arabic presentation forms after shaping.
+            'isFontSubsettingEnabled' => false,
         ];
     }
 
     /**
-     * Wrap body HTML with RTL Amiri chrome and render PDF bytes.
+     * Wrap body HTML with RTL Amiri chrome, shape Arabic, render PDF bytes.
      * Time: O(n) | Space: O(n)
      */
     public static function render(string $title, string $bodyHtml, string $paper = 'a4', bool $includeCr = false): string
@@ -92,12 +136,7 @@ final class PdfArabic
         $html = self::header($title, $includeCr)
             .'<div dir="rtl" style="unicode-bidi: embed;">'.$bodyHtml.'</div>';
 
-        $pdf = Pdf::loadHTML($html)->setPaper($paper);
-        foreach (self::pdfOptions() as $key => $value) {
-            $pdf->setOption($key, $value);
-        }
-
-        return $pdf->output();
+        return self::outputFromHtml($html, $paper);
     }
 
     /** Apply standard Arabic PDF options to an existing Dompdf wrapper. */
@@ -108,5 +147,15 @@ final class PdfArabic
         }
 
         return $pdf;
+    }
+
+    /**
+     * Shape + option-apply for views/HTML already built (tax invoice, minutes, reports).
+     */
+    public static function outputFromHtml(string $html, string $paper = 'a4'): string
+    {
+        $pdf = Pdf::loadHTML(self::shapeHtml($html))->setPaper($paper);
+
+        return self::applyOptions($pdf)->output();
     }
 }

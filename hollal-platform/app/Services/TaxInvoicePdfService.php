@@ -6,7 +6,6 @@ use App\Models\CompanyProfile;
 use App\Models\TaxInvoice;
 use App\Models\TaxInvoiceTemplate;
 use App\Support\PdfArabic;
-use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -19,9 +18,7 @@ class TaxInvoicePdfService
 {
     public function render(TaxInvoice $invoice): string
     {
-        $pdf = Pdf::loadHTML($this->buildHtml($invoice))->setPaper('a4');
-
-        return PdfArabic::applyOptions($pdf)->output();
+        return PdfArabic::outputFromHtml($this->buildHtml($invoice));
     }
 
     /**
