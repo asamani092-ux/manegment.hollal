@@ -96,7 +96,8 @@ final class PdfArabic
             .' th, td { border: 1px solid #0F3446; padding: 6px 8px; text-align: right; vertical-align: middle; }'
             .' th { background: #0F3446; color: #fff; }'
             .' td.num, th.num, .pdf-num { text-align: left; direction: ltr; unicode-bidi: isolate; font-family: DejaVu Sans, amiri, sans-serif; }'
-            .' td.pdf-label { width: 32%; white-space: nowrap; font-weight: bold; text-align: right; }'
+            .' table.pdf-meta td.num { text-align: right; width: 65%; }'
+            .' td.pdf-label { width: 35%; white-space: nowrap; font-weight: bold; text-align: right; }'
             .' table.pdf-meta td.pdf-label { background: #f3f6f8; }';
 
         if ($path === null) {
