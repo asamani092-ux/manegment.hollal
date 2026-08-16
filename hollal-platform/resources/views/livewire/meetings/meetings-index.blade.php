@@ -30,7 +30,7 @@
                 <article class="ds-meeting-card is-square" wire:key="upcoming-{{ $meeting->id }}">
                     <div>
                         <h3 class="ds-task-card-title">{{ $meeting->title }}</h3>
-                        <p class="ds-text-muted ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</p>
+                        <p class="ds-text-muted ds-ltr-num">{{ hollal_dt($meeting->scheduled_at) }}</p>
                         @if ($meeting->agenda)
                             <p class="ds-text-muted">{{ \Illuminate\Support\Str::limit($meeting->agenda, 80) }}</p>
                         @endif
@@ -74,7 +74,7 @@
             @forelse ($pastMeetings as $meeting)
                 <tr wire:key="past-{{ $meeting->id }}">
                     <td>{{ $meeting->title }}</td>
-                    <td class="ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</td>
+                    <td class="ds-ltr-num">{{ hollal_dt($meeting->scheduled_at) }}</td>
                     <td>{{ $meeting->statusLabel() }}</td>
                     <td>
                         <div class="ds-actions">

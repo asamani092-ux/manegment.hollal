@@ -112,7 +112,7 @@
             </x-slot:head>
             @forelse ($timeline as $event)
                 <tr wire:key="timeline-{{ $loop->index }}">
-                    <td dir="ltr">{{ $event['at']?->format('Y-m-d H:i') }}</td>
+                    <td dir="ltr">{{ hollal_dt($event['at'] ?? null) }}</td>
                     <td>{{ $event['kind'] }}</td>
                     <td>{{ $event['title'] }}</td>
                 </tr>

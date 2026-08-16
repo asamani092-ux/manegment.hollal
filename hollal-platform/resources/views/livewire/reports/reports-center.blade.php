@@ -132,7 +132,7 @@
                     <td>{{ $snapshot->kind }}</td>
                     <td>{{ $snapshot->label }}</td>
                     <td dir="ltr">{{ $snapshot->period ?? '—' }}</td>
-                    <td dir="ltr">{{ $snapshot->created_at?->format('Y-m-d H:i') }}</td>
+                    <td dir="ltr">{{ hollal_dt($snapshot->created_at) }}</td>
                     <td>{{ $snapshot->isIntact() ? 'نعم' : 'لا' }}</td>
                     <td>
                         <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="previewSnapshot({{ $snapshot->id }})">

@@ -105,8 +105,8 @@ class AttendanceService
                 'date' => $record->date?->format('Y-m-d') ?? '',
                 'employee' => $record->employee?->name ?? '—',
                 'type' => (string) ($record->type ?? ''),
-                'check_in' => $record->check_in_at?->format('H:i'),
-                'check_out' => $record->check_out_at?->format('H:i'),
+                'check_in' => hollal_time($record->check_in_at),
+                'check_out' => hollal_time($record->check_out_at),
                 'late_minutes' => $this->latenessMinutes($record, $officeStart),
             ];
         }

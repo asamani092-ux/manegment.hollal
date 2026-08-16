@@ -68,7 +68,7 @@
                 <div class="ds-modal-body">
                     <div class="ds-detail-row"><span class="ds-detail-label">المكلَّف:</span> {{ $selectedTask->assignee?->name ?? '—' }}</div>
                     <div class="ds-detail-row"><span class="ds-detail-label">الحالة:</span> {{ $selectedTask->status }}</div>
-                    <div class="ds-detail-row"><span class="ds-detail-label">الاستحقاق:</span> <span class="ds-ltr-num">{{ $selectedTask->due_date?->format('Y-m-d H:i') ?? '—' }}</span></div>
+                    <div class="ds-detail-row"><span class="ds-detail-label">الاستحقاق:</span> <span class="ds-ltr-num">{{ hollal_dt($selectedTask->due_date) }}</span></div>
                 </div>
                 <div class="ds-modal-footer">
                     <a class="ds-btn ds-btn-primary" href="{{ route('tasks.index', ['open' => $selectedTask->id]) }}">فتح المهمة</a>
@@ -86,7 +86,7 @@
                     <button type="button" class="ds-modal-close" wire:click="closePeek">&times;</button>
                 </div>
                 <div class="ds-modal-body">
-                    <div class="ds-detail-row"><span class="ds-detail-label">الوقت:</span> <span class="ds-ltr-num">{{ $selectedMeeting->scheduled_at?->format('Y-m-d H:i') ?? '—' }}</span></div>
+                    <div class="ds-detail-row"><span class="ds-detail-label">الوقت:</span> <span class="ds-ltr-num">{{ hollal_dt($selectedMeeting->scheduled_at) }}</span></div>
                     <div class="ds-detail-row"><span class="ds-detail-label">المكان:</span> {{ $selectedMeeting->link ? 'عن بعد' : ($selectedMeeting->location ?: '—') }}</div>
                 </div>
                 <div class="ds-modal-footer">

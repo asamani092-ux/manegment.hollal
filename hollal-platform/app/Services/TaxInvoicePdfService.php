@@ -63,7 +63,7 @@ class TaxInvoicePdfService
             .($address ? '<p><strong>عنوان البائع:</strong> '.e((string) $address).'</p>' : '')
             .'<p><strong>المشتري:</strong> '.e($invoice->buyer_name)
             .' — الرقم الضريبي: '.e((string) $invoice->buyer_vat_number).'</p>'
-            .'<p>تاريخ الإصدار: '.e($invoice->issued_at?->format('Y-m-d H:i') ?? '—')
+            .'<p>تاريخ الإصدار: '.e(hollal_dt($invoice->issued_at))
             .' — الوضع: '.e($invoice->mode)
             .' — النوع: '.e($typeLabel).'</p>'
             .'<table><thead><tr>'

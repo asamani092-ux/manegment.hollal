@@ -167,7 +167,7 @@ class ReportsCenter extends Component
         return response()->streamDownload(function () use ($sections, $label) {
             $handle = fopen('php://output', 'w');
             fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM — opens correctly in Excel with Arabic text
-            fputcsv($handle, [$label, 'مركز التقارير الموحّد — '.now()->format('Y-m-d H:i')]);
+            fputcsv($handle, [$label, 'مركز التقارير الموحّد — '.hollal_dt(now())]);
 
             foreach ($sections as $sectionTitle => $rows) {
                 fputcsv($handle, []);

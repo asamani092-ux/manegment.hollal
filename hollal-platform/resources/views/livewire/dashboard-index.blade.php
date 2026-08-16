@@ -123,7 +123,7 @@
                         <div>
                             <strong>{{ $task->title }}</strong>
                             <div class="ds-text-muted">
-                                {{ $task->due_date?->format('Y-m-d H:i') ?? '—' }}
+                                {{ hollal_dt($task->due_date) }}
                                 — {{ $statusLabels[$task->status] ?? $task->status }}
                             </div>
                         </div>
@@ -139,7 +139,7 @@
                     <div class="ds-stat-mini" wire:key="meeting-{{ $meeting->id }}">
                         <div>
                             <strong>{{ $meeting->title }}</strong>
-                            <div class="ds-text-muted">{{ $meeting->scheduled_at->format('Y-m-d H:i') }}</div>
+                            <div class="ds-text-muted">{{ hollal_dt($meeting->scheduled_at) }}</div>
                         </div>
                     </div>
                 @empty

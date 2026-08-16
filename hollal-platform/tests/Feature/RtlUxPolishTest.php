@@ -49,6 +49,10 @@ class RtlUxPolishTest extends TestCase
         $this->assertStringContainsString('ds-page-rtl', $html);
         $this->assertStringContainsString('ds-meeting-cards-grid', $html);
         $this->assertStringContainsString('ds-empty-state', $html);
+
+        $css = (string) file_get_contents(public_path('css/components.css'));
+        $this->assertStringContainsString('minmax(160px, 200px)', $css);
+        $this->assertStringContainsString('max-width: 200px', $css);
     }
 
     public function test_expenses_screen_renders_ds_page_rtl_and_mobile_cards(): void

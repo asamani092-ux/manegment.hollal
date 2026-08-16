@@ -57,7 +57,7 @@ class ReportDocumentService
             throw new \InvalidArgumentException('مطلوب مستخدم لرفع أرشيف التقرير.');
         }
 
-        $stamp = now()->format('Y-m-d H:i');
+        $stamp = hollal_dt(now());
         $title = 'تقرير — '.$label.' — '.$stamp;
 
         $body = $label."\n".$stamp."\n\n".json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);

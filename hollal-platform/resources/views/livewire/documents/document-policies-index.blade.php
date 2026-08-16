@@ -48,7 +48,7 @@
             @forelse ($dutiesVersions as $version)
                 <tr wire:key="duties-{{ $version->id }}">
                     <td class="ds-ltr-num">{{ $version->version }}</td>
-                    <td dir="ltr">{{ $version->published_at?->format('Y-m-d H:i') ?? '—' }}</td>
+                    <td dir="ltr">{{ hollal_dt($version->published_at) }}</td>
                 </tr>
             @empty
                 <tr><td colspan="2" class="ds-text-muted ds-table-empty">لم يُنشر ملف بعد</td></tr>

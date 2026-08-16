@@ -196,7 +196,7 @@
                             <h4 class="ds-section-heading">الملاحظات</h4>
                             @forelse ($taskNotes as $note)
                                 <div class="ds-note-item" wire:key="note-{{ $note->id }}">
-                                    <div class="ds-note-meta">{{ $note->author?->name }} — {{ $note->created_at?->format('Y-m-d H:i') }}</div>
+                                    <div class="ds-note-meta">{{ $note->author?->name }} — {{ hollal_dt($note->created_at) }}</div>
                                     <p>{{ $note->body }}</p>
                                 </div>
                             @empty

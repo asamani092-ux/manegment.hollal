@@ -32,7 +32,7 @@
                 <td style="width:40%"><strong>منصة حلّل</strong></td>
                 <td style="width:60%; text-align:left" class="meta">
                     تاريخ الاجتماع: {{ $meeting->scheduled_at?->format('Y-m-d') ?? '—' }}<br>
-                    تاريخ الطباعة: {{ now()->format('Y-m-d H:i') }}
+                    تاريخ الطباعة: {{ hollal_dt(now()) }}
                 </td>
             </tr>
         </table>
@@ -44,7 +44,7 @@
         <h2>تفاصيل الاجتماع</h2>
         <table>
             <tr><th>العنوان</th><td>{{ $meeting->title }}</td></tr>
-            <tr><th>الوقت</th><td>{{ $meeting->scheduled_at?->format('Y-m-d H:i') ?? '—' }}</td></tr>
+            <tr><th>الوقت</th><td>{{ hollal_dt($meeting->scheduled_at) }}</td></tr>
             <tr>
                 <th>المكان</th>
                 <td>
@@ -131,7 +131,7 @@
                         <tr>
                             <td>{{ $guest->name }}</td>
                             <td>{{ $guest->email }}</td>
-                            <td>{{ $guest->confirmed_at?->format('Y-m-d H:i') ?? '—' }}</td>
+                            <td>{{ hollal_dt($guest->confirmed_at) }}</td>
                             <td class="sig-box"><x-signature-cell :path="$guest->signature_image_path" /></td>
                         </tr>
                     @endforeach

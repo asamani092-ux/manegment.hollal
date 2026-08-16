@@ -27,7 +27,7 @@ class MeetingInvite extends Notification implements ShouldQueue
     public function toDatabase(object $notifiable): array
     {
         return [
-            'message' => 'دعوة لاجتماع: '.$this->meeting->title.' — '.$this->meeting->scheduled_at?->format('Y-m-d H:i'),
+            'message' => 'دعوة لاجتماع: '.$this->meeting->title.' — '.hollal_dt($this->meeting->scheduled_at),
             'url' => RecordUrl::meeting($this->meeting->id),
             'meeting_id' => $this->meeting->id,
         ];
@@ -40,7 +40,7 @@ class MeetingInvite extends Notification implements ShouldQueue
             ->greeting('مرحبًا'.(isset($notifiable->name) ? ' '.$notifiable->name : ''))
             ->line('تمت دعوتك إلى الاجتماع التالي:')
             ->line('العنوان: '.$this->meeting->title)
-            ->line('الوقت: '.($this->meeting->scheduled_at?->format('Y-m-d H:i') ?? '—'));
+            ->line('الوقت: '.hollal_dt($this->meeting->scheduled_at));
 
         if ($this->meeting->location) {
             $mail->line('المكان: '.$this->meeting->location);

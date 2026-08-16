@@ -37,7 +37,7 @@ class MeetingGuestInvite extends Notification implements ShouldQueue
             ->greeting('مرحبًا '.$this->guest->name)
             ->line('تمت دعوتكم كضيف إلى الاجتماع التالي:')
             ->line('العنوان: '.$this->meeting->title)
-            ->line('الوقت: '.($this->meeting->scheduled_at?->format('Y-m-d H:i') ?? '—'));
+            ->line('الوقت: '.hollal_dt($this->meeting->scheduled_at));
 
         if ($this->meeting->location) {
             $mail->line('المكان: '.$this->meeting->location);

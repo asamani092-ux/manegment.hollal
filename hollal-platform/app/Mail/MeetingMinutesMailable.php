@@ -31,7 +31,7 @@ class MeetingMinutesMailable extends Mailable implements ShouldQueue
             text: 'mail.meeting-minutes-plain',
             with: [
                 'meetingTitle' => $this->meeting->title,
-                'scheduledAt' => $this->meeting->scheduled_at?->format('Y-m-d H:i'),
+                'scheduledAt' => hollal_dt($this->meeting->scheduled_at),
             ],
         );
     }

@@ -216,7 +216,7 @@ class PartnershipContractService
             .'<h2>صفحة التوقيع الإلكتروني</h2>'
             .'<p>اسم الموقّع: '.e($signatureName).'</p>'
             .'<p>الصفة: '.e($signaturePosition).'</p>'
-            .'<p>الوقت: '.e(now()->timezone('Asia/Riyadh')->format('Y-m-d H:i:s')).'</p>'
+            .'<p>الوقت: '.e(hollal_dt(now()->timezone('Asia/Riyadh'), true)).'</p>'
             .'<p>الجهاز: '.e((string) $device).'</p>'
             .($pngDataUri !== null
                 ? '<p>التوقيع:</p><img src="'.$pngDataUri.'" width="320" height="120" alt="توقيع"/>'

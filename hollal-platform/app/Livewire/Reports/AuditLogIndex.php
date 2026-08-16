@@ -76,7 +76,7 @@ class AuditLogIndex extends Component
 
             foreach ($rows as $row) {
                 fputcsv($handle, [
-                    $row->created_at?->format('Y-m-d H:i:s'),
+                    hollal_dt($row->created_at, true),
                     $row->actionLabel(),
                     $row->displayStatus(),
                     $row->statusReason() ?? '—',

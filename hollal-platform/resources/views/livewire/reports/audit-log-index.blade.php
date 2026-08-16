@@ -26,7 +26,7 @@
         </x-slot:head>
         @forelse ($logs as $log)
             <tr wire:key="audit-{{ $log->id }}">
-                <td dir="ltr">{{ $log->created_at?->format('Y-m-d H:i:s') }}</td>
+                <td dir="ltr">{{ hollal_dt($log->created_at, true) }}</td>
                 <td>{{ $log->actionLabel() }}</td>
                 <td>
                     <span class="ds-badge {{ $log->displayStatus() === 'فشل' ? 'ds-badge-danger' : 'ds-badge-success' }}">

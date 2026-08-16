@@ -186,7 +186,7 @@
                     </td>
                     <td dir="ltr">{{ $link->expires_at?->format('Y-m-d') ?? '—' }}</td>
                     <td>{{ $link->isUsable() ? 'فعّال' : 'منتهٍ/مُبطل' }}</td>
-                    <td dir="ltr">{{ $link->last_used_at?->format('Y-m-d H:i') ?? '—' }}</td>
+                    <td dir="ltr">{{ hollal_dt($link->last_used_at) }}</td>
                     <td>
                         @can('partnerships.links.manage')
                             <button type="button" class="ds-btn ds-btn-sm" wire:click="sendLinkEmail({{ $link->id }})">إرسال بالبريد</button>

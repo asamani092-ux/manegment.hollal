@@ -23,10 +23,10 @@ class TaskDueSoon extends Notification implements ShouldQueue
     /** @return array<string, mixed> */
     public function toDatabase(object $notifiable): array
     {
-        $due = $this->task->due_date?->timezone(config('app.timezone'))->format('Y-m-d H:i');
+        $dueLabel = $this->task->due_date ? ' ('.hollal_dt($this->task->due_date).')' : '';
 
         return [
-            'message' => 'تستحق المهمة «'.$this->task->title.'» خلال يوم واحد'.($due ? ' ('.$due.')' : ''),
+            'message' => 'تستحق المهمة «'.$this->task->title.'» خلال يوم واحد'.$dueLabel,
             'url' => \App\Support\RecordUrl::task($this->task->id),
             'task_id' => $this->task->id,
         ];

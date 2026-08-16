@@ -1,6 +1,6 @@
 <div dir="rtl" class="ds-page-rtl ds-portal-steps">
     <h1 class="ds-page-title">{{ $meeting->title }}</h1>
-    <p class="ds-text-muted ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</p>
+    <p class="ds-text-muted ds-ltr-num">{{ hollal_dt($meeting->scheduled_at) }}</p>
 
     <section class="ds-section">
         <h2 class="ds-section-title">تفاصيل الاجتماع</h2>
@@ -41,7 +41,7 @@
         <h2 class="ds-section-title">تأكيد الاطلاع</h2>
 
         @if ($guest->confirmed_at)
-            <p class="ds-badge ds-badge-success">أكّدتم الاطلاع بتاريخ {{ $guest->confirmed_at->format('Y-m-d H:i') }}</p>
+            <p class="ds-badge ds-badge-success">أكّدتم الاطلاع بتاريخ {{ hollal_dt($guest->confirmed_at) }}</p>
             @if ($guest->signature_image_path)
                 <p><x-signature-cell :path="$guest->signature_image_path" /></p>
             @endif

@@ -102,7 +102,7 @@
                     <div class="ds-detail-row"><span class="ds-detail-label">المكلَّف:</span> {{ $detailTask->assignee?->name ?? '—' }}</div>
                     <div class="ds-detail-row"><span class="ds-detail-label">المُسند:</span> {{ $detailTask->assigner?->name ?? '—' }}</div>
                     <div class="ds-detail-row"><span class="ds-detail-label">المشروع:</span> {{ $detailTask->project?->name ?? '—' }}</div>
-                    <div class="ds-detail-row"><span class="ds-detail-label">الاستحقاق:</span> <span class="ds-ltr-num">{{ $detailTask->due_date?->format('Y-m-d H:i') ?? '—' }}</span></div>
+                    <div class="ds-detail-row"><span class="ds-detail-label">الاستحقاق:</span> <span class="ds-ltr-num">{{ hollal_dt($detailTask->due_date) }}</span></div>
                     @if ($detailTask->description)
                         <div class="ds-detail-row"><span class="ds-detail-label">الوصف:</span> {{ $detailTask->description }}</div>
                     @endif
@@ -134,7 +134,7 @@
                     <h4 class="ds-section-heading">الملاحظات</h4>
                     @forelse ($detailTask->notes as $note)
                         <div class="ds-note-item" wire:key="team-note-{{ $note->id }}">
-                            <div class="ds-note-meta">{{ $note->author?->name }} — {{ $note->created_at?->format('Y-m-d H:i') }}</div>
+                            <div class="ds-note-meta">{{ $note->author?->name }} — {{ hollal_dt($note->created_at) }}</div>
                             <p>{{ $note->body }}</p>
                         </div>
                     @empty
@@ -147,7 +147,7 @@
                             <div class="ds-note-meta">
                                 {{ $statusLabels[$log->from_status] ?? $log->from_status ?? '—' }}
                                 → {{ $statusLabels[$log->to_status] ?? $log->to_status }}
-                                — {{ $log->created_at?->format('Y-m-d H:i') }}
+                                — {{ hollal_dt($log->created_at) }}
                             </div>
                             @if ($log->note)
                                 <p>{{ $log->note }}</p>

@@ -138,8 +138,8 @@
                 <td>{{ $record->employee?->name ?? '—' }}</td>
                 <td class="ds-ltr-num">{{ $record->date?->format('Y-m-d') }}</td>
                 <td>{{ $record->type }}</td>
-                <td class="ds-ltr-num">{{ $record->check_in_at?->format('H:i') ?? '—' }}</td>
-                <td class="ds-ltr-num">{{ $record->check_out_at?->format('H:i') ?? '—' }}</td>
+                <td class="ds-ltr-num">{{ hollal_time($record->check_in_at) }}</td>
+                <td class="ds-ltr-num">{{ hollal_time($record->check_out_at) }}</td>
                 <td class="ds-ltr-num">
                     @php $late = (int) ($lateById[$record->id] ?? 0); @endphp
                     {{ $late > 0 ? $late : '—' }}

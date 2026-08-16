@@ -12,7 +12,7 @@
     <div>
       <a href="{{ route('meetings.index') }}" class="ds-link">العودة للاجتماعات</a>
       <h1 class="ds-page-title">{{ $meeting->title }}</h1>
-      <p class="ds-text-muted">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</p>
+      <p class="ds-text-muted">{{ hollal_dt($meeting->scheduled_at) }}</p>
       @if ($meeting->isApproved())
         <span class="ds-badge ds-badge-success">محضر معتمد — {{ $meeting->approved_at?->format('Y-m-d') }}</span>
       @endif
@@ -26,7 +26,7 @@
         @endcan
         @if ($meeting->hasEnded() && $isParticipant)
           @if ($myConfirmedAt)
-            <span class="ds-badge ds-badge-success">أكّدتَ الاطلاع — {{ $myConfirmedAt->format('Y-m-d H:i') }}</span>
+            <span class="ds-badge ds-badge-success">أكّدتَ الاطلاع — {{ hollal_dt($myConfirmedAt) }}</span>
           @else
             <button type="button" class="ds-btn ds-btn-outline" wire:click="confirmMyAttendance">اطّلعت على المحضر وأؤكّد</button>
           @endif
@@ -60,7 +60,7 @@
     <section class="ds-minutes-zone">
       <div class="ds-filters-row">
         <strong>منصة حلّل</strong>
-        <span class="ds-text-muted ds-ltr-num">اجتماع: {{ $meeting->scheduled_at?->format('Y-m-d') }} · طباعة: {{ now()->format('Y-m-d H:i') }}</span>
+        <span class="ds-text-muted ds-ltr-num">اجتماع: {{ $meeting->scheduled_at?->format('Y-m-d') }} · طباعة: {{ hollal_dt(now()) }}</span>
       </div>
       <h2 class="ds-section-heading">محضر: {{ $meeting->title }}</h2>
     </section>
@@ -69,7 +69,7 @@
       <h3 class="ds-section-heading">تفاصيل الاجتماع</h3>
       <x-ds-table>
         <tr><th>العنوان</th><td>{{ $meeting->title }}</td></tr>
-        <tr><th>الوقت</th><td class="ds-ltr-num">{{ $meeting->scheduled_at?->format('Y-m-d H:i') }}</td></tr>
+        <tr><th>الوقت</th><td class="ds-ltr-num">{{ hollal_dt($meeting->scheduled_at) }}</td></tr>
         <tr><th>المكان</th><td>{{ $meeting->link ? 'عن بعد' : ($meeting->location ?: '—') }}</td></tr>
         <tr><th>الرئيس</th><td>{{ $meeting->chair?->name ?? '—' }}</td></tr>
         <tr><th>محرر الاجتماع</th><td>{{ $meeting->secretary?->name ?? '—' }}</td></tr>
@@ -134,7 +134,7 @@
             <tr wire:key="guest-sig-{{ $guest->id }}">
               <td>{{ $guest->name }}</td>
               <td class="ds-ltr-num">{{ $guest->email }}</td>
-              <td>{{ $guest->confirmed_at?->format('Y-m-d H:i') ?? '—' }}</td>
+              <td>{{ hollal_dt($guest->confirmed_at) }}</td>
               <td style="min-height:2rem">
                 <x-signature-cell :path="$guest->signature_image_path" />
               </td>

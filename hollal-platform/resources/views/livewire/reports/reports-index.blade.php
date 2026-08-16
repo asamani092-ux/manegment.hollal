@@ -13,7 +13,7 @@
 
         <div class="ds-card ds-mb-lg">
             <p><strong>الفترة:</strong> {{ $selectedReport->week_start->format('Y-m-d') }} — {{ $selectedReport->week_end->format('Y-m-d') }}</p>
-            <p><strong>تاريخ الإنشاء:</strong> {{ $selectedReport->generated_at->format('Y-m-d H:i') }}</p>
+            <p><strong>تاريخ الإنشاء:</strong> {{ hollal_dt($selectedReport->generated_at) }}</p>
             <p><strong>إنفاق الأسبوع:</strong> {{ number_format((float) $selectedReport->week_spend, 2) }}</p>
         </div>
 
@@ -106,7 +106,7 @@
                 @forelse ($reports as $report)
                     <tr wire:key="report-{{ $report->id }}">
                         <td>{{ $report->week_start->format('Y-m-d') }} — {{ $report->week_end->format('Y-m-d') }}</td>
-                        <td>{{ $report->generated_at->format('Y-m-d H:i') }}</td>
+                        <td>{{ hollal_dt($report->generated_at) }}</td>
                         <td>{{ number_format((float) $report->week_spend, 2) }}</td>
                         <td>
                             <button type="button" class="ds-btn ds-btn-sm ds-btn-outline" wire:click="openReport({{ $report->id }})">
