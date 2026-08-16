@@ -44,11 +44,21 @@ class WorkloadService
 
         return $subordinates->map(function (User $member) {
             $open = $this->openCount($member->id);
+            $overdueCount = Task::query()->where('assigned_to', $member->id)->overdue()->count();
+            $overdueTasks = $overdueCount === 0
+                ? collect()
+                : Task::query()
+                    ->where('assigned_to', $member->id)
+                    ->overdue()
+                    ->latest('due_date')
+                    ->limit(8)
+                    ->get(['id', 'title', 'due_date', 'status', 'assigned_to']);
 
             return [
                 'user' => $member,
                 'open' => $open,
-                'overdue' => Task::query()->where('assigned_to', $member->id)->overdue()->count(),
+                'overdue' => $overdueCount,
+                'overdue_tasks' => $overdueTasks,
                 'due_this_week' => Task::query()
                     ->where('assigned_to', $member->id)
                     ->whereNotIn('status', ['completed'])

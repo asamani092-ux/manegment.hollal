@@ -169,7 +169,7 @@ class WorkloadBoard extends Component
             ->latest();
 
         if (! $user->can('esnad.tasks.all.view')) {
-            $scopeIds = $subordinateIds->push($user->id);
+            $scopeIds = $subordinateIds->values()->push($user->id)->unique()->values();
             $templatesQuery->where(function ($q) use ($user, $scopeIds) {
                 $q->where('created_by', $user->id)
                     ->orWhereIn('assigned_to_id', $scopeIds);
@@ -181,29 +181,42 @@ class WorkloadBoard extends Component
             $followUp = Task::query()
                 ->whereNotNull('recurring_template_id')
                 ->where('assigned_to', $this->followUpUserId)
+                ->whereNotIn('status', ['completed'])
                 ->with('assignee:id,name')
                 ->latest()
                 ->limit(40)
                 ->get(['id', 'title', 'status', 'due_date', 'assigned_to', 'recurring_template_id', 'completed_at']);
         }
 
-        $overdueForTeam = $user->can('esnad.tasks.team.view')
-            ? Task::query()
-                ->overdue()
-                ->whereIn('assigned_to', $subordinateIds)
-                ->with('assignee:id,name')
-                ->latest('due_date')
-                ->limit(30)
-                ->get()
-            : collect();
+        $teamScopeIds = $subordinateIds->values()->push($user->id)->unique()->values();
 
-        $followUsers = $user->can('esnad.tasks.all.view')
+        // قائمة المتابعة: فقط من لديهم مهمة متكررة قائمة (غير مكتملة).
+        $openRecurringAssigneeIds = Task::query()
+            ->whereNotNull('recurring_template_id')
+            ->whereNotIn('status', ['completed'])
+            ->when(
+                ! $user->can('esnad.tasks.all.view'),
+                fn ($q) => $q->whereIn('assigned_to', $teamScopeIds)
+            )
+            ->distinct()
+            ->pluck('assigned_to');
+
+        $followUsers = User::query()
+            ->where('is_active', true)
+            ->whereIn('id', $openRecurringAssigneeIds)
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        if ($this->followUpUserId && ! $followUsers->contains('id', $this->followUpUserId)) {
+            $this->followUpUserId = null;
+            $followUp = collect();
+        }
+
+        $assigneeUsers = $user->can('esnad.tasks.all.view')
             ? User::where('is_active', true)->orderBy('name')->get(['id', 'name'])
             : User::query()
                 ->where('is_active', true)
-                ->where(function ($q) use ($user, $subordinateIds) {
-                    $q->whereIn('id', $subordinateIds)->orWhere('id', $user->id);
-                })
+                ->whereIn('id', $teamScopeIds)
                 ->orderBy('name')
                 ->get(['id', 'name']);
 
@@ -211,9 +224,9 @@ class WorkloadBoard extends Component
             'rows' => $user->can('esnad.tasks.team.view') ? $service->board($user) : collect(),
             'threshold' => $service->threshold(),
             'recurringTemplates' => $templatesQuery->get(),
-            'overdueForTeam' => $overdueForTeam,
             'followUp' => $followUp,
-            'users' => $followUsers,
+            'followUsers' => $followUsers,
+            'users' => $assigneeUsers,
             'projects' => Project::orderBy('name')->get(['id', 'name']),
             'statusLabels' => [
                 'new' => 'جديدة',
