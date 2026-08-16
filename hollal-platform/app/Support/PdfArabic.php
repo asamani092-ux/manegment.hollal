@@ -44,8 +44,13 @@ final class PdfArabic
 
         try {
             self::$arabic ??= new Arabic;
-
-            return self::$arabic->utf8Glyphs($text);
+            // ar-php emits E_NOTICE for unsupported codepoints; never let that abort PDF.
+            $prev = error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING);
+            try {
+                return self::$arabic->utf8Glyphs($text);
+            } finally {
+                error_reporting($prev);
+            }
         } catch (\Throwable) {
             return $text;
         }
@@ -122,8 +127,8 @@ final class PdfArabic
             'defaultFont' => self::defaultFont(),
             'isRemoteEnabled' => true,
             'isHtml5ParserEnabled' => true,
-            // Subsetting can drop Arabic presentation forms after shaping.
-            'isFontSubsettingEnabled' => false,
+            // Keep subsetting on so PDFs stay small; shaping uses presentation forms that Amiri embeds.
+            'isFontSubsettingEnabled' => true,
         ];
     }
 
