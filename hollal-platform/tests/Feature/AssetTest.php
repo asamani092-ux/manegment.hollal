@@ -214,4 +214,18 @@ class AssetTest extends TestCase
         );
         $this->assertGreaterThan(100, strlen($pdf->getContent()));
     }
+
+    public function test_assets_index_shows_print_and_excel_actions(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $user = User::factory()->create(['must_change_password' => false]);
+        $user->givePermissionTo(['finance.assets.view', 'finance.assets.manage']);
+
+        Livewire::actingAs($user)
+            ->test(AssetsIndex::class)
+            ->assertOk()
+            ->assertSee('طباعة تقرير الأصول')
+            ->assertSee('تصدير Excel')
+            ->assertSee('طباعة / PDF');
+    }
 }

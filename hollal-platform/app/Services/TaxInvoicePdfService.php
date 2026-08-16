@@ -89,8 +89,10 @@ class TaxInvoicePdfService
                 true
             )
             .'</table>'
-            .'<p style="margin-top:12px; text-align:right;"><strong>رمز QR (ZATCA Phase A — TLV base64)</strong></p>'
-            .'<p class="pdf-num" style="font-size:9px; word-break: break-all; text-align:left;">'.e($qr).'</p>'
+            .'<div style="margin-top:16px; text-align:right;">'
+            .'<p><strong>رمز الفاتورة الإلكتروني (ZATCA)</strong></p>'
+            .\App\Support\ZatcaQrImage::imgTag($qr, 140)
+            .'</div>'
             .'</div>';
 
         return $html;

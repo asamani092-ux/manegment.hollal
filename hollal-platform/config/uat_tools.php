@@ -141,7 +141,7 @@ return [
             'items' => [
                 ['id' => 'expenses', 'tool' => 'طلبات الصرف', 'path' => '/expenses', 'checks' => 'طلب · سلسلة اعتماد · صرف · إرجاع returned · فلاتر · مرفق'],
                 ['id' => 'custodies', 'tool' => 'العهد', 'path' => '/custodies', 'checks' => 'طلب · اعتماد · صرف · إثبات · فلتر · بطاقات الجوال'],
-                ['id' => 'assets', 'tool' => 'الأصول', 'path' => '/assets', 'checks' => 'تسجيل · تسليم لموظف · بحث بالرمز · فلتر الحالة'],
+                ['id' => 'assets', 'tool' => 'الأصول', 'path' => '/assets', 'checks' => 'تسجيل · تسليم · بحث · فلتر · طباعة تقرير · تصدير Excel'],
                 ['id' => 'revenues', 'tool' => 'الإيرادات', 'path' => '/revenues', 'checks' => 'تسجيل إيراد · مرفق إلزامي ينتظر الرفع · فلتر المصدر والتاريخ'],
                 ['id' => 'tax', 'tool' => 'الفواتير الضريبية', 'path' => '/tax-invoices', 'checks' => 'إصدار · إشعار دائن/مدين · طباعة/PDF عربي'],
                 ['id' => 'budgets', 'tool' => 'الميزانيات', 'path' => '/budgets', 'checks' => 'موازنات المشاريع · تجاوزات'],

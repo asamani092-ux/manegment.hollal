@@ -1,42 +1,48 @@
 <x-ds-page>
-    <x-ds-page-header
-        title="الأصول"
-        :show-button="$canManage"
-        button-label="أصل جديد"
-        button-icon="fa-plus"
-        wire:click="openCreateModal"
-    />
-
-    <div class="ds-filters-row ds-mb-3">
-        <a class="ds-btn ds-btn-secondary" href="{{ route('assets.pdf', ['statusTab' => $statusTab, 'search' => $search, 'condition' => $conditionFilter, 'print' => 1]) }}" target="_blank" rel="noopener">
-            <i class="fas fa-print"></i> طباعة / PDF
-        </a>
-        <a class="ds-btn ds-btn-secondary" href="{{ route('assets.excel', ['statusTab' => $statusTab, 'search' => $search, 'condition' => $conditionFilter]) }}">
-            <i class="fas fa-file-excel"></i> تصدير Excel
-        </a>
-    </div>
+    <x-ds-page-header title="الأصول">
+        <x-slot:actions>
+            <a class="ds-btn ds-btn-secondary" href="{{ route('assets.pdf', ['statusTab' => $statusTab, 'search' => $search, 'condition' => $conditionFilter, 'print' => 1]) }}" target="_blank" rel="noopener">
+                <i class="fas fa-print"></i> طباعة تقرير الأصول
+            </a>
+            <a class="ds-btn ds-btn-secondary" href="{{ route('assets.excel', ['statusTab' => $statusTab, 'search' => $search, 'condition' => $conditionFilter]) }}">
+                <i class="fas fa-file-excel"></i> تصدير Excel
+            </a>
+            @if ($canManage)
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="openCreateModal">
+                    <i class="fas fa-plus"></i> أصل جديد
+                </button>
+            @endif
+        </x-slot:actions>
+    </x-ds-page-header>
 
     <nav class="ds-tabs" role="tablist">
         <button type="button" class="ds-tab {{ $statusTab === 'active' ? 'ds-tab-active' : '' }}" wire:click="setStatusTab('active')">النشطة</button>
         <button type="button" class="ds-tab {{ $statusTab === 'all' ? 'ds-tab-active' : '' }}" wire:click="setStatusTab('all')">كل الأصول (بما فيها التالف والمستبعد)</button>
     </nav>
 
-    <div class="ds-filters-row">
-        <div class="ds-filter-field">
-            <label class="ds-label" for="asset-search">بحث</label>
-            <input id="asset-search" type="search" class="ds-input" wire:model.live.debounce.400ms="search" placeholder="الاسم أو الرمز أو حامل العهدة…">
+    <div class="ds-tab-panel">
+        <div class="ds-filters-row ds-mb-3">
+            <a class="ds-btn ds-btn-outline" href="{{ route('assets.pdf', ['statusTab' => $statusTab, 'search' => $search, 'condition' => $conditionFilter, 'print' => 1]) }}" target="_blank" rel="noopener">
+                <i class="fas fa-print"></i> طباعة / PDF
+            </a>
+            <a class="ds-btn ds-btn-outline" href="{{ route('assets.excel', ['statusTab' => $statusTab, 'search' => $search, 'condition' => $conditionFilter]) }}">
+                <i class="fas fa-file-excel"></i> تصدير Excel
+            </a>
+            <div class="ds-filter-field">
+                <label class="ds-label" for="asset-search">بحث</label>
+                <input id="asset-search" type="search" class="ds-input" wire:model.live.debounce.400ms="search" placeholder="الاسم أو الرمز أو حامل العهدة…">
+            </div>
+            <div class="ds-filter-field">
+                <label class="ds-label" for="asset-condition">الحالة</label>
+                <select id="asset-condition" class="ds-input" wire:model.live="conditionFilter">
+                    <option value="">— الكل —</option>
+                    @foreach ($conditionOptions as $opt)
+                        <option value="{{ $opt }}">{{ $opt }}</option>
+                    @endforeach
+                </select>
+            </div>
         </div>
-        <div class="ds-filter-field">
-            <label class="ds-label" for="asset-condition">الحالة</label>
-            <select id="asset-condition" class="ds-input" wire:model.live="conditionFilter">
-                <option value="">— الكل —</option>
-                @foreach ($conditionOptions as $opt)
-                    <option value="{{ $opt }}">{{ $opt }}</option>
-                @endforeach
-            </select>
-        </div>
-    </div>
-    <p class="ds-help-text ds-mb-3">سجل مستقل لا يدخل في موازنات المشاريع — القيمة الدفترية تُحسب من قيمة الشراء والعمر المحاسبي فقط.</p>
+        <p class="ds-help-text ds-mb-3">سجل مستقل لا يدخل في موازنات المشاريع — القيمة الدفترية تُحسب من قيمة الشراء والعمر المحاسبي فقط.</p>
 
     <x-ds-table>
         <x-slot:head>
@@ -88,6 +94,7 @@
     </x-ds-table>
 
     {{ $assets->links() }}
+    </div>
 
     <x-ds-modal :show="$showCreateModal" title="أصل جديد" close-action="$set('showCreateModal', false)">
         <x-ds-form-group label="اسم الأصل" :error="$errors->first('name_ar')">

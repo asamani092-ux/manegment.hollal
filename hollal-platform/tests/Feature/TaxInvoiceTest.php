@@ -316,4 +316,14 @@ class TaxInvoiceTest extends TestCase
         $this->assertStringContainsString('مؤسسة الاختبار', $html);
         $this->assertStringContainsString('الرياض، حي الاختبار', $html);
     }
+
+    public function test_pdf_html_embeds_zatca_qr_image_with_arabic_caption(): void
+    {
+        $invoice = $this->issue();
+        $html = app(TaxInvoicePdfService::class)->buildHtml($invoice);
+
+        $this->assertStringContainsString('رمز الفاتورة الإلكتروني (ZATCA)', $html);
+        $this->assertStringContainsString('alt="ZATCA QR"', $html);
+        $this->assertStringNotContainsString('TLV base64', $html);
+    }
 }
