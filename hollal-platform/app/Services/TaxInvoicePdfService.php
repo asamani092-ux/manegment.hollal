@@ -4,19 +4,36 @@ namespace App\Services;
 
 use App\Models\CompanyProfile;
 use App\Models\TaxInvoice;
+use App\Models\TaxInvoiceTemplate;
 use App\Support\PdfArabic;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * 04-B7 — Arabic RTL invoice PDF, including the TLV QR payload.
+ * Wave D-deep: the per-type template only supplies the letterhead
+ * background — company data always comes from CompanyProfile, and the
+ * client/line items/tax/totals are always filled from the issued invoice.
  */
 class TaxInvoicePdfService
 {
     public function render(TaxInvoice $invoice): string
     {
+        $pdf = Pdf::loadHTML($this->buildHtml($invoice))->setPaper('a4');
+
+        return PdfArabic::applyOptions($pdf)->output();
+    }
+
+    /**
+     * Extracted for testability: assert the letterhead/company data end up
+     * in the HTML without needing to parse the rendered PDF binary.
+     */
+    public function buildHtml(TaxInvoice $invoice): string
+    {
         $invoice->loadMissing('items');
         $company = CompanyProfile::current();
         $seller = app(TaxInvoiceService::class)->sellerFromCompanyProfile();
+        $template = TaxInvoiceTemplate::forType($invoice->invoice_type);
 
         $rows = '';
         foreach ($invoice->items as $item) {
@@ -32,8 +49,15 @@ class TaxInvoicePdfService
         $cr = $seller['commercial_register'] ?: $company->commercial_register;
         $address = $seller['address'] ?: $company->address;
         $qr = (string) $invoice->qr_payload;
+        $typeLabel = $invoice->invoice_type === TaxInvoice::TYPE_SIMPLIFIED
+            ? 'فاتورة ضريبية مبسطة'
+            : 'فاتورة ضريبية';
 
-        $html = PdfArabic::header('فاتورة ضريبية — '.$invoice->number, includeCr: true)
+        $letterhead = $this->letterheadBackground($template);
+
+        $html = $letterhead
+            .'<div class="tax-invoice-content">'
+            .PdfArabic::header($typeLabel.' — '.$invoice->number, includeCr: true)
             .'<div dir="rtl" style="unicode-bidi: embed;">'
             .'<p><strong>البائع:</strong> '.e($invoice->seller_name)
             .' — الرقم الضريبي: '.e((string) $invoice->seller_vat_number)
@@ -44,7 +68,7 @@ class TaxInvoicePdfService
             .' — الرقم الضريبي: '.e((string) $invoice->buyer_vat_number).'</p>'
             .'<p>تاريخ الإصدار: '.e($invoice->issued_at?->format('Y-m-d H:i') ?? '—')
             .' — الوضع: '.e($invoice->mode)
-            .' — النوع: '.e($invoice->invoice_type).'</p>'
+            .' — النوع: '.e($typeLabel).'</p>'
             .'<table><thead><tr>'
             .'<th>الوصف</th><th>الكمية</th><th>سعر الوحدة</th><th>الضريبة</th><th>الإجمالي</th>'
             .'</tr></thead><tbody>'.$rows.'</tbody></table>'
@@ -54,13 +78,26 @@ class TaxInvoicePdfService
             .' '.e($invoice->currency).'</strong></p>'
             .'<p><strong>رمز QR (ZATCA Phase A — TLV base64):</strong></p>'
             .'<p style="font-size:9px; word-break: break-all; font-family: monospace;">'.e($qr).'</p>'
+            .'</div>'
             .'</div>';
 
-        $pdf = Pdf::loadHTML($html)->setPaper('a4');
-        foreach (PdfArabic::pdfOptions() as $key => $value) {
-            $pdf->setOption($key, $value);
+        return $html;
+    }
+
+    /**
+     * Full-page fixed background image behind the invoice content — the
+     * standard DomPDF trick for a repeating letterhead. Empty when the
+     * template has no uploaded letterhead.
+     */
+    private function letterheadBackground(?TaxInvoiceTemplate $template): string
+    {
+        if (! $template?->letterhead_path || ! Storage::disk('public')->exists($template->letterhead_path)) {
+            return '';
         }
 
-        return $pdf->output();
+        $full = str_replace('\\', '/', Storage::disk('public')->path($template->letterhead_path));
+
+        return '<img src="file://'.$full.'" alt="" class="tax-invoice-letterhead" '
+            .'style="position:fixed; top:0; left:0; width:100%; height:100%; z-index:-1;">';
     }
 }

@@ -3,13 +3,12 @@
 namespace App\Services;
 
 use App\Models\AuditLog;
-use App\Models\CompanyProfile;
 use App\Models\Partnership;
 use App\Models\PartnershipContract;
 use App\Models\PartnershipPayment;
 use App\Models\Quote;
 use App\Models\User;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Support\PdfArabic;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -197,7 +196,6 @@ class PartnershipContractService
         ?string $device,
     ): string {
         $contract->loadMissing(['schedule', 'quote.items', 'partnership.organization']);
-        $company = CompanyProfile::current();
 
         $scheduleRows = '';
         foreach ($contract->schedule as $row) {
@@ -206,10 +204,7 @@ class PartnershipContractService
                 .e($row->due_on->format('Y-m-d')).'</td></tr>';
         }
 
-        $html = '<div dir="rtl" style="font-family: dejavu sans;">'
-            .'<h2>عقد شراكة رقم '.(int) $contract->id.'</h2>'
-            .'<p>'.e($company->name).' — الرقم الضريبي: '.e((string) $company->tax_number).'</p>'
-            .'<p>الجهة: '.e($contract->partnership->organization?->name ?? $contract->partnership->entity_name ?? '—').'</p>'
+        $body = '<p>الجهة: '.e($contract->partnership->organization?->name ?? $contract->partnership->entity_name ?? '—').'</p>'
             .'<p>القيمة الإجمالية: '.number_format((float) $contract->total_value, 2).'</p>'
             .'<h3>جدول الدفعات</h3>'
             .'<table border="1" cellspacing="0" cellpadding="4" width="100%">'
@@ -226,9 +221,9 @@ class PartnershipContractService
             .($pngDataUri !== null
                 ? '<p>التوقيع:</p><img src="'.$pngDataUri.'" width="320" height="120" alt="توقيع"/>'
                 : '<p>التوقيع محفوظ إلكترونيًا (ملف SVG على القرص الخاص).</p>')
-            .'</div></div>';
+            .'</div>';
 
-        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'dejavu sans')->output();
+        return PdfArabic::render('عقد شراكة رقم '.(int) $contract->id, $body, includeCr: true);
     }
 
     /**
@@ -321,7 +316,6 @@ class PartnershipContractService
     public function renderPdf(PartnershipContract $contract): string
     {
         $contract->loadMissing(['schedule', 'quote.items', 'partnership.organization']);
-        $company = CompanyProfile::current();
 
         $scheduleRows = '';
         foreach ($contract->schedule as $row) {
@@ -330,19 +324,15 @@ class PartnershipContractService
                 .e($row->due_on->format('Y-m-d')).'</td></tr>';
         }
 
-        $html = '<div dir="rtl" style="font-family: dejavu sans;">'
-            .'<h2>عقد شراكة رقم '.(int) $contract->id.'</h2>'
-            .'<p>'.e($company->name).' — الرقم الضريبي: '.e((string) $company->tax_number).'</p>'
-            .'<p>الجهة: '.e($contract->partnership->organization?->name ?? $contract->partnership->entity_name ?? '—').'</p>'
+        $body = '<p>الجهة: '.e($contract->partnership->organization?->name ?? $contract->partnership->entity_name ?? '—').'</p>'
             .'<p>القيمة الإجمالية: '.number_format((float) $contract->total_value, 2).'</p>'
             .'<h3>جدول الدفعات</h3>'
             .'<table border="1" cellspacing="0" cellpadding="4" width="100%">'
             .'<thead><tr><th>الدفعة</th><th>المبلغ</th><th>تاريخ الاستحقاق</th></tr></thead>'
             .'<tbody>'.$scheduleRows.'</tbody></table>'
             .'<p>التزامات حلل: '.e((string) $contract->hollal_commitments).'</p>'
-            .'<p>التزامات الجهة: '.e((string) $contract->partner_commitments).'</p>'
-            .'</div>';
+            .'<p>التزامات الجهة: '.e((string) $contract->partner_commitments).'</p>';
 
-        return Pdf::loadHTML($html)->setPaper('a4')->setOption('defaultFont', 'dejavu sans')->output();
+        return PdfArabic::render('عقد شراكة رقم '.(int) $contract->id, $body, includeCr: true);
     }
 }

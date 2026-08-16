@@ -72,16 +72,16 @@ class AuditLogIndex extends Component
         return response()->streamDownload(function () use ($rows) {
             $handle = fopen('php://output', 'w');
             fwrite($handle, "\xEF\xBB\xBF"); // UTF-8 BOM for Excel
-            fputcsv($handle, ['التاريخ', 'الإجراء', 'الحالة', 'المنفذ', 'الهدف', 'العنوان IP']);
+            fputcsv($handle, ['التاريخ', 'الإجراء', 'الحالة', 'سبب الفشل', 'المنفذ', 'الهدف']);
 
             foreach ($rows as $row) {
                 fputcsv($handle, [
                     $row->created_at?->format('Y-m-d H:i:s'),
                     $row->actionLabel(),
-                    $row->displayStatus() ?? '—',
+                    $row->displayStatus(),
+                    $row->statusReason() ?? '—',
                     $row->actor?->name ?? '—',
-                    trim(($row->target_type ?? '').' #'.($row->target_id ?? '')),
-                    $row->ip_address ?? '—',
+                    trim(class_basename((string) $row->target_type).' #'.($row->target_id ?? '')),
                 ]);
             }
 

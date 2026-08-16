@@ -8,10 +8,13 @@ use App\Models\Revenue;
 use App\Support\PdfArabic;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 
 /**
  * 04-B6 — strictly-derived financial reports. Every total is a live DB aggregate;
  * nothing is stored. Line items always reconcile to their header total.
+ * Wave D-deep: detailed() adds a movement-by-movement view alongside the
+ * existing monthly summary — same source ledgers, no new stored figures.
  */
 class FinancialReportService
 {
@@ -99,11 +102,8 @@ class FinancialReportService
             .'</tbody></table></div>';
 
         $pdf = Pdf::loadHTML($html)->setPaper('a4');
-        foreach (PdfArabic::pdfOptions() as $key => $value) {
-            $pdf->setOption($key, $value);
-        }
 
-        return $pdf->output();
+        return PdfArabic::applyOptions($pdf)->output();
     }
 
     /**
@@ -125,6 +125,157 @@ class FinancialReportService
         }
         foreach ($report['revenues_by_category'] as $line) {
             $lines[] = ['إيرادات حسب التصنيف', (string) ($line['category_id'] ?? 'غير مصنّف'), number_format((float) $line['total'], 2, '.', '')];
+        }
+
+        $fh = fopen('php://temp', 'r+');
+        fwrite($fh, "\xEF\xBB\xBF");
+        foreach ($lines as $row) {
+            fputcsv($fh, $row);
+        }
+        rewind($fh);
+        $csv = stream_get_contents($fh) ?: '';
+        fclose($fh);
+
+        return $csv;
+    }
+
+    /**
+     * Every movement (مصروف/إيراد/رواتب) that fed the monthly summary,
+     * sorted by date — for finance to trace a total back to its source
+     * rows without leaving the platform.
+     *
+     * @return array<string, mixed>
+     */
+    public function detailed(string $month): array
+    {
+        $start = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
+        $end = $start->copy()->endOfMonth();
+
+        $expenses = ExpenseRequest::query()
+            ->countedAsSpend()
+            ->whereBetween('created_at', [$start, $end])
+            ->select(['id', 'created_at', 'reason', 'category_id', 'amount', 'status', 'project_id'])
+            ->with('project:id,name')
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (ExpenseRequest $e) => [
+                'date' => $e->created_at?->format('Y-m-d'),
+                'type' => 'مصروف',
+                'description' => $e->reason,
+                'category_id' => $e->category_id,
+                'project' => $e->project?->name,
+                'amount' => (float) $e->amount,
+                'status' => $e->status,
+            ]);
+
+        $revenues = Revenue::query()
+            ->where('status', Revenue::STATUS_CONFIRMED)
+            ->whereBetween('confirmed_at', [$start, $end])
+            ->select(['id', 'confirmed_at', 'source_type', 'category_id', 'amount', 'status'])
+            ->orderBy('confirmed_at')
+            ->get()
+            ->map(fn (Revenue $r) => [
+                'date' => $r->confirmed_at?->format('Y-m-d'),
+                'type' => 'إيراد',
+                'description' => $r->source_type,
+                'category_id' => $r->category_id,
+                'project' => null,
+                'amount' => (float) $r->amount,
+                'status' => $r->status,
+            ]);
+
+        $payroll = PayrollRunItem::query()
+            ->whereHas('run', fn ($q) => $q->where('month', $month))
+            ->select(['id', 'employee_id', 'net', 'executed_at', 'payroll_run_id'])
+            ->with('employee:id,name')
+            ->get()
+            ->map(fn (PayrollRunItem $p) => [
+                'date' => $p->executed_at?->format('Y-m-d') ?? $start->format('Y-m-d'),
+                'type' => 'رواتب',
+                'description' => 'صافي راتب — '.($p->employee?->name ?? '—'),
+                'category_id' => null,
+                'project' => null,
+                'amount' => (float) $p->net,
+                'status' => 'منفذ',
+            ]);
+
+        $movements = $expenses->concat($revenues)->concat($payroll)
+            ->sortBy('date')
+            ->values();
+
+        return [
+            'month' => $month,
+            'movements' => $movements,
+            'totals' => [
+                'expenses' => (float) $expenses->sum('amount'),
+                'revenues' => (float) $revenues->sum('amount'),
+                'payroll' => (float) $payroll->sum('amount'),
+            ],
+        ];
+    }
+
+    /**
+     * True when the detailed movement totals tie back to the monthly
+     * summary totals for the same month.
+     *
+     * @param  array<string, mixed>  $detailed
+     * @param  array<string, mixed>  $summary
+     */
+    public function detailedReconciles(array $detailed, array $summary): bool
+    {
+        return round($detailed['totals']['expenses'], 2) === round((float) $summary['expenses_total'], 2)
+            && round($detailed['totals']['revenues'], 2) === round((float) $summary['revenues_total'], 2)
+            && round($detailed['totals']['payroll'], 2) === round((float) $summary['payroll_total'], 2);
+    }
+
+    public function exportDetailedPdf(string $month): string
+    {
+        $detailed = $this->detailed($month);
+
+        $rows = '';
+        /** @var Collection<int, array<string, mixed>> $movements */
+        $movements = $detailed['movements'];
+        foreach ($movements as $movement) {
+            $rows .= '<tr>'
+                .'<td>'.e((string) $movement['date']).'</td>'
+                .'<td>'.e((string) $movement['type']).'</td>'
+                .'<td>'.e((string) ($movement['description'] ?? '—')).'</td>'
+                .'<td>'.e((string) ($movement['project'] ?? '—')).'</td>'
+                .'<td>'.number_format((float) $movement['amount'], 2).'</td>'
+                .'</tr>';
+        }
+
+        $html = PdfArabic::header('التقرير المالي المفصّل — '.$month, includeCr: true)
+            .'<div dir="rtl">'
+            .'<table><thead><tr><th>التاريخ</th><th>النوع</th><th>الوصف</th><th>المشروع</th><th>المبلغ</th></tr></thead><tbody>'
+            .($rows !== '' ? $rows : '<tr><td colspan="5">لا توجد حركات في هذا الشهر</td></tr>')
+            .'</tbody></table>'
+            .'<p>إجمالي المصروفات: '.number_format($detailed['totals']['expenses'], 2).'</p>'
+            .'<p>إجمالي الإيرادات: '.number_format($detailed['totals']['revenues'], 2).'</p>'
+            .'<p>إجمالي الرواتب: '.number_format($detailed['totals']['payroll'], 2).'</p>'
+            .'</div>';
+
+        $pdf = Pdf::loadHTML($html)->setPaper('a4');
+
+        return PdfArabic::applyOptions($pdf)->output();
+    }
+
+    /** UTF-8 CSV with BOM for Excel — one row per movement. */
+    public function exportDetailedCsv(string $month): string
+    {
+        $detailed = $this->detailed($month);
+        $lines = [];
+        $lines[] = ['التاريخ', 'النوع', 'الوصف', 'المشروع', 'المبلغ', 'الحالة'];
+
+        foreach ($detailed['movements'] as $movement) {
+            $lines[] = [
+                (string) $movement['date'],
+                (string) $movement['type'],
+                (string) ($movement['description'] ?? ''),
+                (string) ($movement['project'] ?? ''),
+                number_format((float) $movement['amount'], 2, '.', ''),
+                (string) ($movement['status'] ?? ''),
+            ];
         }
 
         $fh = fopen('php://temp', 'r+');

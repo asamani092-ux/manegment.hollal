@@ -26,6 +26,9 @@ class TeamTasksIndex extends Component
     /** @var array<int, string> per-task note input */
     public array $approveNote = [];
 
+    /** @var array<int, string> manager status overrides on team tab */
+    public array $managerStatus = [];
+
     public bool $showDetail = false;
 
     public ?int $detailTaskId = null;
@@ -40,6 +43,7 @@ class TeamTasksIndex extends Component
         $task = Task::findOrFail($taskId);
         $this->authorize('view', $task);
         $this->detailTaskId = $task->id;
+        $this->managerStatus[$taskId] = $task->status;
         $this->showDetail = true;
     }
 
@@ -89,6 +93,26 @@ class TeamTasksIndex extends Component
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
+    }
+
+    public function managerUpdateStatus(int $taskId): void
+    {
+        $this->authorize('esnad.tasks.team.view');
+        $task = Task::findOrFail($taskId);
+        $to = $this->managerStatus[$taskId] ?? '';
+
+        try {
+            app(TaskLifecycleService::class)->managerSetStatus($task, auth()->user(), $to);
+            $this->dispatch('toast', type: 'success', message: 'تم تحديث حالة المهمة');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
+    public function managerComplete(int $taskId): void
+    {
+        $this->managerStatus[$taskId] = 'completed';
+        $this->managerUpdateStatus($taskId);
     }
 
     /** @return Collection<int, Task> */

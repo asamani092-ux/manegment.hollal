@@ -47,22 +47,41 @@
             @endforelse
         @elseif ($tab === 'team')
             @forelse ($teamTasks as $task)
-                <div class="ds-stat-mini" wire:key="team-{{ $task->id }}">
+                <div class="ds-stat-card" wire:key="team-{{ $task->id }}">
                     <strong>{{ $task->title }}</strong>
-                    <span class="ds-text-muted">{{ $task->assignee?->name ?? '—' }} — {{ $statusLabels[$task->status] ?? $task->status }}</span>
-                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openDetail({{ $task->id }})">تفاصيل</button>
+                    <div class="ds-text-muted">
+                        {{ $task->assignee?->name ?? '—' }} — {{ $statusLabels[$task->status] ?? $task->status }}
+                        @if ($task->due_date) — استحقاق {{ $task->due_date->format('Y-m-d') }} @endif
+                    </div>
+                    <div class="ds-filter-bar">
+                        <select class="ds-input" wire:model="managerStatus.{{ $task->id }}">
+                            @foreach ($statusLabels as $value => $label)
+                                <option value="{{ $value }}" @selected(($managerStatus[$task->id] ?? $task->status) === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                        <button type="button" class="ds-btn ds-btn-outline" wire:click="managerUpdateStatus({{ $task->id }})">تغيير الحالة</button>
+                        @if ($task->status !== 'completed')
+                            <button type="button" class="ds-btn ds-btn-primary" wire:click="managerComplete({{ $task->id }})">إكمال</button>
+                        @endif
+                        <button type="button" class="ds-btn ds-btn-outline" wire:click="openDetail({{ $task->id }})">تفاصيل</button>
+                    </div>
                 </div>
             @empty
                 <p class="ds-text-muted">لا مهام للفريق</p>
             @endforelse
         @else
             @forelse ($overdueTasks as $task)
-                <div class="ds-stat-mini" wire:key="overdue-{{ $task->id }}">
+                <div class="ds-stat-card" wire:key="overdue-{{ $task->id }}">
                     <strong>{{ $task->title }}</strong>
-                    <span class="ds-text-muted">
+                    <div class="ds-text-muted">
                         {{ $task->assignee?->name ?? '—' }} — استحقاق {{ $task->due_date?->format('Y-m-d') ?? '—' }}
-                    </span>
-                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openDetail({{ $task->id }})">تفاصيل</button>
+                    </div>
+                    <div class="ds-filter-bar">
+                        @can('esnad.tasks.team.view')
+                            <button type="button" class="ds-btn ds-btn-primary" wire:click="managerComplete({{ $task->id }})">إكمال</button>
+                        @endcan
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openDetail({{ $task->id }})">تفاصيل</button>
+                    </div>
                 </div>
             @empty
                 <p class="ds-text-muted">لا مهام متأخرة</p>

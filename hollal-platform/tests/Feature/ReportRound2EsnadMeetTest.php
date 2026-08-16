@@ -4,10 +4,10 @@ namespace Tests\Feature;
 
 use App\Livewire\Meetings\MeetingsIndex;
 use App\Livewire\Meetings\OpenDecisionsIndex;
-use App\Livewire\Tasks\RecurringTasksIndex;
 use App\Livewire\Tasks\TasksCalendar;
 use App\Livewire\Tasks\TasksIndex;
 use App\Livewire\Tasks\TeamTasksIndex;
+use App\Livewire\Tasks\WorkloadBoard;
 use App\Models\Meeting;
 use App\Models\MeetingItem;
 use App\Models\RecurringTaskTemplate;
@@ -112,11 +112,13 @@ class ReportRound2EsnadMeetTest extends TestCase
         ]);
 
         Livewire::actingAs($user)
-            ->test(RecurringTasksIndex::class)
-            ->assertSee('آخر النسخ المولَّدة', false)
+            ->test(WorkloadBoard::class, ['tab' => 'recurring'])
+            ->assertSee('قوالب متكررة', false)
+            ->assertSee($template->title, false)
+            ->set('tab', 'reminders')
+            ->set('followUpUserId', $user->id)
             ->assertSee('نسخة مولّدة من القالب', false)
-            ->assertSee('قيد التنفيذ', false)
-            ->assertSee(route('tasks.index', ['open' => $instance->id]), false);
+            ->assertSee('قيد التنفيذ', false);
     }
 
     public function test_meeting_invite_notification_faked_on_create_with_attendees(): void

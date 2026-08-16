@@ -86,3 +86,113 @@
         <li class="ds-search-select__empty ds-text-muted" x-show="filtered.length === 0">لا توجد نتائج</li>
     </ul>
 </div>
+
+@once
+    @push('scripts')
+        <script>
+            document.addEventListener('alpine:init', () => {
+                Alpine.data('dsSearchSelect', ({ options = [], wireModel = null, placeholder = 'ابحث للاختيار…' }) => ({
+                    options,
+                    wireModel,
+                    placeholder,
+                    query: '',
+                    open: false,
+                    highlight: 0,
+                    value: null,
+
+                    init() {
+                        if (this.wireModel) {
+                            this.value = this.$wire.get(this.wireModel);
+                        }
+                    },
+
+                    get selected() {
+                        return this.options.find((opt) => String(opt.value) === String(this.value)) ?? null;
+                    },
+
+                    get hasValue() {
+                        return this.value !== null && this.value !== undefined && this.value !== '';
+                    },
+
+                    get displayPlaceholder() {
+                        return this.hasValue && ! this.open ? '' : this.placeholder;
+                    },
+
+                    get inputValue() {
+                        if (this.open) {
+                            return this.query;
+                        }
+
+                        return this.selected ? this.selected.label : '';
+                    },
+
+                    get filtered() {
+                        const term = this.query.trim().toLowerCase();
+                        if (term === '') {
+                            return this.options;
+                        }
+
+                        return this.options.filter((opt) => (
+                            (opt.label + ' ' + (opt.sub || '')).toLowerCase().includes(term)
+                        ));
+                    },
+
+                    onInput(event) {
+                        this.query = event.target.value;
+                        this.open = true;
+                        this.highlight = 0;
+                    },
+
+                    openList() {
+                        this.query = '';
+                        this.open = true;
+                        this.highlight = 0;
+                    },
+
+                    close() {
+                        this.open = false;
+                        this.query = '';
+                    },
+
+                    move(delta) {
+                        if (! this.open) {
+                            this.openList();
+
+                            return;
+                        }
+
+                        const count = this.filtered.length;
+                        if (count === 0) {
+                            return;
+                        }
+
+                        this.highlight = (this.highlight + delta + count) % count;
+                    },
+
+                    selectFirst() {
+                        const opt = this.filtered[this.highlight];
+                        if (opt) {
+                            this.choose(opt);
+                        }
+                    },
+
+                    choose(opt) {
+                        this.value = opt.value;
+                        if (this.wireModel) {
+                            this.$wire.set(this.wireModel, opt.value);
+                        }
+                        this.close();
+                    },
+
+                    clear() {
+                        this.value = null;
+                        this.query = '';
+                        if (this.wireModel) {
+                            this.$wire.set(this.wireModel, null);
+                        }
+                    },
+                }));
+            });
+        </script>
+    @endpush
+@endonce

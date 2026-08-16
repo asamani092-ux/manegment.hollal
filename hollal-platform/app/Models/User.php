@@ -14,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'electronic_signature', 'email', 'phone', 'password', 'must_change_password', 'department_id', 'manager_id', 'is_active', 'attendance_enabled', 'employment_status', 'offboarding_started_at'])]
+#[Fillable(['name', 'electronic_signature', 'signature_image_path', 'email', 'phone', 'password', 'must_change_password', 'department_id', 'manager_id', 'is_active', 'attendance_enabled', 'employment_status', 'offboarding_started_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -34,7 +34,7 @@ class User extends Authenticatable
     }
 
     /** 09-B1 @return \Illuminate\Database\Eloquent\Relations\BelongsTo<OrgUnit, $this> */
-    public function orgUnit(): \Illuminate\Database\Eloquent\Relations\BelongsTo
+    public function orgUnit(): BelongsTo
     {
         return $this->belongsTo(OrgUnit::class, 'org_unit_id');
     }

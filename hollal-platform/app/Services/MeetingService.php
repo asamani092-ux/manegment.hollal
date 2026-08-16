@@ -7,6 +7,7 @@ use App\Models\Meeting;
 use App\Models\MeetingAmendment;
 use App\Models\MeetingItem;
 use App\Models\User;
+use App\Notifications\MeetingMinutesReady;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -50,7 +51,10 @@ class MeetingService
     }
 
     /**
-     * Attendee confirms minutes and stamps electronic signature from profile.
+     * Attendee confirms minutes and stamps their electronic signature. If the
+     * user has an uploaded signature image (profile-stored, ج٤), a copy of
+     * its path is frozen on the pivot so later profile changes never alter
+     * already-confirmed history. Falls back to the typed signature text.
      * Time: O(1) | Space: O(1)
      */
     public function confirmAttendance(Meeting $meeting, User $user): void
@@ -59,27 +63,53 @@ class MeetingService
             throw new \RuntimeException('المحضر معتمد ولا يمكن تأكيد الحضور.');
         }
 
+        if (! $meeting->hasEnded()) {
+            throw new \RuntimeException('لا يمكن تأكيد الاطلاع على المحضر قبل انتهاء الاجتماع.');
+        }
+
         if (! $meeting->attendees()->where('users.id', $user->id)->exists()
             && (int) $meeting->chair_id !== (int) $user->id
             && (int) $meeting->secretary_id !== (int) $user->id) {
             throw new \RuntimeException('لست من حضور هذا الاجتماع.');
         }
 
-        $signature = $user->electronic_signature ?: $user->name;
+        $pivot = [
+            'confirmed_at' => now(),
+            'signature_text' => $user->electronic_signature ?: $user->name,
+            'signature_image_path' => $user->signature_image_path,
+        ];
 
         if (! $meeting->attendees()->where('users.id', $user->id)->exists()) {
-            $meeting->attendees()->attach($user->id, [
-                'confirmed_at' => now(),
-                'signature_text' => $signature,
-            ]);
+            $meeting->attendees()->attach($user->id, $pivot);
 
             return;
         }
 
-        $meeting->attendees()->updateExistingPivot($user->id, [
-            'confirmed_at' => now(),
-            'signature_text' => $signature,
-        ]);
+        $meeting->attendees()->updateExistingPivot($user->id, $pivot);
+    }
+
+    /**
+     * P2 wave C — notify attendees once the meeting has ended, with a direct
+     * link to the minutes page. Idempotent via minutes_notified_at.
+     * Time: O(a) attendees | Space: O(1)
+     */
+    public function notifyMinutesReadyIfDue(Meeting $meeting): void
+    {
+        if ($meeting->minutes_notified_at !== null) {
+            return;
+        }
+
+        if (! $meeting->hasEnded()) {
+            return;
+        }
+
+        $meeting->loadMissing('attendees:id,name,email');
+
+        foreach ($meeting->attendees as $attendee) {
+            $attendee->notify(new MeetingMinutesReady($meeting));
+        }
+
+        $meeting->forceFill(['minutes_notified_at' => now()])->save();
     }
 
     /**
@@ -149,6 +179,7 @@ class MeetingService
 
         return $amendment;
     }
+
     public function requestAmendment(Meeting $meeting, User $requester, string $note): MeetingAmendment
     {
         if (! $meeting->isApproved()) {
@@ -188,5 +219,4 @@ class MeetingService
 
         return $amendment;
     }
-
 }

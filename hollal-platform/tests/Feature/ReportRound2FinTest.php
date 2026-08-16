@@ -140,11 +140,18 @@ class ReportRound2FinTest extends TestCase
         Livewire::actingAs($user)
             ->test(RevenuesIndex::class)
             ->assertDontSee('إضافة للموازنة', false)
-            ->assertSee('تحميل / معاينة', false);
+            ->assertSee('معاينة', false)
+            ->assertSee('تحميل', false);
+
+        $this->actingAs($user)
+            ->get(route('revenues.files.download', $revenue).'?inline=1')
+            ->assertOk()
+            ->assertHeader('Content-Disposition', \App\Support\DownloadHeaders::contentDisposition('test.pdf', 'inline'));
 
         $this->actingAs($user)
             ->get(route('revenues.files.download', $revenue))
-            ->assertOk();
+            ->assertOk()
+            ->assertHeader('Content-Disposition', \App\Support\DownloadHeaders::contentDisposition('test.pdf', 'attachment'));
     }
 
     public function test_tax_invoice_pdf_contains_amiri_and_seller_vat(): void
@@ -163,7 +170,7 @@ class ReportRound2FinTest extends TestCase
 
         $pdf = app(TaxInvoicePdfService::class)->render($invoice);
         $this->assertStringStartsWith('%PDF', $pdf);
-        $this->assertSame('Amiri', PdfArabic::defaultFont());
+        $this->assertSame('amiri', PdfArabic::defaultFont());
         $this->assertSame('300000000000003', $invoice->seller_vat_number);
         $this->assertTrue(is_file(resource_path('fonts/Amiri-Regular.ttf')));
         $this->assertNotEmpty($invoice->qr_payload);

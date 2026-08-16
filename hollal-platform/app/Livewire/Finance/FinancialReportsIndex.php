@@ -20,6 +20,9 @@ class FinancialReportsIndex extends Component
 
     public string $month = '';
 
+    /** summary|detailed */
+    public string $reportTab = 'summary';
+
     public function mount(): void
     {
         $this->authorize('finance.reports.view');
@@ -32,10 +35,13 @@ class FinancialReportsIndex extends Component
         $month = preg_match('/^\d{4}-\d{2}$/', $this->month) === 1 ? $this->month : now()->format('Y-m');
 
         $report = $service->monthly($month);
+        $detailed = $service->detailed($month);
 
         return view('livewire.finance.financial-reports-index', [
             'report' => $report,
+            'detailed' => $detailed,
             'reconciles' => $service->reconciles($report),
+            'detailedReconciles' => $service->detailedReconciles($detailed, $report),
             'expenseCategories' => ExpenseCategory::pluck('name_ar', 'id'),
             'revenueCategories' => RevenueCategory::pluck('name_ar', 'id'),
         ])->layout('layouts.app', ['title' => 'التقارير المالية']);

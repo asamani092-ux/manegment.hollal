@@ -120,7 +120,7 @@ class ReportRound1FinTest extends TestCase
         $pdf = app(FinancialReportService::class)->exportMonthlyPdf('2026-07');
         $this->assertStringStartsWith('%PDF', $pdf);
         $this->assertTrue(is_file(resource_path('fonts/Amiri-Regular.ttf')));
-        $this->assertSame('Amiri', PdfArabic::defaultFont());
+        $this->assertSame('amiri', PdfArabic::defaultFont());
     }
 
     public function test_budgets_board_shows_source_copy(): void

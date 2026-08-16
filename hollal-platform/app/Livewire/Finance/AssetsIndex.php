@@ -34,9 +34,11 @@ class AssetsIndex extends Component
 
     public string $purchase_amount = '';
 
+    public string $useful_life_years = '';
+
     public string $location = '';
 
-    public string $condition = \App\Models\Asset::CONDITION_GOOD;
+    public string $condition = Asset::CONDITION_GOOD;
 
     public ?int $create_holder_id = null;
 
@@ -48,9 +50,13 @@ class AssetsIndex extends Component
 
     public string $conditionFilter = '';
 
+    /** active|all — active hides damaged/retired assets by default. */
+    public string $statusTab = 'active';
+
     protected $queryString = [
         'search' => ['except' => ''],
         'conditionFilter' => ['except' => ''],
+        'statusTab' => ['except' => 'active'],
     ];
 
     public function updatingSearch(): void
@@ -60,6 +66,12 @@ class AssetsIndex extends Component
 
     public function updatingConditionFilter(): void
     {
+        $this->resetPage();
+    }
+
+    public function setStatusTab(string $tab): void
+    {
+        $this->statusTab = in_array($tab, ['active', 'all'], true) ? $tab : 'active';
         $this->resetPage();
     }
 
@@ -74,7 +86,7 @@ class AssetsIndex extends Component
     public function openCreateModal(): void
     {
         abort_unless(auth()->user()->can('finance.assets.manage'), 403);
-        $this->reset(['name_ar', 'description', 'category_id', 'purchase_amount', 'location', 'create_holder_id']);
+        $this->reset(['name_ar', 'description', 'category_id', 'purchase_amount', 'useful_life_years', 'location', 'create_holder_id']);
         $this->condition = Asset::CONDITION_GOOD;
         $this->showCreateModal = true;
     }
@@ -87,6 +99,7 @@ class AssetsIndex extends Component
             'description' => 'nullable|string|max:2000',
             'category_id' => 'nullable|exists:asset_categories,id',
             'purchase_amount' => 'nullable|numeric|min:0',
+            'useful_life_years' => 'nullable|integer|min:1|max:100',
             'location' => 'nullable|string|max:255',
             'condition' => 'required|in:'.implode(',', [
                 Asset::CONDITION_GOOD,
@@ -95,11 +108,14 @@ class AssetsIndex extends Component
                 Asset::CONDITION_RETIRED,
             ]),
             'create_holder_id' => 'nullable|exists:users,id',
+        ], [], [
+            'useful_life_years' => 'العمر المحاسبي',
         ]);
 
         $asset = app(AssetService::class)->create($this->name_ar, $this->category_id, [
             'description' => $this->description !== '' ? $this->description : null,
             'purchase_amount' => $this->purchase_amount !== '' ? (float) $this->purchase_amount : null,
+            'useful_life_years' => $this->useful_life_years !== '' ? (int) $this->useful_life_years : null,
             'location' => $this->location !== '' ? $this->location : null,
             'condition' => $this->condition,
         ]);
@@ -152,11 +168,13 @@ class AssetsIndex extends Component
     {
         return view('livewire.finance.assets-index', [
             'assets' => Asset::query()
-                ->select(['id', 'code', 'name_ar', 'description', 'category_id', 'condition', 'purchase_amount', 'location', 'current_holder_id', 'holder_since', 'can_be_custody'])
+                ->select(['id', 'code', 'name_ar', 'description', 'category_id', 'condition', 'purchase_date', 'purchase_amount', 'useful_life_years', 'location', 'current_holder_id', 'holder_since', 'can_be_custody', 'created_at'])
                 ->with(['currentHolder:id,name', 'category:id,name_ar'])
+                ->when($this->statusTab === 'active', fn ($q) => $q->active())
                 ->when($this->search, fn ($q) => $q->where(
                     fn ($w) => $w->where('name_ar', 'like', '%'.$this->search.'%')
                         ->orWhere('code', 'like', '%'.$this->search.'%')
+                        ->orWhereHas('currentHolder', fn ($h) => $h->where('name', 'like', '%'.$this->search.'%'))
                 ))
                 ->when($this->conditionFilter, fn ($q) => $q->where('condition', $this->conditionFilter))
                 ->orderBy('code')

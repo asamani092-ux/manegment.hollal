@@ -3,18 +3,22 @@
 namespace App\Livewire\Meetings;
 
 use App\Mail\MeetingMinutesMailable;
+use App\Models\Document;
 use App\Models\Meeting;
 use App\Models\MeetingItem;
 use App\Models\Task;
 use App\Models\User;
+use App\Services\MeetingService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Mail;
 use Livewire\Component;
+use Livewire\WithFileUploads;
 
 class MeetingMinutes extends Component
 {
     use AuthorizesRequests;
+    use WithFileUploads;
 
     public Meeting $meeting;
 
@@ -42,10 +46,22 @@ class MeetingMinutes extends Component
 
     public string $missingSignaturesReason = '';
 
+    /** P2 wave C — first confirm without a saved signature prompts to save one. */
+    public bool $showSignatureModal = false;
+
+    public $signatureFile = null;
+
+    /** P2 wave C — chair/secretary uploads a manually signed PDF for archive. */
+    public bool $showSignedUploadModal = false;
+
+    public $signedPdfFile = null;
+
     public function mount(Meeting $meeting): void
     {
-        $this->meeting = $meeting->load(['chair:id,name', 'secretary:id,name', 'attendees:id,name,electronic_signature']);
+        $this->meeting = $meeting->load(['chair:id,name', 'secretary:id,name', 'attendees:id,name,electronic_signature', 'guests']);
         $this->authorize('view', $this->meeting);
+
+        app(MeetingService::class)->notifyMinutesReadyIfDue($this->meeting);
     }
 
     public function openItemCreate(): void
@@ -86,7 +102,7 @@ class MeetingMinutes extends Component
         $this->authorize('update', $this->meeting);
 
         try {
-            app(\App\Services\MeetingService::class)->approveMinutes(
+            app(MeetingService::class)->approveMinutes(
                 $this->meeting,
                 auth()->user(),
                 $this->allowMissingSignatures,
@@ -100,17 +116,90 @@ class MeetingMinutes extends Component
         }
     }
 
+    /**
+     * P2 wave C — single confirm action, gated to after the meeting ends.
+     * When the user has no saved profile signature yet, prompts to save one
+     * first, then stamps + confirms in the same flow.
+     */
     public function confirmMyAttendance(): void
     {
         $this->authorize('view', $this->meeting);
 
+        if (! $this->meeting->hasEnded()) {
+            $this->dispatch('toast', type: 'error', message: 'لا يمكن تأكيد الاطلاع قبل انتهاء الاجتماع');
+
+            return;
+        }
+
+        if (blank(auth()->user()->signature_image_path)) {
+            $this->showSignatureModal = true;
+
+            return;
+        }
+
+        $this->performConfirm();
+    }
+
+    public function saveSignatureAndConfirm(): void
+    {
+        $this->authorize('view', $this->meeting);
+
+        $this->validate(['signatureFile' => 'required|image|max:2048'], [], ['signatureFile' => 'صورة التوقيع']);
+
+        $path = $this->signatureFile->store('signatures', 'local');
+        auth()->user()->forceFill(['signature_image_path' => $path])->save();
+
+        $this->signatureFile = null;
+        $this->showSignatureModal = false;
+        $this->performConfirm();
+    }
+
+    private function performConfirm(): void
+    {
         try {
-            app(\App\Services\MeetingService::class)->confirmAttendance($this->meeting, auth()->user());
-            $this->meeting->load('attendees');
-            $this->dispatch('toast', type: 'success', message: 'تم تأكيد حضورك وإضافة التوقيع');
+            app(MeetingService::class)->confirmAttendance($this->meeting, auth()->user());
+            $this->meeting->refresh()->load('attendees');
+            $this->dispatch('toast', type: 'success', message: 'تم تسجيل اطّلاعك وتوقيعك على المحضر');
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
+    }
+
+    public function openSignedUploadModal(): void
+    {
+        $this->authorize('update', $this->meeting);
+        $this->signedPdfFile = null;
+        $this->showSignedUploadModal = true;
+    }
+
+    /**
+     * P2 wave C — chair uploads the physically signed PDF, archived alongside
+     * the auto-generated electronic minutes (not replacing it).
+     */
+    public function uploadSignedMinutes(): void
+    {
+        $this->authorize('update', $this->meeting);
+
+        $this->validate(['signedPdfFile' => 'required|file|mimes:pdf|max:10240'], [], ['signedPdfFile' => 'ملف PDF الموقع']);
+
+        $path = $this->signedPdfFile->store('meetings/signed', 'local');
+
+        $document = Document::create([
+            'title' => 'نسخة موقّعة يدويًا: '.$this->meeting->title,
+            'category' => 'محاضر_الاجتماعات',
+            'source_type' => 'meeting_signed',
+            'source_id' => $this->meeting->id,
+            'is_auto_archived' => false,
+            'confidentiality' => 'department',
+            'uploader_id' => auth()->id(),
+            'path' => $path,
+        ]);
+
+        $this->meeting->update(['signed_document_id' => $document->id]);
+
+        $this->signedPdfFile = null;
+        $this->showSignedUploadModal = false;
+        $this->dispatch('toast', type: 'success', message: 'تم رفع النسخة الموقعة وربطها بأرشيف الاجتماع');
     }
 
     public function saveItem(): void
@@ -268,7 +357,7 @@ class MeetingMinutes extends Component
 
     public function render(): View
     {
-        $this->meeting->loadMissing(['chair:id,name', 'secretary:id,name', 'attendees']);
+        $this->meeting->loadMissing(['chair:id,name', 'secretary:id,name', 'attendees', 'guests']);
 
         $items = MeetingItem::query()
             ->select(['id', 'meeting_id', 'topic', 'discussion_summary', 'decision', 'responsible_id', 'due_date', 'status', 'task_id'])

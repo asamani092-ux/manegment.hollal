@@ -250,7 +250,14 @@
                             @forelse ($detailHolds as $hold)
                                 <li class="ds-card" style="padding:.75rem 1rem;display:flex;align-items:flex-start;gap:.75rem" wire:key="dhold-{{ $loop->index }}">
                                     <span class="ds-badge ds-badge-warning" aria-hidden="true">!</span>
-                                    <span>{{ $hold }}</span>
+                                    <span>
+                                        {{ $hold }}
+                                        @if (str_contains($hold, 'أصول'))
+                                            <a class="ds-link" href="{{ route('assets.index', ['search' => $detailUser->name, 'statusTab' => 'all']) }}">فتح في الأصول</a>
+                                        @elseif (str_contains($hold, 'عهد مالية'))
+                                            <a class="ds-link" href="{{ route('custodies.index', ['search' => $detailUser->name]) }}">فتح في العهد</a>
+                                        @endif
+                                    </span>
                                 </li>
                             @empty
                                 <li class="ds-text-muted">لا موانع حالياً</li>

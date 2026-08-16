@@ -296,4 +296,68 @@ class DocumentsAndReportsTest extends TestCase
         $response = Livewire::actingAs($actor)->test(AuditLogIndex::class)->call('export');
         $this->assertNotNull($response);
     }
+
+    public function test_audit_log_status_is_arabic_success_or_failure_with_reason(): void
+    {
+        $success = AuditLog::create(['action' => 'settings.updated', 'created_at' => now()]);
+        $failure = AuditLog::create([
+            'action' => 'auth.login_failure',
+            'metadata' => ['failed' => true, 'reason' => 'بيانات الدخول غير صحيحة'],
+            'created_at' => now(),
+        ]);
+
+        $this->assertSame('نجح', $success->displayStatus());
+        $this->assertNull($success->statusReason());
+
+        $this->assertSame('فشل', $failure->displayStatus());
+        $this->assertSame('بيانات الدخول غير صحيحة', $failure->statusReason());
+    }
+
+    public function test_audit_log_export_drops_ip_column_and_adds_failure_reason(): void
+    {
+        $actor = $this->reader();
+        AuditLog::create([
+            'action' => 'auth.login_failure',
+            'metadata' => ['failed' => true, 'reason' => 'بيانات الدخول غير صحيحة'],
+            'ip_address' => '10.0.0.1',
+            'created_at' => now(),
+        ]);
+
+        $component = Livewire::actingAs($actor)->test(AuditLogIndex::class)
+            ->call('export')
+            ->assertFileDownloaded();
+
+        $csv = base64_decode($component->effects['download']['content']);
+
+        $this->assertStringContainsString('سبب الفشل', $csv);
+        $this->assertStringNotContainsString('العنوان IP', $csv);
+        $this->assertStringNotContainsString('10.0.0.1', $csv);
+    }
+
+    public function test_reports_center_can_preview_and_close_a_snapshot(): void
+    {
+        $component = Livewire::actingAs($this->reader())->test(ReportsCenter::class)
+            ->call('takeSnapshot');
+
+        $snapshot = ReportSnapshot::first();
+
+        $component->call('previewSnapshot', $snapshot->id)
+            ->assertSet('previewSnapshotId', $snapshot->id)
+            ->call('previewSnapshot', $snapshot->id)
+            ->assertSet('previewSnapshotId', null);
+    }
+
+    public function test_reports_center_export_is_a_real_multi_section_document(): void
+    {
+        $component = Livewire::actingAs($this->reader())->test(ReportsCenter::class)
+            ->call('exportCsv')
+            ->assertFileDownloaded();
+
+        $csv = base64_decode($component->effects['download']['content']);
+
+        $this->assertStringContainsString('التقرير الشهري', $csv);
+        $this->assertStringContainsString('الشراكات حسب المرحلة', $csv);
+        $this->assertStringContainsString('المؤشر', $csv);
+        $this->assertStringContainsString('القيمة', $csv);
+    }
 }

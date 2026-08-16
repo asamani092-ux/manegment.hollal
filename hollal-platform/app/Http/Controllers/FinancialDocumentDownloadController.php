@@ -7,17 +7,19 @@ use App\Models\CustodySettlementItem;
 use App\Models\ExpenseRequest;
 use App\Models\PayrollRunItem;
 use App\Models\Revenue;
+use App\Support\DownloadHeaders;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Read-only download for aggregated financial document rows.
+ * Read-only download / preview for aggregated financial document rows.
  */
 class FinancialDocumentDownloadController extends Controller
 {
     use LogsFileDownloads;
 
-    public function __invoke(string $type, int $id): StreamedResponse
+    public function __invoke(Request $request, string $type, int $id): StreamedResponse
     {
         abort_unless(auth()->user()->can('finance.revenues.view'), 403);
 
@@ -44,9 +46,10 @@ class FinancialDocumentDownloadController extends Controller
         $this->auditFileDownload('financial_document_'.$type, $target);
 
         $filename = basename($path);
+        $disposition = $request->boolean('inline') ? 'inline' : 'attachment';
 
         return Storage::disk('local')->download($path, $filename, [
-            'Content-Disposition' => \App\Support\DownloadHeaders::contentDisposition($filename),
+            'Content-Disposition' => DownloadHeaders::contentDisposition($filename, $disposition),
         ]);
     }
 }

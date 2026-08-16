@@ -6,17 +6,15 @@
         <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('reports.index') }}">التقارير الأسبوعية</a>
     </p>
 
+    {{-- 1) اختيار نوع التقرير --}}
     <section class="ds-section ds-filter-bar">
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('monthly')">التقرير الشهري</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('project')">لوحة المشروع</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('impact')">الأثر</button>
-        <button type="button" class="ds-btn ds-btn-sm" wire:click="setTab('kpi')">مؤشرات الأداء</button>
-        <button type="button" class="ds-btn ds-btn-primary" wire:click="takeSnapshot">حفظ لقطة</button>
-        @if ($canExport)
-            <button type="button" class="ds-btn ds-btn-outline" wire:click="exportCsv">تصدير CSV</button>
-        @endif
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'monthly' ? 'ds-btn-primary' : '' }}" wire:click="setTab('monthly')">التقرير الشهري</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'project' ? 'ds-btn-primary' : '' }}" wire:click="setTab('project')">لوحة المشروع</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'impact' ? 'ds-btn-primary' : '' }}" wire:click="setTab('impact')">الأثر</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $tab === 'kpi' ? 'ds-btn-primary' : '' }}" wire:click="setTab('kpi')">مؤشرات الأداء</button>
     </section>
 
+    {{-- 2) المعاينة --}}
     @if ($tab === 'monthly' && $monthly)
         <section class="ds-section ds-filter-bar">
             <input type="month" class="ds-input" wire:model.live="month" dir="ltr">
@@ -111,10 +109,24 @@
         </x-ds-table>
     @endif
 
+    {{-- 3) الإجراءات: حفظ لقطة / تصدير — بعد المعاينة --}}
+    <section class="ds-section ds-filter-bar">
+        <button type="button" class="ds-btn ds-btn-primary" wire:click="takeSnapshot">حفظ لقطة</button>
+        @if ($canExport)
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="exportCsv">تصدير</button>
+        @endif
+    </section>
+    <p class="ds-help-text ds-mb-3">
+        التقارير أعلاه مباشرة وتُحسب لحظيًا من العمليات الجارية، فهي تتغيّر باستمرار مع كل عملية جديدة
+        (الأصول، الإيرادات، الموازنات تُحدَّث يوميًا). أمّا «اللقطة» فهي مرجع ثابت لفترة محدّدة — تُحفظ كما
+        كانت لحظة الحفظ ولا تتغيّر أبدًا بعد ذلك، حتى لو تغيّرت البيانات الحقيقية لاحقًا.
+    </p>
+
+    {{-- 4) اللقطات المحفوظة + معاينة محتواها --}}
     <section class="ds-section">
         <h2 class="ds-section-title">اللقطات المحفوظة (غير قابلة للتعديل)</h2>
         <x-ds-table>
-            <x-slot:head><tr><th>النوع</th><th>العنوان</th><th>الفترة</th><th>التاريخ</th><th>سليمة</th></tr></x-slot:head>
+            <x-slot:head><tr><th>النوع</th><th>العنوان</th><th>الفترة</th><th>التاريخ</th><th>سليمة</th><th>معاينة</th></tr></x-slot:head>
             @forelse ($snapshots as $snapshot)
                 <tr wire:key="snapshot-{{ $snapshot->id }}">
                     <td>{{ $snapshot->kind }}</td>
@@ -122,9 +134,34 @@
                     <td dir="ltr">{{ $snapshot->period ?? '—' }}</td>
                     <td dir="ltr">{{ $snapshot->created_at?->format('Y-m-d H:i') }}</td>
                     <td>{{ $snapshot->isIntact() ? 'نعم' : 'لا' }}</td>
+                    <td>
+                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="previewSnapshot({{ $snapshot->id }})">
+                            {{ $previewedSnapshot?->id === $snapshot->id ? 'إغلاق' : 'معاينة' }}
+                        </button>
+                    </td>
                 </tr>
+                @if ($previewedSnapshot?->id === $snapshot->id)
+                    <tr wire:key="snapshot-preview-{{ $snapshot->id }}">
+                        <td colspan="6">
+                            <div class="ds-section" style="margin: 0;">
+                                <p class="ds-help-text">محتوى اللقطة كما حُفظ — للعرض فقط، غير قابل للتعديل.</p>
+                                <x-ds-table>
+                                    <x-slot:head><tr><th>المؤشر</th><th>القيمة</th></tr></x-slot:head>
+                                    @foreach (($previewedSnapshot->payload ?? []) as $key => $value)
+                                        <tr wire:key="snapshot-{{ $snapshot->id }}-row-{{ $loop->index }}">
+                                            <td>{{ $key }}</td>
+                                            <td class="ds-ltr-num">
+                                                {{ is_scalar($value) || $value === null ? ($value ?? '—') : json_encode($value, JSON_UNESCAPED_UNICODE) }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </x-ds-table>
+                            </div>
+                        </td>
+                    </tr>
+                @endif
             @empty
-                <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد لقطات</td></tr>
+                <tr><td colspan="6" class="ds-text-muted ds-table-empty">لا توجد لقطات</td></tr>
             @endforelse
         </x-ds-table>
     </section>

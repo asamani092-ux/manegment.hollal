@@ -128,16 +128,77 @@
                     <x-ds-form-group label="جدول الأعمال" :error="$errors->first('agenda')">
                         <textarea class="ds-input" rows="3" wire:model="agenda" @disabled($viewOnly) placeholder="نقاط جدول الأعمال..."></textarea>
                     </x-ds-form-group>
+
                     <div class="ds-form-group">
-                        <label class="ds-label">الحضور</label>
-                        <div class="ds-permissions-grid">
-                            @foreach ($users as $user)
-                                <label class="ds-checkbox-label" wire:key="attendee-{{ $user->id }}">
-                                    <input type="checkbox" value="{{ $user->id }}" wire:model="attendeeIds" @disabled($viewOnly)>
-                                    <span>{{ $user->name }}</span>
-                                </label>
-                            @endforeach
+                        <label class="ds-label">الحضور من الموظفين</label>
+
+                        @unless ($viewOnly)
+                            <div class="ds-grid-2">
+                                <div wire:key="employee-picker-{{ count($attendeeIds) }}">
+                                    <x-ds-search-select
+                                        :options="$pickableUsers"
+                                        wire-model="pickEmployeeId"
+                                        label-key="name"
+                                        placeholder="ابحث عن موظف بالاسم للإضافة…"
+                                    />
+                                </div>
+                                <select class="ds-input" wire:model="pickCommitteeId">
+                                    <option value="">إضافة أعضاء لجنة بالكامل…</option>
+                                    @foreach ($committees as $committee)
+                                        <option value="{{ $committee->id }}">{{ $committee->name }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endunless
+
+                        <div class="ds-chip-list ds-mt-2">
+                            @forelse ($attendeeUsers as $user)
+                                <span class="ds-chip" wire:key="attendee-chip-{{ $user->id }}">
+                                    {{ $user->name }}
+                                    @unless ($viewOnly)
+                                        <button type="button" class="ds-chip-remove" wire:click="removeAttendee({{ $user->id }})" aria-label="إزالة {{ $user->name }}">&times;</button>
+                                    @endunless
+                                </span>
+                            @empty
+                                <span class="ds-text-muted">لا يوجد حضور مضاف بعد</span>
+                            @endforelse
                         </div>
+                    </div>
+
+                    <div class="ds-form-group">
+                        <label class="ds-label">ضيوف خارجيون (بدون حساب موظف)</label>
+
+                        @if ($existingGuests->isNotEmpty())
+                            <div class="ds-chip-list ds-mb-2">
+                                @foreach ($existingGuests as $guest)
+                                    <span class="ds-chip" wire:key="existing-guest-{{ $guest->id }}">
+                                        {{ $guest->name }} — {{ $guest->email }}
+                                        @if ($guest->confirmed_at)
+                                            <i class="fas fa-check-circle" title="أكّد الاطلاع" aria-hidden="true"></i>
+                                        @elseif (! $viewOnly)
+                                            <button type="button" class="ds-chip-remove" wire:click="removeGuest({{ $guest->id }})" aria-label="إزالة {{ $guest->name }}">&times;</button>
+                                        @endif
+                                    </span>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        @unless ($viewOnly)
+                            @foreach ($guestRows as $i => $row)
+                                <div class="ds-grid-2 ds-mb-2" wire:key="guest-row-{{ $i }}">
+                                    <input type="text" class="ds-input" wire:model="guestRows.{{ $i }}.name" placeholder="اسم الضيف">
+                                    <div style="display:flex; gap:0.5rem;">
+                                        <input type="email" class="ds-input" wire:model="guestRows.{{ $i }}.email" placeholder="بريد الضيف الإلكتروني">
+                                        <button type="button" class="ds-btn-icon" wire:click="removeGuestRow({{ $i }})" aria-label="حذف السطر" title="حذف السطر">&times;</button>
+                                    </div>
+                                </div>
+                                @error('guestRows.'.$i.'.name') <p class="ds-field-error">{{ $message }}</p> @enderror
+                                @error('guestRows.'.$i.'.email') <p class="ds-field-error">{{ $message }}</p> @enderror
+                            @endforeach
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="addGuestRow">
+                                <i class="fas fa-plus" aria-hidden="true"></i> إضافة ضيف
+                            </button>
+                        @endunless
                     </div>
                 </div>
                 <div class="ds-modal-footer">

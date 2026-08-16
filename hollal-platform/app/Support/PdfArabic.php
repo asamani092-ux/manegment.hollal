@@ -3,10 +3,12 @@
 namespace App\Support;
 
 use App\Models\CompanyProfile;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
 /**
  * Arabic-connected PDF chrome: Amiri font + company logo + RTL table.
+ * Font family key MUST stay lowercase `amiri` to match installed-fonts.json.
  * Time: O(n) HTML size | Space: O(n)
  */
 final class PdfArabic
@@ -67,7 +69,7 @@ final class PdfArabic
     public static function defaultFont(): string
     {
         // Must match storage/fonts/installed-fonts.json family key (lowercase).
-        return self::fontPath() !== null ? 'Amiri' : 'dejavu sans';
+        return self::fontPath() !== null ? 'amiri' : 'dejavu sans';
     }
 
     /** @return array<string, mixed> */
@@ -77,6 +79,34 @@ final class PdfArabic
             'defaultFont' => self::defaultFont(),
             'isRemoteEnabled' => true,
             'isHtml5ParserEnabled' => true,
+            'isFontSubsettingEnabled' => true,
         ];
+    }
+
+    /**
+     * Wrap body HTML with RTL Amiri chrome and render PDF bytes.
+     * Time: O(n) | Space: O(n)
+     */
+    public static function render(string $title, string $bodyHtml, string $paper = 'a4', bool $includeCr = false): string
+    {
+        $html = self::header($title, $includeCr)
+            .'<div dir="rtl" style="unicode-bidi: embed;">'.$bodyHtml.'</div>';
+
+        $pdf = Pdf::loadHTML($html)->setPaper($paper);
+        foreach (self::pdfOptions() as $key => $value) {
+            $pdf->setOption($key, $value);
+        }
+
+        return $pdf->output();
+    }
+
+    /** Apply standard Arabic PDF options to an existing Dompdf wrapper. */
+    public static function applyOptions(mixed $pdf): mixed
+    {
+        foreach (self::pdfOptions() as $key => $value) {
+            $pdf->setOption($key, $value);
+        }
+
+        return $pdf;
     }
 }

@@ -23,6 +23,7 @@
             <tr>
                 <th>النوع</th>
                 <th>الشهر</th>
+                <th>رفع بواسطة</th>
                 <th>المستند</th>
             </tr>
         </x-slot:head>
@@ -30,16 +31,35 @@
             <tr wire:key="fin-doc-{{ $loop->index }}">
                 <td>{{ $doc['label'] }}</td>
                 <td dir="ltr">{{ $doc['month'] ?? '—' }}</td>
+                <td>{{ $doc['uploader'] ?? '—' }}</td>
                 <td>
+                    <span dir="ltr">{{ basename($doc['path']) }}</span>
                     @if (! empty($doc['download_url']))
-                        <a class="ds-link" href="{{ $doc['download_url'] }}">{{ basename($doc['path']) }}</a>
-                    @else
-                        <span dir="ltr">{{ basename($doc['path']) }}</span>
+                        <div class="ds-toolbar-actions" style="gap:.35rem; display:inline-flex; margin-inline-start:.5rem">
+                            <a
+                                class="ds-btn ds-btn-outline ds-btn-sm"
+                                href="{{ $doc['preview_url'] }}"
+                                target="_blank"
+                                rel="noopener"
+                                title="معاينة"
+                                aria-label="معاينة المستند"
+                            >
+                                <i class="fas fa-eye" aria-hidden="true"></i>
+                            </a>
+                            <a
+                                class="ds-btn ds-btn-outline ds-btn-sm"
+                                href="{{ $doc['download_url'] }}"
+                                title="تحميل"
+                                aria-label="تحميل المستند"
+                            >
+                                <i class="fas fa-download" aria-hidden="true"></i>
+                            </a>
+                        </div>
                     @endif
                 </td>
             </tr>
         @empty
-            <tr><td colspan="3" class="ds-text-muted ds-table-empty">لا توجد مستندات مالية</td></tr>
+            <tr><td colspan="4" class="ds-text-muted ds-table-empty">لا توجد مستندات مالية</td></tr>
         @endforelse
     </x-ds-table>
 </x-ds-page>

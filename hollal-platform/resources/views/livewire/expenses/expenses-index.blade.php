@@ -446,6 +446,10 @@
                     </p>
                     <x-ds-form-group label="إثبات الدفع" :error="$errors->first('paymentProof')">
                         <input type="file" class="ds-input" wire:model="paymentProof" accept=".pdf,.jpg,.jpeg,.png">
+                        <div wire:loading wire:target="paymentProof" class="ds-help-text">جاري تجهيز الملف…</div>
+                        @if ($paymentProof)
+                            <p class="ds-help-text">تم تجهيز الملف: {{ $paymentProof->getClientOriginalName() }}</p>
+                        @endif
                     </x-ds-form-group>
                 </div>
                 <div class="ds-modal-footer">

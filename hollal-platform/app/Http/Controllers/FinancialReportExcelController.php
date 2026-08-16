@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\FinancialReportService;
+use App\Support\DownloadHeaders;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -19,14 +20,15 @@ class FinancialReportExcelController extends Controller
         $month = (string) $request->query('month', now()->format('Y-m'));
         abort_unless(preg_match('/^\d{4}-\d{2}$/', $month) === 1, 404);
 
-        $csv = $reports->exportMonthlyCsv($month);
-        $filename = 'financial-report-'.$month.'.csv';
+        $type = $request->query('type', 'summary') === 'detailed' ? 'detailed' : 'summary';
+        $csv = $type === 'detailed' ? $reports->exportDetailedCsv($month) : $reports->exportMonthlyCsv($month);
+        $filename = 'financial-report-'.($type === 'detailed' ? 'detailed-' : '').$month.'.csv';
 
         return response()->streamDownload(function () use ($csv) {
             echo $csv;
         }, $filename, [
             'Content-Type' => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => \App\Support\DownloadHeaders::contentDisposition($filename),
+            'Content-Disposition' => DownloadHeaders::contentDisposition($filename),
         ]);
     }
 }

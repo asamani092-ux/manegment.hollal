@@ -7,10 +7,15 @@
         wire:click="openCreateModal"
     />
 
+    <nav class="ds-tabs" role="tablist">
+        <button type="button" class="ds-tab {{ $statusTab === 'active' ? 'ds-tab-active' : '' }}" wire:click="setStatusTab('active')">النشطة</button>
+        <button type="button" class="ds-tab {{ $statusTab === 'all' ? 'ds-tab-active' : '' }}" wire:click="setStatusTab('all')">كل الأصول (بما فيها التالف والمستبعد)</button>
+    </nav>
+
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label" for="asset-search">بحث</label>
-            <input id="asset-search" type="search" class="ds-input" wire:model.live.debounce.400ms="search" placeholder="الاسم أو الرمز…">
+            <input id="asset-search" type="search" class="ds-input" wire:model.live.debounce.400ms="search" placeholder="الاسم أو الرمز أو حامل العهدة…">
         </div>
         <div class="ds-filter-field">
             <label class="ds-label" for="asset-condition">الحالة</label>
@@ -22,6 +27,7 @@
             </select>
         </div>
     </div>
+    <p class="ds-help-text ds-mb-3">سجل مستقل لا يدخل في موازنات المشاريع — القيمة الدفترية تُحسب من قيمة الشراء والعمر المحاسبي فقط.</p>
 
     <x-ds-table>
         <x-slot:head>
@@ -31,6 +37,8 @@
                 <th scope="col">الفئة</th>
                 <th scope="col">الموقع</th>
                 <th scope="col">قيمة الشراء</th>
+                <th scope="col">العمر المحاسبي</th>
+                <th scope="col">القيمة الدفترية</th>
                 <th scope="col">الحالة</th>
                 <th scope="col">حامل العهدة</th>
                 <th scope="col">منذ</th>
@@ -44,8 +52,17 @@
                 <td>{{ $asset->category?->name_ar ?? '—' }}</td>
                 <td>{{ $asset->location ?? '—' }}</td>
                 <td class="ds-ltr-num">{{ $asset->purchase_amount !== null ? number_format((float) $asset->purchase_amount, 2) : '—' }}</td>
+                <td class="ds-ltr-num">{{ $asset->useful_life_years ? $asset->useful_life_years.' سنة' : '—' }}</td>
+                <td class="ds-ltr-num">{{ $asset->bookValue() !== null ? number_format($asset->bookValue(), 2) : '—' }}</td>
                 <td><x-ds-status-badge :status="$asset->condition" /></td>
-                <td>{{ $asset->currentHolder?->name ?? '—' }}</td>
+                <td>
+                    {{ $asset->currentHolder?->name ?? '—' }}
+                    @if ($asset->current_holder_id)
+                        <a class="ds-link ds-help-text" href="{{ route('hr-lifecycle.index', ['open' => $asset->current_holder_id]) }}" title="عرض موانع/مهام إنهاء العلاقة لهذا الموظف — بما فيها هذا الأصل">
+                            <i class="fas fa-arrow-up-right-from-square"></i> إنهاء العلاقة
+                        </a>
+                    @endif
+                </td>
                 <td class="ds-ltr-num">{{ $asset->holder_since?->format('Y-m-d') ?? '—' }}</td>
                 <td>
                     @if ($canManage)
@@ -57,7 +74,7 @@
                 </td>
             </tr>
         @empty
-            <tr><td colspan="9"><x-ds-empty-state message="لا توجد أصول مسجّلة" icon="fa-boxes-stacked" /></td></tr>
+            <tr><td colspan="11"><x-ds-empty-state message="لا توجد أصول مسجّلة" icon="fa-boxes-stacked" /></td></tr>
         @endforelse
     </x-ds-table>
 
@@ -80,6 +97,10 @@
         </x-ds-form-group>
         <x-ds-form-group label="قيمة الشراء" :error="$errors->first('purchase_amount')">
             <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="purchase_amount">
+        </x-ds-form-group>
+        <x-ds-form-group label="العمر المحاسبي (سنوات)" :error="$errors->first('useful_life_years')">
+            <input type="number" step="1" min="1" max="100" class="ds-input ds-ltr-num" wire:model="useful_life_years" placeholder="مثال: 5">
+            <p class="ds-help-text">يُستخدم لحساب القيمة الدفترية بطريقة القسط الثابت — لا يُعدَّل بعد الإنشاء.</p>
         </x-ds-form-group>
         <x-ds-form-group label="الموقع" :error="$errors->first('location')">
             <input type="text" class="ds-input" wire:model="location">

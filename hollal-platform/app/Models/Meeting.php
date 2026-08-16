@@ -32,6 +32,8 @@ class Meeting extends Model
         'approved_at',
         'minutes_missing_signatures_reason',
         'archived_document_id',
+        'minutes_notified_at',
+        'signed_document_id',
         'version',
     ];
 
@@ -62,6 +64,7 @@ class Meeting extends Model
         return [
             'scheduled_at' => 'datetime',
             'approved_at' => 'datetime',
+            'minutes_notified_at' => 'datetime',
         ];
     }
 
@@ -78,6 +81,15 @@ class Meeting extends Model
     public function isApproved(): bool
     {
         return $this->approval_status === self::APPROVAL_APPROVED;
+    }
+
+    /**
+     * P2 wave C — gates the pre/post-meeting confirm-minutes UX and the
+     * minutes-ready notification. Time: O(1) | Space: O(1)
+     */
+    public function hasEnded(): bool
+    {
+        return $this->scheduled_at !== null && $this->scheduled_at->isPast();
     }
 
     /** @return BelongsTo<Project, $this> */
@@ -114,7 +126,7 @@ class Meeting extends Model
     public function attendees(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'meeting_user')
-            ->withPivot(['confirmed_at', 'signature_text'])
+            ->withPivot(['confirmed_at', 'signature_text', 'signature_image_path'])
             ->withTimestamps();
     }
 
@@ -122,6 +134,18 @@ class Meeting extends Model
     public function items(): HasMany
     {
         return $this->hasMany(MeetingItem::class);
+    }
+
+    /** P2 wave C — external guests (no employee account). @return HasMany<MeetingGuest, $this> */
+    public function guests(): HasMany
+    {
+        return $this->hasMany(MeetingGuest::class);
+    }
+
+    /** P2 wave C — manually uploaded signed PDF, alongside the electronic archive. @return BelongsTo<Document, $this> */
+    public function signedDocument(): BelongsTo
+    {
+        return $this->belongsTo(Document::class, 'signed_document_id');
     }
 
     /** @return HasMany<Task, $this> */

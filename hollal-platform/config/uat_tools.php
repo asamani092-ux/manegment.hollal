@@ -121,8 +121,7 @@ return [
                 ['id' => 'tasks', 'tool' => 'المهام', 'path' => '/tasks', 'checks' => 'مهامي/أسندتها · حالات · إنشاء · مرفقات · فتح بـ ?open='],
                 ['id' => 'team-tasks', 'tool' => 'مهام الفريق', 'path' => '/team-tasks', 'checks' => 'متأخرة · بانتظار المراجعة'],
                 ['id' => 'calendar', 'tool' => 'تقويم المهام', 'path' => '/tasks-calendar', 'checks' => 'مهام الشهر · الإجازات المعتمدة · تنقّل بين الأشهر'],
-                ['id' => 'recurring', 'tool' => 'المهام المتكررة', 'path' => '/recurring-tasks', 'checks' => 'قالب · توليد الدورة'],
-                ['id' => 'workload', 'tool' => 'لوحة الأحمال', 'path' => '/workload-board', 'checks' => 'توزيع الأحمال · صلاحية الفريق'],
+                ['id' => 'workload', 'tool' => 'لوحة الأحمال', 'path' => '/workload-board', 'checks' => 'أحمال · قوالب متكررة من–إلى · متابعة/تذكير'],
             ],
         ],
         [
