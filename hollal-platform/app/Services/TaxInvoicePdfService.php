@@ -9,10 +9,9 @@ use App\Support\PdfArabic;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * 04-B7 — Arabic RTL invoice PDF, including the TLV QR payload.
- * Wave D-deep: the per-type template only supplies the letterhead
- * background — company data always comes from CompanyProfile, and the
- * client/line items/tax/totals are always filled from the issued invoice.
+ * 04-B7 — Arabic invoice PDF, including the TLV QR payload.
+ * Labels and amounts are separated so glyph shaping never mangles numbers.
+ * Time: O(n) line items | Space: O(n)
  */
 class TaxInvoicePdfService
 {
@@ -34,12 +33,13 @@ class TaxInvoicePdfService
 
         $rows = '';
         foreach ($invoice->items as $item) {
+            // LTR Dompdf: first cell = left. Put totals on the left so الوصف sits on the right (Arabic invoice).
             $rows .= '<tr>'
+                .'<td class="num">'.number_format((float) $item->line_total, 2).'</td>'
+                .'<td class="num">'.number_format((float) $item->vat_rate * 100, 2).'%</td>'
+                .'<td class="num">'.number_format((float) $item->unit_price, 2).'</td>'
+                .'<td class="num">'.number_format((float) $item->quantity, 2).'</td>'
                 .'<td>'.e($item->description).'</td>'
-                .'<td>'.number_format((float) $item->quantity, 2).'</td>'
-                .'<td>'.number_format((float) $item->unit_price, 2).'</td>'
-                .'<td>'.number_format((float) $item->vat_rate * 100, 2).'%</td>'
-                .'<td>'.number_format((float) $item->line_total, 2).'</td>'
                 .'</tr>';
         }
 
@@ -52,30 +52,45 @@ class TaxInvoicePdfService
 
         $letterhead = $this->letterheadBackground($template);
 
+        // value | label  → label appears on the right in LTR layout
+        $metaRow = static fn (string $label, string $value, bool $numeric = false): string => '<tr>'
+            .'<td'.($numeric ? ' class="num"' : '').'>'.$value.'</td>'
+            .'<td class="pdf-label">'.e($label).'</td>'
+            .'</tr>';
+
+        $meta = '<table class="pdf-meta">'
+            .$metaRow('رقم الفاتورة', e($invoice->number), true)
+            .$metaRow('النوع', e($typeLabel))
+            .$metaRow('تاريخ الإصدار', e(hollal_dt($invoice->issued_at)), true)
+            .$metaRow('الوضع', e($invoice->mode))
+            .$metaRow('البائع', e($invoice->seller_name))
+            .$metaRow('الرقم الضريبي للبائع', e((string) $invoice->seller_vat_number), true)
+            .($cr ? $metaRow('السجل التجاري', e((string) $cr), true) : '')
+            .($address ? $metaRow('عنوان البائع', e((string) $address)) : '')
+            .$metaRow('المشتري', e($invoice->buyer_name))
+            .$metaRow('الرقم الضريبي للمشتري', e((string) $invoice->buyer_vat_number), true)
+            .'</table>';
+
         $html = $letterhead
             .'<div class="tax-invoice-content">'
-            .PdfArabic::header($typeLabel.' — '.$invoice->number, includeCr: true)
-            .'<div dir="rtl" style="unicode-bidi: embed;">'
-            .'<p><strong>البائع:</strong> '.e($invoice->seller_name)
-            .' — الرقم الضريبي: '.e((string) $invoice->seller_vat_number)
-            .($cr ? ' — السجل التجاري: '.e((string) $cr) : '')
-            .'</p>'
-            .($address ? '<p><strong>عنوان البائع:</strong> '.e((string) $address).'</p>' : '')
-            .'<p><strong>المشتري:</strong> '.e($invoice->buyer_name)
-            .' — الرقم الضريبي: '.e((string) $invoice->buyer_vat_number).'</p>'
-            .'<p>تاريخ الإصدار: '.e(hollal_dt($invoice->issued_at))
-            .' — الوضع: '.e($invoice->mode)
-            .' — النوع: '.e($typeLabel).'</p>'
+            .PdfArabic::header($typeLabel, includeCr: false)
+            .$meta
+            .'<h3 style="margin-top:16px; text-align:right;">بنود الفاتورة</h3>'
             .'<table><thead><tr>'
-            .'<th>الوصف</th><th>الكمية</th><th>سعر الوحدة</th><th>الضريبة</th><th>الإجمالي</th>'
+            .'<th class="num">الإجمالي</th><th class="num">الضريبة</th><th class="num">سعر الوحدة</th>'
+            .'<th class="num">الكمية</th><th>الوصف</th>'
             .'</tr></thead><tbody>'.$rows.'</tbody></table>'
-            .'<p>المجموع قبل الضريبة: '.number_format((float) $invoice->subtotal, 2).'</p>'
-            .'<p>إجمالي الضريبة: '.number_format((float) $invoice->vat_total, 2).'</p>'
-            .'<p><strong>الإجمالي شامل الضريبة: '.number_format((float) $invoice->total, 2)
-            .' '.e($invoice->currency).'</strong></p>'
-            .'<p><strong>رمز QR (ZATCA Phase A — TLV base64):</strong></p>'
-            .'<p style="font-size:9px; word-break: break-all; font-family: monospace;">'.e($qr).'</p>'
-            .'</div>'
+            .'<table class="pdf-meta" style="margin-top:12px;">'
+            .$metaRow('المجموع قبل الضريبة', number_format((float) $invoice->subtotal, 2), true)
+            .$metaRow('إجمالي الضريبة', number_format((float) $invoice->vat_total, 2), true)
+            .$metaRow(
+                'الإجمالي شامل الضريبة',
+                '<strong>'.number_format((float) $invoice->total, 2).' '.e($invoice->currency).'</strong>',
+                true
+            )
+            .'</table>'
+            .'<p style="margin-top:12px; text-align:right;"><strong>رمز QR (ZATCA Phase A — TLV base64)</strong></p>'
+            .'<p class="pdf-num" style="font-size:9px; word-break: break-all; text-align:left;">'.e($qr).'</p>'
             .'</div>';
 
         return $html;

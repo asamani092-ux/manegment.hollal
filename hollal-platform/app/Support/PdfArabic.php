@@ -8,9 +8,12 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * Arabic-connected PDF chrome: Amiri font + glyph shaping + company logo + RTL.
- * Dompdf cannot join Arabic letters; utf8Glyphs pre-shapes text for correct print.
- * Font family key MUST stay lowercase `amiri` to match installed-fonts.json.
+ * Arabic-connected PDF chrome: Amiri font + glyph shaping + company logo.
+ *
+ * Dompdf has no real bidi/joining. Presentation forms from ar-php must be
+ * laid out LTR (text-align:right). Numbers/Latin stay outside Arabic runs
+ * so utf8Glyphs never reverses VAT IDs or amounts.
+ *
  * Time: O(n) HTML size | Space: O(n)
  */
 final class PdfArabic
@@ -24,7 +27,10 @@ final class PdfArabic
         return is_file($path) ? $path : null;
     }
 
-    /** Shape Arabic letters for Dompdf (disconnected → connected visual forms). */
+    /**
+     * Shape Arabic letter runs only; keep digits, Latin, and punctuation intact.
+     * Time: O(n) | Space: O(n)
+     */
     public static function shape(string $text): string
     {
         if ($text === '' || ! preg_match('/\p{Arabic}/u', $text)) {
@@ -42,17 +48,30 @@ final class PdfArabic
             '٥' => '5', '٦' => '6', '٧' => '7', '٨' => '8', '٩' => '9',
         ]);
 
+        $shaped = preg_replace_callback(
+            '/\p{Arabic}(?:[\p{Arabic}\p{Mn}\s]*\p{Arabic})?/u',
+            static fn (array $m): string => self::shapeArabicRun($m[0]),
+            $text
+        );
+
+        return is_string($shaped) ? $shaped : $text;
+    }
+
+    /** utf8Glyphs on an Arabic-only fragment (hindo=false → Western digits untouched). */
+    private static function shapeArabicRun(string $run): string
+    {
         try {
             self::$arabic ??= new Arabic;
-            // ar-php emits E_NOTICE for unsupported codepoints; never let that abort PDF.
             $prev = error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING);
             try {
-                return self::$arabic->utf8Glyphs($text);
+                $max = max(50, mb_strlen($run) + 10);
+
+                return self::$arabic->utf8Glyphs($run, $max, false);
             } finally {
                 error_reporting($prev);
             }
         } catch (\Throwable) {
-            return $text;
+            return $run;
         }
     }
 
@@ -71,14 +90,24 @@ final class PdfArabic
     public static function fontFace(): string
     {
         $path = self::fontPath();
+        // Dompdf: presentation-form Arabic must flow LTR; align to the right for RTL reading.
+        $body = 'body { direction: ltr; text-align: right; unicode-bidi: isolate; }'
+            .' table { width: 100%; border-collapse: collapse; direction: ltr; margin: 8px 0; }'
+            .' th, td { border: 1px solid #0F3446; padding: 6px 8px; text-align: right; vertical-align: middle; }'
+            .' th { background: #0F3446; color: #fff; }'
+            .' td.num, th.num, .pdf-num { text-align: left; direction: ltr; unicode-bidi: isolate; font-family: DejaVu Sans, amiri, sans-serif; }'
+            .' td.pdf-label { width: 32%; white-space: nowrap; font-weight: bold; text-align: right; }'
+            .' table.pdf-meta td.pdf-label { background: #f3f6f8; }';
+
         if ($path === null) {
-            return 'body { font-family: dejavu sans, sans-serif; direction: rtl; unicode-bidi: embed; }';
+            return 'body, table, th, td { font-family: dejavu sans, sans-serif; }'.$body;
         }
 
         $src = 'file://'.str_replace('\\', '/', $path);
 
         return '@font-face { font-family: amiri; font-style: normal; font-weight: normal; src: url("'.$src.'") format("truetype"); }'
-            .' body { font-family: amiri, DejaVu Sans, sans-serif; direction: rtl; unicode-bidi: embed; }';
+            .' body, table, th, td { font-family: amiri, DejaVu Sans, sans-serif; }'
+            .$body;
     }
 
     public static function header(string $title, bool $includeCr = false): string
@@ -93,18 +122,17 @@ final class PdfArabic
         }
 
         $cr = $includeCr && $company->commercial_register
-            ? '<p>السجل التجاري: '.e((string) $company->commercial_register).'</p>'
+            ? '<p>السجل التجاري: <span class="pdf-num">'.e((string) $company->commercial_register).'</span></p>'
             : '';
         $address = $includeCr && $company->address
             ? '<p>العنوان: '.e((string) $company->address).'</p>'
             : '';
         $tax = $company->tax_number
-            ? '<p>الرقم الضريبي: '.e((string) $company->tax_number).'</p>'
+            ? '<p>الرقم الضريبي: <span class="pdf-num">'.e((string) $company->tax_number).'</span></p>'
             : '';
 
-        return '<div dir="rtl" style="text-align:right; unicode-bidi: embed;">'
-            .'<style>'.self::fontFace().' table { border-collapse: collapse; width: 100%; }'
-            .' th, td { border: 1px solid #0F3446; padding: 6px; } th { background: #0F3446; color: #fff; }</style>'
+        return '<div style="text-align:right;">'
+            .'<style>'.self::fontFace().'</style>'
             .$logo
             .'<h2>'.e($title).'</h2>'
             .'<p>'.e((string) $company->name).'</p>'
@@ -133,13 +161,13 @@ final class PdfArabic
     }
 
     /**
-     * Wrap body HTML with RTL Amiri chrome, shape Arabic, render PDF bytes.
+     * Wrap body HTML with Amiri chrome, shape Arabic, render PDF bytes.
      * Time: O(n) | Space: O(n)
      */
     public static function render(string $title, string $bodyHtml, string $paper = 'a4', bool $includeCr = false): string
     {
         $html = self::header($title, $includeCr)
-            .'<div dir="rtl" style="unicode-bidi: embed;">'.$bodyHtml.'</div>';
+            .'<div style="text-align:right;">'.$bodyHtml.'</div>';
 
         return self::outputFromHtml($html, $paper);
     }

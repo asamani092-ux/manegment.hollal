@@ -92,13 +92,12 @@ class FinancialReportService
         $report = $this->monthly($month);
 
         $html = PdfArabic::header('التقرير المالي الشهري — '.$month, includeCr: true)
-            .'<div dir="rtl">'
-            .'<table><thead><tr><th>البند</th><th>المبلغ</th></tr></thead><tbody>'
-            .'<tr><td>إجمالي المصروفات</td><td>'.number_format($report['expenses_total'], 2).'</td></tr>'
-            .'<tr><td>إجمالي الإيرادات</td><td>'.number_format($report['revenues_total'], 2).'</td></tr>'
-            .'<tr><td>إجمالي الرواتب</td><td>'.number_format($report['payroll_total'], 2).'</td></tr>'
-            .'<tr><td><strong>الصافي</strong></td><td><strong>'.number_format($report['net'], 2).'</strong></td></tr>'
-            .'</tbody></table></div>';
+            .'<table class="pdf-meta"><thead><tr><th>البند</th><th class="num">المبلغ</th></tr></thead><tbody>'
+            .'<tr><td>إجمالي المصروفات</td><td class="num">'.number_format($report['expenses_total'], 2).'</td></tr>'
+            .'<tr><td>إجمالي الإيرادات</td><td class="num">'.number_format($report['revenues_total'], 2).'</td></tr>'
+            .'<tr><td>إجمالي الرواتب</td><td class="num">'.number_format($report['payroll_total'], 2).'</td></tr>'
+            .'<tr><td><strong>الصافي</strong></td><td class="num"><strong>'.number_format($report['net'], 2).'</strong></td></tr>'
+            .'</tbody></table>';
 
         return PdfArabic::outputFromHtml($html);
     }
@@ -234,23 +233,23 @@ class FinancialReportService
         $movements = $detailed['movements'];
         foreach ($movements as $movement) {
             $rows .= '<tr>'
-                .'<td>'.e((string) $movement['date']).'</td>'
+                .'<td class="num">'.e((string) $movement['date']).'</td>'
                 .'<td>'.e((string) $movement['type']).'</td>'
                 .'<td>'.e((string) ($movement['description'] ?? '—')).'</td>'
                 .'<td>'.e((string) ($movement['project'] ?? '—')).'</td>'
-                .'<td>'.number_format((float) $movement['amount'], 2).'</td>'
+                .'<td class="num">'.number_format((float) $movement['amount'], 2).'</td>'
                 .'</tr>';
         }
 
         $html = PdfArabic::header('التقرير المالي المفصّل — '.$month, includeCr: true)
-            .'<div dir="rtl">'
-            .'<table><thead><tr><th>التاريخ</th><th>النوع</th><th>الوصف</th><th>المشروع</th><th>المبلغ</th></tr></thead><tbody>'
+            .'<table><thead><tr><th class="num">التاريخ</th><th>النوع</th><th>الوصف</th><th>المشروع</th><th class="num">المبلغ</th></tr></thead><tbody>'
             .($rows !== '' ? $rows : '<tr><td colspan="5">لا توجد حركات في هذا الشهر</td></tr>')
             .'</tbody></table>'
-            .'<p>إجمالي المصروفات: '.number_format($detailed['totals']['expenses'], 2).'</p>'
-            .'<p>إجمالي الإيرادات: '.number_format($detailed['totals']['revenues'], 2).'</p>'
-            .'<p>إجمالي الرواتب: '.number_format($detailed['totals']['payroll'], 2).'</p>'
-            .'</div>';
+            .'<table class="pdf-meta" style="margin-top:12px;">'
+            .'<tr><td>إجمالي المصروفات</td><td class="num">'.number_format($detailed['totals']['expenses'], 2).'</td></tr>'
+            .'<tr><td>إجمالي الإيرادات</td><td class="num">'.number_format($detailed['totals']['revenues'], 2).'</td></tr>'
+            .'<tr><td>إجمالي الرواتب</td><td class="num">'.number_format($detailed['totals']['payroll'], 2).'</td></tr>'
+            .'</table>';
 
         return PdfArabic::outputFromHtml($html);
     }
