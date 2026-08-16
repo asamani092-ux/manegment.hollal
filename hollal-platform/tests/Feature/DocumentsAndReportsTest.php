@@ -297,6 +297,22 @@ class DocumentsAndReportsTest extends TestCase
         $this->assertNotNull($response);
     }
 
+    public function test_audit_log_survives_corrupted_actions_cache(): void
+    {
+        $actor = $this->reader();
+        // Old bug: Collection was cached and broke htmlspecialchars() on option values.
+        \Illuminate\Support\Facades\Cache::put('audit_log.distinct_actions', collect(['settings.updated']), 300);
+
+        Livewire::actingAs($actor)
+            ->test(AuditLogIndex::class)
+            ->assertOk()
+            ->assertSee('كل الإجراءات');
+
+        $actions = \Illuminate\Support\Facades\Cache::get('audit_log.distinct_actions');
+        $this->assertIsArray($actions);
+        $this->assertContainsOnly('string', $actions);
+    }
+
     public function test_audit_log_status_is_arabic_success_or_failure_with_reason(): void
     {
         $success = AuditLog::create(['action' => 'settings.updated', 'created_at' => now()]);

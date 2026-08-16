@@ -90,23 +90,38 @@ class AuditLogIndex extends Component
 
     /**
      * Distinct action keys for the filter — cached / limited to avoid full-table scans.
+     * Cache a plain string list (never a Collection) so DB/file cache round-trips stay valid.
      *
-     * @return \Illuminate\Support\Collection<int, string>
+     * @return list<string>
      */
-    protected function distinctActions()
+    protected function distinctActions(): array
     {
-        return Cache::remember('audit_log.distinct_actions', 300, function () {
-            $known = array_keys(AuditLog::ACTION_LABELS);
-            $recent = AuditLog::query()
-                ->orderByDesc('id')
-                ->limit(200)
-                ->pluck('action')
-                ->unique()
-                ->values()
-                ->all();
+        $cached = Cache::get('audit_log.distinct_actions');
 
-            return collect(array_unique(array_merge($known, $recent)))->sort()->values();
-        });
+        if (is_array($cached)) {
+            return array_values(array_filter($cached, fn ($action) => is_string($action) && $action !== ''));
+        }
+
+        if ($cached !== null) {
+            Cache::forget('audit_log.distinct_actions');
+        }
+
+        $known = array_keys(AuditLog::ACTION_LABELS);
+        $recent = AuditLog::query()
+            ->orderByDesc('id')
+            ->limit(200)
+            ->pluck('action')
+            ->filter(fn ($action) => is_string($action) && $action !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        $merged = array_values(array_unique(array_merge($known, $recent)));
+        sort($merged, SORT_STRING);
+
+        Cache::put('audit_log.distinct_actions', $merged, 300);
+
+        return $merged;
     }
 
     public function render(): View
