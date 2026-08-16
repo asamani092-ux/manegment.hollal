@@ -80,7 +80,11 @@
                     <td class="ds-ltr-num">{{ $template->ends_on?->format('Y-m-d') ?? '—' }}</td>
                     <td>{{ $template->open_instances_count }}</td>
                     <td>{{ $template->completed_instances_count }}</td>
-                    <td>{{ $template->is_active ? 'مفعّل' : 'موقوف' }}</td>
+                    <td>
+                        <span class="ds-badge {{ $template->is_active ? 'ds-badge-success' : 'ds-badge-danger' }}">
+                            {{ $template->is_active ? 'مفعّل' : 'موقوف' }}
+                        </span>
+                    </td>
                     <td class="ds-toolbar-actions" style="gap:.35rem">
                         @can('esnad.tasks.update')
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="toggleActive({{ $template->id }})">
