@@ -322,8 +322,9 @@ class TaxInvoiceTest extends TestCase
         $invoice = $this->issue();
         $html = app(TaxInvoicePdfService::class)->buildHtml($invoice);
 
-        $this->assertStringContainsString('رمز الفاتورة الإلكتروني (ZATCA)', $html);
+        $this->assertStringContainsString('رمز الفاتورة الإلكتروني', $html);
         $this->assertStringContainsString('alt="ZATCA QR"', $html);
+        $this->assertStringContainsString('هيئة الزكاة والضريبة والجمارك', $html);
         $this->assertStringNotContainsString('TLV base64', $html);
     }
 }

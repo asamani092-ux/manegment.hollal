@@ -73,7 +73,14 @@ class TaxInvoicePdfService
 
         $html = $letterhead
             .'<div class="tax-invoice-content">'
+            .'<table style="width:100%; border:none; margin-bottom:8px;"><tr>'
+            .'<td style="border:none; width:30%; vertical-align:top; text-align:left;">'
+            .\App\Support\ZatcaQrImage::imgTag($qr, 110)
+            .'</td>'
+            .'<td style="border:none; width:70%; vertical-align:top; text-align:right;">'
             .PdfArabic::header($typeLabel, includeCr: false)
+            .'</td>'
+            .'</tr></table>'
             .$meta
             .'<h3 style="margin-top:16px; text-align:right;">بنود الفاتورة</h3>'
             .'<table><thead><tr>'
@@ -89,10 +96,6 @@ class TaxInvoicePdfService
                 true
             )
             .'</table>'
-            .'<div style="margin-top:16px; text-align:right;">'
-            .'<p><strong>رمز الفاتورة الإلكتروني (ZATCA)</strong></p>'
-            .\App\Support\ZatcaQrImage::imgTag($qr, 140)
-            .'</div>'
             .'</div>';
 
         return $html;
