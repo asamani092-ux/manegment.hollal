@@ -42,9 +42,9 @@ class PartnerPortalSelfServeTest extends TestCase
         $portal = Livewire::test(PartnerPortal::class, ['token' => $link->token])
             ->assertSee('1. البرامج')
             ->assertSee('2. التشخيص')
-            ->assertSee('3. عروض الأسعار')
-            ->assertSee('4. الدفعات')
-            ->assertSee('5. العقد')
+            ->assertDontSee('3. عروض الأسعار')
+            ->assertDontSee('4. الدفعات')
+            ->assertDontSee('5. العقد')
             ->assertDontSee('سعر الوحدة')
             ->set('selectedProgramIds', [$program->id])
             ->set('programQuantities', [$program->id => '2'])
@@ -94,6 +94,8 @@ class PartnerPortalSelfServeTest extends TestCase
 
         $this->assertSame(Partnership::STAGE_DIAGNOSIS, $partnership->fresh()->stage);
 
+        $portal->call('acceptQuote', $quoteId)->assertHasErrors();
+        $this->finalizeQuote($partnership->quotes()->first());
         $portal->call('acceptQuote', $quoteId)->assertHasNoErrors();
 
         $this->assertSame(Quote::STATUS_ACCEPTED, $partnership->quotes()->first()->status);
@@ -162,16 +164,13 @@ class PartnerPortalSelfServeTest extends TestCase
 
         $this->get(route('partner.portal.page', ['token' => $link->token, 'page' => 'quotes']))
             ->assertOk()
-            ->assertSee('قبول العرض')
-            ->assertSee('3. عروض الأسعار')
-            ->assertDontSee('حفظ الاختيار وبناء العرض')
-            ->assertDontSee('اعتماد التوقيع');
+            ->assertSee('هذا القسم غير مفعّل على رابط الجهة')
+            ->assertDontSee('قبول العرض');
 
         $this->get(route('partner.portal.page', ['token' => $link->token, 'page' => 'contract']))
             ->assertOk()
-            ->assertSee('5. العقد')
-            ->assertDontSee('حفظ الاختيار وبناء العرض')
-            ->assertDontSee('قبول العرض');
+            ->assertSee('هذا القسم غير مفعّل على رابط الجهة')
+            ->assertDontSee('اعتماد التوقيع');
 
         $this->get('/portal/'.$link->token.'/unknown')->assertNotFound();
     }
@@ -188,7 +187,7 @@ class PartnerPortalSelfServeTest extends TestCase
             ->assertDontSee('wire:navigate', false)
             ->assertDontSee('ds-login-container', false)
             ->assertSee('href="'.$prefix.'/diagnosis"', false)
-            ->assertSee('href="'.$prefix.'/payments"', false);
+            ->assertDontSee('href="'.$prefix.'/payments"', false);
     }
 
     public function test_catalog_lists_every_active_priced_program_and_forms_complete_the_journey(): void
@@ -221,6 +220,12 @@ class PartnerPortalSelfServeTest extends TestCase
         ]))->assertSee('تم استلام استبانة التشخيص');
 
         $quote = $partnership->quotes()->firstOrFail();
+        $this->from('/portal/'.$link->token.'/quotes')
+            ->post(route('partner.portal.quotes.accept', ['token' => $link->token, 'quote' => $quote->id]))
+            ->assertRedirect();
+        $this->assertSame(Quote::STATUS_DRAFT, $quote->fresh()->status);
+
+        $this->finalizeQuote($quote);
         $this->from('/portal/'.$link->token.'/quotes')
             ->post(route('partner.portal.quotes.accept', ['token' => $link->token, 'quote' => $quote->id]))
             ->assertRedirect(route('partner.portal.page', ['token' => $link->token, 'page' => 'contract']));
@@ -272,9 +277,18 @@ class PartnerPortalSelfServeTest extends TestCase
             'partnerships.pipeline.manage',
             'partnerships.quotes.view',
             'partnerships.quotes.create',
+            'partnerships.quotes.approve',
             'partnerships.links.manage',
         ]);
 
         return $user;
+    }
+
+    private function finalizeQuote(Quote $quote): Quote
+    {
+        $executive = User::factory()->create(['must_change_password' => false]);
+        $executive->givePermissionTo(['partnerships.quotes.approve', 'partnerships.quotes.finalize']);
+
+        return app(\App\Services\QuoteService::class)->approve($quote->fresh(), $executive);
     }
 }

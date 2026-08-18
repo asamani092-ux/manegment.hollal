@@ -7,9 +7,11 @@ use App\Models\Program;
 use App\Models\ProgramPrice;
 use App\Models\Quote;
 use App\Models\User;
+use App\Notifications\QuoteAwaitingExecutiveApproval;
 use App\Support\Setting;
 use App\Support\PdfArabic;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * 05-B3 — quote builder. Unit prices come from the program card, the tax rate
@@ -21,7 +23,7 @@ class QuoteService
     /**
      * @param  list<array{program_id?: ?int, service_type: string, description?: string, quantity?: float|int, unit_price?: float|int}>  $items
      */
-    public function create(Partnership $partnership, array $items, float $discount = 0, ?User $author = null, bool $advanceStage = true): Quote
+    public function create(Partnership $partnership, array $items, float $discount = 0, ?User $author = null, bool $advanceStage = false): Quote
     {
         return DB::transaction(function () use ($partnership, $items, $discount, $author, $advanceStage) {
             $version = (int) $partnership->quotes()->max('version') + 1;
@@ -101,11 +103,83 @@ class QuoteService
 
     public function approve(Quote $quote, User $approver): Quote
     {
+        if ($approver->can('partnerships.quotes.finalize')) {
+            return $this->finalize($quote, $approver);
+        }
+
+        return $this->approveInternally($quote, $approver);
+    }
+
+    /** Time: O(r) recipients | Space: O(r) */
+    public function approveInternally(Quote $quote, User $approver): Quote
+    {
+        if (! in_array($quote->status, [Quote::STATUS_DRAFT, Quote::STATUS_WITH_NOTES], true)) {
+            throw new \RuntimeException('لا يُعتمد داخليًا إلا عرض مسودة أو بملاحظات');
+        }
+
+        $quote->forceFill([
+            'status' => Quote::STATUS_PENDING_FINAL,
+            'approved_by' => $approver->id,
+            'approved_at' => now(),
+        ])->save();
+
+        $recipients = User::permission('partnerships.quotes.finalize')
+            ->get()
+            ->filter(fn (User $user) => $user->id !== $approver->id);
+
+        if ($recipients->isNotEmpty()) {
+            Notification::send($recipients, new QuoteAwaitingExecutiveApproval($quote->fresh()));
+        }
+
+        return $quote;
+    }
+
+    /** Time: O(1) | Space: O(1) */
+    public function finalize(Quote $quote, User $approver): Quote
+    {
+        if (! $approver->can('partnerships.quotes.finalize')) {
+            throw new \RuntimeException('لا اعتماد نهائي بلا صلاحية الاعتماد النهائي');
+        }
+        if (! in_array($quote->status, [
+            Quote::STATUS_DRAFT,
+            Quote::STATUS_WITH_NOTES,
+            Quote::STATUS_PENDING_FINAL,
+        ], true)) {
+            throw new \RuntimeException('لا يُعتمد نهائيًا إلا عرض بانتظار ذلك');
+        }
+
         $quote->forceFill([
             'status' => Quote::STATUS_APPROVED,
             'approved_by' => $approver->id,
             'approved_at' => now(),
         ])->save();
+
+        $partnership = $quote->partnership()->firstOrFail();
+        $partnership->enablePortalFeatures(['quotes']);
+        app(PartnershipPipelineService::class)->advanceIfBefore(
+            $partnership,
+            Partnership::STAGE_QUOTE,
+            $approver,
+            'الاعتماد النهائي لعرض السعر',
+        );
+
+        return $quote;
+    }
+
+    public function returnToDraft(Quote $quote, User $returner, string $notes): Quote
+    {
+        if (! $returner->can('partnerships.quotes.finalize')) {
+            throw new \RuntimeException('إرجاع العرض للمسودة من صاحب الاعتماد النهائي فقط');
+        }
+
+        $quote->forceFill([
+            'status' => Quote::STATUS_DRAFT,
+            'entity_notes' => $notes,
+            'approved_by' => null,
+            'approved_at' => null,
+        ])->save();
+
+        $quote->partnership->forceFill(['internal_approval_notes' => $notes])->save();
 
         return $quote;
     }
@@ -130,6 +204,10 @@ class QuoteService
 
     public function accept(Quote $quote, ?string $extraNotes = null): Quote
     {
+        if (! in_array($quote->status, [Quote::STATUS_APPROVED, Quote::STATUS_SENT], true)) {
+            throw new \RuntimeException('لا يُقبل العرض قبل اعتماده نهائيًا');
+        }
+
         $notes = trim((string) $quote->entity_notes);
         $extra = trim((string) $extraNotes);
         if ($extra !== '') {

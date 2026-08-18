@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\DashboardIndex;
 use App\Livewire\Partnerships\OrganizationsIndex;
 use App\Livewire\Partnerships\OrganizationShow;
 use App\Livewire\Partnerships\PartnerPortal;
@@ -95,7 +96,10 @@ class PartnershipModuleTest extends TestCase
             ['program_id' => $program->id, 'service_type' => ProgramPrice::SERVICE_TRAINING, 'quantity' => 2],
         ]);
 
-        app(QuoteService::class)->accept($quote);
+        $executive = User::factory()->create(['must_change_password' => false]);
+        $executive->givePermissionTo(['partnerships.quotes.approve', 'partnerships.quotes.finalize']);
+        app(QuoteService::class)->approve($quote, $executive);
+        app(QuoteService::class)->accept($quote->fresh());
 
         return [$quote->fresh(), $partnership];
     }
@@ -638,6 +642,74 @@ class PartnershipModuleTest extends TestCase
         $this->assertSame(Partnership::STAGE_OPPORTUNITY, $renewal->stage);
         $this->assertSame(Partnership::STAGE_CLOSED, $partnership->fresh()->stage);
         $this->assertSame(2, Partnership::query()->where('organization_id', $organization->id)->count());
+    }
+
+    public function test_internal_approve_does_not_unlock_portal_and_final_does(): void
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+        $partnership = $this->partnership();
+        $quote = app(QuoteService::class)->create($partnership, [
+            ['service_type' => ProgramPrice::SERVICE_TRAINING, 'quantity' => 1, 'unit_price' => 100],
+        ]);
+        $executive = User::factory()->create(['must_change_password' => false]);
+        $executive->givePermissionTo([
+            'partnerships.quotes.approve', 'partnerships.quotes.finalize',
+            'partnerships.quotes.view', 'partnerships.pipeline.view', 'dashboard.view',
+        ]);
+
+        Livewire::actingAs($this->manager())
+            ->test(PartnershipShow::class, ['partnership' => $partnership])
+            ->call('approveQuote', $quote->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame(Quote::STATUS_PENDING_FINAL, $quote->fresh()->status);
+        $this->assertFalse($partnership->fresh()->portalFeatureFlags()['quotes']);
+        \Illuminate\Support\Facades\Notification::assertSentTo($executive, \App\Notifications\QuoteAwaitingExecutiveApproval::class);
+
+        Livewire::actingAs($executive)
+            ->test(DashboardIndex::class)
+            ->call('toggleActionPanel')
+            ->assertSee('عرض سعر بانتظار اعتمادك النهائي');
+        Livewire::actingAs($executive)
+            ->test(PartnershipsPipeline::class)
+            ->assertSee('بانتظار اعتمادك');
+
+        Livewire::actingAs($executive)
+            ->test(PartnershipShow::class, ['partnership' => $partnership->fresh()])
+            ->call('approveQuote', $quote->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame(Quote::STATUS_APPROVED, $quote->fresh()->status);
+        $this->assertTrue($partnership->fresh()->portalFeatureFlags()['quotes']);
+        $this->assertSame(Partnership::STAGE_QUOTE, $partnership->fresh()->stage);
+
+        Livewire::actingAs($executive)
+            ->test(DashboardIndex::class)
+            ->call('toggleActionPanel')
+            ->assertDontSee('عرض سعر بانتظار اعتمادك النهائي');
+    }
+
+    public function test_executive_return_sends_quote_back_to_draft(): void
+    {
+        $partnership = $this->partnership();
+        $quote = app(QuoteService::class)->create($partnership, [
+            ['service_type' => ProgramPrice::SERVICE_TRAINING, 'quantity' => 1, 'unit_price' => 100],
+        ]);
+        app(QuoteService::class)->approve($quote, $this->manager());
+        $executive = User::factory()->create(['must_change_password' => false]);
+        $executive->givePermissionTo([
+            'partnerships.quotes.approve', 'partnerships.quotes.finalize',
+            'partnerships.quotes.view', 'partnerships.pipeline.view',
+        ]);
+
+        Livewire::actingAs($executive)
+            ->test(PartnershipShow::class, ['partnership' => $partnership->fresh()])
+            ->set('internalApprovalNotes', 'راجع الكمية')
+            ->call('returnQuote', $quote->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame(Quote::STATUS_DRAFT, $quote->fresh()->status);
+        $this->assertSame('راجع الكمية', $partnership->fresh()->internal_approval_notes);
     }
 
     public function test_send_quote_without_approval_returns_toast_not_exception(): void

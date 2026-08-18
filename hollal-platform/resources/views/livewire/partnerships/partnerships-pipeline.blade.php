@@ -1,6 +1,19 @@
 <x-ds-page>
     <x-ds-page-header title="رحلة الشراكات السباعية" />
 
+    @if (isset($pendingFinalQuotes) && $pendingFinalQuotes->isNotEmpty())
+        <section class="ds-section">
+            <h2 class="ds-section-title">بانتظار اعتمادك</h2>
+            @foreach ($pendingFinalQuotes as $pendingQuote)
+                <p>
+                    <a class="ds-link" href="{{ route('partnerships.show', $pendingQuote->partnership_id) }}?workspaceStep=1">
+                        اعتماد نهائي لعرض {{ $pendingQuote->partnership?->entity_name ?? '#'.$pendingQuote->partnership_id }}
+                    </a>
+                </p>
+            @endforeach
+        </section>
+    @endif
+
     <section class="ds-section ds-filter-bar">
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('view', 'kanban')">لوحة الأعمدة</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('view', 'list')">قائمة</button>

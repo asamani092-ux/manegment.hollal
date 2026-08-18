@@ -8,6 +8,7 @@ use App\Models\Meeting;
 use App\Models\MeetingItem;
 use App\Models\Partnership;
 use App\Models\Project;
+use App\Models\Quote;
 use App\Models\Task;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
@@ -95,6 +96,7 @@ class DashboardIndexTest extends TestCase
         Livewire::actingAs($manager)
             ->test(DashboardIndex::class)
             ->assertSee('يحتاج تدخلك')
+            ->call('toggleActionPanel')
             ->assertSee('مهمة متأخرة: مهمة متأخرة للفريق');
     }
 
@@ -135,6 +137,7 @@ class DashboardIndexTest extends TestCase
         Livewire::actingAs($approver)
             ->test(DashboardIndex::class)
             ->assertSee('يحتاج تدخلك')
+            ->call('toggleActionPanel')
             ->assertSee('طلب صرف بانتظار الموافقة');
     }
 
@@ -193,6 +196,7 @@ class DashboardIndexTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(DashboardIndex::class)
+            ->call('toggleActionPanel')
             ->assertSee('قرار متأخر: متابعة العقد');
     }
 
@@ -209,6 +213,29 @@ class DashboardIndexTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(DashboardIndex::class)
+            ->call('toggleActionPanel')
             ->assertSee('شراكة تنتهي قريباً: شريك تجريبي');
+    }
+
+    public function test_executive_sees_pending_quote_in_action_section(): void
+    {
+        $executive = User::factory()->create(['must_change_password' => false]);
+        $executive->givePermissionTo(['dashboard.view', 'partnerships.quotes.finalize']);
+        $partnership = Partnership::query()->create([
+            'entity_name' => 'جهة بانتظار الاعتماد',
+            'status' => 'active',
+        ]);
+        Quote::query()->create([
+            'partnership_id' => $partnership->id,
+            'version' => 1,
+            'status' => Quote::STATUS_PENDING_FINAL,
+            'total' => 100,
+        ]);
+
+        Livewire::actingAs($executive)
+            ->test(DashboardIndex::class)
+            ->assertSee('يحتاج تدخلك')
+            ->call('toggleActionPanel')
+            ->assertSee('عرض سعر بانتظار اعتمادك النهائي');
     }
 }

@@ -13,6 +13,7 @@
             'expense_pending' => 'fa-receipt',
             'meeting_decision' => 'fa-gavel',
             'partnership_expiring' => 'fa-handshake',
+            'quote_pending_final' => 'fa-file-invoice',
         ];
     @endphp
 

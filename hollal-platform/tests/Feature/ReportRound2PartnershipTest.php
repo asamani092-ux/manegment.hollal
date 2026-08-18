@@ -90,8 +90,13 @@ class ReportRound2PartnershipTest extends TestCase
             'service_type' => ProgramPrice::SERVICE_TRAINING,
             'quantity' => 1,
         ]], author: $manager);
-        $this->assertSame(Partnership::STAGE_QUOTE, $partnership->fresh()->stage);
+        $this->assertSame(Partnership::STAGE_OPPORTUNITY, $partnership->fresh()->stage);
         $this->assertSame('1150.00', (string) $quote->total);
+
+        $executive = User::factory()->create(['must_change_password' => false]);
+        $executive->givePermissionTo(['partnerships.quotes.approve', 'partnerships.quotes.finalize']);
+        app(QuoteService::class)->approve($quote, $executive);
+        $this->assertSame(Partnership::STAGE_QUOTE, $partnership->fresh()->stage);
 
         $link = app(PartnerPortalService::class)->issue($partnership, $manager);
         $portal = Livewire::test(PartnerPortal::class, ['token' => $link->token])
@@ -103,7 +108,7 @@ class ReportRound2PartnershipTest extends TestCase
 
         $acceptedQuote = $quote->fresh();
         $this->assertSame(Quote::STATUS_ACCEPTED, $acceptedQuote->status);
-        $this->assertSame('2300.00', (string) $acceptedQuote->total);
+        $this->assertSame('1150.00', (string) $acceptedQuote->total);
 
         $contract = PartnershipContract::query()->where('quote_id', $acceptedQuote->id)->firstOrFail();
         $this->assertSame(PartnershipContract::STATUS_AWAITING_SIGNATURE, $contract->status);
@@ -190,7 +195,10 @@ class ReportRound2PartnershipTest extends TestCase
             'service_type' => ProgramPrice::SERVICE_TRAINING,
             'quantity' => 1,
         ]]);
-        app(QuoteService::class)->accept($quote);
+        $executive = User::factory()->create(['must_change_password' => false]);
+        $executive->givePermissionTo(['partnerships.quotes.approve', 'partnerships.quotes.finalize']);
+        app(QuoteService::class)->approve($quote, $executive);
+        app(QuoteService::class)->accept($quote->fresh());
         $contract = app(PartnershipContractService::class)->createFromQuote(
             $quote->fresh(),
             [['amount' => 100, 'due_on' => now()->toDateString()]],

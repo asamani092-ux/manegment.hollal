@@ -146,6 +146,7 @@ class PartnerPortal extends Component
 
     public function acceptQuote(int $quoteId): void
     {
+        $this->resetErrorBag();
         $this->scopedQuote($quoteId);
 
         try {
@@ -267,8 +268,10 @@ class PartnerPortal extends Component
             ->where('action', 'portal.diagnosis_submitted')
             ->exists();
         $quoteAccepted = $quotes->contains(fn (Quote $quote) => $quote->status === Quote::STATUS_ACCEPTED);
+        $quoteReady = $quotes->contains(fn (Quote $quote) => $quote->isReadyForPartner());
         $quoteVisible = $quotes->isNotEmpty();
         $contract = $partnership->partnershipContracts->last();
+        $hasContract = $partnership->partnershipContracts->isNotEmpty();
         $signed = $contract?->hasSignedCopy() ?? false;
         $paymentSubmitted = $partnership->payments->whereIn('status', [
             PartnershipPayment::STATUS_PENDING,
@@ -277,9 +280,9 @@ class PartnerPortal extends Component
         $definitions = [
             ['id' => 1, 'key' => 'programs', 'label' => 'البرامج', 'enabled' => $features['programs'], 'done' => $this->selectedProgramIds !== [] && $quoteVisible],
             ['id' => 2, 'key' => 'diagnosis', 'label' => 'التشخيص', 'enabled' => $features['diagnosis'], 'done' => $diagnosisDone],
-            ['id' => 3, 'key' => 'quotes', 'label' => 'عروض الأسعار', 'enabled' => $features['quotes'], 'done' => $quoteAccepted],
-            ['id' => 4, 'key' => 'payments', 'label' => 'الدفعات', 'enabled' => $features['payments'], 'done' => $paymentSubmitted],
-            ['id' => 5, 'key' => 'contract', 'label' => 'العقد', 'enabled' => $features['contract'], 'done' => $signed],
+            ['id' => 3, 'key' => 'quotes', 'label' => 'عروض الأسعار', 'enabled' => $features['quotes'] && $quoteReady, 'done' => $quoteAccepted],
+            ['id' => 4, 'key' => 'payments', 'label' => 'الدفعات', 'enabled' => $features['payments'] && ($quoteAccepted || $hasContract), 'done' => $paymentSubmitted],
+            ['id' => 5, 'key' => 'contract', 'label' => 'العقد', 'enabled' => $features['contract'] && ($quoteAccepted || $hasContract), 'done' => $signed],
         ];
         $current = 1;
         foreach ($definitions as $step) {
@@ -321,7 +324,7 @@ class PartnerPortal extends Component
         return match ($focus) {
             1 => 'بوابة الجهة — البرامج',
             2 => 'بوابة الجهة — التشخيص',
-            3 => 'بوابة الجهة — قبول العرض',
+            3 => 'بوابة الجهة — عروض الأسعار',
             4 => 'بوابة الجهة — الدفعات',
             5 => 'بوابة الجهة — العقد',
             default => 'بوابة الجهة',

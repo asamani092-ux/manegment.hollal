@@ -18,6 +18,8 @@ class Quote extends Model
 
     public const STATUS_DRAFT = 'مسودة';
 
+    public const STATUS_PENDING_FINAL = 'بانتظار الاعتماد النهائي';
+
     public const STATUS_APPROVED = 'معتمد';
 
     public const STATUS_SENT = 'مرسل';
@@ -67,6 +69,11 @@ class Quote extends Model
     public function supersedes(): BelongsTo
     {
         return $this->belongsTo(self::class, 'supersedes_id');
+    }
+
+    public function isReadyForPartner(): bool
+    {
+        return in_array($this->status, [self::STATUS_APPROVED, self::STATUS_SENT, self::STATUS_ACCEPTED], true);
     }
 
     /**

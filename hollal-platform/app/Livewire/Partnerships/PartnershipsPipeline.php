@@ -3,6 +3,7 @@
 namespace App\Livewire\Partnerships;
 
 use App\Models\Partnership;
+use App\Models\Quote;
 use App\Services\PartnershipPipelineService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -94,12 +95,22 @@ class PartnershipsPipeline extends Component
     {
         $service = app(PartnershipPipelineService::class);
 
+        $pendingFinalQuotes = auth()->user()?->can('partnerships.quotes.finalize')
+            ? Quote::query()
+                ->where('status', Quote::STATUS_PENDING_FINAL)
+                ->with('partnership:id,entity_name,organization_id')
+                ->latest('id')
+                ->limit(10)
+                ->get()
+            : collect();
+
         return view('livewire.partnerships.partnerships-pipeline', [
             'board' => $service->board(),
             'stageLabels' => Partnership::STAGE_LABELS,
             'pipelineStages' => Partnership::PIPELINE_STAGES,
             'staleThreshold' => $service->staleThresholdDays(),
             'list' => Partnership::query()->with(['organization', 'owner'])->orderByDesc('id')->get(),
+            'pendingFinalQuotes' => $pendingFinalQuotes,
         ])->layout('layouts.app', ['title' => 'رحلة الشراكات']);
     }
 }

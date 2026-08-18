@@ -132,7 +132,7 @@ class PartnerPortalSelfServeService
             ->findOrFail($quoteId);
 
         return DB::transaction(function () use ($link, $quote, $notes, $selectedIds, $quantities, $services) {
-            if ($selectedIds) {
+            if ($selectedIds && ! $quote->isReadyForPartner()) {
                 $quote = $this->applyItems(
                     $quote,
                     $this->itemsFromSelection($link, $selectedIds, $quantities, $services)
@@ -141,6 +141,7 @@ class PartnerPortalSelfServeService
 
             $accepted = app(QuoteService::class)->accept($quote, $notes !== null && $notes !== '' ? $notes : null);
             $this->ensureSignableContract($accepted);
+            $accepted->partnership->enablePortalFeatures(['payments', 'contract']);
             app(PartnerPortalService::class)->log($link, 'portal.quote_accepted', [
                 'quote_id' => $accepted->id,
             ], request()->ip());

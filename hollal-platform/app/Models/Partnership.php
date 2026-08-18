@@ -194,18 +194,35 @@ class Partnership extends Model
     }
 
     /** @return array{programs: bool, diagnosis: bool, quotes: bool, payments: bool, contract: bool} */
-    public function portalFeatureFlags(): array
+    public static function defaultPortalFeatures(): array
     {
-        $defaults = [
+        return [
             'programs' => true,
             'diagnosis' => true,
-            'quotes' => true,
-            'payments' => true,
-            'contract' => true,
+            'quotes' => false,
+            'payments' => false,
+            'contract' => false,
         ];
+    }
+
+    /** @return array{programs: bool, diagnosis: bool, quotes: bool, payments: bool, contract: bool} */
+    public function portalFeatureFlags(): array
+    {
         $stored = is_array($this->portal_features) ? $this->portal_features : [];
 
-        return array_merge($defaults, array_intersect_key($stored, $defaults));
+        return array_merge(self::defaultPortalFeatures(), array_intersect_key($stored, self::defaultPortalFeatures()));
+    }
+
+    /** @param list<string> $keys Time: O(1) | Space: O(1) */
+    public function enablePortalFeatures(array $keys): void
+    {
+        $flags = $this->portalFeatureFlags();
+        foreach ($keys as $key) {
+            if (array_key_exists($key, $flags)) {
+                $flags[$key] = true;
+            }
+        }
+        $this->forceFill(['portal_features' => $flags])->save();
     }
 
     public function canRenewJourney(): bool

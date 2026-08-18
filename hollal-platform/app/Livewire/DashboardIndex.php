@@ -9,6 +9,7 @@ use App\Models\Meeting;
 use App\Models\MeetingItem;
 use App\Models\Partnership;
 use App\Models\Project;
+use App\Models\Quote;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
@@ -181,6 +182,24 @@ class DashboardIndex extends Component
                     'meta' => $item->meeting?->title ?? '—',
                 ]);
             });
+
+        if ($user->can('partnerships.quotes.finalize')) {
+            Quote::query()
+                ->select(['id', 'partnership_id', 'version', 'status', 'total'])
+                ->where('status', Quote::STATUS_PENDING_FINAL)
+                ->with('partnership:id,entity_name,organization_id')
+                ->latest('id')
+                ->limit(10)
+                ->get()
+                ->each(function (Quote $quote) use ($items) {
+                    $items->push([
+                        'kind' => 'quote_pending_final',
+                        'label' => 'عرض سعر بانتظار اعتمادك النهائي',
+                        'url' => \App\Support\RecordUrl::partnership((int) $quote->partnership_id).'?workspaceStep=1',
+                        'meta' => ($quote->partnership?->entity_name ?? '—').' — نسخة '.$quote->version,
+                    ]);
+                });
+        }
 
         if ($user->can('partnerships.view')) {
             $this->expiringPartnershipsQuery()

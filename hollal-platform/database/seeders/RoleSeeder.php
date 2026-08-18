@@ -26,6 +26,10 @@ class RoleSeeder extends Seeder
         'structure.departments.view',
         'projects.view',
         'partnerships.view',
+        'partnerships.pipeline.view',
+        'partnerships.quotes.view',
+        'partnerships.quotes.approve',
+        'partnerships.quotes.finalize',
         'esnad.tasks.view',
         'esnad.tasks.team.view',
         'esnad.tasks.all.view',
@@ -101,6 +105,11 @@ class RoleSeeder extends Seeder
         'structure.manage',
         'structure.positions.manage',
         'structure.committees.manage',
+        'partnerships.pipeline.view',
+        'partnerships.quotes.view',
+        'partnerships.quotes.approve',
+        'partnerships.quotes.finalize',
+        'partnerships.contracts.view',
     ];
 
     /** @var list<string> */

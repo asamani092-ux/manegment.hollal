@@ -88,9 +88,9 @@ class PartnershipShow extends Component
     public array $portalFeatures = [
         'programs' => true,
         'diagnosis' => true,
-        'quotes' => true,
-        'payments' => true,
-        'contract' => true,
+        'quotes' => false,
+        'payments' => false,
+        'contract' => false,
     ];
 
     public int $linkExpiryDays = 7;
@@ -113,8 +113,7 @@ class PartnershipShow extends Component
         }
         $this->resetQuoteLines();
         $this->scheduleRows = [['label' => 'الدفعة الأولى', 'amount' => '', 'due_on' => now()->toDateString()]];
-        $features = $partnership->portal_features ?? [];
-        $this->portalFeatures = array_merge($this->portalFeatures, is_array($features) ? $features : []);
+        $this->portalFeatures = $partnership->portalFeatureFlags();
         $this->linkExpiryDays = (int) Setting::get('links.default_expiry_days', 7);
     }
 
@@ -174,7 +173,7 @@ class PartnershipShow extends Component
         if ($this->revisingQuoteId) {
             $service->revise(Quote::findOrFail($this->revisingQuoteId), $items, (float) $this->quoteDiscount, auth()->user());
         } else {
-            $service->create($this->partnership, $items, (float) $this->quoteDiscount, auth()->user());
+            $service->create($this->partnership, $items, (float) $this->quoteDiscount, auth()->user(), false);
         }
 
         $this->showQuoteModal = false;
@@ -184,17 +183,9 @@ class PartnershipShow extends Component
     public function approveQuote(int $quoteId): void
     {
         $this->authorize('partnerships.quotes.approve');
-        app(QuoteService::class)->approve($this->quote($quoteId), auth()->user());
-
-        $this->dispatch('ds-toast', message: 'تم اعتماد العرض داخليًا');
-    }
-
-    public function sendQuote(int $quoteId): void
-    {
-        $this->authorize('partnerships.quotes.approve');
 
         try {
-            app(QuoteService::class)->send($this->quote($quoteId));
+            $quote = app(QuoteService::class)->approve($this->quote($quoteId), auth()->user());
         } catch (\RuntimeException $exception) {
             $this->addError('quote', $exception->getMessage());
             $this->dispatch('ds-toast', message: $exception->getMessage());
@@ -202,7 +193,37 @@ class PartnershipShow extends Component
             return;
         }
 
-        $this->dispatch('ds-toast', message: 'أُرسل العرض للجهة');
+        $this->partnership->refresh();
+        $this->portalFeatures = $this->partnership->portalFeatureFlags();
+        $final = $quote->status === Quote::STATUS_APPROVED;
+        $this->dispatch('ds-toast', message: $final
+            ? 'تم الاعتماد النهائي — العرض ظاهر على رابط الجهة'
+            : 'تم الاعتماد الداخلي — بانتظار الاعتماد النهائي');
+    }
+
+    public function sendQuote(int $quoteId): void
+    {
+        $this->authorize('partnerships.quotes.approve');
+        unset($quoteId);
+        $this->addError('quote', 'إصدار الرابط هو الإرسال للجهة');
+        $this->dispatch('ds-toast', message: 'إصدار الرابط هو الإرسال للجهة');
+    }
+
+    public function returnQuote(int $quoteId): void
+    {
+        $this->authorize('partnerships.quotes.finalize');
+        $this->validate([
+            'internalApprovalNotes' => 'required|string|max:2000',
+        ], [], ['internalApprovalNotes' => 'ملاحظات الإرجاع']);
+
+        app(QuoteService::class)->returnToDraft(
+            $this->quote($quoteId),
+            auth()->user(),
+            $this->internalApprovalNotes,
+        );
+        $this->internalApprovalNotes = '';
+        $this->partnership->refresh();
+        $this->dispatch('ds-toast', message: 'أُعيد العرض مسودة مع الملاحظات');
     }
 
     // ------------------------------------------------------------- contracts
@@ -350,6 +371,11 @@ class PartnershipShow extends Component
             'linkExpiryDays' => 'required|integer|min:1|max:365',
         ], [], ['linkExpiryDays' => 'مدة الرابط']);
 
+        if ($this->partnership->portal_features === null || $this->partnership->portal_features === []) {
+            $this->partnership->forceFill(['portal_features' => Partnership::defaultPortalFeatures()])->save();
+            $this->portalFeatures = $this->partnership->portalFeatureFlags();
+        }
+
         $link = app(PartnerPortalService::class)->issue(
             $this->partnership,
             auth()->user(),
@@ -447,8 +473,8 @@ class PartnershipShow extends Component
             'managers' => User::orderBy('name')->get(['id', 'name']),
             'services' => ProgramPrice::SERVICES,
             'quoteStatuses' => [
-                Quote::STATUS_DRAFT, Quote::STATUS_APPROVED, Quote::STATUS_SENT,
-                Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED, Quote::STATUS_REJECTED,
+                Quote::STATUS_DRAFT, Quote::STATUS_PENDING_FINAL, Quote::STATUS_APPROVED,
+                Quote::STATUS_SENT, Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED, Quote::STATUS_REJECTED,
             ],
             'diagnosisSnapshot' => app(DiagnosisQuestionService::class)->latestLabeledAnswers($this->partnership),
             'linkDefaultDays' => (int) Setting::get('links.default_expiry_days', 7),

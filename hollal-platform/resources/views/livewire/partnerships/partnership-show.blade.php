@@ -57,7 +57,7 @@
 
     <section id="step-quotes" class="ds-section {{ $workspaceStep === 1 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 1) hidden @endif>
         <h2 class="ds-section-title">1. عروض الأسعار</h2>
-        <p class="ds-text-muted">الجهة تبني المسودة من البوابة حسب أسعار البرامج وتقبلها دون إرسال. التعديل الداخلي يصدر نسخة جديدة ويبقي القديمة.</p>
+        <p class="ds-text-muted">المسودة تُعتمد داخليًا ثم نهائيًا. إصدار الرابط هو الإرسال، والعرض يظهر للجهة بعد الاعتماد النهائي.</p>
         <p class="ds-text-muted">الفاتورة الضريبية ليست العرض: تُصدر من خطوة الدفعات بعد تأكيد المالية عبر زر إصدار فاتورة.</p>
         @can('partnerships.quotes.create')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openQuoteModal">عرض جديد</button>
@@ -91,12 +91,19 @@
                             <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id, false) }}" download>تنزيل</a>
                             @can('partnerships.quotes.approve')
                                 @if ($quote->status === \App\Models\Quote::STATUS_DRAFT || $quote->status === \App\Models\Quote::STATUS_WITH_NOTES)
-                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="approveQuote({{ $quote->id }})">اعتماد داخلي</button>
+                                    <button type="button" class="ds-btn ds-btn-sm {{ auth()->user()->can('partnerships.quotes.finalize') ? 'ds-btn-primary' : '' }}" wire:click="approveQuote({{ $quote->id }})">
+                                        {{ auth()->user()->can('partnerships.quotes.finalize') ? 'اعتماد نهائي' : 'اعتماد داخلي' }}
+                                    </button>
                                 @endif
-                                @if ($quote->status === \App\Models\Quote::STATUS_APPROVED)
-                                    <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="sendQuote({{ $quote->id }})">إرسال للجهة</button>
+                                @if ($quote->status === \App\Models\Quote::STATUS_PENDING_FINAL && auth()->user()->can('partnerships.quotes.finalize'))
+                                    <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="approveQuote({{ $quote->id }})">اعتماد نهائي</button>
+                                    <input type="text" class="ds-input" wire:model="internalApprovalNotes" placeholder="ملاحظة الإرجاع">
+                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="returnQuote({{ $quote->id }})">إرجاع للمسودة</button>
                                 @endif
                             @endcan
+                            @if ($quote->status === \App\Models\Quote::STATUS_APPROVED)
+                                <span class="ds-text-muted">ظاهر على رابط الجهة</span>
+                            @endif
                             @can('partnerships.quotes.create')
                                 <button type="button" class="ds-btn ds-btn-sm" wire:click="openQuoteModal({{ $quote->id }})">تعديل وإصدار نسخة</button>
                             @endcan
@@ -128,6 +135,9 @@
                 <p>عقد #{{ $contract->id }} — الحالة: <strong>{{ $contract->status }}</strong></p>
                 <p>القيمة: <span class="ds-ltr-num">{{ number_format((float) $contract->total_value, 2) }}</span></p>
                 <p>يشترط الدفعة الأولى: {{ $contract->requires_first_payment ? 'نعم' : 'لا' }}</p>
+                @if ($contract->hasSignedCopy())
+                    <p class="ds-text-muted">جدول الدفعات مقفل بعد التوقيع.</p>
+                @endif
                 @if ($contract->signed_pdf_hash)
                     <p class="ds-text-muted" dir="ltr">بصمة الملف: {{ Str::limit($contract->signed_pdf_hash, 24) }}</p>
                 @endif

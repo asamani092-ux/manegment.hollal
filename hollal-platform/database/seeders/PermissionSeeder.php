@@ -60,6 +60,7 @@ class PermissionSeeder extends Seeder
         'partnerships.quotes.view',
         'partnerships.quotes.create',
         'partnerships.quotes.approve',
+        'partnerships.quotes.finalize',
         'partnerships.payments.view',
         'partnerships.payments.record',
         'partnerships.payments.confirm',

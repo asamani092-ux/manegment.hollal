@@ -89,7 +89,7 @@
             <section class="ds-portal-page ds-journey-active">
                 <header class="ds-portal-page-head">
                     <h2 class="ds-section-title">2. التشخيص</h2>
-                    <p class="ds-text-muted">أجب عن الاستبانة ثم انتقل لصفحة قبول العرض.</p>
+                    <p class="ds-text-muted">أجب عن الاستبانة ثم انتقل لصفحة عروض الأسعار بعد الاعتماد النهائي.</p>
                 </header>
                 <form method="POST" action="{{ route('partner.portal.diagnosis.save', ['token' => $link->token], false) }}">
                     @csrf
@@ -139,7 +139,7 @@
                         @endforeach
                         <p class="ds-portal-total">الإجمالي شامل الضريبة:
                             <span class="ds-ltr-num">{{ number_format((float) $quote->total, 2) }}</span></p>
-                        @if ($can(3) && $quote->status !== \App\Models\Quote::STATUS_ACCEPTED)
+                        @if ($can(3) && $quote->status === \App\Models\Quote::STATUS_APPROVED)
                             <form method="POST" action="{{ route('partner.portal.quotes.accept', ['token' => $link->token, 'quote' => $quote->id], false) }}">
                                 @csrf
                                 <button type="submit" class="ds-btn ds-btn-primary">قبول العرض</button>
