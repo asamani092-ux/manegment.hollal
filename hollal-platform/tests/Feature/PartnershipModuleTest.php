@@ -676,9 +676,9 @@ class PartnershipModuleTest extends TestCase
 
         $this->assertSame('organization', $component->get('returnTo'));
         $component->assertSee('رجوع لملف الجهة');
-        $component->assertSee('x-data', false)
-            ->assertSee('@click="step = 1"', false)
-            ->assertSee('@click="step = 2"', false)
+        $component->assertSee('wire:click="openWorkspace(1)"', false)
+            ->assertSee('wire:click="openWorkspace(2)"', false)
+            ->assertDontSee('x-cloak', false)
             ->assertSee('1. عروض الأسعار')
             ->assertSee('2. عقد الشراكة');
     }
@@ -697,11 +697,72 @@ class PartnershipModuleTest extends TestCase
         Livewire::actingAs($this->manager())
             ->test(PartnershipShow::class, ['partnership' => $partnership])
             ->call('openWorkspace', 1)
-            ->assertSee('معاينة');
+            ->assertSee('معاينة')
+            ->assertSee(route('quotes.pdf', $quote->id, false).'?print=1', false);
 
         Livewire::test(PartnerPortal::class, ['token' => $link->token])
             ->assertDontSee('سعر الوحدة')
             ->assertDontSee('استبانة التشخيص');
+    }
+
+    public function test_workspace_quote_modal_and_contract_cta_and_link_rules(): void
+    {
+        [$quote, $partnership] = $this->acceptedQuote();
+        $manager = $this->manager();
+
+        $show = Livewire::actingAs($manager)
+            ->test(PartnershipShow::class, ['partnership' => $partnership])
+            ->call('openQuoteModal')
+            ->assertSet('showQuoteModal', true)
+            ->call('openWorkspace', 2)
+            ->assertSee('إنشاء عقد')
+            ->call('openContractModal', $quote->id)
+            ->assertSet('showContractModal', true)
+            ->assertSet('contractQuoteId', $quote->id);
+
+        $this->assertSame((string) $quote->total, $show->get('scheduleRows')[0]['amount']);
+
+        $show->call('openWorkspace', 4)
+            ->set('linkExpiryDays', 3)
+            ->call('issueLink')
+            ->assertHasNoErrors();
+
+        $link = $partnership->fresh()->links()->firstOrFail();
+        $this->assertTrue($link->expires_at->lessThanOrEqualTo(now()->addDays(3)->endOfDay()));
+        $this->assertTrue($link->expires_at->greaterThan(now()->addDays(2)));
+
+        $show->call('deleteLink', $link->id)->assertHasErrors(['links']);
+        $this->assertNotNull($link->fresh());
+
+        $show->call('revokeLink', $link->id)->assertHasNoErrors();
+        $show->call('deleteLink', $link->id)->assertHasNoErrors();
+        $this->assertNull($partnership->fresh()->links()->find($link->id));
+    }
+
+    public function test_generate_is_manual_after_confirmed_contract_without_payment(): void
+    {
+        [$quote] = $this->acceptedQuote();
+        $manager = $this->manager();
+        $contract = app(PartnershipContractService::class)->createFromQuote($quote, [
+            ['label' => 'الدفعة الأولى', 'amount' => (float) $quote->total, 'due_on' => now()->toDateString()],
+        ], false);
+        app(PartnershipContractService::class)->uploadSignedCopy(
+            $contract,
+            UploadedFile::fake()->create('signed.pdf', 10, 'application/pdf'),
+            'مدير الجهة',
+        );
+        app(PartnershipContractService::class)->confirm($contract->fresh(), $manager);
+
+        $program = Program::firstOrFail();
+        Livewire::actingAs($manager)
+            ->test(PartnershipShow::class, ['partnership' => $contract->partnership->fresh()])
+            ->call('openGenerateModal')
+            ->set('generateProgramId', $program->id)
+            ->set('generateLaunchDate', now()->addWeek()->toDateString())
+            ->call('generateProject')
+            ->assertHasNoErrors();
+
+        $this->assertSame(ProjectGenerationRequest::STATUS_PENDING, ProjectGenerationRequest::firstOrFail()->status);
     }
 
     // ------------------------------------------------------------ helpers

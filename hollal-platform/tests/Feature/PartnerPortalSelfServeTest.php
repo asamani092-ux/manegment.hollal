@@ -9,6 +9,7 @@ use App\Models\DiagnosisAnswer;
 use App\Models\DiagnosisQuestion;
 use App\Models\Organization;
 use App\Models\Partnership;
+use App\Models\PartnershipContract;
 use App\Models\Program;
 use App\Models\ProgramPrice;
 use App\Models\Quote;
@@ -97,6 +98,10 @@ class PartnerPortalSelfServeTest extends TestCase
 
         $this->assertSame(Quote::STATUS_ACCEPTED, $partnership->quotes()->first()->status);
         $this->assertSame(Partnership::STAGE_QUOTE, $partnership->fresh()->stage);
+        $contract = $partnership->fresh()->partnershipContracts()->first();
+        $this->assertNotNull($contract);
+        $this->assertSame(PartnershipContract::STATUS_AWAITING_SIGNATURE, $contract->status);
+        $this->assertFalse($contract->requires_first_payment);
     }
 
     public function test_managed_diagnosis_question_appears_and_answers_persist_on_file(): void
@@ -218,12 +223,17 @@ class PartnerPortalSelfServeTest extends TestCase
         $quote = $partnership->quotes()->firstOrFail();
         $this->from('/portal/'.$link->token.'/quotes')
             ->post(route('partner.portal.quotes.accept', ['token' => $link->token, 'quote' => $quote->id]))
-            ->assertRedirect(route('partner.portal.page', ['token' => $link->token, 'page' => 'payments']));
+            ->assertRedirect(route('partner.portal.page', ['token' => $link->token, 'page' => 'contract']));
+
+        $this->get('/portal/'.$link->token.'/contract')
+            ->assertOk()
+            ->assertSee('5. العقد')
+            ->assertSee('اعتماد التوقيع')
+            ->assertSee('تنزيل العقد');
 
         $this->get('/portal/'.$link->token.'/payments')
             ->assertOk()
-            ->assertSee('4. الدفعات')
-            ->assertSee('المبلغ المستحق من العرض المقبول');
+            ->assertSee('4. الدفعات');
 
         $this->get('/portal/'.$link->token.'/quotes')
             ->assertDontSee('اختياري — لا تمنع القبول')

@@ -16,6 +16,7 @@ use App\Services\PartnershipContractService;
 use App\Services\PartnershipPaymentService;
 use App\Services\ProjectGenerationRequestService;
 use App\Services\QuoteService;
+use App\Support\Setting;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -92,6 +93,8 @@ class PartnershipShow extends Component
         'contract' => true,
     ];
 
+    public int $linkExpiryDays = 7;
+
     public function mount(Partnership $partnership): void
     {
         $user = auth()->user();
@@ -112,6 +115,7 @@ class PartnershipShow extends Component
         $this->scheduleRows = [['label' => 'الدفعة الأولى', 'amount' => '', 'due_on' => now()->toDateString()]];
         $features = $partnership->portal_features ?? [];
         $this->portalFeatures = array_merge($this->portalFeatures, is_array($features) ? $features : []);
+        $this->linkExpiryDays = (int) Setting::get('links.default_expiry_days', 7);
     }
 
     public function openWorkspace(int $step): void
@@ -208,6 +212,12 @@ class PartnershipShow extends Component
         $this->authorize('partnerships.contracts.create');
         $this->syncWorkspace(2);
         $this->contractQuoteId = $quoteId;
+        $quote = $this->quote($quoteId);
+        $this->scheduleRows = [[
+            'label' => 'الدفعة الأولى',
+            'amount' => (string) $quote->total,
+            'due_on' => now()->addDays(7)->toDateString(),
+        ]];
         $this->showContractModal = true;
     }
 
@@ -336,7 +346,15 @@ class PartnershipShow extends Component
     {
         $this->authorize('partnerships.links.manage');
         $this->syncWorkspace(4);
-        $link = app(PartnerPortalService::class)->issue($this->partnership, auth()->user());
+        $this->validate([
+            'linkExpiryDays' => 'required|integer|min:1|max:365',
+        ], [], ['linkExpiryDays' => 'مدة الرابط']);
+
+        $link = app(PartnerPortalService::class)->issue(
+            $this->partnership,
+            auth()->user(),
+            $this->linkExpiryDays,
+        );
 
         $this->dispatch('ds-toast', message: 'تم إصدار رابط الجهة: '.app(PartnerPortalService::class)->portalUrl($link->token));
     }
@@ -363,6 +381,23 @@ class PartnershipShow extends Component
         $this->authorize('partnerships.links.manage');
         $this->partnership->forceFill(['portal_features' => $this->portalFeatures])->save();
         $this->dispatch('ds-toast', message: 'تم حفظ إعدادات بوابة الشريك');
+    }
+
+    /** Time: O(1) | Space: O(1) */
+    public function deleteLink(int $linkId): void
+    {
+        $this->authorize('partnerships.links.manage');
+        $link = $this->partnership->links()->findOrFail($linkId);
+
+        if ($link->isUsable()) {
+            $this->addError('links', 'لا يُحذف الرابط إلا بعد إبطاله أو انتهاء مدته.');
+            $this->dispatch('ds-toast', message: 'لا يُحذف الرابط إلا بعد إبطاله أو انتهاء مدته.');
+
+            return;
+        }
+
+        $link->delete();
+        $this->dispatch('ds-toast', message: 'تم حذف الرابط');
     }
 
     // ------------------------------------------------------------ generation
@@ -416,6 +451,7 @@ class PartnershipShow extends Component
                 Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED, Quote::STATUS_REJECTED,
             ],
             'diagnosisSnapshot' => app(DiagnosisQuestionService::class)->latestLabeledAnswers($this->partnership),
+            'linkDefaultDays' => (int) Setting::get('links.default_expiry_days', 7),
         ])->layout('layouts.app', ['title' => 'ملف الشراكة']);
     }
 

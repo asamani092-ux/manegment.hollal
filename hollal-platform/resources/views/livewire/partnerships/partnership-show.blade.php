@@ -31,34 +31,34 @@
         @endif
         @error('contract') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
         @error('quote') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
+        @error('links') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
     </section>
 
-    <div class="ds-workspace"
-         x-data="{ step: {{ (int) $workspaceStep }} }"
-         @open-workspace.window="step = Number(($event.detail && $event.detail.step) || $event.detail[0] || step)">
+    <div class="ds-workspace">
     <h2 class="ds-section-title">مساحة العمل</h2>
     <p class="ds-text-muted">أدوات الملف — ليست مراحل الرحلة. اختر خطوة للعمل عليها دون قفل.</p>
     <ol class="ds-journey-steps">
-        <li :class="step === 1 ? 'is-current' : ''">
-            <button type="button" class="ds-pill" :class="step === 1 ? 'is-selected' : ''" @click="step = 1">1 عروض الأسعار</button>
+        <li class="{{ $workspaceStep === 1 ? 'is-current' : '' }}">
+            <button type="button" class="ds-pill {{ $workspaceStep === 1 ? 'is-selected' : '' }}" wire:click="openWorkspace(1)">1 عروض الأسعار</button>
         </li>
-        <li :class="step === 2 ? 'is-current' : ''">
-            <button type="button" class="ds-pill" :class="step === 2 ? 'is-selected' : ''" @click="step = 2">2 عقد الشراكة</button>
+        <li class="{{ $workspaceStep === 2 ? 'is-current' : '' }}">
+            <button type="button" class="ds-pill {{ $workspaceStep === 2 ? 'is-selected' : '' }}" wire:click="openWorkspace(2)">2 عقد الشراكة</button>
         </li>
-        <li :class="step === 3 ? 'is-current' : ''">
-            <button type="button" class="ds-pill" :class="step === 3 ? 'is-selected' : ''" @click="step = 3">3 الدفعات</button>
+        <li class="{{ $workspaceStep === 3 ? 'is-current' : '' }}">
+            <button type="button" class="ds-pill {{ $workspaceStep === 3 ? 'is-selected' : '' }}" wire:click="openWorkspace(3)">3 الدفعات</button>
         </li>
-        <li :class="step === 4 ? 'is-current' : ''">
-            <button type="button" class="ds-pill" :class="step === 4 ? 'is-selected' : ''" @click="step = 4">4 رابط الجهة</button>
+        <li class="{{ $workspaceStep === 4 ? 'is-current' : '' }}">
+            <button type="button" class="ds-pill {{ $workspaceStep === 4 ? 'is-selected' : '' }}" wire:click="openWorkspace(4)">4 رابط الجهة</button>
         </li>
-        <li :class="step === 5 ? 'is-current' : ''">
-            <button type="button" class="ds-pill" :class="step === 5 ? 'is-selected' : ''" @click="step = 5">5 توليد مشروع</button>
+        <li class="{{ $workspaceStep === 5 ? 'is-current' : '' }}">
+            <button type="button" class="ds-pill {{ $workspaceStep === 5 ? 'is-selected' : '' }}" wire:click="openWorkspace(5)">5 توليد مشروع</button>
         </li>
     </ol>
 
-    <section id="step-quotes" class="ds-section ds-journey-active" x-show="step === 1" x-cloak>
+    <section id="step-quotes" class="ds-section {{ $workspaceStep === 1 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 1) hidden @endif>
         <h2 class="ds-section-title">1. عروض الأسعار</h2>
         <p class="ds-text-muted">الجهة تبني المسودة من البوابة حسب أسعار البرامج وتقبلها دون إرسال. التعديل الداخلي يصدر نسخة جديدة ويبقي القديمة.</p>
+        <p class="ds-text-muted">الفاتورة الضريبية ليست العرض: تُصدر من خطوة الدفعات بعد تأكيد المالية عبر زر إصدار فاتورة.</p>
         @can('partnerships.quotes.create')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openQuoteModal">عرض جديد</button>
         @endcan
@@ -69,10 +69,14 @@
                     <th>النسخة</th><th>الحالة</th><th>ملاحظات الجهة</th><th>الإجمالي</th><th>إجراءات</th>
                 </tr>
             </x-slot:head>
+            @php $supersededIds = $partnership->quotes->pluck('supersedes_id')->filter()->all(); @endphp
             @forelse ($partnership->quotes as $quote)
-                <tr wire:key="quote-{{ $quote->id }}">
+                <tr wire:key="quote-{{ $quote->id }}" class="{{ in_array($quote->id, $supersededIds, true) ? 'ds-quote-row-superseded' : '' }}">
                     <td class="ds-ltr-num">{{ $quote->version }}</td>
                     <td>
+                        @if (in_array($quote->id, $supersededIds, true))
+                            <span class="ds-badge">مسودة سابقة</span>
+                        @endif
                         @if ($quote->status === \App\Models\Quote::STATUS_WITH_NOTES)
                             <span class="ds-badge ds-badge-warning">بملاحظات</span>
                         @else
@@ -83,8 +87,8 @@
                     <td class="ds-ltr-num">{{ number_format((float) $quote->total, 2) }}</td>
                     <td>
                         <div class="ds-quote-actions">
-                            <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id) }}?print=1" target="_blank" rel="noopener">معاينة</a>
-                            <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id) }}">تنزيل</a>
+                            <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id, false) }}?print=1" target="_blank" rel="noopener">معاينة</a>
+                            <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id, false) }}" download>تنزيل</a>
                             @can('partnerships.quotes.approve')
                                 @if ($quote->status === \App\Models\Quote::STATUS_DRAFT || $quote->status === \App\Models\Quote::STATUS_WITH_NOTES)
                                     <button type="button" class="ds-btn ds-btn-sm" wire:click="approveQuote({{ $quote->id }})">اعتماد داخلي</button>
@@ -110,9 +114,15 @@
         </x-ds-table>
     </section>
 
-    <section id="step-contract" class="ds-section ds-journey-active" x-show="step === 2" x-cloak>
+    @php $acceptedQuote = $partnership->quotes->firstWhere('status', \App\Models\Quote::STATUS_ACCEPTED); @endphp
+    <section id="step-contract" class="ds-section {{ $workspaceStep === 2 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 2) hidden @endif>
         <h2 class="ds-section-title">2. عقد الشراكة</h2>
-        <p class="ds-text-muted">التوقيع والتأكيد هنا. تسجيل الدفعات في خطوة الدفعات.</p>
+        <p class="ds-text-muted">قبول الجهة للعرض ينشئ عقدًا بانتظار التوقيع تلقائيًا. يمكن إنشاء عقد يدوي من عرض مقبول وتحديد جدول الدفعات.</p>
+        @can('partnerships.contracts.create')
+            @if ($acceptedQuote)
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="openContractModal({{ $acceptedQuote->id }})">إنشاء عقد</button>
+            @endif
+        @endcan
         @foreach ($partnership->partnershipContracts as $contract)
             <div class="ds-kanban-card" wire:key="contract-{{ $contract->id }}">
                 <p>عقد #{{ $contract->id }} — الحالة: <strong>{{ $contract->status }}</strong></p>
@@ -170,13 +180,13 @@
             </div>
         @endforeach
         @if ($partnership->partnershipContracts->isEmpty())
-            <p class="ds-text-muted">لا يوجد عقد شراكة — أنشئه من عرض مقبول في خطوة العروض.</p>
+            <p class="ds-text-muted">{{ $acceptedQuote ? 'لا يوجد عقد بعد — استخدم إنشاء عقد أو اطلب من الجهة قبول العرض ليُنشأ تلقائيًا.' : 'لا يوجد عقد — اقبل عرضًا أولًا.' }}</p>
         @endif
     </section>
 
-    <section id="step-payments" class="ds-section ds-journey-active" x-show="step === 3" x-cloak>
+    <section id="step-payments" class="ds-section {{ $workspaceStep === 3 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 3) hidden @endif>
         <h2 class="ds-section-title">3. الدفعات</h2>
-        <p class="ds-text-muted">جدول الاستحقاق وتسجيل الدفعة ثم تأكيد المالية.</p>
+        <p class="ds-text-muted">فريق حلل يحدد جدول الدفعات عند إنشاء العقد. الجهة ترفع الإثبات، والمالية تؤكد ثم تصدر الفاتورة.</p>
         <x-ds-table>
             <x-slot:head>
                 <tr><th>الدفعة</th><th>المبلغ</th><th>الاستحقاق</th><th>المؤكد</th><th>إجراءات</th></tr>
@@ -231,18 +241,40 @@
         </x-ds-table>
     </section>
 
-    <section id="step-link" class="ds-section ds-journey-active" x-show="step === 4" x-cloak>
+    <section id="step-link" class="ds-section {{ $workspaceStep === 4 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 4) hidden @endif>
         <h2 class="ds-section-title">4. رابط الجهة الفريد</h2>
         @can('partnerships.links.manage')
-            <button type="button" class="ds-btn" wire:click="issueLink">إصدار رابط</button>
+            <div class="ds-form-row">
+                <x-ds-form-group label="مدة الرابط بالأيام (الافتراضي {{ $linkDefaultDays }})" :error="$errors->first('linkExpiryDays')">
+                    <input type="number" min="1" max="365" class="ds-input ds-ltr-num" wire:model="linkExpiryDays">
+                </x-ds-form-group>
+                <button type="button" class="ds-btn" wire:click="issueLink">إصدار رابط</button>
+            </div>
             <div class="ds-section-spaced">
                 <h3 class="ds-section-heading">ما يظهر للجهة على رابطها</h3>
-                <p class="ds-text-muted">أخفِ قسمًا إن لم يحن وقته. لا يغيّر المرحلة؛ يتحكم فقط بما تراه الجهة.</p>
-                <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.programs"> البرامج</label>
-                <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.diagnosis"> التشخيص</label>
-                <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.quotes"> عروض الأسعار</label>
-                <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.payments"> الدفعات</label>
-                <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.contract"> العقد</label>
+                <p class="ds-text-muted">فعّل الأقسام المطلوبة ثم احفظ. لا يغيّر المرحلة؛ يتحكم فقط بما تراه الجهة.</p>
+                <div class="ds-portal-feature-grid">
+                    <label class="ds-portal-feature-card">
+                        <span><input type="checkbox" wire:model="portalFeatures.programs"> <strong>البرامج</strong></span>
+                        <small>اختيار البرامج والكميات من الكتالوج</small>
+                    </label>
+                    <label class="ds-portal-feature-card">
+                        <span><input type="checkbox" wire:model="portalFeatures.diagnosis"> <strong>التشخيص</strong></span>
+                        <small>استبانة الاحتياج</small>
+                    </label>
+                    <label class="ds-portal-feature-card">
+                        <span><input type="checkbox" wire:model="portalFeatures.quotes"> <strong>عروض الأسعار</strong></span>
+                        <small>المسودة والقبول</small>
+                    </label>
+                    <label class="ds-portal-feature-card">
+                        <span><input type="checkbox" wire:model="portalFeatures.payments"> <strong>الدفعات</strong></span>
+                        <small>المستحق وإثبات التحويل</small>
+                    </label>
+                    <label class="ds-portal-feature-card">
+                        <span><input type="checkbox" wire:model="portalFeatures.contract"> <strong>العقد</strong></span>
+                        <small>التنزيل والتوقيع الإلكتروني</small>
+                    </label>
+                </div>
                 <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="savePortalFeatures">حفظ التحكم</button>
             </div>
         @endcan
@@ -283,6 +315,9 @@
                                 نسخ واتساب
                             </button>
                             <button type="button" class="ds-btn ds-btn-sm" wire:click="revokeLink({{ $link->id }})">إبطال</button>
+                            @if (! $link->isUsable())
+                                <button type="button" class="ds-btn ds-btn-sm" wire:click="deleteLink({{ $link->id }})">حذف</button>
+                            @endif
                         @endcan
                     </td>
                 </tr>
@@ -292,8 +327,9 @@
         </x-ds-table>
     </section>
 
-    <section id="step-generate" class="ds-section ds-journey-active" x-show="step === 5" x-cloak>
+    <section id="step-generate" class="ds-section {{ $workspaceStep === 5 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 5) hidden @endif>
         <h2 class="ds-section-title">5. توليد مشروع</h2>
+        <p class="ds-text-muted">التوليد يدوي بعد تأكيد العقد. لا يحدث تلقائيًا بعد الدفع. يمكن التأكيد دون دفعة إذا أُلغي شرط الدفعة الأولى.</p>
         @can('partnerships.generate')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openGenerateModal">توليد مشروع</button>
         @endcan

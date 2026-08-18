@@ -5,9 +5,11 @@ namespace App\Services;
 use App\Models\DiagnosisQuestion;
 use App\Models\PartnerLink;
 use App\Models\Partnership;
+use App\Models\PartnershipContract;
 use App\Models\Program;
 use App\Models\Quote;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Partner self-serve: catalog, priced quote, diagnosis, accept.
@@ -129,25 +131,51 @@ class PartnerPortalSelfServeService
             ->where('partnership_id', $link->partnership_id)
             ->findOrFail($quoteId);
 
-        if ($selectedIds) {
-            $quote = $this->applyItems(
-                $quote,
-                $this->itemsFromSelection($link, $selectedIds, $quantities, $services)
+        return DB::transaction(function () use ($link, $quote, $notes, $selectedIds, $quantities, $services) {
+            if ($selectedIds) {
+                $quote = $this->applyItems(
+                    $quote,
+                    $this->itemsFromSelection($link, $selectedIds, $quantities, $services)
+                );
+            }
+
+            $accepted = app(QuoteService::class)->accept($quote, $notes !== null && $notes !== '' ? $notes : null);
+            $this->ensureSignableContract($accepted);
+            app(PartnerPortalService::class)->log($link, 'portal.quote_accepted', [
+                'quote_id' => $accepted->id,
+            ], request()->ip());
+            app(PartnershipPipelineService::class)->advanceIfBefore(
+                $link->partnership,
+                Partnership::STAGE_QUOTE,
+                null,
+                'قبول العرض من بوابة الشريك',
             );
+
+            return $accepted;
+        });
+    }
+
+    /** Time: O(s) schedule rows | Space: O(s) */
+    private function ensureSignableContract(Quote $quote): void
+    {
+        $exists = PartnershipContract::query()
+            ->where('partnership_id', $quote->partnership_id)
+            ->where('status', '!=', PartnershipContract::STATUS_CANCELLED)
+            ->exists();
+
+        if ($exists) {
+            return;
         }
 
-        $accepted = app(QuoteService::class)->accept($quote, $notes !== null && $notes !== '' ? $notes : null);
-        app(PartnerPortalService::class)->log($link, 'portal.quote_accepted', [
-            'quote_id' => $accepted->id,
-        ], request()->ip());
-        app(PartnershipPipelineService::class)->advanceIfBefore(
-            $link->partnership,
-            Partnership::STAGE_QUOTE,
-            null,
-            'قبول العرض من بوابة الشريك',
+        app(PartnershipContractService::class)->createFromQuote(
+            $quote,
+            [[
+                'label' => 'الدفعة الأولى',
+                'amount' => (float) $quote->total,
+                'due_on' => now()->addDays(7)->toDateString(),
+            ]],
+            false,
         );
-
-        return $accepted;
     }
 
     /**

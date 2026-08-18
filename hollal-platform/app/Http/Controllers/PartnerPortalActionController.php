@@ -68,7 +68,7 @@ class PartnerPortalActionController extends Controller
         }
 
         return redirect()
-            ->route('partner.portal.page', ['token' => $token, 'page' => 'payments'])
-            ->with('success', 'تم قبول العرض');
+            ->route('partner.portal.page', ['token' => $token, 'page' => 'contract'])
+            ->with('success', 'تم قبول العرض — العقد جاهز للتوقيع');
     }
 }

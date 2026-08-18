@@ -271,7 +271,7 @@
                         @endif
                     </article>
                 @empty
-                    <p class="ds-text-muted">سيظهر العقد بعد إصداره من ملف الشراكة.</p>
+                    <p class="ds-text-muted">سيظهر العقد فور قبول العرض، جاهزًا للتنزيل والتوقيع.</p>
                 @endforelse
             </section>
         @endif

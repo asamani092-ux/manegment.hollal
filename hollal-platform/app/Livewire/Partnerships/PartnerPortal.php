@@ -153,12 +153,9 @@ class PartnerPortal extends Component
                 $this->link,
                 $quoteId,
                 $this->quoteNotes !== '' ? $this->quoteNotes : null,
-                $this->selectedProgramIds !== [] ? $this->selectedProgramIds : null,
-                $this->programQuantities,
-                $this->programServices,
             );
             $this->quoteNotes = '';
-            $this->notice('تم قبول العرض');
+            $this->notice('تم قبول العرض — العقد جاهز للتوقيع');
         } catch (\RuntimeException $exception) {
             $this->addError('selectedProgramIds', $exception->getMessage());
             $this->notice($exception->getMessage(), 'error');
