@@ -60,6 +60,7 @@ class PartnerPortalSelfServeTest extends TestCase
 
         Livewire::actingAs($this->manager())
             ->test(PartnershipShow::class, ['partnership' => $partnership->fresh()])
+            ->call('startDiagnosisWorkspace')
             ->assertSee('برنامج الاختبار')
             ->assertSee('مسودة');
     }
