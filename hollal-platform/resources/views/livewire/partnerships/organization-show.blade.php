@@ -69,7 +69,7 @@
                         {{ $partnership->expected_value !== null ? number_format((float) $partnership->expected_value, 2) : '—' }}
                     </td>
                     <td>
-                        <a class="ds-btn ds-btn-sm ds-btn-primary" href="{{ route('partnerships.show', $partnership->id) }}?from=organization">
+                        <a class="ds-btn ds-btn-sm ds-btn-primary" wire:navigate href="{{ route('partnerships.show', $partnership->id) }}?from=organization">
                             فتح ملف الرحلة
                         </a>
                     </td>
@@ -82,7 +82,7 @@
 
     <section class="ds-section">
         <h2 class="ds-section-title">مشاريعها</h2>
-        <p class="ds-text-muted">التجديد من هنا فقط: مشروع منتهٍ أو متوقف يفتح رحلة فرصة جديدة ويُغلق الرحلة الأم.</p
+        <p class="ds-text-muted">التجديد من هنا فقط: مشروع منتهٍ أو متوقف يفتح رحلة فرصة جديدة ويُغلق الرحلة الأم.</p>
         <x-ds-table>
             <x-slot:head>
                 <tr><th>المشروع</th><th>الحالة</th><th>إجراءات</th></tr>

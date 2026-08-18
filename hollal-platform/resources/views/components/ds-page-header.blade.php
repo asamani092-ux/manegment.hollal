@@ -11,7 +11,7 @@
 <div class="ds-page-header-bar">
     <div>
         @if ($backUrl)
-            <a href="{{ $backUrl }}" class="ds-btn ds-btn-sm" style="margin-bottom: 0.5rem;">
+            <a href="{{ $backUrl }}" wire:navigate class="ds-btn ds-btn-sm" style="margin-bottom: 0.5rem;">
                 <i class="fas fa-arrow-right" aria-hidden="true"></i> {{ $backLabel }}
             </a>
         @endif

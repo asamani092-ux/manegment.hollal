@@ -18,27 +18,29 @@
         @error('quote') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
     </section>
 
+    <div class="ds-workspace"
+         x-data="{ step: {{ (int) $workspaceStep }} }"
+         @open-workspace.window="step = Number(($event.detail && $event.detail.step) || $event.detail[0] || step)">
     <p class="ds-text-muted">اختر خطوة للعمل عليها. كل الخطوات قابلة للفتح دون قفل.</p>
     <ol class="ds-journey-steps">
-        <li class="{{ $workspaceStep === 1 ? 'is-current' : '' }}">
-            <button type="button" class="ds-pill {{ $workspaceStep === 1 ? 'is-selected' : '' }}" wire:click="openWorkspace(1)">1 عروض الأسعار</button>
+        <li :class="step === 1 ? 'is-current' : ''">
+            <button type="button" class="ds-pill" :class="step === 1 ? 'is-selected' : ''" @click="step = 1">1 عروض الأسعار</button>
         </li>
-        <li class="{{ $workspaceStep === 2 ? 'is-current' : '' }}">
-            <button type="button" class="ds-pill {{ $workspaceStep === 2 ? 'is-selected' : '' }}" wire:click="openWorkspace(2)">2 عقد الشراكة</button>
+        <li :class="step === 2 ? 'is-current' : ''">
+            <button type="button" class="ds-pill" :class="step === 2 ? 'is-selected' : ''" @click="step = 2">2 عقد الشراكة</button>
         </li>
-        <li class="{{ $workspaceStep === 3 ? 'is-current' : '' }}">
-            <button type="button" class="ds-pill {{ $workspaceStep === 3 ? 'is-selected' : '' }}" wire:click="openWorkspace(3)">3 الدفعات</button>
+        <li :class="step === 3 ? 'is-current' : ''">
+            <button type="button" class="ds-pill" :class="step === 3 ? 'is-selected' : ''" @click="step = 3">3 الدفعات</button>
         </li>
-        <li class="{{ $workspaceStep === 4 ? 'is-current' : '' }}">
-            <button type="button" class="ds-pill {{ $workspaceStep === 4 ? 'is-selected' : '' }}" wire:click="openWorkspace(4)">4 رابط الجهة</button>
+        <li :class="step === 4 ? 'is-current' : ''">
+            <button type="button" class="ds-pill" :class="step === 4 ? 'is-selected' : ''" @click="step = 4">4 رابط الجهة</button>
         </li>
-        <li class="{{ $workspaceStep === 5 ? 'is-current' : '' }}">
-            <button type="button" class="ds-pill {{ $workspaceStep === 5 ? 'is-selected' : '' }}" wire:click="openWorkspace(5)">5 توليد مشروع</button>
+        <li :class="step === 5 ? 'is-current' : ''">
+            <button type="button" class="ds-pill" :class="step === 5 ? 'is-selected' : ''" @click="step = 5">5 توليد مشروع</button>
         </li>
     </ol>
 
-    @if ($workspaceStep === 1)
-    <section id="step-quotes" class="ds-section ds-journey-active">
+    <section id="step-quotes" class="ds-section ds-journey-active" x-show="step === 1" x-cloak>
         <h2 class="ds-section-title">1. عروض الأسعار</h2>
         <p class="ds-text-muted">مسودة أو بملاحظات → اعتماد داخلي → إرسال. تعديل يصدر نسخة جديدة ويبقي القديمة.</p>
         @can('partnerships.quotes.create')
@@ -91,10 +93,8 @@
             @endforelse
         </x-ds-table>
     </section>
-    @endif
 
-    @if ($workspaceStep === 2)
-    <section id="step-contract" class="ds-section ds-journey-active">
+    <section id="step-contract" class="ds-section ds-journey-active" x-show="step === 2" x-cloak>
         <h2 class="ds-section-title">2. عقد الشراكة</h2>
         <p class="ds-text-muted">التوقيع والتأكيد هنا. تسجيل الدفعات في خطوة الدفعات.</p>
         @foreach ($partnership->partnershipContracts as $contract)
@@ -157,10 +157,8 @@
             <p class="ds-text-muted">لا يوجد عقد شراكة — أنشئه من عرض مقبول في خطوة العروض.</p>
         @endif
     </section>
-    @endif
 
-    @if ($workspaceStep === 3)
-    <section id="step-payments" class="ds-section ds-journey-active">
+    <section id="step-payments" class="ds-section ds-journey-active" x-show="step === 3" x-cloak>
         <h2 class="ds-section-title">3. الدفعات</h2>
         <p class="ds-text-muted">جدول الاستحقاق وتسجيل الدفعة ثم تأكيد المالية.</p>
         <x-ds-table>
@@ -216,10 +214,8 @@
             @endforelse
         </x-ds-table>
     </section>
-    @endif
 
-    @if ($workspaceStep === 4)
-    <section id="step-link" class="ds-section ds-journey-active">
+    <section id="step-link" class="ds-section ds-journey-active" x-show="step === 4" x-cloak>
         <h2 class="ds-section-title">4. رابط الجهة الفريد</h2>
         @can('partnerships.links.manage')
             <button type="button" class="ds-btn" wire:click="issueLink">إصدار رابط</button>
@@ -270,10 +266,8 @@
             @endforelse
         </x-ds-table>
     </section>
-    @endif
 
-    @if ($workspaceStep === 5)
-    <section id="step-generate" class="ds-section ds-journey-active">
+    <section id="step-generate" class="ds-section ds-journey-active" x-show="step === 5" x-cloak>
         <h2 class="ds-section-title">5. توليد مشروع</h2>
         @can('partnerships.generate')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openGenerateModal">توليد مشروع</button>
@@ -296,7 +290,7 @@
             @endforelse
         </x-ds-table>
     </section>
-    @endif
+    </div>
 
     <x-ds-modal :show="$showQuoteModal" size="lg">
         <x-slot:header><h2>{{ $revisingQuoteId ? 'نسخة معدّلة من العرض' : 'عرض سعر جديد' }}</h2></x-slot:header>

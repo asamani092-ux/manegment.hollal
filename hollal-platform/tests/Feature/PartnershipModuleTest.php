@@ -108,7 +108,10 @@ class PartnershipModuleTest extends TestCase
         $stranger = User::factory()->create(['must_change_password' => false]);
 
         $this->actingAs($stranger)->get('/organizations/'.$organization->id)->assertForbidden();
-        $this->actingAs($this->manager())->get('/organizations/'.$organization->id)->assertOk();
+        $this->actingAs($this->manager())->get('/organizations/'.$organization->id)
+            ->assertOk()
+            ->assertSee('wire:navigate', false)
+            ->assertDontSee('wire:poll.30s', false);
     }
 
     public function test_soft_deleting_an_organization_keeps_its_history(): void
@@ -673,11 +676,11 @@ class PartnershipModuleTest extends TestCase
 
         $this->assertSame('organization', $component->get('returnTo'));
         $component->assertSee('رجوع لملف الجهة');
-        $component->assertSee('1. عروض الأسعار')
-            ->assertDontSee('2. عقد الشراكة')
-            ->call('openWorkspace', 2)
-            ->assertSee('2. عقد الشراكة')
-            ->assertDontSee('1. عروض الأسعار');
+        $component->assertSee('x-data', false)
+            ->assertSee('@click="step = 1"', false)
+            ->assertSee('@click="step = 2"', false)
+            ->assertSee('1. عروض الأسعار')
+            ->assertSee('2. عقد الشراكة');
     }
 
     public function test_quote_pdf_preview_is_inline_and_portal_hides_unit_prices(): void

@@ -1,4 +1,4 @@
-<div class="ds-notifications-dropdown" wire:poll.30s>
+<div class="ds-notifications-dropdown">
     <button
         type="button"
         class="ds-notifications-trigger"

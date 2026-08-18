@@ -16,6 +16,7 @@
     @foreach ($nav['top'] ?? [] as $item)
         @if (\App\Support\NavigationHelper::itemIsVisible($item) && \App\Support\NavigationHelper::userCanSee($item['permission']))
             <a href="{{ route($item['route']) }}"
+               wire:navigate
                class="ds-sidebar-item {{ request()->routeIs($item['route']) ? 'active' : '' }}"
                data-nav-label="{{ $item['label'] }}">
                 <i class="fas {{ $item['icon'] }} ds-sidebar-icon" aria-hidden="true"></i>
@@ -42,6 +43,7 @@
                     @foreach ($group['items'] ?? [] as $item)
                         @if (\App\Support\NavigationHelper::userCanSee($item['permission']))
                             <a href="{{ route($item['route']) }}"
+                               wire:navigate
                                class="ds-sidebar-item {{ request()->routeIs($item['route']) ? 'active' : '' }}"
                                data-nav-label="{{ $item['label'] }}">
                                 <i class="fas {{ $item['icon'] }} ds-sidebar-icon" aria-hidden="true"></i>
@@ -59,6 +61,7 @@
     @foreach ($nav['primary'] ?? [] as $item)
         @if (\App\Support\NavigationHelper::userCanSee($item['permission']))
             <a href="{{ route($item['route']) }}"
+               wire:navigate
                class="ds-sidebar-item {{ request()->routeIs($item['route']) ? 'active' : '' }}"
                data-nav-label="{{ $item['label'] }}">
                 <i class="fas {{ $item['icon'] }} ds-sidebar-icon" aria-hidden="true"></i>

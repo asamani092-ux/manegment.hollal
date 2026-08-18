@@ -3,8 +3,10 @@
 namespace App\Livewire;
 
 use Illuminate\Contracts\View\View;
+use Livewire\Attributes\Isolate;
 use Livewire\Component;
 
+#[Isolate]
 class NotificationBell extends Component
 {
     public bool $open = false;

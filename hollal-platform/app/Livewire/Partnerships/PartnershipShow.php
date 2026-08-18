@@ -115,9 +115,7 @@ class PartnershipShow extends Component
 
     public function openWorkspace(int $step): void
     {
-        if ($step >= 1 && $step <= 5) {
-            $this->workspaceStep = $step;
-        }
+        $this->syncWorkspace($step);
     }
 
     // ---------------------------------------------------------------- quotes
@@ -125,7 +123,7 @@ class PartnershipShow extends Component
     public function openQuoteModal(?int $reviseId = null): void
     {
         $this->authorize('partnerships.quotes.create');
-        $this->workspaceStep = 1;
+        $this->syncWorkspace(1);
         $this->revisingQuoteId = $reviseId;
         $this->resetQuoteLines();
         $this->quoteDiscount = '0';
@@ -207,7 +205,7 @@ class PartnershipShow extends Component
     public function openContractModal(int $quoteId): void
     {
         $this->authorize('partnerships.contracts.create');
-        $this->workspaceStep = 2;
+        $this->syncWorkspace(2);
         $this->contractQuoteId = $quoteId;
         $this->showContractModal = true;
     }
@@ -336,7 +334,7 @@ class PartnershipShow extends Component
     public function issueLink(): void
     {
         $this->authorize('partnerships.links.manage');
-        $this->workspaceStep = 4;
+        $this->syncWorkspace(4);
         $link = app(PartnerPortalService::class)->issue($this->partnership, auth()->user());
 
         $this->dispatch('ds-toast', message: 'تم إصدار رابط الجهة: '.app(PartnerPortalService::class)->portalUrl($link->token));
@@ -371,7 +369,7 @@ class PartnershipShow extends Component
     public function openGenerateModal(): void
     {
         $this->authorize('partnerships.generate');
-        $this->workspaceStep = 5;
+        $this->syncWorkspace(5);
         $this->generateLaunchDate = now()->addWeek()->toDateString();
         $this->showGenerateModal = true;
     }
@@ -417,6 +415,17 @@ class PartnershipShow extends Component
                 Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED, Quote::STATUS_REJECTED,
             ],
         ])->layout('layouts.app', ['title' => 'ملف الشراكة']);
+    }
+
+    /** Time: O(1) | Space: O(1) */
+    private function syncWorkspace(int $step): void
+    {
+        if ($step < 1 || $step > 5) {
+            return;
+        }
+
+        $this->workspaceStep = $step;
+        $this->dispatch('open-workspace', step: $step);
     }
 
     private function defaultWorkspaceStep(Partnership $partnership): int
