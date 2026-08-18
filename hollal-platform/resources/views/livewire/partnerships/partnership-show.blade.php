@@ -34,6 +34,15 @@
         @error('links') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
     </section>
 
+    @if (! $workspaceAvailable)
+        <section class="ds-section ds-section-spaced">
+            <h2 class="ds-section-title">مساحة العمل</h2>
+            <p class="ds-text-muted">تُفتح مساحة العمل عند مرحلة «تشخيص الاحتياج» فقط — بعد فرصة وتواصل ولقاء.</p>
+            @can('partnerships.pipeline.manage')
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="startDiagnosisWorkspace">بدء التشخيص وفتح مساحة العمل</button>
+            @endcan
+        </section>
+    @else
     <div class="ds-workspace">
     <h2 class="ds-section-title">مساحة العمل</h2>
     <p class="ds-text-muted">تبدأ من التشخيص مع الرحلة. الرابط من هنا، ثم عرض السعر (يشمل العقد والدفعات) حتى التنفيذ.</p>
@@ -406,6 +415,7 @@
         </x-ds-table>
     </section>
     </div>
+    @endif
 
     <x-ds-modal :show="$showQuoteModal" size="lg">
         <x-slot:header><h2>{{ $revisingQuoteId ? 'نسخة معدّلة من العرض' : 'عرض سعر جديد' }}</h2></x-slot:header>

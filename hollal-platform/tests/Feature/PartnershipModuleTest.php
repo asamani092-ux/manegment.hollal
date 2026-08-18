@@ -748,11 +748,15 @@ class PartnershipModuleTest extends TestCase
 
         $this->assertSame('organization', $component->get('returnTo'));
         $component->assertSee('رجوع لملف الجهة');
-        $component->assertSee('wire:click="openWorkspace(1)"', false)
-            ->assertSee('wire:click="openWorkspace(2)"', false)
-            ->assertDontSee('x-cloak', false)
+        $component->assertSee('تُفتح مساحة العمل عند مرحلة «تشخيص الاحتياج» فقط')
+            ->assertSee('بدء التشخيص وفتح مساحة العمل')
+            ->assertDontSee('x-cloak', false);
+
+        $component->call('startDiagnosisWorkspace')
+            ->assertHasNoErrors()
             ->assertSee('1. التشخيص والرابط')
             ->assertSee('2. عروض الأسعار');
+        $this->assertSame(Partnership::STAGE_DIAGNOSIS, $partnership->fresh()->stage);
     }
 
     public function test_quote_pdf_preview_is_inline_and_portal_hides_unit_prices(): void

@@ -130,8 +130,44 @@ class PartnershipShow extends Component
         $this->linkExpiryDays = (int) Setting::get('links.default_expiry_days', 7);
     }
 
+    /** Workspace opens only from diagnosis onward. Time: O(1) | Space: O(1) */
+    public function workspaceAvailable(): bool
+    {
+        $stage = (int) $this->partnership->stage;
+
+        if ($stage >= Partnership::STAGE_DIAGNOSIS && $stage <= Partnership::STAGE_EXECUTION) {
+            return true;
+        }
+        if ($stage === Partnership::STAGE_CONTRACTED) {
+            return true;
+        }
+
+        return $this->partnership->links()->exists()
+            || $this->partnership->quotes()->exists()
+            || $this->partnership->diagnosisAnswers()->exists();
+    }
+
+    /** Move journey into diagnosis and open workspace. Time: O(1) | Space: O(1) */
+    public function startDiagnosisWorkspace(): void
+    {
+        $this->authorize('partnerships.pipeline.manage');
+
+        app(\App\Services\PartnershipPipelineService::class)->advanceIfBefore(
+            $this->partnership,
+            Partnership::STAGE_DIAGNOSIS,
+            auth()->user(),
+            'بدء مرحلة التشخيص وفتح مساحة العمل',
+        );
+        $this->partnership->refresh();
+        $this->syncWorkspace(1);
+        $this->dispatch('ds-toast', message: 'فُتحت مساحة العمل عند التشخيص');
+    }
+
     public function openWorkspace(int $step): void
     {
+        if (! $this->workspaceAvailable()) {
+            return;
+        }
         $this->syncWorkspace($step);
     }
 
@@ -140,6 +176,9 @@ class PartnershipShow extends Component
     public function openQuoteModal(?int $reviseId = null): void
     {
         $this->authorize('partnerships.quotes.create');
+        if (! $this->workspaceAvailable()) {
+            return;
+        }
         $this->syncWorkspace(2);
         $this->revisingQuoteId = $reviseId;
         $this->resetQuoteLines();
@@ -151,6 +190,9 @@ class PartnershipShow extends Component
     public function openQuoteFromDiagnosis(): void
     {
         $this->authorize('partnerships.quotes.create');
+        if (! $this->workspaceAvailable()) {
+            return;
+        }
         $this->syncWorkspace(2);
 
         $programIds = array_values(array_filter(array_map('intval', $this->quoteProgramIds)));
@@ -466,6 +508,9 @@ class PartnershipShow extends Component
     public function issueLink(): void
     {
         $this->authorize('partnerships.links.manage');
+        if (! $this->workspaceAvailable()) {
+            return;
+        }
         $this->syncWorkspace(1);
         $this->validate([
             'linkExpiryDays' => 'required|integer|min:1|max:365',
@@ -587,6 +632,7 @@ class PartnershipShow extends Component
             'diagnosisSnapshot' => app(DiagnosisQuestionService::class)->latestLabeledAnswers($this->partnership),
             'diagnosisQuestions' => app(DiagnosisQuestionService::class)->activeQuestions(),
             'linkDefaultDays' => (int) Setting::get('links.default_expiry_days', 7),
+            'workspaceAvailable' => $this->workspaceAvailable(),
         ])->layout('layouts.app', ['title' => 'ملف الشراكة']);
     }
 
