@@ -15,6 +15,7 @@ use App\Http\Controllers\FinancialReportExcelController;
 use App\Http\Controllers\FinancialReportPdfController;
 use App\Http\Controllers\MeetingMinutesPdfController;
 use App\Http\Controllers\MeetingSignedMinutesController;
+use App\Http\Controllers\PartnerPortalActionController;
 use App\Http\Controllers\PartnerPortalContractPdfController;
 use App\Http\Controllers\ProgramFileDownloadController;
 use App\Http\Controllers\QuotePdfController;
@@ -94,6 +95,13 @@ Route::middleware('throttle:portal')->group(function () {
     Route::get('/portal/{token}/{page}', PartnerPortal::class)
         ->whereIn('page', ['programs', 'diagnosis', 'quotes', 'payments', 'contract'])
         ->name('partner.portal.page');
+
+    Route::post('/portal/{token}/actions/programs', [PartnerPortalActionController::class, 'confirmPrograms'])
+        ->name('partner.portal.programs.save');
+    Route::post('/portal/{token}/actions/diagnosis', [PartnerPortalActionController::class, 'submitDiagnosis'])
+        ->name('partner.portal.diagnosis.save');
+    Route::post('/portal/{token}/actions/quotes/{quote}', [PartnerPortalActionController::class, 'acceptQuote'])
+        ->name('partner.portal.quotes.accept');
 
     // P2 wave C — external meeting guest (no employee account): view + confirm/sign.
     Route::get('/meetings/guest/{token}', MeetingGuestPortal::class)

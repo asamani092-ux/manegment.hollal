@@ -14,6 +14,14 @@
 <div dir="rtl" class="ds-page-rtl ds-portal-steps">
     <h1 class="ds-page-title">بوابة الجهة — {{ $partnership->organization?->name ?? $partnership->entity_name ?? '' }}</h1>
     <p class="ds-text-muted">المرحلة الحالية: {{ $partnership->stageLabel() }}</p>
+    @if (session('success') || ($flashNotice !== '' && $flashType !== 'error'))
+        <p class="ds-badge ds-badge-success">{{ session('success') ?: $flashNotice }}</p>
+    @endif
+    @if (session('error') || ($flashNotice !== '' && $flashType === 'error'))
+        <p class="ds-badge ds-badge-danger">{{ session('error') ?: $flashNotice }}</p>
+    @endif
+    @error('selectedProgramIds') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
+    @error('diagnosisAudience') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
 
     <ol class="ds-journey-steps">
         @foreach ($wizard['steps'] as $step)
@@ -41,38 +49,41 @@
                     <h2 class="ds-section-title">1. البرامج</h2>
                     <p class="ds-text-muted">اختر البرامج والكميات. يُبنى العرض تلقائيًا من الأسعار المعتمدة.</p>
                 </header>
-                <x-ds-table>
-                    <x-slot:head>
-                        <tr><th>اختيار</th><th>البرنامج</th><th>الخدمة</th><th>الكمية</th></tr>
-                    </x-slot:head>
-                    @forelse ($programs as $program)
-                        <tr wire:key="portal-program-{{ $program->id }}">
-                            <td>
-                                <input type="checkbox" value="{{ $program->id }}" wire:model.live="selectedProgramIds">
-                            </td>
-                            <td>
-                                <strong>{{ $program->name }}</strong>
-                                <small class="ds-text-muted">{{ $program->target_audience ?? '—' }}</small>
-                            </td>
-                            <td>
-                                <select class="ds-input" wire:model.live="programServices.{{ $program->id }}" @disabled(! $can(1))>
-                                    @foreach ($program->prices as $price)
-                                        <option value="{{ $price->service_type }}">{{ $price->service_type }}</option>
-                                    @endforeach
-                                </select>
-                            </td>
-                            <td>
-                                <input type="number" min="0.01" step="0.01" class="ds-input ds-ltr-num"
-                                       wire:model.live="programQuantities.{{ $program->id }}" @disabled(! $can(1))>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="4" class="ds-text-muted ds-table-empty">لا توجد برامج متاحة حاليًا</td></tr>
-                    @endforelse
-                </x-ds-table>
-                @if ($can(1))
-                    <button type="button" class="ds-btn ds-btn-primary" wire:click="confirmPrograms" wire:loading.attr="disabled">حفظ الاختيار وبناء العرض</button>
-                @endif
+                <form method="POST" action="{{ route('partner.portal.programs.save', ['token' => $link->token], false) }}">
+                    @csrf
+                    <x-ds-table>
+                        <x-slot:head>
+                            <tr><th>اختيار</th><th>البرنامج</th><th>الخدمة</th><th>الكمية</th></tr>
+                        </x-slot:head>
+                        @forelse ($programs as $program)
+                            <tr wire:key="portal-program-{{ $program->id }}">
+                                <td>
+                                    <input type="checkbox" name="selectedProgramIds[]" value="{{ $program->id }}"
+                                           @checked(in_array((int) $program->id, array_map('intval', $selectedProgramIds), true))>
+                                </td>
+                                <td>
+                                    <strong>{{ $program->name }}</strong>
+                                    <small class="ds-text-muted">{{ $program->target_audience ?? '—' }}</small>
+                                </td>
+                                <td>
+                                    <select class="ds-input ds-portal-service" name="programServices[{{ $program->id }}]">
+                                        @foreach ($program->prices as $price)
+                                            <option value="{{ $price->service_type }}" @selected(($programServices[$program->id] ?? '') === $price->service_type)>{{ $price->service_type }}</option>
+                                        @endforeach
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="number" min="0.01" step="0.01" class="ds-input ds-ltr-num"
+                                           name="programQuantities[{{ $program->id }}]"
+                                           value="{{ $programQuantities[$program->id] ?? '1' }}">
+                                </td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="4" class="ds-text-muted ds-table-empty">لا توجد برامج متاحة حاليًا</td></tr>
+                        @endforelse
+                    </x-ds-table>
+                    <button type="submit" class="ds-btn ds-btn-primary">حفظ الاختيار وبناء العرض</button>
+                </form>
             </section>
         @elseif ($focus === 2)
             <section class="ds-portal-page ds-journey-active">
@@ -80,36 +91,37 @@
                     <h2 class="ds-section-title">2. التشخيص</h2>
                     <p class="ds-text-muted">أجب عن الاستبانة ثم انتقل لصفحة قبول العرض.</p>
                 </header>
-                @forelse ($diagnosisQuestions as $question)
-                    <x-ds-form-group :label="$question->label" :error="$errors->first('diagnosisAnswers.'.$question->id)">
-                        @if ($question->key === 'audience')
-                            <input type="text" class="ds-input" wire:model="diagnosisAudience" @disabled(! $can(2))>
-                        @elseif ($question->key === 'count')
-                            <input type="number" class="ds-input" wire:model="diagnosisCount" @disabled(! $can(2))>
-                        @elseif ($question->key === 'environment')
-                            <textarea class="ds-input" wire:model="diagnosisEnvironment" @disabled(! $can(2))></textarea>
-                        @elseif ($question->type === 'number')
-                            <input type="number" class="ds-input" wire:model="diagnosisAnswers.{{ $question->id }}" @disabled(! $can(2))>
-                        @elseif ($question->type === 'textarea')
-                            <textarea class="ds-input" wire:model="diagnosisAnswers.{{ $question->id }}" @disabled(! $can(2))></textarea>
-                        @else
-                            <input type="text" class="ds-input" wire:model="diagnosisAnswers.{{ $question->id }}" @disabled(! $can(2))>
-                        @endif
-                    </x-ds-form-group>
-                @empty
-                    <x-ds-form-group label="الفئة" :error="$errors->first('diagnosisAudience')">
-                        <input type="text" class="ds-input" wire:model="diagnosisAudience" @disabled(! $can(2))>
-                    </x-ds-form-group>
-                    <x-ds-form-group label="الأعداد" :error="$errors->first('diagnosisCount')">
-                        <input type="number" class="ds-input" wire:model="diagnosisCount" @disabled(! $can(2))>
-                    </x-ds-form-group>
-                    <x-ds-form-group label="البيئة" :error="$errors->first('diagnosisEnvironment')">
-                        <textarea class="ds-input" wire:model="diagnosisEnvironment" @disabled(! $can(2))></textarea>
-                    </x-ds-form-group>
-                @endforelse
-                @if ($can(2))
-                    <button type="button" class="ds-btn ds-btn-primary" wire:click="submitDiagnosis" wire:loading.attr="disabled">إرسال الاستبانة</button>
-                @endif
+                <form method="POST" action="{{ route('partner.portal.diagnosis.save', ['token' => $link->token], false) }}">
+                    @csrf
+                    @forelse ($diagnosisQuestions as $question)
+                        <x-ds-form-group :label="$question->label" :error="$errors->first('diagnosisAnswers.'.$question->id)">
+                            @if ($question->key === 'audience')
+                                <input type="text" class="ds-input" name="diagnosisAudience" value="{{ old('diagnosisAudience', $diagnosisAudience) }}">
+                            @elseif ($question->key === 'count')
+                                <input type="number" class="ds-input" name="diagnosisCount" value="{{ old('diagnosisCount', $diagnosisCount) }}">
+                            @elseif ($question->key === 'environment')
+                                <textarea class="ds-input" name="diagnosisEnvironment">{{ old('diagnosisEnvironment', $diagnosisEnvironment) }}</textarea>
+                            @elseif ($question->type === 'number')
+                                <input type="number" class="ds-input" name="diagnosisAnswers[{{ $question->id }}]" value="{{ old('diagnosisAnswers.'.$question->id, $diagnosisAnswers[$question->id] ?? '') }}">
+                            @elseif ($question->type === 'textarea')
+                                <textarea class="ds-input" name="diagnosisAnswers[{{ $question->id }}]">{{ old('diagnosisAnswers.'.$question->id, $diagnosisAnswers[$question->id] ?? '') }}</textarea>
+                            @else
+                                <input type="text" class="ds-input" name="diagnosisAnswers[{{ $question->id }}]" value="{{ old('diagnosisAnswers.'.$question->id, $diagnosisAnswers[$question->id] ?? '') }}">
+                            @endif
+                        </x-ds-form-group>
+                    @empty
+                        <x-ds-form-group label="الفئة" :error="$errors->first('diagnosisAudience')">
+                            <input type="text" class="ds-input" name="diagnosisAudience" value="{{ old('diagnosisAudience', $diagnosisAudience) }}">
+                        </x-ds-form-group>
+                        <x-ds-form-group label="الأعداد" :error="$errors->first('diagnosisCount')">
+                            <input type="number" class="ds-input" name="diagnosisCount" value="{{ old('diagnosisCount', $diagnosisCount) }}">
+                        </x-ds-form-group>
+                        <x-ds-form-group label="البيئة" :error="$errors->first('diagnosisEnvironment')">
+                            <textarea class="ds-input" name="diagnosisEnvironment">{{ old('diagnosisEnvironment', $diagnosisEnvironment) }}</textarea>
+                        </x-ds-form-group>
+                    @endforelse
+                    <button type="submit" class="ds-btn ds-btn-primary">إرسال الاستبانة</button>
+                </form>
             </section>
         @elseif ($focus === 3)
             <section class="ds-portal-page ds-portal-page-solo ds-journey-active">
@@ -128,10 +140,10 @@
                         <p class="ds-portal-total">الإجمالي شامل الضريبة:
                             <span class="ds-ltr-num">{{ number_format((float) $quote->total, 2) }}</span></p>
                         @if ($can(3) && $quote->status !== \App\Models\Quote::STATUS_ACCEPTED)
-                            <x-ds-form-group label="ملاحظات إضافية (اختياري — لا تمنع القبول)" :error="$errors->first('quoteNotes')">
-                                <textarea class="ds-input" wire:model="quoteNotes" placeholder="أي ملاحظة تُرفق مع القبول"></textarea>
-                            </x-ds-form-group>
-                            <button type="button" class="ds-btn ds-btn-primary" wire:click="acceptQuote({{ $quote->id }})" wire:loading.attr="disabled">قبول العرض</button>
+                            <form method="POST" action="{{ route('partner.portal.quotes.accept', ['token' => $link->token, 'quote' => $quote->id], false) }}">
+                                @csrf
+                                <button type="submit" class="ds-btn ds-btn-primary">قبول العرض</button>
+                            </form>
                         @elseif ($quote->status === \App\Models\Quote::STATUS_ACCEPTED)
                             <p class="ds-text-muted">قُبل هذا العرض. انتقل لصفحة العقد عند صدوره.</p>
                         @endif
@@ -141,11 +153,12 @@
                 @endforelse
             </section>
         @elseif ($focus === 4)
-            <section class="ds-portal-page ds-journey-active {{ $can(4) ? '' : 'ds-portal-locked' }}">
+            <section class="ds-portal-page ds-journey-active">
                 <header class="ds-portal-page-head">
                     <h2 class="ds-section-title">4. الدفعات</h2>
-                    <p class="ds-text-muted">تسجيل إثبات التحويل يتم من هذه الصفحة بعد صدور جدول الدفعات.</p>
+                    <p class="ds-text-muted">المبالغ المستحقة من العرض المقبول أو من جدول العقد.</p>
                 </header>
+                @php $acceptedQuote = $quotes->firstWhere('status', \App\Models\Quote::STATUS_ACCEPTED); @endphp
                 @forelse ($partnership->partnershipContracts as $contract)
                     <x-ds-table>
                         <x-slot:head>
@@ -172,11 +185,20 @@
                         @endforeach
                     </x-ds-table>
                 @empty
-                    <p class="ds-text-muted">سيظهر جدول الدفعات بعد إصدار العقد من ملف الشراكة.</p>
+                    @if ($acceptedQuote)
+                        <article class="ds-portal-page-card">
+                            <p>المبلغ المستحق من العرض المقبول:
+                                <span class="ds-ltr-num">{{ number_format((float) $acceptedQuote->total, 2) }}</span>
+                            </p>
+                            <p class="ds-text-muted">إرسال إثبات التحويل يُفعَّل بعد إصدار جدول الدفعات مع العقد.</p>
+                        </article>
+                    @else
+                        <p class="ds-text-muted">أتمّ حفظ البرامج وقبول العرض لتظهر قيمة الدفعات هنا.</p>
+                    @endif
                 @endforelse
             </section>
         @elseif ($focus === 5)
-            <section class="ds-portal-page ds-portal-page-solo ds-journey-active {{ $can(5) ? '' : 'ds-portal-locked' }}">
+            <section class="ds-portal-page ds-portal-page-solo ds-journey-active">
                 <header class="ds-portal-page-head">
                     <h2 class="ds-section-title">5. العقد</h2>
                     <p class="ds-text-muted">تنزيل العقد والتوقيع الإلكتروني من هذه الصفحة فقط.</p>

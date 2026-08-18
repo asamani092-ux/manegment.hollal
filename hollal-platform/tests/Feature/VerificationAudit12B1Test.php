@@ -153,6 +153,7 @@ class VerificationAudit12B1Test extends TestCase
         $exempt = [
             'dashboard', 'password.change', 'password.change.update', 'logout', 'login',
             'partner.portal', 'partner.portal.page', 'partner.portal.contract.pdf',
+            'partner.portal.programs.save', 'partner.portal.diagnosis.save', 'partner.portal.quotes.accept',
             'duties.download', 'tasks.files.download', 'contracts.files.download',
             'expenses.files.download', 'documents.files.download',
             // P2 wave C — minutes access is Policy-gated (MeetingPolicy::view),

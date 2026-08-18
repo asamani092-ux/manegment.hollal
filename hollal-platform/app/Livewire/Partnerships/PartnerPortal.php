@@ -11,6 +11,7 @@ use App\Models\PartnershipPayment;
 use App\Models\Program;
 use App\Models\Quote;
 use App\Services\DiagnosisQuestionService;
+use App\Services\PartnerPortalSelfServeService;
 use App\Services\PartnerPortalService;
 use App\Services\PartnershipContractService;
 use App\Services\PartnershipPaymentService;
@@ -70,6 +71,10 @@ class PartnerPortal extends Component
 
     public int $focusStep = 0;
 
+    public string $flashNotice = '';
+
+    public string $flashType = 'success';
+
     /** @var array<int, string> */
     public const PAGE_KEYS = [
         1 => 'programs',
@@ -108,94 +113,56 @@ class PartnerPortal extends Component
 
     public function submitDiagnosis(): void
     {
-        $questions = app(DiagnosisQuestionService::class)->activeQuestions();
-        $answers = [];
-
-        if ($questions->isEmpty()) {
-            $this->validate([
-                'diagnosisAudience' => 'required|string|max:255',
-                'diagnosisCount' => 'required|integer|min:1',
-                'diagnosisEnvironment' => 'nullable|string|max:1000',
-            ]);
-        } else {
-            foreach ($questions as $question) {
-                $value = $this->diagnosisValue($question);
-                if ($question->required && trim($value) === '') {
-                    $this->addError('diagnosisAnswers.'.$question->id, 'هذا السؤال مطلوب');
-                } elseif ($question->type === 'number' && $value !== '' && ! is_numeric($value)) {
-                    $this->addError('diagnosisAnswers.'.$question->id, 'أدخل رقمًا صحيحًا');
-                }
-                $answers[$question->id] = $value;
-                if ($question->key === 'audience') {
-                    $this->diagnosisAudience = $value;
-                }
-                if ($question->key === 'count') {
-                    $this->diagnosisCount = $value;
-                }
-                if ($question->key === 'environment') {
-                    $this->diagnosisEnvironment = $value;
-                }
-            }
-
-            if ($this->getErrorBag()->isNotEmpty()) {
-                return;
-            }
-
-            app(DiagnosisQuestionService::class)->recordAnswers($this->link->partnership, $answers);
+        try {
+            app(PartnerPortalSelfServeService::class)->submitDiagnosis(
+                $this->link,
+                $this->diagnosisAudience,
+                $this->diagnosisCount,
+                $this->diagnosisEnvironment,
+                $this->diagnosisAnswers,
+            );
+            $this->notice('تم استلام استبانة التشخيص');
+        } catch (\RuntimeException $exception) {
+            $this->addError('diagnosisAudience', $exception->getMessage());
+            $this->notice($exception->getMessage(), 'error');
         }
-
-        $this->log('portal.diagnosis_submitted', [
-            'audience' => $this->diagnosisAudience,
-            'count' => (int) $this->diagnosisCount,
-            'environment' => $this->diagnosisEnvironment,
-            'answers' => $answers,
-        ]);
-
-        app(PartnershipPipelineService::class)->advanceIfBefore(
-            $this->link->partnership,
-            Partnership::STAGE_DIAGNOSIS,
-            null,
-            'إرسال استبانة التشخيص من بوابة الشريك',
-        );
-
-        $this->dispatch('ds-toast', message: 'تم استلام استبانة التشخيص');
     }
 
     public function confirmPrograms(): void
     {
         try {
-            $this->syncQuoteFromSelection();
-            $this->dispatch('ds-toast', message: 'حُفظ الاختيار وبُني العرض من أسعار البرامج');
+            app(PartnerPortalSelfServeService::class)->confirmPrograms(
+                $this->link,
+                $this->selectedProgramIds,
+                $this->programQuantities,
+                $this->programServices,
+            );
+            $this->notice('حُفظ الاختيار وبُني العرض من أسعار البرامج');
         } catch (\RuntimeException $exception) {
             $this->addError('selectedProgramIds', $exception->getMessage());
-            $this->dispatch('ds-toast', message: $exception->getMessage());
+            $this->notice($exception->getMessage(), 'error');
         }
     }
 
     public function acceptQuote(int $quoteId): void
     {
-        $quote = $this->scopedQuote($quoteId);
+        $this->scopedQuote($quoteId);
 
         try {
-            $quote = $this->applyItemsToQuote($quote, $this->selectionItems());
+            app(PartnerPortalSelfServeService::class)->acceptQuote(
+                $this->link,
+                $quoteId,
+                $this->quoteNotes !== '' ? $this->quoteNotes : null,
+                $this->selectedProgramIds !== [] ? $this->selectedProgramIds : null,
+                $this->programQuantities,
+                $this->programServices,
+            );
+            $this->quoteNotes = '';
+            $this->notice('تم قبول العرض');
         } catch (\RuntimeException $exception) {
             $this->addError('selectedProgramIds', $exception->getMessage());
-            $this->dispatch('ds-toast', message: $exception->getMessage());
-
-            return;
+            $this->notice($exception->getMessage(), 'error');
         }
-
-        app(QuoteService::class)->accept($quote, $this->quoteNotes !== '' ? $this->quoteNotes : null);
-        $this->quoteNotes = '';
-        $this->log('portal.quote_accepted', ['quote_id' => $quote->id]);
-        app(PartnershipPipelineService::class)->advanceIfBefore(
-            $this->link->partnership,
-            Partnership::STAGE_QUOTE,
-            null,
-            'قبول العرض من بوابة الشريك',
-        );
-
-        $this->dispatch('ds-toast', message: 'تم قبول العرض');
     }
 
     /**
@@ -314,8 +281,6 @@ class PartnerPortal extends Component
             ['id' => 4, 'key' => 'payments', 'label' => 'الدفعات', 'enabled' => $features['payments'], 'done' => $paymentSubmitted],
             ['id' => 5, 'key' => 'contract', 'label' => 'العقد', 'enabled' => $features['contract'], 'done' => $signed],
         ];
-        $postQuoteOpen = $quoteAccepted || $contract !== null;
-
         $current = 1;
         foreach ($definitions as $step) {
             if (! $step['enabled']) {
@@ -332,11 +297,7 @@ class PartnerPortal extends Component
             if (! $step['enabled']) {
                 continue;
             }
-            if ($step['id'] >= 4 && $postQuoteOpen) {
-                $state = $step['done'] ? 'done' : ($step['id'] === $current ? 'current' : 'open');
-            } else {
-                $state = $step['id'] < $current ? 'done' : ($step['id'] === $current ? 'current' : ($step['id'] <= 3 ? 'open' : 'locked'));
-            }
+            $state = $step['done'] ? 'done' : ($step['id'] === $current ? 'current' : 'open');
             $steps[] = [...$step, 'state' => $state];
         }
 
@@ -397,21 +358,16 @@ class PartnerPortal extends Component
 
     private function allowedPrograms()
     {
-        $partnership = $this->link->partnership()->firstOrFail();
-        $catalog = $partnership->allowedPrograms()
-            ->where('programs.stage', Program::STAGE_ACTIVE)
-            ->with(['prices' => fn ($query) => $query->where('is_active', true)->orderBy('id')])
-            ->get(['programs.id', 'programs.name', 'programs.description', 'programs.target_audience', 'programs.sessions_count', 'programs.hours_count']);
+        return app(PartnerPortalSelfServeService::class)->catalog(
+            $this->link->partnership()->firstOrFail()
+        );
+    }
 
-        if ($catalog->isEmpty()) {
-            $catalog = Program::query()
-                ->where('stage', Program::STAGE_ACTIVE)
-                ->with(['prices' => fn ($query) => $query->where('is_active', true)->orderBy('id')])
-                ->orderBy('name')
-                ->get(['id', 'name', 'description', 'target_audience', 'sessions_count', 'hours_count']);
-        }
-
-        return $catalog->filter(fn (Program $program) => $program->prices->isNotEmpty())->values();
+    private function notice(string $message, string $type = 'success'): void
+    {
+        $this->flashNotice = $message;
+        $this->flashType = $type;
+        $this->dispatch('ds-toast', message: $message, type: $type === 'error' ? 'error' : 'success');
     }
 
     /** @return list<array{program_id: int, service_type: string, quantity: float, unit_price: float}> */

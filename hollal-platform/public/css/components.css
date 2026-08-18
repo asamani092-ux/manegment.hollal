@@ -1450,6 +1450,16 @@
   margin-top: 0.5rem;
 }
 
+.ds-portal-page .ds-portal-service {
+  min-width: 10.5rem;
+  width: 100%;
+}
+
+.ds-portal-page .ds-table th:nth-child(3),
+.ds-portal-page .ds-table td:nth-child(3) {
+  min-width: 11rem;
+}
+
 .ds-link-list {
   list-style: none;
   padding: 0;

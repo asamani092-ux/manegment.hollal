@@ -182,7 +182,52 @@ class PartnerPortalSelfServeTest extends TestCase
             ->assertSee('id="ds-toast-root"', false)
             ->assertDontSee('wire:navigate', false)
             ->assertDontSee('ds-login-container', false)
-            ->assertSee('href="'.$prefix.'/diagnosis"', false);
+            ->assertSee('href="'.$prefix.'/diagnosis"', false)
+            ->assertSee('href="'.$prefix.'/payments"', false);
+    }
+
+    public function test_catalog_lists_every_active_priced_program_and_forms_complete_the_journey(): void
+    {
+        [$partnership, $program, $link] = $this->openPortal();
+        $other = Program::create(['name' => 'برنامج ثانٍ ظاهر', 'stage' => Program::STAGE_ACTIVE]);
+        ProgramPrice::create([
+            'program_id' => $other->id,
+            'service_type' => ProgramPrice::SERVICE_TRAINING,
+            'unit_price' => 500,
+            'is_active' => true,
+        ]);
+        $partnership->allowedPrograms()->sync([$program->id]);
+
+        $this->get('/portal/'.$link->token.'/programs')
+            ->assertOk()
+            ->assertSee('برنامج الاختبار')
+            ->assertSee('برنامج ثانٍ ظاهر')
+            ->assertSee('ds-portal-service', false);
+
+        $this->post(route('partner.portal.programs.save', ['token' => $link->token]), [
+            'selectedProgramIds' => [$program->id],
+            'programQuantities' => [$program->id => '2'],
+            'programServices' => [$program->id => ProgramPrice::SERVICE_TRAINING],
+        ])->assertRedirect(route('partner.portal.page', ['token' => $link->token, 'page' => 'diagnosis']));
+
+        $this->followRedirects($this->post(route('partner.portal.diagnosis.save', ['token' => $link->token]), [
+            'diagnosisAudience' => 'طلاب',
+            'diagnosisCount' => '12',
+        ]))->assertSee('تم استلام استبانة التشخيص');
+
+        $quote = $partnership->quotes()->firstOrFail();
+        $this->from('/portal/'.$link->token.'/quotes')
+            ->post(route('partner.portal.quotes.accept', ['token' => $link->token, 'quote' => $quote->id]))
+            ->assertRedirect(route('partner.portal.page', ['token' => $link->token, 'page' => 'payments']));
+
+        $this->get('/portal/'.$link->token.'/payments')
+            ->assertOk()
+            ->assertSee('4. الدفعات')
+            ->assertSee('المبلغ المستحق من العرض المقبول');
+
+        $this->get('/portal/'.$link->token.'/quotes')
+            ->assertDontSee('اختياري — لا تمنع القبول')
+            ->assertDontSee('أي ملاحظة تُرفق مع القبول');
     }
 
     /** @return array{0: Partnership, 1: Program, 2: \App\Models\PartnerLink} */
