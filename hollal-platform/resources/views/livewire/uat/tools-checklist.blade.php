@@ -1,7 +1,7 @@
 <x-ds-page>
     <div
         class="uat-checklist"
-        x-data="uatToolsChecklist(@js($groups), @js($phases), @js($baseline ?? []), @js($baselineRound3 ?? []), @js($baselineRound2 ?? []))"
+        x-data="uatToolsChecklist(@js($groups), @js($phases), @js($baseline ?? []), @js($baselineRound3 ?? []), @js($baselineRound2 ?? []), @js($savedState))"
         x-init="load()"
     >
         <div class="ds-page-header-bar">
@@ -25,6 +25,7 @@
 
         <div class="ds-alert ds-alert-warning ds-mb-3">
             <strong>قاعدة المراحل:</strong> لا تُفتح المرحلة التالية حتى تُعلَّم <em>كل</em> أدوات المرحلة الحالية «يعتمد».
+            التقييم محفوظ على السيرفر ويبقى بعد تغيير رابط Cloud.
             صفحة تجريبية فقط — تُحذف عند النشر (`APP_ENV=production` أو `UAT_TOOLS_ENABLED=false`).
             <template x-if="baseline?.date">
                 <span>
@@ -161,12 +162,13 @@
 
 @script
 <script>
-    Alpine.data('uatToolsChecklist', (groups, phases, baseline = {}, baselineRound3 = {}, baselineRound2 = {}) => ({
+    Alpine.data('uatToolsChecklist', (groups, phases, baseline = {}, baselineRound3 = {}, baselineRound2 = {}, savedState = null) => ({
         groups,
         phases,
         baseline: baseline || {},
         baselineRound3: baselineRound3 || {},
         baselineRound2: baselineRound2 || {},
+        savedState: savedState || null,
         activePhase: 1,
         filter: 'الكل',
         verdicts: {},
@@ -175,6 +177,7 @@
         copying: false,
         copied: false,
         storageKey: 'hollal.uat.tools.v5',
+        _saveTimer: null,
 
         get total() {
             return this.groups.reduce((sum, g) => sum + g.items.length, 0);
@@ -244,35 +247,59 @@
             });
         },
 
-        load() {
-            let loaded = false;
+        applyState(state) {
+            const s = state || {};
+            this.verdicts = Object.assign({}, s.verdicts || {});
+            this.tags = Object.assign({}, s.tags || {});
+            this.notes = Object.assign({}, s.notes || {});
+            this.activePhase = Number(s.activePhase || 1);
+            this.fillMissing();
+            if (!this.isPhaseUnlocked(this.activePhase)) {
+                this.activePhase = this.highestUnlockedPhase();
+            }
+        },
+
+        localState() {
             try {
                 const raw = localStorage.getItem(this.storageKey);
-                if (raw) {
-                    const parsed = JSON.parse(raw);
-                    this.verdicts = parsed.verdicts || {};
-                    this.tags = parsed.tags || {};
-                    this.notes = parsed.notes || {};
-                    this.activePhase = parsed.activePhase || 1;
-                    loaded = Object.keys(this.verdicts).length > 0;
-                }
-            } catch (e) {}
-
-            if (!loaded && this.baseline && this.baseline.verdicts) {
-                this.applyBaseline(this.baseline);
-                this.persist();
-            } else {
-                this.fillMissing();
-                if (!this.isPhaseUnlocked(this.activePhase)) {
-                    this.activePhase = this.highestUnlockedPhase();
-                }
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || !parsed.verdicts || !Object.keys(parsed.verdicts).length) return null;
+                return parsed;
+            } catch (e) {
+                return null;
             }
+        },
+
+        load() {
+            if (this.savedState && this.savedState.verdicts && Object.keys(this.savedState.verdicts).length) {
+                this.applyState(this.savedState);
+                this.persistLocal();
+                return;
+            }
+
+            const local = this.localState();
+            if (local) {
+                this.applyState(local);
+                this.persistToServer(true, 'import-local');
+                return;
+            }
+
+            if (this.baseline && this.baseline.verdicts) {
+                this.applyBaseline(this.baseline);
+                this.persistLocal();
+                this.persistToServer(true, 'baseline');
+                return;
+            }
+
+            this.fillMissing();
         },
 
         loadBaseline() {
             if (!confirm('استبدال التقييم الحالي بتقييم 2026-08-14 20:27؟')) return;
             this.applyBaseline(this.baseline);
-            this.persist();
+            this.persistLocal();
+            this.persistToServer(true, 'baseline-20:27');
             if (window.Livewire) {
                 Livewire.dispatch('toast', { type: 'success', message: 'تم تحميل تقييم 20:27' });
             }
@@ -281,7 +308,8 @@
         loadRound3() {
             if (!confirm('استبدال التقييم الحالي بتقييم 19:04؟')) return;
             this.applyBaseline(this.baselineRound3);
-            this.persist();
+            this.persistLocal();
+            this.persistToServer(true, 'baseline-19:04');
             if (window.Livewire) {
                 Livewire.dispatch('toast', { type: 'success', message: 'تم تحميل تقييم 19:04' });
             }
@@ -290,20 +318,48 @@
         loadRound2() {
             if (!confirm('استبدال التقييم الحالي بتقييم التجربة الثانية (2026-08-13)؟')) return;
             this.applyBaseline(this.baselineRound2);
-            this.persist();
+            this.persistLocal();
+            this.persistToServer(true, 'baseline-round2');
             if (window.Livewire) {
                 Livewire.dispatch('toast', { type: 'success', message: 'تم تحميل التجربة الثانية' });
             }
         },
 
-        persist() {
+        persistLocal() {
             localStorage.setItem(this.storageKey, JSON.stringify({
                 verdicts: this.verdicts,
                 tags: this.tags,
                 notes: this.notes,
                 activePhase: this.activePhase,
-                source: 'uat-baseline-round4',
+                source: 'uat-server',
             }));
+        },
+
+        persist() {
+            this.persistLocal();
+            this.persistToServer(false, 'persist');
+        },
+
+        persistToServer(snapshot, source) {
+            const wire = this.$wire;
+            if (!wire || typeof wire.persistState !== 'function') {
+                return;
+            }
+            clearTimeout(this._saveTimer);
+            const payload = {
+                verdicts: this.verdicts,
+                tags: this.tags,
+                notes: this.notes,
+                activePhase: this.activePhase,
+                snapshot: !!snapshot,
+                source: source || 'persist',
+            };
+            const send = () => wire.persistState(payload);
+            if (snapshot) {
+                send();
+                return;
+            }
+            this._saveTimer = setTimeout(send, 400);
         },
 
         count(verdict) {
@@ -394,6 +450,7 @@
             }
             this.copying = false;
             this.copied = true;
+            this.persistToServer(true, 'copy-report');
             setTimeout(() => { this.copied = false; }, 4000);
             if (window.Livewire) {
                 Livewire.dispatch('toast', { type: 'success', message: 'نُسخ التقرير — الصقه في محادثة Cursor' });
@@ -404,7 +461,8 @@
             if (!confirm('مسح التقييم المحلي ثم تحميل ملاحظات 20:27؟')) return;
             localStorage.removeItem(this.storageKey);
             this.applyBaseline(this.baseline);
-            this.persist();
+            this.persistLocal();
+            this.persistToServer(true, 'reset');
             if (window.Livewire) {
                 Livewire.dispatch('toast', { type: 'success', message: 'أُعيد تحميل تقييم 20:27' });
             }

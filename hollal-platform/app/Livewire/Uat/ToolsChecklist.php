@@ -2,13 +2,14 @@
 
 namespace App\Livewire\Uat;
 
+use App\Services\UatToolChecklistService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 /**
  * Interactive UAT tools evaluation page (pre-production only).
  * Three gated phases — next unlocks only when current is all «يعتمد».
- * Time: O(n) tools | Space: O(n) client state.
+ * Time: O(n) tools | Space: O(n) current + O(k·n) snapshots.
  */
 class ToolsChecklist extends Component
 {
@@ -18,7 +19,24 @@ class ToolsChecklist extends Component
         abort_unless(auth()->user()?->can('dashboard.view'), 403);
     }
 
-    public function render(): View
+    /**
+     * @param  array{verdicts?: mixed, tags?: mixed, notes?: mixed, activePhase?: mixed, snapshot?: mixed, source?: mixed}  $payload
+     * @return array{verdicts: array<string, string>, tags: array<string, string>, notes: array<string, string>, activePhase: int}
+     */
+    public function persistState(array $payload, UatToolChecklistService $checklists): array
+    {
+        abort_unless((bool) config('uat_tools.enabled'), 404);
+        abort_unless(auth()->user()?->can('dashboard.view'), 403);
+
+        return $checklists->save(
+            $payload,
+            auth()->user(),
+            filter_var($payload['snapshot'] ?? false, FILTER_VALIDATE_BOOLEAN),
+            is_string($payload['source'] ?? null) ? (string) $payload['source'] : 'persist',
+        );
+    }
+
+    public function render(UatToolChecklistService $checklists): View
     {
         $groups = config('uat_tools.groups', []);
         $phases = config('uat_tools.phases', []);
@@ -41,6 +59,7 @@ class ToolsChecklist extends Component
             'baseline' => config('uat_tools.baseline', []),
             'baselineRound3' => config('uat_tools.baseline_round3', []),
             'baselineRound2' => config('uat_tools.baseline_round2', []),
+            'savedState' => $checklists->current(),
             'total' => $total,
         ])->layout('layouts.app', ['title' => 'تقييم الأدوات (UAT)']);
     }

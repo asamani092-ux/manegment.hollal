@@ -2,11 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Uat\ToolsChecklist;
+use App\Models\UatToolChecklist;
+use App\Models\UatToolChecklistSnapshot;
 use App\Models\User;
 use App\Support\NavigationHelper;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
@@ -48,7 +52,64 @@ class UatToolsChecklistTest extends TestCase
             ->assertSee('المرحلة 3 — النمو والمحتوى', false)
             ->assertSee('دليل العاملين', false)
             ->assertSee('الملاحظة', false)
-            ->assertSee('قاعدة المراحل', false);
+            ->assertSee('قاعدة المراحل', false)
+            ->assertSee('التقييم محفوظ على السيرفر', false);
+    }
+
+    public function test_persist_state_is_shared_and_snapshots_accumulate(): void
+    {
+        config(['uat_tools.enabled' => true]);
+
+        $admin = $this->admin();
+        $other = User::factory()->create([
+            'phone' => '0501111111',
+            'must_change_password' => false,
+            'is_active' => true,
+        ]);
+        $other->assignRole('Super Admin');
+
+        Livewire::actingAs($admin)
+            ->test(ToolsChecklist::class)
+            ->call('persistState', [
+                'verdicts' => ['tasks' => 'يعتمد', 'sidebar' => 'يحتاج تحسين', 'unknown' => 'يعتمد'],
+                'tags' => ['tasks' => 'UI ناقص', 'unknown' => 'أخرى'],
+                'notes' => ['tasks' => 'أُغلقت بعد الإصلاح'],
+                'activePhase' => 2,
+                'snapshot' => true,
+                'source' => 'import-local',
+            ])
+            ->assertOk();
+
+        $row = UatToolChecklist::query()->where('slot', 'shared')->first();
+        $this->assertNotNull($row);
+        $this->assertSame(2, $row->active_phase);
+        $this->assertSame('يعتمد', $row->verdicts['tasks']);
+        $this->assertSame('يحتاج تحسين', $row->verdicts['sidebar']);
+        $this->assertArrayNotHasKey('unknown', $row->verdicts);
+        $this->assertSame(1, UatToolChecklistSnapshot::query()->count());
+
+        Livewire::actingAs($admin)
+            ->test(ToolsChecklist::class)
+            ->call('persistState', [
+                'verdicts' => ['tasks' => 'يعتمد', 'sidebar' => 'يعتمد'],
+                'tags' => ['tasks' => ''],
+                'notes' => ['tasks' => 'أُغلقت بعد الإصلاح'],
+                'activePhase' => 3,
+                'snapshot' => true,
+                'source' => 'copy-report',
+            ])
+            ->assertOk();
+
+        $this->assertSame(2, UatToolChecklistSnapshot::query()->count());
+        $this->assertSame(['import-local', 'copy-report'], UatToolChecklistSnapshot::query()->orderBy('id')->pluck('source')->all());
+
+        $this->actingAs($other)->get(route('uat.tools'))->assertOk();
+
+        $shared = app(\App\Services\UatToolChecklistService::class)->current();
+        $this->assertNotNull($shared);
+        $this->assertSame(3, $shared['activePhase']);
+        $this->assertSame('يعتمد', $shared['verdicts']['tasks']);
+        $this->assertSame('أُغلقت بعد الإصلاح', $shared['notes']['tasks']);
     }
 
     public function test_phases_cover_all_groups_without_overlap(): void
