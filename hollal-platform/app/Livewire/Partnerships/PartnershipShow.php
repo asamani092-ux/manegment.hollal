@@ -135,16 +135,8 @@ class PartnershipShow extends Component
     {
         $stage = (int) $this->partnership->stage;
 
-        if ($stage >= Partnership::STAGE_DIAGNOSIS && $stage <= Partnership::STAGE_EXECUTION) {
-            return true;
-        }
-        if ($stage === Partnership::STAGE_CONTRACTED) {
-            return true;
-        }
-
-        return $this->partnership->links()->exists()
-            || $this->partnership->quotes()->exists()
-            || $this->partnership->diagnosisAnswers()->exists();
+        return ($stage >= Partnership::STAGE_DIAGNOSIS && $stage <= Partnership::STAGE_EXECUTION)
+            || $stage === Partnership::STAGE_CONTRACTED;
     }
 
     /** Move journey into diagnosis and open workspace. Time: O(1) | Space: O(1) */

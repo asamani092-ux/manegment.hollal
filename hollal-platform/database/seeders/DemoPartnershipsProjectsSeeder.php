@@ -55,12 +55,8 @@ class DemoPartnershipsProjectsSeeder extends Seeder
 
         $organizations = $this->seedOrganizations();
         $programs = $this->seedPrograms($manager);
-        $partnerships = $this->seedPartnerships($organizations, $manager, $executive);
-        $quotes = $this->seedQuotes($partnerships, $programs, $executive);
-        $this->seedContractsAndPayments($partnerships, $quotes, $admin);
-        $projects = $this->seedProjects($partnerships, $programs, $projectManager, $executive);
-        $this->seedVisits($projects, $projectManager, $executive);
-        $this->seedMeasurement($programs, $projects);
+        $this->seedPartnerships($organizations, $manager, $executive);
+        // Quotes/contracts/projects are left empty — UAT starts at diagnosis readiness.
     }
 
     /** @return array<string, Organization> */
@@ -236,7 +232,7 @@ class DemoPartnershipsProjectsSeeder extends Seeder
     }
 
     /**
-     * Four partnerships spread over four pipeline columns, each with its journey log.
+     * Partnerships ready at diagnosis — workspace opens here for the new cycle.
      *
      * @param  array<string, Organization>  $organizations
      * @return array<string, Partnership>
@@ -247,77 +243,77 @@ class DemoPartnershipsProjectsSeeder extends Seeder
             'khraj' => [
                 'organization' => $organizations['khraj'],
                 'owner' => $manager,
-                'stage' => Partnership::STAGE_EXECUTION,
+                'stage' => Partnership::STAGE_DIAGNOSIS,
                 'status' => 'active',
                 'entity_name' => $organizations['khraj']->name,
                 'contact_person' => 'عبدالله الحربي',
                 'contact_phone' => '0551000101',
                 'expected_value' => 138000,
-                'stage_entered_at' => now()->subDays(21),
-                'type_quantity' => 'حقيبة + تدريب + زيارات — 3 حلقات',
+                'stage_entered_at' => now(),
+                'type_quantity' => 'جاهز للتشخيص — 3 حلقات',
+                'portal_features' => Partnership::defaultPortalFeatures(),
                 'journey' => [
-                    [Partnership::STAGE_OPPORTUNITY, 'فرصة واردة من ملتقى الجمعيات', 150],
-                    [Partnership::STAGE_CONTACT, 'تواصل هاتفي مع المدير التنفيذي', 138],
-                    [Partnership::STAGE_MEETING, 'لقاء تعريفي في مقر الجمعية', 120],
-                    [Partnership::STAGE_DIAGNOSIS, 'تشخيص احتياج 3 حلقات', 100],
-                    [Partnership::STAGE_QUOTE, 'إرسال عرض السعر', 75],
-                    [Partnership::STAGE_CONTRACTED, 'توقيع العقد واعتماده', 45],
-                    [Partnership::STAGE_EXECUTION, 'انطلاق التنفيذ الفعلي', 21],
+                    [Partnership::STAGE_OPPORTUNITY, 'فرصة واردة من ملتقى الجمعيات', 14],
+                    [Partnership::STAGE_CONTACT, 'تواصل هاتفي مع المدير التنفيذي', 10],
+                    [Partnership::STAGE_MEETING, 'لقاء تعريفي في مقر الجمعية', 5],
+                    [Partnership::STAGE_DIAGNOSIS, 'جاهزية التشخيص ومساحة العمل', 0],
                 ],
             ],
             'education' => [
                 'organization' => $organizations['education'],
                 'owner' => $executive,
-                'stage' => Partnership::STAGE_CONTRACTED,
-                'status' => 'negotiation',
+                'stage' => Partnership::STAGE_DIAGNOSIS,
+                'status' => 'active',
                 'entity_name' => $organizations['education']->name,
                 'contact_person' => 'فهد السبيعي',
                 'contact_phone' => '0552000201',
                 'expected_value' => 96000,
-                'stage_entered_at' => now()->subDays(9),
-                'type_quantity' => 'حقيبة + تدريب — 4 مدارس',
+                'stage_entered_at' => now(),
+                'type_quantity' => 'جاهز للتشخيص — 4 مدارس',
+                'portal_features' => Partnership::defaultPortalFeatures(),
                 'journey' => [
-                    [Partnership::STAGE_OPPORTUNITY, 'ترشيح من شريك سابق', 90],
-                    [Partnership::STAGE_CONTACT, 'خطاب رسمي لإدارة النشاط الطلابي', 78],
-                    [Partnership::STAGE_MEETING, 'عرض تعريفي أمام لجنة النشاط', 60],
-                    [Partnership::STAGE_DIAGNOSIS, 'حصر احتياج 4 مدارس', 40],
-                    [Partnership::STAGE_QUOTE, 'اعتماد عرض السعر من الجهة', 20],
-                    [Partnership::STAGE_CONTRACTED, 'استلام العقد موقعاً بانتظار تأكيد المالية', 9],
+                    [Partnership::STAGE_OPPORTUNITY, 'ترشيح من شريك سابق', 12],
+                    [Partnership::STAGE_CONTACT, 'خطاب رسمي لإدارة النشاط الطلابي', 8],
+                    [Partnership::STAGE_MEETING, 'عرض تعريفي أمام لجنة النشاط', 3],
+                    [Partnership::STAGE_DIAGNOSIS, 'جاهزية التشخيص ومساحة العمل', 0],
                 ],
             ],
             'manarat' => [
                 'organization' => $organizations['manarat'],
                 'owner' => $manager,
-                'stage' => Partnership::STAGE_QUOTE,
-                'status' => 'negotiation',
+                'stage' => Partnership::STAGE_DIAGNOSIS,
+                'status' => 'active',
                 'entity_name' => $organizations['manarat']->name,
                 'contact_person' => 'ريم العتيبي',
                 'contact_phone' => '0553000301',
                 'expected_value' => 42000,
-                'stage_entered_at' => now()->subDays(17),
-                'type_quantity' => 'تدريب + استشارة — دفعتان',
+                'stage_entered_at' => now(),
+                'type_quantity' => 'جاهز للتشخيص — ورش معلمين',
+                'portal_features' => Partnership::defaultPortalFeatures(),
                 'journey' => [
-                    [Partnership::STAGE_OPPORTUNITY, 'طلب وارد عبر الموقع', 55],
-                    [Partnership::STAGE_CONTACT, 'مكالمة تعريفية مع مديرة تطوير الأعمال', 46],
-                    [Partnership::STAGE_MEETING, 'اجتماع عن بعد لعرض البرامج', 35],
-                    [Partnership::STAGE_DIAGNOSIS, 'تحديد احتياج ورش المعلمين', 26],
-                    [Partnership::STAGE_QUOTE, 'إرسال عرض السعر بانتظار الرد', 17],
+                    [Partnership::STAGE_OPPORTUNITY, 'طلب وارد عبر الموقع', 9],
+                    [Partnership::STAGE_CONTACT, 'مكالمة تعريفية', 6],
+                    [Partnership::STAGE_MEETING, 'اجتماع عن بعد', 2],
+                    [Partnership::STAGE_DIAGNOSIS, 'جاهزية التشخيص ومساحة العمل', 0],
                 ],
             ],
             'waqf' => [
                 'organization' => $organizations['waqf'],
                 'owner' => $executive,
-                'stage' => Partnership::STAGE_CONTACT,
-                'status' => 'pending_form',
+                'stage' => Partnership::STAGE_DIAGNOSIS,
+                'status' => 'active',
                 'entity_name' => $organizations['waqf']->name,
                 'contact_person' => 'سلطان الدوسري',
                 'contact_phone' => '0554000401',
                 'expected_value' => 60000,
-                'stage_entered_at' => now()->subDays(4),
-                'type_quantity' => 'قياس أثر — غير محدد بعد',
+                'stage_entered_at' => now(),
+                'type_quantity' => 'جاهز للتشخيص — قياس أثر',
+                'portal_features' => Partnership::defaultPortalFeatures(),
                 'journey' => [
-                    [Partnership::STAGE_OPPORTUNITY, 'فرصة تمويل برامج القياس', 12],
-                    [Partnership::STAGE_CONTACT, 'إرسال الملف التعريفي لأمين الوقف', 4],
+                    [Partnership::STAGE_OPPORTUNITY, 'فرصة تمويل برامج القياس', 7],
+                    [Partnership::STAGE_CONTACT, 'إرسال الملف التعريفي', 4],
+                    [Partnership::STAGE_MEETING, 'لقاء أولي', 1],
+                    [Partnership::STAGE_DIAGNOSIS, 'جاهزية التشخيص ومساحة العمل', 0],
                 ],
             ],
         ];
