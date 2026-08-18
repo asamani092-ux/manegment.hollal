@@ -21,14 +21,13 @@ class ToolsChecklist extends Component
 
     /**
      * @param  array{verdicts?: mixed, tags?: mixed, notes?: mixed, activePhase?: mixed, snapshot?: mixed, source?: mixed}  $payload
-     * @return array{verdicts: array<string, string>, tags: array<string, string>, notes: array<string, string>, activePhase: int}
      */
-    public function persistState(array $payload, UatToolChecklistService $checklists): array
+    public function persistState(array $payload): void
     {
         abort_unless((bool) config('uat_tools.enabled'), 404);
         abort_unless(auth()->user()?->can('dashboard.view'), 403);
 
-        return $checklists->save(
+        app(UatToolChecklistService::class)->save(
             $payload,
             auth()->user(),
             filter_var($payload['snapshot'] ?? false, FILTER_VALIDATE_BOOLEAN),
@@ -36,8 +35,9 @@ class ToolsChecklist extends Component
         );
     }
 
-    public function render(UatToolChecklistService $checklists): View
+    public function render(): View
     {
+        $checklists = app(UatToolChecklistService::class);
         $groups = config('uat_tools.groups', []);
         $phases = config('uat_tools.phases', []);
         $total = collect($groups)->sum(fn (array $g) => count($g['items'] ?? []));

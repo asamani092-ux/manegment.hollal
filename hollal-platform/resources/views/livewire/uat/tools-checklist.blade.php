@@ -162,6 +162,8 @@
 
 @script
 <script>
+    const uatChecklistWire = $wire;
+
     Alpine.data('uatToolsChecklist', (groups, phases, baseline = {}, baselineRound3 = {}, baselineRound2 = {}, savedState = null) => ({
         groups,
         phases,
@@ -341,8 +343,7 @@
         },
 
         persistToServer(snapshot, source) {
-            const wire = this.$wire;
-            if (!wire || typeof wire.persistState !== 'function') {
+            if (!uatChecklistWire || typeof uatChecklistWire.persistState !== 'function') {
                 return;
             }
             clearTimeout(this._saveTimer);
@@ -354,9 +355,11 @@
                 snapshot: !!snapshot,
                 source: source || 'persist',
             };
-            const send = () => wire.persistState(payload);
+            const send = () => {
+                Promise.resolve(uatChecklistWire.persistState(payload)).catch(() => {});
+            };
             if (snapshot) {
-                send();
+                queueMicrotask(send);
                 return;
             }
             this._saveTimer = setTimeout(send, 400);
