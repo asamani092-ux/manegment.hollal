@@ -31,7 +31,7 @@ class ProjectGenerationRequestService
 
         $quote ??= $contract->quote;
 
-        return ProjectGenerationRequest::create([
+        $request = ProjectGenerationRequest::create([
             'partnership_id' => $partnership->id,
             'program_id' => $program->id,
             'quote_id' => $quote?->id,
@@ -41,6 +41,15 @@ class ProjectGenerationRequestService
             'status' => ProjectGenerationRequest::STATUS_PENDING,
             'requested_by' => $requestedBy?->id,
         ]);
+
+        app(PartnershipPipelineService::class)->advanceIfBefore(
+            $partnership,
+            Partnership::STAGE_EXECUTION,
+            $requestedBy,
+            'تأكيد توليد مشروع',
+        );
+
+        return $request;
     }
 
     /** @return \Illuminate\Database\Eloquent\Collection<int, ProjectGenerationRequest> */

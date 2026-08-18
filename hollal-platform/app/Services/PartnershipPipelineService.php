@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\Partnership;
+use App\Models\PartnershipContract;
+use App\Models\PartnershipPayment;
 use App\Models\PartnershipStageLog;
 use App\Models\User;
 use App\Notifications\PartnershipStageChanged;
@@ -13,19 +15,23 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 
 /**
- * 05-B2 — the seven-stage journey. Every transition is manual (except the
- * automatic move to «تعاقد» once the contract conditions are met) and every
- * transition is logged.
+ * 05-B2 — the seven-stage journey. Manual and system transitions share
+ * moveTo(). Auto-advance never regresses. تعاقد stays locked to its conditions.
  */
 class PartnershipPipelineService
 {
     /**
      * Move a partnership to another stage and write the log row.
+     * Time: O(1) + O(c) contacts on notify | Space: O(1)
      */
     public function moveTo(Partnership $partnership, int $stage, ?User $actor = null, ?string $note = null): PartnershipStageLog
     {
         if (! array_key_exists($stage, Partnership::STAGE_LABELS)) {
             throw new \InvalidArgumentException('مرحلة غير معروفة');
+        }
+
+        if ($stage === Partnership::STAGE_CONTRACTED) {
+            $this->assertContractedReady($partnership);
         }
 
         return DB::transaction(function () use ($partnership, $stage, $actor, $note) {
@@ -57,6 +63,84 @@ class PartnershipPipelineService
 
             return $log;
         });
+    }
+
+    /**
+     * Forward-only system advance. No-op when already at or past $stage,
+     * or when the journey is stalled/closed.
+     */
+    public function advanceIfBefore(Partnership $partnership, int $stage, ?User $actor = null, ?string $note = null): ?PartnershipStageLog
+    {
+        $current = (int) ($partnership->stage ?? 0);
+
+        if (in_array($current, [Partnership::STAGE_STALLED, Partnership::STAGE_CLOSED], true)) {
+            return null;
+        }
+
+        if ($current >= $stage) {
+            return null;
+        }
+
+        return $this->moveTo($partnership->fresh() ?? $partnership, $stage, $actor, $note);
+    }
+
+    /**
+     * Cumulative renewal: new opportunity linked to the parent. Never overwrites.
+     * Time: O(1) | Space: O(1)
+     */
+    public function openRenewal(Partnership $parent, ?User $actor = null, ?string $note = null): Partnership
+    {
+        $existing = Partnership::query()->where('renewed_from_id', $parent->id)->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        $renewal = Partnership::create([
+            'organization_id' => $parent->organization_id,
+            'entity_name' => $parent->entity_name,
+            'owner_id' => $parent->owner_id,
+            'renewed_from_id' => $parent->id,
+            'stage' => Partnership::STAGE_OPPORTUNITY,
+            'stage_entered_at' => now(),
+        ]);
+
+        $this->moveTo(
+            $renewal,
+            Partnership::STAGE_OPPORTUNITY,
+            $actor,
+            $note ?? 'فرصة تجديد مرتبطة بالشراكة #'.$parent->id,
+        );
+
+        return $renewal;
+    }
+
+    public function assertContractedReady(Partnership $partnership): void
+    {
+        $contract = $partnership->latestContract()
+            ?? $partnership->partnershipContracts()->latest('id')->first();
+
+        if (! $contract || ! $contract->hasSignedCopy()) {
+            throw new \RuntimeException('لا تعاقد دون نسخة موقعة مؤكدة');
+        }
+
+        if ($contract->requires_first_payment && ! $this->firstPaymentConfirmed($contract)) {
+            throw new \RuntimeException('لا تعاقد قبل تأكيد المالية للدفعة الأولى');
+        }
+    }
+
+    public function firstPaymentConfirmed(PartnershipContract $contract): bool
+    {
+        $first = $contract->schedule()->orderBy('sequence')->first();
+
+        if (! $first) {
+            return false;
+        }
+
+        return PartnershipPayment::query()
+            ->where('contract_payment_schedule_id', $first->id)
+            ->where('status', PartnershipPayment::STATUS_CONFIRMED)
+            ->exists();
     }
 
     /**

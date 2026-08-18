@@ -80,11 +80,17 @@ class ReportRound2PartnershipTest extends TestCase
             ->call('createQuickPartnership')
             ->assertHasNoErrors();
 
-        $partnership = Partnership::with('quotes.items')->firstOrFail();
-        $quote = $partnership->quotes->firstOrFail();
-        $this->assertSame(Partnership::STAGE_QUOTE, $partnership->stage);
+        $partnership = Partnership::with('allowedPrograms')->firstOrFail();
+        $this->assertSame(Partnership::STAGE_OPPORTUNITY, $partnership->stage);
         $this->assertTrue($partnership->allowedPrograms->contains($program));
-        $this->assertSame(Quote::STATUS_DRAFT, $quote->status);
+        $this->assertSame(0, $partnership->quotes()->count());
+
+        $quote = app(QuoteService::class)->create($partnership, [[
+            'program_id' => $program->id,
+            'service_type' => ProgramPrice::SERVICE_TRAINING,
+            'quantity' => 1,
+        ]], author: $manager);
+        $this->assertSame(Partnership::STAGE_QUOTE, $partnership->fresh()->stage);
         $this->assertSame('1150.00', (string) $quote->total);
 
         $link = app(PartnerPortalService::class)->issue($partnership, $manager);
@@ -106,9 +112,11 @@ class ReportRound2PartnershipTest extends TestCase
         );
         $contract = PartnershipContract::firstOrFail();
 
+        $png = 'data:image/png;base64,'.base64_encode(base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
         $portal->set('signatureName', 'مدير الجهة')
-            ->set('signedContract', UploadedFile::fake()->create('signed.pdf', 20, 'application/pdf'))
-            ->call('uploadSignedContract', $contract->id)
+            ->set('signaturePosition', 'مدير تنفيذي')
+            ->set('signaturePadData', $png)
+            ->call('signElectronically', $contract->id)
             ->assertHasNoErrors();
 
         $this->assertTrue($partnership->fresh()->awaiting_internal_approval);

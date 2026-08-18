@@ -46,21 +46,48 @@ class PartnershipsPipeline extends Component
     {
         $this->authorize('partnerships.pipeline.manage');
 
+        $partnership = Partnership::findOrFail($this->movingId);
+        $from = (int) ($partnership->stage ?? Partnership::STAGE_OPPORTUNITY);
+        $to = (int) $this->targetStage;
+        $noteRequired = $this->noteRequiredForMove($from, $to);
+
         $this->validate([
             'movingId' => 'required|exists:partnerships,id',
             'targetStage' => 'required|integer|min:1|max:9',
-            'stageNote' => 'nullable|string|max:255',
-        ], [], ['targetStage' => 'المرحلة']);
+            'stageNote' => ($noteRequired ? 'required' : 'nullable').'|string|max:255',
+        ], [
+            'stageNote.required' => 'الملاحظة إلزامية عند الرجوع أو القفز أو التعثر/الإغلاق',
+        ], ['targetStage' => 'المرحلة', 'stageNote' => 'ملاحظة الانتقال']);
 
-        app(PartnershipPipelineService::class)->moveTo(
-            Partnership::findOrFail($this->movingId),
-            (int) $this->targetStage,
-            auth()->user(),
-            $this->stageNote,
-        );
+        try {
+            app(PartnershipPipelineService::class)->moveTo(
+                $partnership,
+                $to,
+                auth()->user(),
+                $this->stageNote,
+            );
+        } catch (\RuntimeException $exception) {
+            $this->addError('targetStage', $exception->getMessage());
+
+            return;
+        }
 
         $this->showStageModal = false;
         $this->dispatch('ds-toast', message: 'تم نقل الشراكة وتسجيل الانتقال');
+    }
+
+    private function noteRequiredForMove(int $from, int $to): bool
+    {
+        if (in_array($to, [Partnership::STAGE_STALLED, Partnership::STAGE_CLOSED], true)) {
+            return true;
+        }
+
+        $pipeline = Partnership::PIPELINE_STAGES;
+        if (! in_array($from, $pipeline, true) || ! in_array($to, $pipeline, true)) {
+            return $from !== $to;
+        }
+
+        return $to < $from || $to > $from + 1;
     }
 
     public function render(): View

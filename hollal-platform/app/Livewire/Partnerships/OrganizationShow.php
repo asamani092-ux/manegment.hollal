@@ -4,8 +4,10 @@ namespace App\Livewire\Partnerships;
 
 use App\Models\Organization;
 use App\Models\OrganizationContact;
+use App\Models\Partnership;
 use App\Models\Program;
 use App\Models\User;
+use App\Services\PartnershipPipelineService;
 use App\Services\PartnershipQuickCreateService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -136,14 +138,54 @@ class OrganizationShow extends Component
         }
 
         $this->showQuickPartnershipModal = false;
-        $this->dispatch('ds-toast', message: 'تم إنشاء الشراكة وعرض السعر المسودة');
+        $this->dispatch('ds-toast', message: 'تم فتح رحلة شراكة في مرحلة فرصة');
         $this->redirectRoute('partnerships.show', ['partnership' => $partnership->id]);
+    }
+
+    public function recordContact(int $partnershipId): void
+    {
+        abort_unless(
+            auth()->user()?->can('partnerships.pipeline.manage')
+            || auth()->user()?->can('partnerships.organizations.manage'),
+            403,
+        );
+        $partnership = $this->organization->partnerships()->findOrFail($partnershipId);
+
+        app(PartnershipPipelineService::class)->advanceIfBefore(
+            $partnership,
+            Partnership::STAGE_CONTACT,
+            auth()->user(),
+            'أول تواصل مسجّل على ملف الجهة',
+        );
+
+        $this->dispatch('ds-toast', message: 'سُجّل التواصل ونُقلت الرحلة عند الحاجة');
+    }
+
+    public function renewPartnership(int $partnershipId): void
+    {
+        $this->authorize('partnerships.organizations.manage');
+        $partnership = $this->organization->partnerships()->with('project')->findOrFail($partnershipId);
+
+        if (! $partnership->canRenewJourney()) {
+            $this->addError('renewal', 'التجديد متاح لرحلة متعثرة أو مغلقة أو لمشروع منتهٍ/متوقف');
+
+            return;
+        }
+
+        $renewal = app(PartnershipPipelineService::class)->openRenewal(
+            $partnership,
+            auth()->user(),
+            'تجديد تراكمي من ملف الجهة',
+        );
+
+        $this->dispatch('ds-toast', message: 'فُتحت رحلة تجديد جديدة دون استبدال القديمة');
+        $this->redirectRoute('partnerships.show', ['partnership' => $renewal->id]);
     }
 
     public function render(): View
     {
         return view('livewire.partnerships.organization-show', [
-            'organization' => $this->organization->load(['contacts', 'partnerships']),
+            'organization' => $this->organization->load(['contacts', 'partnerships.project', 'partnerships.renewedFrom']),
             'projects' => $this->organization->projects(),
             'impact' => $this->organization->cumulativeImpact(),
             'timeline' => $this->organization->timeline(),

@@ -6,13 +6,12 @@ use App\Models\Organization;
 use App\Models\Partnership;
 use App\Models\PartnershipStageLog;
 use App\Models\Program;
-use App\Models\ProgramPrice;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Creates the self-serve starting point in one transaction:
- * organization + owner + allowed catalog + a priced draft quote.
+ * Creates a new journey under an organization at مرحلة فرصة.
+ * Catalog programs are attached; the quote is built later from ملف الشراكة.
  */
 class PartnershipQuickCreateService
 {
@@ -41,50 +40,26 @@ class PartnershipQuickCreateService
             throw new \RuntimeException('لا يمكن إضافة برنامج غير نشط إلى كتالوج الشراكة');
         }
 
-        $prices = ProgramPrice::query()
-            ->whereIn('program_id', $programIds)
-            ->where('is_active', true)
-            ->orderBy('program_id')
-            ->orderBy('id')
-            ->get();
-
-        if ($prices->isEmpty()) {
-            throw new \RuntimeException('لا توجد أسعار نشطة للبرامج المختارة');
-        }
-
-        return DB::transaction(function () use ($organization, $owner, $programIds, $prices) {
+        return DB::transaction(function () use ($organization, $owner, $programIds) {
             $partnership = Partnership::create([
                 'organization_id' => $organization->id,
                 'owner_id' => $owner->id,
                 'entity_name' => $organization->name,
-                'stage' => Partnership::STAGE_QUOTE,
+                'stage' => Partnership::STAGE_OPPORTUNITY,
                 'stage_entered_at' => now(),
             ]);
 
             $partnership->allowedPrograms()->sync($programIds);
 
-            $quote = app(QuoteService::class)->create(
-                $partnership,
-                $prices->map(fn (ProgramPrice $price) => [
-                    'program_id' => $price->program_id,
-                    'service_type' => $price->service_type,
-                    'quantity' => 1,
-                    'unit_price' => (float) $price->unit_price,
-                ])->all(),
-                author: $owner,
-            );
-
-            $partnership->forceFill(['expected_value' => $quote->total])->save();
-
             PartnershipStageLog::create([
                 'partnership_id' => $partnership->id,
                 'from_stage' => null,
-                'to_stage' => Partnership::STAGE_QUOTE,
-                'note' => 'إنشاء شراكة من كتالوج البرامج',
+                'to_stage' => Partnership::STAGE_OPPORTUNITY,
+                'note' => 'إنشاء رحلة شراكة من الجهات الشريكة',
                 'changed_by' => $owner->id,
             ]);
 
-            return $partnership->fresh(['allowedPrograms', 'quotes.items']);
+            return $partnership->fresh(['allowedPrograms']);
         });
     }
 }

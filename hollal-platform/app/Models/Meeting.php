@@ -68,6 +68,27 @@ class Meeting extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::saved(function (Meeting $meeting): void {
+            if (! $meeting->partnership_id) {
+                return;
+            }
+
+            $partnership = $meeting->partnership;
+            if ($partnership === null) {
+                return;
+            }
+
+            app(\App\Services\PartnershipPipelineService::class)->advanceIfBefore(
+                $partnership,
+                Partnership::STAGE_MEETING,
+                null,
+                'حفظ لقاء أو محضر مرتبط بالشراكة',
+            );
+        });
+    }
+
     /** Time: O(1) | Space: O(1) */
     public function statusLabel(): string
     {

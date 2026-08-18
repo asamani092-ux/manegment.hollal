@@ -15,9 +15,28 @@
         @error('contract') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
     </section>
 
+    @php
+        $stage = (int) $partnership->stage;
+        $nextAction = match (true) {
+            $partnership->quotes->isEmpty() => 1,
+            $partnership->partnershipContracts->isEmpty() => 2,
+            $stage < \App\Models\Partnership::STAGE_CONTRACTED => 3,
+            $partnership->links->isEmpty() => 4,
+            $stage >= \App\Models\Partnership::STAGE_CONTRACTED => 5,
+            default => 1,
+        };
+    @endphp
+    <ol class="ds-journey-steps">
+        <li class="{{ $nextAction === 1 ? 'is-current' : '' }}">1 عروض الأسعار</li>
+        <li class="{{ $nextAction === 2 ? 'is-current' : '' }}">2 عقد الشراكة</li>
+        <li class="{{ $nextAction === 3 ? 'is-current' : '' }}">3 الدفعات</li>
+        <li class="{{ $nextAction === 4 ? 'is-current' : '' }}">4 رابط الجهة</li>
+        <li class="{{ $nextAction === 5 ? 'is-current' : '' }}">5 توليد مشروع</li>
+    </ol>
+
     {{-- 05-B3 عروض الأسعار --}}
-    <section class="ds-section">
-        <h2 class="ds-section-title">عروض الأسعار</h2>
+    <section class="ds-section {{ $nextAction === 1 ? 'ds-journey-active' : '' }}">
+        <h2 class="ds-section-title">1. عروض الأسعار</h2>
         @can('partnerships.quotes.create')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openQuoteModal">عرض جديد</button>
         @endcan
@@ -36,7 +55,8 @@
                     <td class="ds-ltr-num">{{ number_format((float) $quote->tax_total, 2) }}</td>
                     <td class="ds-ltr-num">{{ number_format((float) $quote->total, 2) }}</td>
                     <td>
-                        <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id) }}">PDF</a>
+                        <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id) }}?print=1" target="_blank" rel="noopener">معاينة</a>
+                        <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id) }}">تنزيل</a>
                         @can('partnerships.quotes.approve')
                             <button type="button" class="ds-btn ds-btn-sm" wire:click="approveQuote({{ $quote->id }})">اعتماد</button>
                             <button type="button" class="ds-btn ds-btn-sm" wire:click="sendQuote({{ $quote->id }})">إرسال</button>
@@ -56,8 +76,8 @@
     </section>
 
     {{-- 05-B4 عقد الشراكة --}}
-    <section class="ds-section">
-        <h2 class="ds-section-title">عقد الشراكة</h2>
+    <section class="ds-section {{ $nextAction === 2 ? 'ds-journey-active' : '' }}">
+        <h2 class="ds-section-title">2. عقد الشراكة</h2>
         @foreach ($partnership->partnershipContracts as $contract)
             <div class="ds-kanban-card" wire:key="contract-{{ $contract->id }}">
                 <p>عقد #{{ $contract->id }} — الحالة: <strong>{{ $contract->status }}</strong></p>
@@ -126,8 +146,8 @@
     </section>
 
     {{-- 05-B6 الدفعات --}}
-    <section class="ds-section">
-        <h2 class="ds-section-title">الدفعات المسجّلة</h2>
+    <section class="ds-section {{ $nextAction === 3 ? 'ds-journey-active' : '' }}">
+        <h2 class="ds-section-title">3. الدفعات المسجّلة</h2>
         <x-ds-table>
             <x-slot:head>
                 <tr><th>المبلغ</th><th>التاريخ</th><th>الحالة</th><th>المصدر</th><th>إجراءات</th></tr>
@@ -154,8 +174,8 @@
     </section>
 
     {{-- 05-B5 رابط الجهة --}}
-    <section class="ds-section">
-        <h2 class="ds-section-title">رابط الجهة الفريد</h2>
+    <section class="ds-section {{ $nextAction === 4 ? 'ds-journey-active' : '' }}">
+        <h2 class="ds-section-title">4. رابط الجهة الفريد</h2>
         @can('partnerships.links.manage')
             <button type="button" class="ds-btn" wire:click="issueLink">إصدار رابط</button>
             <div class="ds-section-spaced">
@@ -206,8 +226,8 @@
     </section>
 
     {{-- 05-B7 توليد مشروع --}}
-    <section class="ds-section">
-        <h2 class="ds-section-title">توليد مشروع</h2>
+    <section class="ds-section {{ $nextAction === 5 ? 'ds-journey-active' : '' }}">
+        <h2 class="ds-section-title">5. توليد مشروع</h2>
         @can('partnerships.generate')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openGenerateModal">توليد مشروع</button>
         @endcan

@@ -43,21 +43,44 @@
 
     <section class="ds-section">
         <h2 class="ds-section-title">رحلات الشراكة</h2>
+        @error('renewal') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
         <x-ds-table>
             <x-slot:head>
-                <tr><th>#</th><th>المرحلة</th><th>عمر المرحلة</th><th>القيمة المتوقعة</th></tr>
+                <tr><th>#</th><th>المرحلة</th><th>عمر المرحلة</th><th>القيمة المتوقعة</th><th>إجراءات</th></tr>
             </x-slot:head>
             @forelse ($organization->partnerships as $partnership)
                 <tr wire:key="org-partnership-{{ $partnership->id }}">
-                    <td class="ds-ltr-num">{{ $partnership->id }}</td>
+                    <td class="ds-ltr-num">
+                        {{ $partnership->id }}
+                        @if ($partnership->renewed_from_id)
+                            <span class="ds-text-muted">← تجديد لـ #{{ $partnership->renewed_from_id }}</span>
+                        @endif
+                    </td>
                     <td>{{ $partnership->stageLabel() }}</td>
                     <td class="ds-ltr-num">{{ $partnership->stageAgeDays() }}</td>
                     <td class="ds-ltr-num">
                         {{ $partnership->expected_value !== null ? number_format((float) $partnership->expected_value, 2) : '—' }}
                     </td>
+                    <td>
+                        <a class="ds-btn ds-btn-sm ds-btn-primary" href="{{ route('partnerships.show', $partnership->id) }}">
+                            الدخول إلى ملف الشراكة
+                        </a>
+                        @can('partnerships.pipeline.manage')
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="recordContact({{ $partnership->id }})">
+                                تسجيل تواصل
+                            </button>
+                        @endcan
+                        @can('partnerships.organizations.manage')
+                            @if ($partnership->canRenewJourney())
+                                <button type="button" class="ds-btn ds-btn-sm" wire:click="renewPartnership({{ $partnership->id }})">
+                                    تجديد
+                                </button>
+                            @endif
+                        @endcan
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="4" class="ds-text-muted ds-table-empty">لا توجد شراكات</td></tr>
+                <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد شراكات</td></tr>
             @endforelse
         </x-ds-table>
     </section>

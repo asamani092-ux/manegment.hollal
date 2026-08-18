@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Partnerships\OrganizationsIndex;
+use App\Livewire\Partnerships\OrganizationShow;
 use App\Livewire\Partnerships\PartnerPortal;
 use App\Livewire\Partnerships\PartnershipShow;
 use App\Livewire\Partnerships\PartnershipsPipeline;
@@ -406,6 +407,7 @@ class PartnershipModuleTest extends TestCase
 
         Livewire::test(PartnerPortal::class, ['token' => $link->token])
             ->set('paymentAmount', '500')
+            ->set('paymentProof', UploadedFile::fake()->create('receipt.pdf', 20, 'application/pdf'))
             ->call('recordPayment', $scheduleItem->id)
             ->assertHasNoErrors();
 
@@ -445,30 +447,20 @@ class PartnershipModuleTest extends TestCase
         ]);
     }
 
-    public function test_portal_can_upload_signed_contract_for_its_partnership_only(): void
+    public function test_portal_cannot_sign_another_partnerships_contract(): void
     {
         $contract = $this->contract();
         $other = $this->contract();
         $link = app(PartnerPortalService::class)->issue($contract->partnership);
-
-        Livewire::test(PartnerPortal::class, ['token' => $link->token])
-            ->set('signatureName', 'ممثل الجهة')
-            ->set('signedContract', UploadedFile::fake()->create('signed.pdf', 30, 'application/pdf'))
-            ->call('uploadSignedContract', $contract->id)
-            ->assertHasNoErrors();
-
-        $this->assertSame(PartnershipContract::STATUS_SIGNED, $contract->fresh()->status);
-        $this->assertDatabaseHas('partner_portal_activities', [
-            'partnership_id' => $contract->partnership_id,
-            'action' => 'portal.contract_uploaded',
-        ]);
+        $png = 'data:image/png;base64,'.base64_encode(base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
 
         try {
             Livewire::test(PartnerPortal::class, ['token' => $link->token])
                 ->set('signatureName', 'ممثل الجهة')
-                ->set('signedContract', UploadedFile::fake()->create('other.pdf', 30, 'application/pdf'))
-                ->call('uploadSignedContract', $other->id);
-            $this->fail('token must not upload another partnership contract');
+                ->set('signaturePosition', 'مدير')
+                ->set('signaturePadData', $png)
+                ->call('signElectronically', $other->id);
+            $this->fail('token must not sign another partnership contract');
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException) {
             $this->assertTrue(true);
         }
@@ -570,6 +562,99 @@ class PartnershipModuleTest extends TestCase
         Livewire::actingAs($viewer)->test(PartnershipShow::class, ['partnership' => $contract->partnership])
             ->call('openGenerateModal')
             ->assertForbidden();
+    }
+
+    public function test_skip_or_back_requires_a_stage_note(): void
+    {
+        $partnership = $this->partnership();
+
+        Livewire::actingAs($this->manager())->test(PartnershipsPipeline::class)
+            ->call('openStageModal', $partnership->id)
+            ->set('targetStage', Partnership::STAGE_DIAGNOSIS)
+            ->set('stageNote', '')
+            ->call('moveStage')
+            ->assertHasErrors(['stageNote']);
+
+        $this->assertSame(Partnership::STAGE_OPPORTUNITY, $partnership->fresh()->stage);
+    }
+
+    public function test_manual_contracted_move_is_blocked_without_signed_copy(): void
+    {
+        $partnership = $this->partnership();
+
+        Livewire::actingAs($this->manager())->test(PartnershipsPipeline::class)
+            ->call('openStageModal', $partnership->id)
+            ->set('targetStage', Partnership::STAGE_CONTRACTED)
+            ->set('stageNote', 'قفز بلا عقد')
+            ->call('moveStage')
+            ->assertHasErrors(['targetStage']);
+
+        $this->assertSame(Partnership::STAGE_OPPORTUNITY, $partnership->fresh()->stage);
+    }
+
+    public function test_auto_advance_never_regresses_and_diagnosis_moves_forward(): void
+    {
+        $partnership = $this->partnership();
+        $pipeline = app(PartnershipPipelineService::class);
+        $pipeline->moveTo($partnership, Partnership::STAGE_QUOTE, $this->manager(), 'بناء العرض');
+
+        $pipeline->advanceIfBefore($partnership->fresh(), Partnership::STAGE_CONTACT, null, 'تواصل متأخر');
+        $this->assertSame(Partnership::STAGE_QUOTE, $partnership->fresh()->stage);
+
+        $link = app(PartnerPortalService::class)->issue($partnership);
+        Livewire::test(PartnerPortal::class, ['token' => $link->token])
+            ->set('diagnosisAudience', 'حلقات')
+            ->set('diagnosisCount', '20')
+            ->call('submitDiagnosis')
+            ->assertHasNoErrors();
+
+        $this->assertSame(Partnership::STAGE_QUOTE, $partnership->fresh()->stage);
+    }
+
+    public function test_first_contact_and_renewal_are_cumulative(): void
+    {
+        $manager = $this->manager();
+        $organization = Organization::create(['name' => 'جهة التجديد']);
+        $partnership = $this->partnership($organization);
+        $partnership->forceFill(['stage' => Partnership::STAGE_CLOSED, 'closed_reason' => 'انتهت'])->save();
+
+        Livewire::actingAs($manager)
+            ->test(OrganizationShow::class, ['organization' => $organization])
+            ->call('recordContact', $partnership->id)
+            ->assertHasNoErrors();
+
+        $this->assertSame(Partnership::STAGE_CLOSED, $partnership->fresh()->stage);
+
+        Livewire::actingAs($manager)
+            ->test(OrganizationShow::class, ['organization' => $organization])
+            ->call('renewPartnership', $partnership->id)
+            ->assertHasNoErrors();
+
+        $renewal = Partnership::query()->where('renewed_from_id', $partnership->id)->first();
+        $this->assertNotNull($renewal);
+        $this->assertSame(Partnership::STAGE_OPPORTUNITY, $renewal->stage);
+        $this->assertSame(Partnership::STAGE_CLOSED, $partnership->fresh()->stage);
+        $this->assertSame(2, Partnership::query()->where('organization_id', $organization->id)->count());
+    }
+
+    public function test_quote_pdf_preview_is_inline_and_portal_hides_unit_prices(): void
+    {
+        [$quote, $partnership] = $this->acceptedQuote();
+        $partnership->forceFill(['portal_features' => ['diagnosis' => false]])->save();
+        $link = app(PartnerPortalService::class)->issue($partnership->fresh());
+
+        $response = $this->actingAs($this->manager())
+            ->get(route('quotes.pdf', $quote->id).'?print=1')
+            ->assertOk();
+        $this->assertStringContainsString('inline', (string) $response->headers->get('Content-Disposition'));
+
+        Livewire::actingAs($this->manager())
+            ->test(PartnershipShow::class, ['partnership' => $partnership])
+            ->assertSee('معاينة');
+
+        Livewire::test(PartnerPortal::class, ['token' => $link->token])
+            ->assertDontSee('سعر الوحدة')
+            ->assertDontSee('استبانة التشخيص');
     }
 
     // ------------------------------------------------------------ helpers

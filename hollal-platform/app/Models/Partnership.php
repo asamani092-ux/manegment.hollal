@@ -73,6 +73,7 @@ class Partnership extends Model
         'status',
         'awaiting_internal_approval',
         'internal_approval_notes',
+        'portal_features',
     ];
 
     protected function casts(): array
@@ -84,6 +85,7 @@ class Partnership extends Model
             'expected_value' => 'decimal:2',
             'stage' => 'integer',
             'awaiting_internal_approval' => 'boolean',
+            'portal_features' => 'array',
         ];
     }
 
@@ -171,5 +173,48 @@ class Partnership extends Model
     public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
+    }
+
+    /** @return BelongsTo<self, $this> */
+    public function renewedFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'renewed_from_id');
+    }
+
+    /** @return HasMany<self, $this> */
+    public function renewals(): HasMany
+    {
+        return $this->hasMany(self::class, 'renewed_from_id');
+    }
+
+    /** @return array{programs: bool, diagnosis: bool, quotes: bool, payments: bool, contract: bool} */
+    public function portalFeatureFlags(): array
+    {
+        $defaults = [
+            'programs' => true,
+            'diagnosis' => true,
+            'quotes' => true,
+            'payments' => true,
+            'contract' => true,
+        ];
+        $stored = is_array($this->portal_features) ? $this->portal_features : [];
+
+        return array_merge($defaults, array_intersect_key($stored, $defaults));
+    }
+
+    public function canRenewJourney(): bool
+    {
+        if (in_array($this->stage, [self::STAGE_STALLED, self::STAGE_CLOSED], true)) {
+            return true;
+        }
+
+        $status = $this->project?->status;
+
+        return in_array($status, ['completed', 'on_hold', 'مكتمل', 'متوقف'], true);
+    }
+
+    public function latestContract(): ?PartnershipContract
+    {
+        return $this->partnershipContracts()->latest('id')->first();
     }
 }

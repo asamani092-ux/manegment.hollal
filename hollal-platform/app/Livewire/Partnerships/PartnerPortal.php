@@ -94,6 +94,13 @@ class PartnerPortal extends Component
             'environment' => $this->diagnosisEnvironment,
         ]);
 
+        app(\App\Services\PartnershipPipelineService::class)->advanceIfBefore(
+            $this->link->partnership,
+            \App\Models\Partnership::STAGE_DIAGNOSIS,
+            null,
+            'إرسال استبانة التشخيص من بوابة الشريك',
+        );
+
         $this->dispatch('ds-toast', message: 'تم استلام استبانة التشخيص');
     }
 
@@ -185,8 +192,8 @@ class PartnerPortal extends Component
     {
         $this->validate([
             'paymentAmount' => 'required|numeric|min:0.01',
-            'paymentProof' => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png',
-        ]);
+            'paymentProof' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
+        ], [], ['paymentProof' => 'إثبات التحويل', 'paymentAmount' => 'المبلغ']);
 
         $scheduleItem = $this->scopedScheduleItem($scheduleId);
         $proofPath = $this->paymentProof?->store('partnership-payments/'.$this->link->partnership_id, 'local');
@@ -206,35 +213,7 @@ class PartnerPortal extends Component
         $this->dispatch('ds-toast', message: 'سُجلت الدفعة بانتظار تأكيد المالية');
     }
 
-    /**
-     * Spec-05 §4–5 — الجهة تنزّل العقد ثم ترفع النسخة الموقعة عبر الرابط.
-     * Time: O(1) | Space: O(1)
-     */
-    public function uploadSignedContract(int $contractId): void
-    {
-        $this->validate([
-            'signedContract' => 'required|file|max:10240|mimes:pdf',
-            'signatureName' => 'required|string|max:255',
-            'signaturePosition' => 'nullable|string|max:255',
-        ]);
-
-        $contract = $this->scopedContract($contractId);
-
-        app(PartnershipContractService::class)->uploadSignedCopy(
-            $contract,
-            $this->signedContract,
-            $this->signatureName,
-            request()->userAgent(),
-            $this->signaturePosition !== '' ? $this->signaturePosition : null,
-        );
-
-        $this->signedContract = null;
-        $this->signatureName = '';
-        $this->signaturePosition = '';
-        $this->log('portal.contract_uploaded', ['contract_id' => $contract->id]);
-
-        $this->dispatch('ds-toast', message: 'تم رفع النسخة الموقعة — بانتظار تأكيد مدير الشراكات');
-    }
+    /** مسار الرفع اليدوي أُزيل من بوابة الشريك — التوقيع من الواجهة فقط. */
 
     /**
      * Amendments Q2 — توقيع إلكتروني داخل الرابط (لوحة + اسم + صفة).
@@ -269,17 +248,70 @@ class PartnerPortal extends Component
     public function render(): View
     {
         $partnership = $this->link->partnership()->with([
-            'organization', 'quotes.items', 'partnershipContracts.schedule',
+            'organization', 'quotes.items', 'partnershipContracts.schedule', 'payments',
         ])->firstOrFail();
+        $features = $partnership->portalFeatureFlags();
+        $quotes = $partnership->quotes->whereIn('status', [
+            Quote::STATUS_SENT, Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED,
+        ]);
 
         return view('livewire.partnerships.partner-portal', [
             'partnership' => $partnership,
             'programs' => $this->allowedPrograms(),
-            'quotes' => $partnership->quotes->whereIn('status', [
-                Quote::STATUS_DRAFT,
-                Quote::STATUS_SENT, Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED,
-            ]),
+            'quotes' => $quotes,
+            'features' => $features,
+            'wizard' => $this->wizardState($partnership, $features, $quotes),
         ])->layout('layouts.guest', ['title' => 'بوابة الجهة']);
+    }
+
+    /**
+     * @param  array{programs: bool, diagnosis: bool, quotes: bool, payments: bool, contract: bool}  $features
+     * @return array{current: int, steps: list<array{id: int, key: string, label: string, state: string}>}
+     */
+    private function wizardState($partnership, array $features, $quotes): array
+    {
+        $diagnosisDone = $this->link->activities()
+            ->where('action', 'portal.diagnosis_submitted')
+            ->exists();
+        $quoteAccepted = $quotes->contains(fn (Quote $quote) => $quote->status === Quote::STATUS_ACCEPTED);
+        $quoteVisible = $quotes->isNotEmpty();
+        $contract = $partnership->partnershipContracts->last();
+        $signed = $contract?->hasSignedCopy() ?? false;
+        $dueSchedule = $contract?->schedule->first(fn ($row) => $row->confirmedAmount() < (float) $row->amount);
+        $paymentSubmitted = $partnership->payments->whereIn('status', [
+            PartnershipPayment::STATUS_PENDING,
+            PartnershipPayment::STATUS_CONFIRMED,
+        ])->isNotEmpty();
+        $paymentRequired = $signed && $features['payments'] && ($contract?->requires_first_payment || $dueSchedule);
+        $definitions = [
+            ['id' => 1, 'key' => 'programs', 'label' => 'البرامج', 'enabled' => $features['programs'], 'done' => $this->selectedProgramIds !== []],
+            ['id' => 2, 'key' => 'diagnosis', 'label' => 'الاستبانة', 'enabled' => $features['diagnosis'], 'done' => $diagnosisDone],
+            ['id' => 3, 'key' => 'quotes', 'label' => 'قبول العرض', 'enabled' => $features['quotes'] && $quoteVisible, 'done' => $quoteAccepted],
+            ['id' => 4, 'key' => 'contract', 'label' => 'توقيع العقد', 'enabled' => $features['contract'] && $contract !== null, 'done' => $signed],
+            ['id' => 5, 'key' => 'payments', 'label' => 'إثبات الدفع', 'enabled' => (bool) $paymentRequired, 'done' => $paymentSubmitted],
+        ];
+
+        $current = 1;
+        foreach ($definitions as $step) {
+            if (! $step['enabled']) {
+                continue;
+            }
+            $current = $step['id'];
+            if (! $step['done']) {
+                break;
+            }
+        }
+
+        $steps = [];
+        foreach ($definitions as $step) {
+            if (! $step['enabled']) {
+                continue;
+            }
+            $state = $step['id'] < $current ? 'done' : ($step['id'] === $current ? 'current' : 'locked');
+            $steps[] = [...$step, 'state' => $state];
+        }
+
+        return ['current' => $current, 'steps' => $steps];
     }
 
     /** @param array<string, mixed> $metadata */

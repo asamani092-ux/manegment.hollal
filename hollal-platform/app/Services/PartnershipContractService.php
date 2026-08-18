@@ -213,14 +213,18 @@ class PartnershipContractService
             .'<p>التزامات حلل: '.e((string) $contract->hollal_commitments).'</p>'
             .'<p>التزامات الجهة: '.e((string) $contract->partner_commitments).'</p>'
             .'<div style="page-break-before: always;">'
-            .'<h2>صفحة التوقيع الإلكتروني</h2>'
+            .'<h2>صفحة التوقيع</h2>'
+            .'<p>خانة التوقيع أدناه ثابتة (400×160). يُصغَّر الرسم ليدخل داخل المستطيل دون قصّ.</p>'
+            .'<table border="1" cellspacing="0" cellpadding="8" width="100%" style="border-collapse: collapse;">'
+            .'<tr><td align="center" valign="middle" style="height: 160px; width: 400px;">'
+            .($pngDataUri !== null
+                ? '<img src="'.$pngDataUri.'" width="400" height="160" alt="توقيع" style="object-fit: contain; max-width: 400px; max-height: 160px;"/>'
+                : '<p>التوقيع محفوظ إلكترونيًا (ملف SVG على القرص الخاص).</p>')
+            .'</td></tr></table>'
             .'<p>اسم الموقّع: '.e($signatureName).'</p>'
             .'<p>الصفة: '.e($signaturePosition).'</p>'
-            .'<p>الوقت: '.e(hollal_dt(now()->timezone('Asia/Riyadh'), true)).'</p>'
+            .'<p>التاريخ: '.e(hollal_dt(now()->timezone('Asia/Riyadh'), true)).'</p>'
             .'<p>الجهاز: '.e((string) $device).'</p>'
-            .($pngDataUri !== null
-                ? '<p>التوقيع:</p><img src="'.$pngDataUri.'" width="320" height="120" alt="توقيع"/>'
-                : '<p>التوقيع محفوظ إلكترونيًا (ملف SVG على القرص الخاص).</p>')
             .'</div>';
 
         return PdfArabic::render('عقد شراكة رقم '.(int) $contract->id, $body, includeCr: true);
