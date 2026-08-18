@@ -78,7 +78,7 @@ class PartnerPortal extends Component
 
         $this->link = $link;
         $this->initializeCatalogSelection();
-        $this->hydrateDiagnosisAnswers();
+        $this->loadSavedDiagnosisAnswers();
         $this->log('portal.opened');
     }
 
@@ -158,8 +158,10 @@ class PartnerPortal extends Component
 
     public function acceptQuote(int $quoteId): void
     {
+        $quote = $this->scopedQuote($quoteId);
+
         try {
-            $quote = $this->saveProgramSelection($quoteId);
+            $quote = $this->applyItemsToQuote($quote, $this->selectionItems());
         } catch (\RuntimeException $exception) {
             $this->addError('selectedProgramIds', $exception->getMessage());
             $this->dispatch('ds-toast', message: $exception->getMessage());
@@ -486,7 +488,7 @@ class PartnerPortal extends Component
         return trim((string) ($this->diagnosisAnswers[$question->id] ?? ''));
     }
 
-    private function hydrateDiagnosisAnswers(): void
+    private function loadSavedDiagnosisAnswers(): void
     {
         $latest = app(DiagnosisQuestionService::class)->latestAnswers($this->link->partnership);
         $this->diagnosisAnswers = $latest;

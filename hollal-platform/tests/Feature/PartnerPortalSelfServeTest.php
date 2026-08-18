@@ -115,6 +115,7 @@ class PartnerPortalSelfServeTest extends TestCase
             ->assertSee('احتياج إضافي')
             ->set('label', 'عدد القاعات')
             ->set('type', 'number')
+            ->set('required', false)
             ->call('save')
             ->assertHasNoErrors();
 
