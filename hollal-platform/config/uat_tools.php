@@ -19,8 +19,11 @@ return [
 
     'note_tags' => ['', 'UI ناقص', 'بيانات/تدفق', 'صلاحيات', 'أداء/أخطاء', 'نص/RTL', 'أخرى'],
 
-    /** تقييم عبدالله 2026-08-14 20:27 — يُحمَّل افتراضيًا في الواجهة. */
-    'baseline' => require __DIR__.'/uat_baseline_round4.php',
+    /** تقييم عبدالله 2026-08-17 15:23 — ملاحظات المرحلة 3؛ يُحمَّل افتراضيًا. */
+    'baseline' => require __DIR__.'/uat_baseline_phase3.php',
+
+    /** احتياطي: تقييم 2026-08-14 20:27 (تجربة ثانية — مرحلة 1). */
+    'baseline_round4' => require __DIR__.'/uat_baseline_round4.php',
 
     /** احتياطي: تقييم 19:04. */
     'baseline_round3' => require __DIR__.'/uat_baseline_round3.php',

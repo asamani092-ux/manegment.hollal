@@ -1,7 +1,7 @@
 <x-ds-page>
     <div
         class="uat-checklist"
-        x-data="uatToolsChecklist(@js($groups), @js($phases), @js($baseline ?? []), @js($baselineRound3 ?? []), @js($baselineRound2 ?? []), @js($savedState))"
+        x-data="uatToolsChecklist(@js($groups), @js($phases), @js($baseline ?? []), @js($baselineRound3 ?? []), @js($baselineRound2 ?? []), @js($savedState), @js($baselineRound4 ?? []))"
         x-init="load()"
     >
         <div class="ds-page-header-bar">
@@ -11,8 +11,11 @@
                     <i class="fas fa-copy" aria-hidden="true"></i>
                     <span x-text="copied ? 'تم النسخ — الصق في المحادثة' : 'نسخ التقرير كاملاً'"></span>
                 </button>
-                <button type="button" class="ds-btn ds-btn-outline" @click="loadBaseline()" title="تحميل تقييم 2026-08-14 20:27">
-                    تحميل آخر تقييم (20:27)
+                <button type="button" class="ds-btn ds-btn-outline" @click="loadBaseline()" title="تحميل تقييم 2026-08-17 15:23">
+                    تقييم المرحلة 3 (17 أغسطس)
+                </button>
+                <button type="button" class="ds-btn ds-btn-outline" @click="loadRound4()" title="تحميل تقييم 2026-08-14 20:27">
+                    تقييم 20:27
                 </button>
                 <button type="button" class="ds-btn ds-btn-outline" @click="loadRound3()" title="تحميل تقييم 19:04">
                     تقييم 19:04
@@ -164,12 +167,13 @@
 <script>
     const uatChecklistWire = $wire;
 
-    Alpine.data('uatToolsChecklist', (groups, phases, baseline = {}, baselineRound3 = {}, baselineRound2 = {}, savedState = null) => ({
+    Alpine.data('uatToolsChecklist', (groups, phases, baseline = {}, baselineRound3 = {}, baselineRound2 = {}, savedState = null, baselineRound4 = {}) => ({
         groups,
         phases,
         baseline: baseline || {},
         baselineRound3: baselineRound3 || {},
         baselineRound2: baselineRound2 || {},
+        baselineRound4: baselineRound4 || {},
         savedState: savedState || null,
         activePhase: 1,
         filter: 'الكل',
@@ -298,8 +302,18 @@
         },
 
         loadBaseline() {
-            if (!confirm('استبدال التقييم الحالي بتقييم 2026-08-14 20:27؟')) return;
+            if (!confirm('استبدال التقييم الحالي بتقييم المرحلة 3 (17 أغسطس)؟')) return;
             this.applyBaseline(this.baseline);
+            this.persistLocal();
+            this.persistToServer(true, 'baseline-phase3-2026-08-17');
+            if (window.Livewire) {
+                Livewire.dispatch('toast', { type: 'success', message: 'تم تحميل ملاحظات المرحلة 3' });
+            }
+        },
+
+        loadRound4() {
+            if (!confirm('استبدال التقييم الحالي بتقييم 2026-08-14 20:27؟')) return;
+            this.applyBaseline(this.baselineRound4);
             this.persistLocal();
             this.persistToServer(true, 'baseline-20:27');
             if (window.Livewire) {
@@ -461,7 +475,7 @@
         },
 
         resetAll() {
-            if (!confirm('مسح التقييم المحلي ثم تحميل ملاحظات 20:27؟')) return;
+            if (!confirm('مسح التقييم المحلي ثم تحميل ملاحظات المرحلة 3؟')) return;
             localStorage.removeItem(this.storageKey);
             this.applyBaseline(this.baseline);
             this.persistLocal();

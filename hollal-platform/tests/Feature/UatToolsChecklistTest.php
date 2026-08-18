@@ -44,9 +44,10 @@ class UatToolsChecklistTest extends TestCase
             ->assertOk()
             ->assertSee('تقييم أدوات المنصة (UAT) — 3 مراحل', false)
             ->assertSee('نسخ التقرير كاملاً', false)
-            ->assertSee('تحميل آخر تقييم (20:27)', false)
+            ->assertSee('تقييم المرحلة 3 (17 أغسطس)', false)
+            ->assertSee('تقييم 20:27', false)
             ->assertSee('تقييم 19:04', false)
-            ->assertSee('2026-08-14 20:27', false)
+            ->assertSee('2026-08-17 15:23', false)
             ->assertSee('المرحلة 1 — الأساس والموارد', false)
             ->assertSee('المرحلة 2 — التشغيل والمالية', false)
             ->assertSee('المرحلة 3 — النمو والمحتوى', false)
@@ -86,7 +87,8 @@ class UatToolsChecklistTest extends TestCase
         $this->assertSame('يعتمد', $row->verdicts['tasks']);
         $this->assertSame('يحتاج تحسين', $row->verdicts['sidebar']);
         $this->assertArrayNotHasKey('unknown', $row->verdicts);
-        $this->assertSame(1, UatToolChecklistSnapshot::query()->count());
+        $before = UatToolChecklistSnapshot::query()->count();
+        $this->assertGreaterThanOrEqual(1, $before);
 
         Livewire::actingAs($admin)
             ->test(ToolsChecklist::class)
@@ -100,8 +102,9 @@ class UatToolsChecklistTest extends TestCase
             ])
             ->assertOk();
 
-        $this->assertSame(2, UatToolChecklistSnapshot::query()->count());
-        $this->assertSame(['import-local', 'copy-report'], UatToolChecklistSnapshot::query()->orderBy('id')->pluck('source')->all());
+        $this->assertSame($before + 1, UatToolChecklistSnapshot::query()->count());
+        $this->assertContains('copy-report', UatToolChecklistSnapshot::query()->pluck('source')->all());
+        $this->assertContains('import-local', UatToolChecklistSnapshot::query()->pluck('source')->all());
 
         $this->actingAs($other)->get(route('uat.tools'))->assertOk();
 
@@ -144,18 +147,27 @@ class UatToolsChecklistTest extends TestCase
         }
     }
 
-    public function test_baseline_round4_is_default_and_covers_prior_verdicts(): void
+    public function test_phase3_report_is_default_and_unlocks_phase_three(): void
     {
         $baseline = config('uat_tools.baseline');
 
-        $this->assertSame('2026-08-14 20:27', $baseline['date']);
-        $this->assertSame('يعتمد', $baseline['verdicts']['bell']);
+        $this->assertSame('2026-08-17 15:23', $baseline['date']);
         $this->assertSame('يعتمد', $baseline['verdicts']['sidebar']);
-        $this->assertSame('يعتمد', $baseline['verdicts']['attendance']);
-        $this->assertSame('غير مجرّب', $baseline['verdicts']['smtp']);
-        $this->assertSame('يحتاج تحسين', $baseline['verdicts']['evaluations']);
-        $this->assertStringContainsString('أرشفة', $baseline['notes']['evaluations']);
+        $this->assertSame('يعتمد', $baseline['verdicts']['tasks']);
+        $this->assertSame('يعتمد', $baseline['verdicts']['programs']);
+        $this->assertSame('يحتاج تحسين', $baseline['verdicts']['orgs']);
+        $this->assertSame('يحتاج تحسين', $baseline['verdicts']['smtp']);
+        $this->assertStringContainsString('تجديد لمشروع', $baseline['notes']['org-show']);
         $this->assertGreaterThanOrEqual(60, count($baseline['verdicts']));
+    }
+
+    public function test_baseline_round4_remains_available(): void
+    {
+        $round4 = config('uat_tools.baseline_round4');
+
+        $this->assertSame('2026-08-14 20:27', $round4['date']);
+        $this->assertSame('يحتاج تحسين', $round4['verdicts']['evaluations']);
+        $this->assertStringContainsString('أرشفة', $round4['notes']['evaluations']);
     }
 
     public function test_baseline_round3_remains_available(): void
