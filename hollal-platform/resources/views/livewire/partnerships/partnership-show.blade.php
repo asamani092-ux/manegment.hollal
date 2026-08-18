@@ -1,8 +1,10 @@
 <x-ds-page>
     <x-ds-page-header
         :title="'ملف الشراكة — '.($partnership->organization?->name ?? $partnership->entity_name ?? '#'.$partnership->id)"
-        :back-url="route('partnerships.pipeline')"
-        back-label="رجوع" />
+        :back-url="$returnTo === 'organization' && $partnership->organization_id
+            ? route('organizations.show', $partnership->organization_id)
+            : route('partnerships.pipeline')"
+        back-label="{{ $returnTo === 'organization' ? 'رجوع لملف الجهة' : 'رجوع لرحلة الشراكات' }}" />
 
     <section class="ds-section">
         <p>المرحلة الحالية: <strong>{{ $partnership->stageLabel() }}</strong> — منذ
@@ -13,6 +15,7 @@
             <p class="ds-badge ds-badge-info">ملاحظات الجهة: {{ $partnership->internal_approval_notes }}</p>
         @endif
         @error('contract') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
+        @error('quote') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
     </section>
 
     @php
@@ -26,16 +29,17 @@
             default => 1,
         };
     @endphp
+    <p class="ds-text-muted">اضغط أي خطوة للانتقال إليها. الخطوات تبقى كلها ظاهرة.</p>
     <ol class="ds-journey-steps">
-        <li class="{{ $nextAction === 1 ? 'is-current' : '' }}">1 عروض الأسعار</li>
-        <li class="{{ $nextAction === 2 ? 'is-current' : '' }}">2 عقد الشراكة</li>
-        <li class="{{ $nextAction === 3 ? 'is-current' : '' }}">3 الدفعات</li>
-        <li class="{{ $nextAction === 4 ? 'is-current' : '' }}">4 رابط الجهة</li>
-        <li class="{{ $nextAction === 5 ? 'is-current' : '' }}">5 توليد مشروع</li>
+        <li class="{{ $nextAction === 1 ? 'is-current' : '' }}"><a href="#step-quotes">1 عروض الأسعار</a></li>
+        <li class="{{ $nextAction === 2 ? 'is-current' : '' }}"><a href="#step-contract">2 عقد الشراكة</a></li>
+        <li class="{{ $nextAction === 3 ? 'is-current' : '' }}"><a href="#step-payments">3 الدفعات</a></li>
+        <li class="{{ $nextAction === 4 ? 'is-current' : '' }}"><a href="#step-link">4 رابط الجهة</a></li>
+        <li class="{{ $nextAction === 5 ? 'is-current' : '' }}"><a href="#step-generate">5 توليد مشروع</a></li>
     </ol>
 
     {{-- 05-B3 عروض الأسعار --}}
-    <section class="ds-section {{ $nextAction === 1 ? 'ds-journey-active' : '' }}">
+    <section id="step-quotes" class="ds-section {{ $nextAction === 1 ? 'ds-journey-active' : '' }}">
         <h2 class="ds-section-title">1. عروض الأسعار</h2>
         @can('partnerships.quotes.create')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openQuoteModal">عرض جديد</button>
@@ -44,39 +48,46 @@
         <x-ds-table>
             <x-slot:head>
                 <tr>
-                    <th>النسخة</th><th>الحالة</th><th>المجموع</th><th>الضريبة</th><th>الإجمالي</th><th>إجراءات</th>
+                    <th>النسخة</th><th>الحالة</th><th>ملاحظات الجهة</th><th>الإجمالي</th><th>إجراءات</th>
                 </tr>
             </x-slot:head>
             @forelse ($partnership->quotes as $quote)
                 <tr wire:key="quote-{{ $quote->id }}">
                     <td class="ds-ltr-num">{{ $quote->version }}</td>
                     <td>{{ $quote->status }}</td>
-                    <td class="ds-ltr-num">{{ number_format((float) $quote->subtotal, 2) }}</td>
-                    <td class="ds-ltr-num">{{ number_format((float) $quote->tax_total, 2) }}</td>
+                    <td>{{ $quote->entity_notes ?: '—' }}</td>
                     <td class="ds-ltr-num">{{ number_format((float) $quote->total, 2) }}</td>
                     <td>
-                        <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id) }}?print=1" target="_blank" rel="noopener">معاينة</a>
-                        <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id) }}">تنزيل</a>
-                        @can('partnerships.quotes.approve')
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="approveQuote({{ $quote->id }})">اعتماد</button>
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="sendQuote({{ $quote->id }})">إرسال</button>
-                        @endcan
-                        @can('partnerships.quotes.create')
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="openQuoteModal({{ $quote->id }})">نسخة معدّلة</button>
-                        @endcan
-                        @can('partnerships.contracts.create')
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="openContractModal({{ $quote->id }})">إنشاء عقد شراكة</button>
-                        @endcan
+                        <div class="ds-quote-actions">
+                            <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id) }}?print=1" target="_blank" rel="noopener">معاينة</a>
+                            <a class="ds-btn ds-btn-sm" href="{{ route('quotes.pdf', $quote->id) }}">تنزيل</a>
+                            @can('partnerships.quotes.approve')
+                                @if ($quote->status === \App\Models\Quote::STATUS_DRAFT || $quote->status === \App\Models\Quote::STATUS_WITH_NOTES)
+                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="approveQuote({{ $quote->id }})">اعتماد داخلي</button>
+                                @endif
+                                @if ($quote->status === \App\Models\Quote::STATUS_APPROVED)
+                                    <button type="button" class="ds-btn ds-btn-sm ds-btn-primary" wire:click="sendQuote({{ $quote->id }})">إرسال للجهة</button>
+                                @endif
+                            @endcan
+                            @can('partnerships.quotes.create')
+                                <button type="button" class="ds-btn ds-btn-sm" wire:click="openQuoteModal({{ $quote->id }})">تعديل وإصدار نسخة</button>
+                            @endcan
+                            @can('partnerships.contracts.create')
+                                @if ($quote->status === \App\Models\Quote::STATUS_ACCEPTED)
+                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="openContractModal({{ $quote->id }})">إنشاء عقد</button>
+                                @endif
+                            @endcan
+                        </div>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="6" class="ds-text-muted ds-table-empty">لا توجد عروض</td></tr>
+                <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد عروض</td></tr>
             @endforelse
         </x-ds-table>
     </section>
 
     {{-- 05-B4 عقد الشراكة --}}
-    <section class="ds-section {{ $nextAction === 2 ? 'ds-journey-active' : '' }}">
+    <section id="step-contract" class="ds-section {{ $nextAction === 2 ? 'ds-journey-active' : '' }}">
         <h2 class="ds-section-title">2. عقد الشراكة</h2>
         @foreach ($partnership->partnershipContracts as $contract)
             <div class="ds-kanban-card" wire:key="contract-{{ $contract->id }}">
@@ -146,7 +157,7 @@
     </section>
 
     {{-- 05-B6 الدفعات --}}
-    <section class="ds-section {{ $nextAction === 3 ? 'ds-journey-active' : '' }}">
+    <section id="step-payments" class="ds-section {{ $nextAction === 3 ? 'ds-journey-active' : '' }}">
         <h2 class="ds-section-title">3. الدفعات المسجّلة</h2>
         <x-ds-table>
             <x-slot:head>
@@ -174,12 +185,13 @@
     </section>
 
     {{-- 05-B5 رابط الجهة --}}
-    <section class="ds-section {{ $nextAction === 4 ? 'ds-journey-active' : '' }}">
+    <section id="step-link" class="ds-section {{ $nextAction === 4 ? 'ds-journey-active' : '' }}">
         <h2 class="ds-section-title">4. رابط الجهة الفريد</h2>
         @can('partnerships.links.manage')
             <button type="button" class="ds-btn" wire:click="issueLink">إصدار رابط</button>
             <div class="ds-section-spaced">
-                <h3 class="ds-section-heading">تحكم بوابة الشريك</h3>
+                <h3 class="ds-section-heading">ما يظهر للجهة على رابطها</h3>
+                <p class="ds-text-muted">أخفِ قسمًا إن لم يحن وقته. لا يغيّر المرحلة؛ يتحكم فقط بما تراه الجهة.</p>
                 <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.programs"> البرامج</label>
                 <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.diagnosis"> التشخيص</label>
                 <label class="ds-checkbox"><input type="checkbox" wire:model="portalFeatures.quotes"> عروض الأسعار</label>
@@ -226,7 +238,7 @@
     </section>
 
     {{-- 05-B7 توليد مشروع --}}
-    <section class="ds-section {{ $nextAction === 5 ? 'ds-journey-active' : '' }}">
+    <section id="step-generate" class="ds-section {{ $nextAction === 5 ? 'ds-journey-active' : '' }}">
         <h2 class="ds-section-title">5. توليد مشروع</h2>
         @can('partnerships.generate')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openGenerateModal">توليد مشروع</button>

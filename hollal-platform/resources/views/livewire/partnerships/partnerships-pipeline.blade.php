@@ -5,6 +5,7 @@
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('view', 'kanban')">لوحة الأعمدة</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('view', 'list')">قائمة</button>
         <span class="ds-text-muted">الشراكة الراكدة: أكثر من {{ $staleThreshold }} يومًا في المرحلة</span>
+        <p class="ds-text-muted">النظام ينقل البطاقة عند التواصل واللقاء والاستبانة والعرض والعقد والتوليد. «نقل المرحلة» يبقى يدويًا مع ملاحظة عند الرجوع أو القفز.</p>
     </section>
 
     @if ($view === 'kanban')

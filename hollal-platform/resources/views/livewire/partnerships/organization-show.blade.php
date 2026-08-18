@@ -3,7 +3,7 @@
 
     <section class="ds-section">
         <p>النوع: {{ $organization->typeLabel() }} — المدينة: {{ $organization->city ?? '—' }}</p>
-        <p>الأدوار: {{ $organization->roles ? implode('، ', $organization->roles) : '—' }}</p>
+        <p>الأدوار: {{ $organization->roleLabels() ? implode('، ', $organization->roleLabels()) : '—' }}</p>
         <p class="ds-text-muted">{{ $organization->notes }}</p>
         @can('partnerships.organizations.manage')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openQuickPartnership">
@@ -43,17 +43,24 @@
 
     <section class="ds-section">
         <h2 class="ds-section-title">رحلات الشراكة</h2>
+        <p class="ds-text-muted">كل صف رحلة واحدة تحت الجهة. «فتح ملف الرحلة» يعرض العروض والعقد والدفعات.</p>
         @error('renewal') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
         <x-ds-table>
             <x-slot:head>
-                <tr><th>#</th><th>المرحلة</th><th>عمر المرحلة</th><th>القيمة المتوقعة</th><th>إجراءات</th></tr>
+                <tr>
+                    <th>رقم الرحلة</th>
+                    <th>المرحلة الحالية</th>
+                    <th>أيام في المرحلة</th>
+                    <th>القيمة المتوقعة (ر.س)</th>
+                    <th>فتح الملف</th>
+                </tr>
             </x-slot:head>
             @forelse ($organization->partnerships as $partnership)
                 <tr wire:key="org-partnership-{{ $partnership->id }}">
                     <td class="ds-ltr-num">
                         {{ $partnership->id }}
                         @if ($partnership->renewed_from_id)
-                            <span class="ds-text-muted">← تجديد لـ #{{ $partnership->renewed_from_id }}</span>
+                            <span class="ds-text-muted">← تجديد لرحلة {{ $partnership->renewed_from_id }}</span>
                         @endif
                     </td>
                     <td>{{ $partnership->stageLabel() }}</td>
@@ -62,18 +69,13 @@
                         {{ $partnership->expected_value !== null ? number_format((float) $partnership->expected_value, 2) : '—' }}
                     </td>
                     <td>
-                        <a class="ds-btn ds-btn-sm ds-btn-primary" href="{{ route('partnerships.show', $partnership->id) }}">
-                            الدخول إلى ملف الشراكة
+                        <a class="ds-btn ds-btn-sm ds-btn-primary" href="{{ route('partnerships.show', $partnership->id) }}?from=organization">
+                            فتح ملف الرحلة
                         </a>
-                        @can('partnerships.pipeline.manage')
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="recordContact({{ $partnership->id }})">
-                                تسجيل تواصل
-                            </button>
-                        @endcan
                         @can('partnerships.organizations.manage')
-                            @if ($partnership->canRenewJourney())
+                            @if (in_array($partnership->stage, [\App\Models\Partnership::STAGE_STALLED, \App\Models\Partnership::STAGE_CLOSED], true))
                                 <button type="button" class="ds-btn ds-btn-sm" wire:click="renewPartnership({{ $partnership->id }})">
-                                    تجديد
+                                    تجديد الرحلة
                                 </button>
                             @endif
                         @endcan
@@ -87,9 +89,10 @@
 
     <section class="ds-section">
         <h2 class="ds-section-title">مشاريعها</h2>
+        <p class="ds-text-muted">تجديد مشروع منتهٍ أو متوقف يفتح رحلة فرصة جديدة مربوطة بالرحلة الأم.</p>
         <x-ds-table>
             <x-slot:head>
-                <tr><th>المشروع</th><th>الحالة</th></tr>
+                <tr><th>المشروع</th><th>الحالة</th><th>إجراءات</th></tr>
             </x-slot:head>
             @forelse ($projects as $project)
                 <tr wire:key="org-project-{{ $project->id }}">
@@ -101,9 +104,18 @@
                         @endcan
                     </td>
                     <td>{{ $project->statusLabel() }}</td>
+                    <td>
+                        @can('partnerships.organizations.manage')
+                            @if (\App\Models\Partnership::projectStatusAllowsRenewal($project->status))
+                                <button type="button" class="ds-btn ds-btn-sm" wire:click="renewFromProject({{ $project->id }})">
+                                    تجديد
+                                </button>
+                            @endif
+                        @endcan
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="2" class="ds-text-muted ds-table-empty">لا توجد مشاريع</td></tr>
+                <tr><td colspan="3" class="ds-text-muted ds-table-empty">لا توجد مشاريع</td></tr>
             @endforelse
         </x-ds-table>
     </section>

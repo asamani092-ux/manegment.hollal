@@ -22,6 +22,12 @@ class Organization extends Model
         return $this->type ?? '—';
     }
 
+    /** @return list<string> */
+    public function roleLabels(): array
+    {
+        return array_values(array_filter($this->roles ?? []));
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {
@@ -55,8 +61,15 @@ class Organization extends Model
      */
     public function projects()
     {
+        $partnershipIds = $this->partnerships()->pluck('id');
+        $linkedIds = $this->partnerships()->whereNotNull('project_id')->pluck('project_id');
+
         return Project::query()
-            ->whereIn('id', $this->partnerships()->whereNotNull('project_id')->select('project_id'))
+            ->where(function ($query) use ($partnershipIds, $linkedIds) {
+                $query->whereIn('id', $linkedIds)
+                    ->orWhereIn('partnership_id', $partnershipIds);
+            })
+            ->with('partnership')
             ->orderByDesc('id')
             ->get();
     }
