@@ -208,9 +208,15 @@ class Partnership extends Model
             return true;
         }
 
-        $status = $this->project?->status;
+        return self::projectStatusAllowsRenewal($this->project?->status);
+    }
 
-        return in_array($status, ['completed', 'on_hold', 'مكتمل', 'متوقف'], true);
+    public static function projectStatusAllowsRenewal(?string $status): bool
+    {
+        return in_array($status, [
+            'completed', 'on_hold', 'closed',
+            'مكتمل', 'متوقف', 'منتهٍ', 'منتهي', 'مغلق',
+        ], true);
     }
 
     public function latestContract(): ?PartnershipContract

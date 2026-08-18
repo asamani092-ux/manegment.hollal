@@ -61,6 +61,8 @@ class PartnerPortal extends Component
     /** data:image/png;base64,... من لوحة التوقيع */
     public string $signaturePadData = '';
 
+    public int $focusStep = 0;
+
     public function mount(string $token): void
     {
         $link = app(PartnerPortalService::class)->resolve($token);
@@ -108,7 +110,8 @@ class PartnerPortal extends Component
     {
         $quote = $this->saveProgramSelection($quoteId);
 
-        app(QuoteService::class)->accept($quote);
+        app(QuoteService::class)->accept($quote, $this->quoteNotes !== '' ? $this->quoteNotes : null);
+        $this->quoteNotes = '';
         $this->log('portal.quote_accepted', ['quote_id' => $quote->id]);
 
         $this->dispatch('ds-toast', message: 'تم قبول العرض');
@@ -177,17 +180,6 @@ class PartnerPortal extends Component
         return $updated;
     }
 
-    public function noteQuote(int $quoteId): void
-    {
-        $this->validate(['quoteNotes' => 'required|string|max:2000']);
-
-        $quote = $this->scopedQuote($quoteId);
-        app(QuoteService::class)->addNotes($quote, $this->quoteNotes);
-        $this->log('portal.quote_noted', ['quote_id' => $quote->id]);
-
-        $this->dispatch('ds-toast', message: 'تم إرسال ملاحظاتكم');
-    }
-
     public function recordPayment(int $scheduleId): void
     {
         $this->validate([
@@ -251,9 +243,13 @@ class PartnerPortal extends Component
             'organization', 'quotes.items', 'partnershipContracts.schedule', 'payments',
         ])->firstOrFail();
         $features = $partnership->portalFeatureFlags();
-        $quotes = $partnership->quotes->whereIn('status', [
-            Quote::STATUS_SENT, Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED,
-        ]);
+        $quotes = $partnership->quotes
+            ->whereIn('status', [
+                Quote::STATUS_SENT, Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED,
+            ])
+            ->sortByDesc('version')
+            ->take(1)
+            ->values();
 
         return view('livewire.partnerships.partner-portal', [
             'partnership' => $partnership,
@@ -311,7 +307,14 @@ class PartnerPortal extends Component
             $steps[] = [...$step, 'state' => $state];
         }
 
-        return ['current' => $current, 'steps' => $steps];
+        $focus = $this->focusStep > 0 ? $this->focusStep : $current;
+
+        return ['current' => $current, 'focus' => $focus, 'steps' => $steps];
+    }
+
+    public function openPortalStep(int $stepId): void
+    {
+        $this->focusStep = $stepId;
     }
 
     /** @param array<string, mixed> $metadata */

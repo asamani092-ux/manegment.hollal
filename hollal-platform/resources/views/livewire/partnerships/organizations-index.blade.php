@@ -7,6 +7,8 @@
         wire:click="openCreate"
     />
 
+    <p class="ds-text-muted">اضغط اسم الجهة لفتح ملفها.</p>
+
     <section class="ds-section ds-filter-bar">
         <input type="search" class="ds-input" placeholder="بحث باسم الجهة" wire:model.live="search">
         <select class="ds-input" wire:model.live="typeFilter">
@@ -30,11 +32,15 @@
         </x-slot:head>
         @forelse ($organizations as $organization)
             <tr wire:key="organization-{{ $organization->id }}">
-                <td><a href="{{ route('organizations.show', $organization->id) }}">{{ $organization->name }}</a></td>
+                <td>
+                    <a class="ds-link" href="{{ route('organizations.show', $organization->id) }}" title="فتح ملف الجهة">
+                        {{ $organization->name }}
+                    </a>
+                </td>
                 <td>{{ $organization->typeLabel() }}</td>
                 <td>{{ $organization->city ?? '—' }}</td>
                 <td>
-                    @forelse ($organization->roles ?? [] as $role)
+                    @forelse ($organization->roleLabels() as $role)
                         <span class="ds-badge ds-badge-info">{{ $role }}</span>
                     @empty
                         —
@@ -84,17 +90,22 @@
             <input type="text" class="ds-input" wire:model="city">
         </x-ds-form-group>
 
-        <x-ds-form-group label="الأدوار" :error="$errors->first('roles')">
+        <x-ds-form-group label="أدوار الجهة — اضغط الحبة لاختيارها أو إلغائها" :error="$errors->first('roles')">
             <div class="ds-pill-select" role="group" aria-label="أدوار الجهة">
                 @foreach ($roleOptions as $option)
                     <button type="button"
                             class="ds-pill {{ in_array($option, $roles, true) ? 'is-selected' : '' }}"
-                            wire:click="toggleRole({{ json_encode($option) }})">
+                            wire:click.prevent="toggleRole({{ json_encode($option) }})">
                         {{ $option }}
                     </button>
                 @endforeach
             </div>
         </x-ds-form-group>
+        @if (in_array('أخرى', $roles, true))
+            <x-ds-form-group label="اكتب دور الجهة" :error="$errors->first('roleOther')">
+                <input type="text" class="ds-input" wire:model="roleOther" placeholder="مثال: جهة استشارية">
+            </x-ds-form-group>
+        @endif
 
         <x-ds-form-group label="ملاحظات" :error="$errors->first('notes')">
             <textarea class="ds-input" wire:model="notes"></textarea>

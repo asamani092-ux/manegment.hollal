@@ -126,9 +126,19 @@ class QuoteService
         return $quote;
     }
 
-    public function accept(Quote $quote): Quote
+    public function accept(Quote $quote, ?string $extraNotes = null): Quote
     {
-        $quote->forceFill(['status' => Quote::STATUS_ACCEPTED, 'accepted_at' => now()])->save();
+        $notes = trim((string) $quote->entity_notes);
+        $extra = trim((string) $extraNotes);
+        if ($extra !== '') {
+            $notes = $notes === '' ? $extra : $notes."\n".$extra;
+        }
+
+        $quote->forceFill([
+            'status' => Quote::STATUS_ACCEPTED,
+            'accepted_at' => now(),
+            'entity_notes' => $notes !== '' ? $notes : $quote->entity_notes,
+        ])->save();
 
         return $quote;
     }

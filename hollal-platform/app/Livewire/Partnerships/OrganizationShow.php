@@ -139,26 +139,7 @@ class OrganizationShow extends Component
 
         $this->showQuickPartnershipModal = false;
         $this->dispatch('ds-toast', message: 'تم فتح رحلة شراكة في مرحلة فرصة');
-        $this->redirectRoute('partnerships.show', ['partnership' => $partnership->id]);
-    }
-
-    public function recordContact(int $partnershipId): void
-    {
-        abort_unless(
-            auth()->user()?->can('partnerships.pipeline.manage')
-            || auth()->user()?->can('partnerships.organizations.manage'),
-            403,
-        );
-        $partnership = $this->organization->partnerships()->findOrFail($partnershipId);
-
-        app(PartnershipPipelineService::class)->advanceIfBefore(
-            $partnership,
-            Partnership::STAGE_CONTACT,
-            auth()->user(),
-            'أول تواصل مسجّل على ملف الجهة',
-        );
-
-        $this->dispatch('ds-toast', message: 'سُجّل التواصل ونُقلت الرحلة عند الحاجة');
+        $this->redirect(route('partnerships.show', ['partnership' => $partnership->id]).'?from=organization');
     }
 
     public function renewPartnership(int $partnershipId): void
@@ -166,20 +147,48 @@ class OrganizationShow extends Component
         $this->authorize('partnerships.organizations.manage');
         $partnership = $this->organization->partnerships()->with('project')->findOrFail($partnershipId);
 
-        if (! $partnership->canRenewJourney()) {
-            $this->addError('renewal', 'التجديد متاح لرحلة متعثرة أو مغلقة أو لمشروع منتهٍ/متوقف');
+        if (! in_array($partnership->stage, [Partnership::STAGE_STALLED, Partnership::STAGE_CLOSED], true)) {
+            $this->addError('renewal', 'تجديد الرحلة من هنا لرحلة متعثرة أو مغلقة فقط. مشروع منتهٍ/متوقف يُجدَّد من جدول المشاريع.');
 
             return;
         }
 
+        $this->openRenewalAndGo($partnership, 'تجديد تراكمي لرحلة متعثرة أو مغلقة');
+    }
+
+    public function renewFromProject(int $projectId): void
+    {
+        $this->authorize('partnerships.organizations.manage');
+        $project = $this->organization->projects()->firstWhere('id', $projectId);
+
+        if ($project === null || ! Partnership::projectStatusAllowsRenewal($project->status)) {
+            $this->addError('renewal', 'التجديد متاح لمشروع منتهٍ أو متوقف فقط');
+
+            return;
+        }
+
+        $partnership = $project->partnership
+            ?? $this->organization->partnerships()->where('project_id', $project->id)->first();
+
+        if ($partnership === null) {
+            $this->addError('renewal', 'لا توجد رحلة مربوطة بهذا المشروع');
+
+            return;
+        }
+
+        $this->openRenewalAndGo($partnership, 'تجديد بعد مشروع منتهٍ أو متوقف');
+    }
+
+    private function openRenewalAndGo(Partnership $partnership, string $note): void
+    {
         $renewal = app(PartnershipPipelineService::class)->openRenewal(
             $partnership,
             auth()->user(),
-            'تجديد تراكمي من ملف الجهة',
+            $note,
         );
 
         $this->dispatch('ds-toast', message: 'فُتحت رحلة تجديد جديدة دون استبدال القديمة');
-        $this->redirectRoute('partnerships.show', ['partnership' => $renewal->id]);
+        $this->redirect(route('partnerships.show', ['partnership' => $renewal->id]).'?from=organization');
     }
 
     public function render(): View

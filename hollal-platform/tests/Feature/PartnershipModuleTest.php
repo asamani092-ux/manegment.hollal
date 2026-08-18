@@ -620,13 +620,6 @@ class PartnershipModuleTest extends TestCase
 
         Livewire::actingAs($manager)
             ->test(OrganizationShow::class, ['organization' => $organization])
-            ->call('recordContact', $partnership->id)
-            ->assertHasNoErrors();
-
-        $this->assertSame(Partnership::STAGE_CLOSED, $partnership->fresh()->stage);
-
-        Livewire::actingAs($manager)
-            ->test(OrganizationShow::class, ['organization' => $organization])
             ->call('renewPartnership', $partnership->id)
             ->assertHasNoErrors();
 
@@ -635,6 +628,45 @@ class PartnershipModuleTest extends TestCase
         $this->assertSame(Partnership::STAGE_OPPORTUNITY, $renewal->stage);
         $this->assertSame(Partnership::STAGE_CLOSED, $partnership->fresh()->stage);
         $this->assertSame(2, Partnership::query()->where('organization_id', $organization->id)->count());
+    }
+
+    public function test_send_quote_without_approval_returns_toast_not_exception(): void
+    {
+        $partnership = $this->partnership();
+        $quote = app(QuoteService::class)->create($partnership, [
+            ['service_type' => ProgramPrice::SERVICE_TRAINING, 'quantity' => 1, 'unit_price' => 100],
+        ]);
+
+        Livewire::actingAs($this->manager())
+            ->test(PartnershipShow::class, ['partnership' => $partnership])
+            ->call('sendQuote', $quote->id)
+            ->assertHasErrors(['quote']);
+
+        $this->assertSame(Quote::STATUS_DRAFT, $quote->fresh()->status);
+    }
+
+    public function test_organization_custom_role_and_partnership_back_link(): void
+    {
+        $manager = $this->manager();
+
+        Livewire::actingAs($manager)->test(OrganizationsIndex::class)
+            ->call('openCreate')
+            ->set('name', 'جهة بدور حر')
+            ->set('roles', ['أخرى'])
+            ->set('roleOther', 'جهة استشارية')
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $organization = Organization::query()->where('name', 'جهة بدور حر')->firstOrFail();
+        $this->assertSame(['جهة استشارية'], $organization->roleLabels());
+
+        $partnership = $this->partnership($organization);
+        $component = Livewire::withQueryParams(['from' => 'organization'])
+            ->actingAs($manager)
+            ->test(PartnershipShow::class, ['partnership' => $partnership]);
+
+        $this->assertSame('organization', $component->get('returnTo'));
+        $component->assertSee('رجوع لملف الجهة');
     }
 
     public function test_quote_pdf_preview_is_inline_and_portal_hides_unit_prices(): void

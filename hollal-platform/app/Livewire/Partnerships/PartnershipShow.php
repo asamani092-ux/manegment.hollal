@@ -31,6 +31,8 @@ class PartnershipShow extends Component
 
     public Partnership $partnership;
 
+    public string $returnTo = 'pipeline';
+
     // — quote builder (05-B3)
     public bool $showQuoteModal = false;
 
@@ -94,6 +96,9 @@ class PartnershipShow extends Component
             403,
         );
         $this->partnership = $partnership;
+        $this->returnTo = request()->query('from') === 'organization' && $partnership->organization_id
+            ? 'organization'
+            : 'pipeline';
         $this->resetQuoteLines();
         $this->scheduleRows = [['label' => 'الدفعة الأولى', 'amount' => '', 'due_on' => now()->toDateString()]];
         $features = $partnership->portal_features ?? [];
@@ -168,7 +173,15 @@ class PartnershipShow extends Component
     public function sendQuote(int $quoteId): void
     {
         $this->authorize('partnerships.quotes.approve');
-        app(QuoteService::class)->send($this->quote($quoteId));
+
+        try {
+            app(QuoteService::class)->send($this->quote($quoteId));
+        } catch (\RuntimeException $exception) {
+            $this->addError('quote', $exception->getMessage());
+            $this->dispatch('ds-toast', message: $exception->getMessage());
+
+            return;
+        }
 
         $this->dispatch('ds-toast', message: 'أُرسل العرض للجهة');
     }

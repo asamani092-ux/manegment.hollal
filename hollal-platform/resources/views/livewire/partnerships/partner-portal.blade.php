@@ -4,20 +4,29 @@
 
     <ol class="ds-journey-steps">
         @foreach ($wizard['steps'] as $step)
-            <li class="{{ $step['state'] === 'current' ? 'is-current' : ($step['state'] === 'done' ? 'is-done' : '') }}">
-                {{ $step['id'] }} {{ $step['label'] }}
+            <li class="{{ ($wizard['focus'] ?? $wizard['current']) === $step['id'] ? 'is-current' : ($step['state'] === 'done' ? 'is-done' : '') }}">
+                @if ($step['state'] !== 'locked')
+                    <button type="button" class="ds-pill {{ ($wizard['focus'] ?? $wizard['current']) === $step['id'] ? 'is-selected' : '' }}"
+                            wire:click="openPortalStep({{ $step['id'] }})">
+                        {{ $step['id'] }} {{ $step['label'] }}
+                    </button>
+                @else
+                    {{ $step['id'] }} {{ $step['label'] }}
+                @endif
             </li>
         @endforeach
     </ol>
+    <p class="ds-text-muted">يمكنك الرجوع لأي خطوة مكتملة أو حالية. الخطوات التالية تبقى مقفلة حتى يكتمل شرطها.</p>
 
     @php
         $current = $wizard['current'];
-        $can = fn (int $id) => $current === $id;
-        $show = fn (int $id) => $current >= $id && collect($wizard['steps'])->contains(fn ($step) => $step['id'] === $id);
+        $focus = $wizard['focus'] ?? $current;
+        $can = fn (int $id) => $focus === $id && $id <= $current;
+        $show = fn (int $id) => collect($wizard['steps'])->contains(fn ($step) => $step['id'] === $id);
     @endphp
 
     @if ($show(1))
-        <section class="ds-section {{ $can(1) ? 'ds-journey-active' : 'ds-portal-locked' }}">
+        <section class="ds-section {{ $can(1) ? 'ds-journey-active' : '' }}">
             <h2 class="ds-section-title">1. اختيار البرامج</h2>
             <x-ds-table>
                 <x-slot:head>
@@ -26,7 +35,7 @@
                 @forelse ($programs as $program)
                     <tr wire:key="portal-program-{{ $program->id }}">
                         <td>
-                            <input type="checkbox" value="{{ $program->id }}" wire:model.live="selectedProgramIds" @disabled(! $can(1))>
+                            <input type="checkbox" value="{{ $program->id }}" wire:model.live="selectedProgramIds">
                         </td>
                         <td>
                             <strong>{{ $program->name }}</strong>
@@ -93,11 +102,10 @@
                     <p>الإجمالي شامل الضريبة:
                         <span class="ds-ltr-num">{{ number_format((float) $quote->total, 2) }}</span></p>
                     @if ($can(3) && $quote->status !== \App\Models\Quote::STATUS_ACCEPTED)
-                        <button type="button" class="ds-btn ds-btn-primary" wire:click="acceptQuote({{ $quote->id }})">قبول العرض</button>
-                        <x-ds-form-group label="ملاحظات على العرض" :error="$errors->first('quoteNotes')">
-                            <textarea class="ds-input" wire:model="quoteNotes"></textarea>
+                        <x-ds-form-group label="ملاحظات إضافية (اختياري — لا تمنع القبول)" :error="$errors->first('quoteNotes')">
+                            <textarea class="ds-input" wire:model="quoteNotes" placeholder="أي ملاحظة تُرفق مع القبول"></textarea>
                         </x-ds-form-group>
-                        <button type="button" class="ds-btn" wire:click="noteQuote({{ $quote->id }})">إرسال ملاحظات</button>
+                        <button type="button" class="ds-btn ds-btn-primary" wire:click="acceptQuote({{ $quote->id }})">قبول العرض</button>
                     @endif
                 </div>
             @empty

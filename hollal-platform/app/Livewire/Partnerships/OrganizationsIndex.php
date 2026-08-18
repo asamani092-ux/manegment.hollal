@@ -55,8 +55,13 @@ class OrganizationsIndex extends Component
     /** @var list<string> */
     public const TYPES = ['جمعية تحفيظ', 'مدرسة', 'شركة تعليمية', 'وقف', 'جهة حكومية', 'أخرى'];
 
+    public ?string $roleOther = null;
+
     /** @var list<string> */
-    public const ROLES = ['متعاقدة', 'جهة تنفيذ', 'مانحة'];
+    public const ROLES = ['متعاقدة', 'جهة تنفيذ', 'مانحة', 'أخرى'];
+
+    /** @var list<string> */
+    public const ROLE_PRESETS = ['متعاقدة', 'جهة تنفيذ', 'مانحة'];
 
     public function mount(): void
     {
@@ -86,7 +91,7 @@ class OrganizationsIndex extends Component
         $this->typeOther = $organization->type_other;
         $this->city = $organization->city;
         $this->notes = $organization->notes;
-        $this->roles = $organization->roles ?? [];
+        [$this->roles, $this->roleOther] = $this->rolesFromStored($organization->roles ?? []);
         $this->showModal = true;
     }
 
@@ -102,7 +107,8 @@ class OrganizationsIndex extends Component
             'notes' => 'nullable|string',
             'roles' => 'array',
             'roles.*' => 'in:'.implode(',', self::ROLES),
-        ], [], ['name' => 'اسم الجهة', 'typeOther' => 'النوع الآخر']);
+            'roleOther' => (in_array('أخرى', $this->roles, true) ? 'required' : 'nullable').'|string|max:100',
+        ], [], ['name' => 'اسم الجهة', 'typeOther' => 'النوع الآخر', 'roleOther' => 'الدور الآخر']);
 
         $payload = [
             'name' => $data['name'],
@@ -110,7 +116,7 @@ class OrganizationsIndex extends Component
             'type_other' => ($data['type'] ?? null) === 'أخرى' ? $data['typeOther'] : null,
             'city' => $data['city'] ?? null,
             'notes' => $data['notes'] ?? null,
-            'roles' => $data['roles'] ?? [],
+            'roles' => $this->rolesToStored($data['roles'] ?? [], $data['roleOther'] ?? null),
         ];
 
         if ($this->editingId) {
@@ -178,6 +184,41 @@ class OrganizationsIndex extends Component
         $this->roles = in_array($role, $this->roles, true)
             ? array_values(array_filter($this->roles, fn (string $item) => $item !== $role))
             : [...$this->roles, $role];
+
+        if (! in_array('أخرى', $this->roles, true)) {
+            $this->roleOther = null;
+        }
+    }
+
+    /**
+     * @param  list<string>  $stored
+     * @return array{0: list<string>, 1: ?string}
+     */
+    private function rolesFromStored(array $stored): array
+    {
+        $custom = collect($stored)->first(
+            fn (string $role) => ! in_array($role, self::ROLE_PRESETS, true) && $role !== 'أخرى'
+        );
+        $chips = array_values(array_intersect($stored, self::ROLE_PRESETS));
+        if ($custom !== null || in_array('أخرى', $stored, true)) {
+            $chips[] = 'أخرى';
+        }
+
+        return [$chips, $custom];
+    }
+
+    /**
+     * @param  list<string>  $chips
+     * @return list<string>
+     */
+    private function rolesToStored(array $chips, ?string $other): array
+    {
+        $stored = array_values(array_intersect($chips, self::ROLE_PRESETS));
+        if (in_array('أخرى', $chips, true) && filled($other)) {
+            $stored[] = trim((string) $other);
+        }
+
+        return $stored;
     }
 
     public function render(): View
@@ -212,5 +253,6 @@ class OrganizationsIndex extends Component
         $this->city = null;
         $this->notes = null;
         $this->roles = [];
+        $this->roleOther = null;
     }
 }
