@@ -61,8 +61,33 @@ class PartnershipPaymentService
                 'revenue_id' => $revenue->id,
             ])->save();
 
+            $this->tryAdvanceToContracted($payment->fresh(['partnership.partnershipContracts.schedule']), $financeUser);
+
             return $payment;
         });
+    }
+
+    /**
+     * After finance confirms the first required payment and a signed copy
+     * exists, the journey may enter تعاقد — still through moveTo.
+     */
+    private function tryAdvanceToContracted(PartnershipPayment $payment, User $actor): void
+    {
+        $partnership = $payment->partnership;
+        if ($partnership === null) {
+            return;
+        }
+
+        try {
+            app(PartnershipPipelineService::class)->advanceIfBefore(
+                $partnership,
+                \App\Models\Partnership::STAGE_CONTRACTED,
+                $actor,
+                'اكتمال التوقيع وتأكيد الدفعة الأولى',
+            );
+        } catch (\RuntimeException) {
+            // Conditions (signed copy / first payment) are not met yet.
+        }
     }
 
     /**

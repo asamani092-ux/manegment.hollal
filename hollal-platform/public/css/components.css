@@ -1738,3 +1738,40 @@
   background: #5b4b8a;
 }
 
+.ds-journey-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+}
+
+.ds-journey-steps li {
+  border: 1px solid var(--ds-border);
+  border-radius: 999px;
+  padding: 0.35rem 0.85rem;
+  color: var(--ds-text-muted);
+}
+
+.ds-journey-steps li.is-current,
+.ds-journey-steps li.is-active {
+  background: var(--ds-secondary);
+  border-color: var(--ds-secondary);
+  color: #fff;
+}
+
+.ds-journey-steps li.is-done {
+  background: #e7eef1;
+}
+
+.ds-journey-active {
+  outline: 2px solid var(--ds-secondary);
+  outline-offset: 4px;
+}
+
+.ds-portal-locked {
+  opacity: 0.55;
+  pointer-events: none;
+}
+

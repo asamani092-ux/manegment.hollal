@@ -66,6 +66,13 @@ class ProjectGenerationService
                 'project_id' => $project->id,
             ])->save();
 
+            app(PartnershipPipelineService::class)->advanceIfBefore(
+                $partnership,
+                \App\Models\Partnership::STAGE_EXECUTION,
+                null,
+                'توليد المشروع',
+            );
+
             return $project->fresh();
         });
     }

@@ -106,76 +106,7 @@
         {{ $projects->links() }}
     </section>
 
-    {{-- Partnerships --}}
-    @can('partnerships.view')
-    <section class="ds-section-spaced">
-        <div class="ds-page-toolbar">
-            <h2 class="ds-section-heading">الشراكات</h2>
-            <div class="ds-toolbar-actions">
-                @can('partnerships.create')
-                    <button type="button" class="ds-btn ds-btn-primary" wire:click="openPartnershipCreate">
-                        <i class="fas fa-handshake"></i> شراكة جديدة
-                    </button>
-                @endcan
-            </div>
-        </div>
-
-        <div class="ds-filters-row">
-            <div class="ds-filter-field">
-                <label class="ds-label">بحث</label>
-                <input type="search" class="ds-input" wire:model.live.debounce.300ms="partnershipSearch" placeholder="اسم الجهة...">
-            </div>
-        </div>
-
-        <x-ds-table>
-                <x-slot:head>
-                    <tr>
-                        <th>الجهة</th>
-                        <th>المشروع</th>
-                        <th>الحالة</th>
-                        <th>المبلغ</th>
-                        <th>بوابة الشريك</th>
-                        <th>إجراءات</th>
-                    </tr>
-                </x-slot:head>
-                @forelse ($partnerships as $partnership)
-                    <tr wire:key="partnership-{{ $partnership->id }}">
-                        <td>{{ $partnership->entity_name }}</td>
-                        <td>{{ $partnership->project?->name ?? '—' }}</td>
-                        <td>{{ $partnershipStatusLabels[$partnership->status] ?? $partnership->status }}</td>
-                        <td>{{ $partnership->pricing_amount !== null ? number_format((float) $partnership->pricing_amount, 2) : '—' }}</td>
-                        <td>
-                            @php
-                                $portalLink = $partnership->links->first(fn ($link) => $link->isUsable());
-                            @endphp
-                            @if ($portalLink)
-                                <a class="ds-link" href="{{ route('partner.portal', $portalLink->token) }}" target="_blank" rel="noopener">فتح</a>
-                            @else
-                                <span class="ds-text-muted">لا يوجد رابط ساري</span>
-                            @endif
-                        </td>
-                        <td>
-                            <x-ds-action-icons
-                                :show-view="auth()->user()->can('partnerships.view')"
-                                :show-edit="auth()->user()->can('partnerships.update')"
-                                :show-delete="auth()->user()->can('partnerships.delete')"
-                                :view-action="'openPartnershipView('.$partnership->id.')'"
-                                :edit-action="'openPartnershipEdit('.$partnership->id.')'"
-                                :delete-action="'deletePartnership('.$partnership->id.')'"
-                                delete-confirm="حذف هذه الشراكة؟"
-                            />
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="6"><x-ds-empty-state message="لا توجد شراكات" icon="fa-handshake" /></td>
-                    </tr>
-                @endforelse
-            </x-ds-table>
-
-        {{ $partnerships->links() }}
-    </section>
-    @endcan
+    {{-- بلوك الشراكات القديم أُخفي: المصدر الوحيد هو الجهات الشريكة + رحلة الشراكات + ملف الشراكة --}}
 
     {{-- Project modal --}}
     @if ($showProjectModal)

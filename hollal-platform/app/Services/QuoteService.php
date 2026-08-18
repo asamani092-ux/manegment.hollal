@@ -37,6 +37,13 @@ class QuoteService
             $this->fillItems($quote, $items);
             $this->recalculate($quote);
 
+            app(PartnershipPipelineService::class)->advanceIfBefore(
+                $partnership,
+                Partnership::STAGE_QUOTE,
+                $author,
+                'إصدار عرض سعر',
+            );
+
             return $quote->fresh(['items']);
         });
     }
@@ -108,6 +115,13 @@ class QuoteService
         }
 
         $quote->forceFill(['status' => Quote::STATUS_SENT, 'sent_at' => now()])->save();
+
+        app(PartnershipPipelineService::class)->advanceIfBefore(
+            $quote->partnership,
+            Partnership::STAGE_QUOTE,
+            null,
+            'إرسال عرض السعر للجهة',
+        );
 
         return $quote;
     }

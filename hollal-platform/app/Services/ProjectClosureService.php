@@ -178,28 +178,10 @@ class ProjectClosureService
             return null;
         }
 
-        $existing = Partnership::where('renewed_from_id', $partnership->id)->first();
-
-        if ($existing) {
-            return $existing;
-        }
-
-        $renewal = Partnership::create([
-            'organization_id' => $partnership->organization_id,
-            'entity_name' => $partnership->entity_name,
-            'owner_id' => $partnership->owner_id,
-            'renewed_from_id' => $partnership->id,
-            'stage' => Partnership::STAGE_OPPORTUNITY,
-            'stage_entered_at' => now(),
-        ]);
-
-        app(PartnershipPipelineService::class)->moveTo(
-            $renewal,
-            Partnership::STAGE_OPPORTUNITY,
+        return app(PartnershipPipelineService::class)->openRenewal(
+            $partnership,
             $actor,
             'فرصة تجديد بعد إغلاق مشروع: '.$project->name,
         );
-
-        return $renewal;
     }
 }

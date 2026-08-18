@@ -165,8 +165,19 @@ class OrganizationsIndex extends Component
         }
 
         $this->showQuickPartnershipModal = false;
-        $this->dispatch('ds-toast', message: 'تم إنشاء الشراكة وعرض السعر المسودة');
+        $this->dispatch('ds-toast', message: 'تم فتح رحلة شراكة في مرحلة فرصة');
         $this->redirectRoute('partnerships.show', ['partnership' => $partnership->id]);
+    }
+
+    public function toggleRole(string $role): void
+    {
+        if (! in_array($role, self::ROLES, true)) {
+            return;
+        }
+
+        $this->roles = in_array($role, $this->roles, true)
+            ? array_values(array_filter($this->roles, fn (string $item) => $item !== $role))
+            : [...$this->roles, $role];
     }
 
     public function render(): View

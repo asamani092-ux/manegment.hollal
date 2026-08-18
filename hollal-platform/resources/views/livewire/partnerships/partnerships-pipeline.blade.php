@@ -29,6 +29,7 @@
                             @else
                                 <span class="ds-badge ds-badge-info">{{ $partnership->stageAgeDays() }} يومًا</span>
                             @endif
+                            <a class="ds-btn ds-btn-sm ds-btn-primary" href="{{ route('partnerships.show', $partnership->id) }}">فتح الملف</a>
                             @can('partnerships.pipeline.manage')
                                 <button type="button" class="ds-btn ds-btn-sm" wire:click="openStageModal({{ $partnership->id }})">
                                     نقل المرحلة
@@ -69,6 +70,7 @@
                         {{ $partnership->expected_value !== null ? number_format((float) $partnership->expected_value, 2) : '—' }}
                     </td>
                     <td>
+                        <a class="ds-btn ds-btn-sm ds-btn-primary" href="{{ route('partnerships.show', $partnership->id) }}">فتح الملف</a>
                         @can('partnerships.pipeline.manage')
                             <button type="button" class="ds-btn ds-btn-sm" wire:click="openStageModal({{ $partnership->id }})">
                                 نقل المرحلة

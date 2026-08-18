@@ -85,11 +85,15 @@
         </x-ds-form-group>
 
         <x-ds-form-group label="الأدوار" :error="$errors->first('roles')">
-            @foreach ($roleOptions as $option)
-                <label class="ds-checkbox">
-                    <input type="checkbox" value="{{ $option }}" wire:model="roles"> {{ $option }}
-                </label>
-            @endforeach
+            <div class="ds-pill-select" role="group" aria-label="أدوار الجهة">
+                @foreach ($roleOptions as $option)
+                    <button type="button"
+                            class="ds-pill {{ in_array($option, $roles, true) ? 'is-selected' : '' }}"
+                            wire:click="toggleRole({{ json_encode($option) }})">
+                        {{ $option }}
+                    </button>
+                @endforeach
+            </div>
         </x-ds-form-group>
 
         <x-ds-form-group label="ملاحظات" :error="$errors->first('notes')">
@@ -104,7 +108,7 @@
 
     <x-ds-modal :show="$showQuickPartnershipModal" size="lg">
         <x-slot:header><h2>إنشاء شراكة سريعة</h2></x-slot:header>
-        <p class="ds-text-muted">تُنشأ الشراكة في مرحلة عرض السعر مع عرض مسودة من أسعار البرامج المختارة.</p>
+        <p class="ds-text-muted">تُفتح الرحلة في مرحلة فرصة مع ربط البرامج المختارة. عرض السعر يُبنى لاحقًا من ملف الشراكة.</p>
 
         <x-ds-form-group label="المتابع" :error="$errors->first('quickOwnerId')">
             <select class="ds-input" wire:model="quickOwnerId">

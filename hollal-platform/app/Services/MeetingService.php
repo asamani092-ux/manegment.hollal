@@ -47,6 +47,15 @@ class MeetingService
 
         $this->archiveMinutes($meeting, $chair);
 
+        if ($meeting->partnership_id && $meeting->partnership) {
+            app(PartnershipPipelineService::class)->advanceIfBefore(
+                $meeting->partnership,
+                \App\Models\Partnership::STAGE_MEETING,
+                $chair,
+                'اعتماد محضر لقاء',
+            );
+        }
+
         return $meeting;
     }
 
