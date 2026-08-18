@@ -171,6 +171,20 @@ class PartnerPortalSelfServeTest extends TestCase
         $this->get('/portal/'.$link->token.'/unknown')->assertNotFound();
     }
 
+    public function test_portal_pages_use_relative_links_and_a_wide_layout(): void
+    {
+        [, , $link] = $this->openPortal();
+        $prefix = '/portal/'.$link->token;
+
+        $this->get($prefix.'/programs')
+            ->assertOk()
+            ->assertSee('ds-portal-shell', false)
+            ->assertSee('id="ds-toast-root"', false)
+            ->assertDontSee('wire:navigate', false)
+            ->assertDontSee('ds-login-container', false)
+            ->assertSee('href="'.$prefix.'/diagnosis"', false);
+    }
+
     /** @return array{0: Partnership, 1: Program, 2: \App\Models\PartnerLink} */
     private function openPortal(): array
     {

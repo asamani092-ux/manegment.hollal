@@ -5,7 +5,7 @@
     $hasContract = $partnership->partnershipContracts->isNotEmpty();
     $can = fn (int $id) => $id <= 3 || $quoteAccepted || $hasContract;
     $enabled = collect($wizard['steps'])->contains(fn ($step) => $step['id'] === $focus);
-    $pageUrl = fn (string $key) => route('partner.portal.page', ['token' => $link->token, 'page' => $key]);
+    $pageUrl = fn (string $key) => route('partner.portal.page', ['token' => $link->token, 'page' => $key], false);
     $stepIds = collect($wizard['steps'])->pluck('id');
     $prevId = $stepIds->filter(fn ($id) => $id < $focus)->last();
     $nextId = $stepIds->first(fn ($id) => $id > $focus);
@@ -20,8 +20,7 @@
             <li class="{{ $focus === $step['id'] ? 'is-current' : ($step['state'] === 'done' ? 'is-done' : '') }}">
                 @if ($step['state'] !== 'locked')
                     <a class="ds-pill {{ $focus === $step['id'] ? 'is-selected' : '' }}"
-                       href="{{ $pageUrl($step['key']) }}"
-                       wire:navigate>
+                       href="{{ $pageUrl($step['key']) }}">
                         {{ $step['id'] }}. {{ $step['label'] }}
                     </a>
                 @else
@@ -72,7 +71,7 @@
                     @endforelse
                 </x-ds-table>
                 @if ($can(1))
-                    <button type="button" class="ds-btn ds-btn-primary" wire:click="confirmPrograms">حفظ الاختيار وبناء العرض</button>
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="confirmPrograms" wire:loading.attr="disabled">حفظ الاختيار وبناء العرض</button>
                 @endif
             </section>
         @elseif ($focus === 2)
@@ -109,7 +108,7 @@
                     </x-ds-form-group>
                 @endforelse
                 @if ($can(2))
-                    <button type="button" class="ds-btn ds-btn-primary" wire:click="submitDiagnosis">إرسال الاستبانة</button>
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="submitDiagnosis" wire:loading.attr="disabled">إرسال الاستبانة</button>
                 @endif
             </section>
         @elseif ($focus === 3)
@@ -132,7 +131,7 @@
                             <x-ds-form-group label="ملاحظات إضافية (اختياري — لا تمنع القبول)" :error="$errors->first('quoteNotes')">
                                 <textarea class="ds-input" wire:model="quoteNotes" placeholder="أي ملاحظة تُرفق مع القبول"></textarea>
                             </x-ds-form-group>
-                            <button type="button" class="ds-btn ds-btn-primary" wire:click="acceptQuote({{ $quote->id }})">قبول العرض</button>
+                            <button type="button" class="ds-btn ds-btn-primary" wire:click="acceptQuote({{ $quote->id }})" wire:loading.attr="disabled">قبول العرض</button>
                         @elseif ($quote->status === \App\Models\Quote::STATUS_ACCEPTED)
                             <p class="ds-text-muted">قُبل هذا العرض. انتقل لصفحة العقد عند صدوره.</p>
                         @endif
@@ -258,10 +257,10 @@
 
     <nav class="ds-portal-page-nav" aria-label="تنقل صفحات البوابة">
         @if ($prevId)
-            <a class="ds-btn" href="{{ $pageUrl($pageKeys[$prevId]) }}" wire:navigate>السابق</a>
+            <a class="ds-btn" href="{{ $pageUrl($pageKeys[$prevId]) }}">السابق</a>
         @endif
         @if ($nextId)
-            <a class="ds-btn ds-btn-primary" href="{{ $pageUrl($pageKeys[$nextId]) }}" wire:navigate>التالي</a>
+            <a class="ds-btn ds-btn-primary" href="{{ $pageUrl($pageKeys[$nextId]) }}">التالي</a>
         @endif
     </nav>
 </div>

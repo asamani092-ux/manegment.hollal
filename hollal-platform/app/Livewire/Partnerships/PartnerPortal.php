@@ -287,7 +287,7 @@ class PartnerPortal extends Component
             'features' => $features,
             'diagnosisQuestions' => app(DiagnosisQuestionService::class)->activeQuestions(),
             'wizard' => $wizard,
-        ])->layout('layouts.guest', ['title' => $this->pageTitle($wizard['focus'])]);
+        ])->layout('layouts.portal', ['title' => $this->pageTitle($wizard['focus'])]);
     }
 
     /**
