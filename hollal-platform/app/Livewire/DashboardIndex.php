@@ -195,7 +195,7 @@ class DashboardIndex extends Component
                     $items->push([
                         'kind' => 'quote_pending_final',
                         'label' => 'عرض سعر بانتظار اعتمادك النهائي',
-                        'url' => \App\Support\RecordUrl::partnership((int) $quote->partnership_id).'?workspaceStep=1',
+                        'url' => \App\Support\RecordUrl::partnership((int) $quote->partnership_id).'?workspaceStep=2',
                         'meta' => ($quote->partnership?->entity_name ?? '—').' — نسخة '.$quote->version,
                     ]);
                 });

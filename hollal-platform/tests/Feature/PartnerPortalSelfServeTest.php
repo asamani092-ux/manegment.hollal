@@ -47,7 +47,6 @@ class PartnerPortalSelfServeTest extends TestCase
             ->assertDontSee('5. العقد')
             ->assertDontSee('سعر الوحدة')
             ->set('selectedProgramIds', [$program->id])
-            ->set('programQuantities', [$program->id => '2'])
             ->set('programServices', [$program->id => ProgramPrice::SERVICE_TRAINING])
             ->call('confirmPrograms')
             ->assertHasNoErrors();
@@ -55,7 +54,7 @@ class PartnerPortalSelfServeTest extends TestCase
         $quote = $partnership->quotes()->first();
         $this->assertNotNull($quote);
         $this->assertSame(Quote::STATUS_DRAFT, $quote->status);
-        $this->assertSame('2300.00', (string) $quote->total);
+        $this->assertSame('1150.00', (string) $quote->total);
         $this->assertTrue($partnership->fresh()->allowedPrograms->contains('id', $program->id));
         $this->assertSame(Partnership::STAGE_OPPORTUNITY, $partnership->fresh()->stage);
 
@@ -65,13 +64,12 @@ class PartnerPortalSelfServeTest extends TestCase
             ->assertSee('مسودة');
     }
 
-    public function test_quantity_change_updates_the_same_draft_and_accept_advances_after_diagnosis(): void
+    public function test_diagnosis_count_drives_quote_quantity_and_accept_advances_after_diagnosis(): void
     {
         [$partnership, $program, $link] = $this->openPortal();
 
         $portal = Livewire::test(PartnerPortal::class, ['token' => $link->token])
             ->set('selectedProgramIds', [$program->id])
-            ->set('programQuantities', [$program->id => '1'])
             ->set('programServices', [$program->id => ProgramPrice::SERVICE_TRAINING])
             ->call('confirmPrograms')
             ->assertHasNoErrors();
@@ -79,20 +77,21 @@ class PartnerPortalSelfServeTest extends TestCase
         $quoteId = (int) $partnership->quotes()->value('id');
         $this->assertSame('1150.00', (string) $partnership->quotes()->first()->total);
 
-        $portal->set('programQuantities', [$program->id => '3'])
-            ->call('confirmPrograms')
-            ->assertHasNoErrors();
-
-        $this->assertSame(1, $partnership->quotes()->count());
-        $this->assertSame($quoteId, (int) $partnership->quotes()->value('id'));
-        $this->assertSame('3450.00', (string) $partnership->quotes()->first()->total);
-
         $portal->set('diagnosisAudience', 'طلاب')
             ->set('diagnosisCount', '40')
             ->call('submitDiagnosis')
             ->assertHasNoErrors();
 
-        $this->assertSame(Partnership::STAGE_DIAGNOSIS, $partnership->fresh()->stage);
+        $this->assertSame(Partnership::STAGE_QUOTE, $partnership->fresh()->stage);
+
+        $portal->set('selectedProgramIds', [$program->id])
+            ->set('programServices', [$program->id => ProgramPrice::SERVICE_TRAINING])
+            ->call('confirmPrograms')
+            ->assertHasNoErrors();
+
+        $this->assertSame(1, $partnership->quotes()->count());
+        $this->assertSame($quoteId, (int) $partnership->quotes()->value('id'));
+        $this->assertSame('46000.00', (string) $partnership->quotes()->first()->total);
 
         $portal->call('acceptQuote', $quoteId)->assertHasErrors();
         $this->finalizeQuote($partnership->quotes()->first());
@@ -205,12 +204,12 @@ class PartnerPortalSelfServeTest extends TestCase
         $this->get('/portal/'.$link->token.'/programs')
             ->assertOk()
             ->assertSee('برنامج الاختبار')
-            ->assertSee('برنامج ثانٍ ظاهر')
+            ->assertDontSee('برنامج ثانٍ ظاهر')
+            ->assertDontSee('الكمية')
             ->assertSee('ds-portal-service', false);
 
         $this->post(route('partner.portal.programs.save', ['token' => $link->token]), [
             'selectedProgramIds' => [$program->id],
-            'programQuantities' => [$program->id => '2'],
             'programServices' => [$program->id => ProgramPrice::SERVICE_TRAINING],
         ])->assertRedirect(route('partner.portal.page', ['token' => $link->token, 'page' => 'diagnosis']));
 

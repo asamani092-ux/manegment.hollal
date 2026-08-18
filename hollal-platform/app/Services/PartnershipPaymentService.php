@@ -68,8 +68,8 @@ class PartnershipPaymentService
     }
 
     /**
-     * After finance confirms the first required payment and a signed copy
-     * exists, the journey may enter تعاقد — still through moveTo.
+     * Contracted stage is folded into عرض السعر — keep the partnership there.
+     * Time: O(1) | Space: O(1)
      */
     private function tryAdvanceToContracted(PartnershipPayment $payment, User $actor): void
     {
@@ -81,9 +81,9 @@ class PartnershipPaymentService
         try {
             app(PartnershipPipelineService::class)->advanceIfBefore(
                 $partnership,
-                \App\Models\Partnership::STAGE_CONTRACTED,
+                \App\Models\Partnership::STAGE_QUOTE,
                 $actor,
-                'اكتمال التوقيع وتأكيد الدفعة الأولى',
+                'اكتمال التوقيع وتأكيد الدفعة الأولى داخل عرض السعر',
             );
         } catch (\RuntimeException) {
             // Conditions (signed copy / first payment) are not met yet.

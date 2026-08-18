@@ -17,13 +17,20 @@ use Illuminate\Support\Facades\DB;
  */
 class PartnerPortalSelfServeService
 {
-    /** @return Collection<int, Program> */
+    /** @return Collection<int, Program> Time: O(p) | Space: O(p) */
     public function catalog(Partnership $partnership): Collection
     {
-        return Program::query()
+        $query = Program::query()
             ->where('stage', Program::STAGE_ACTIVE)
-            ->with(['prices' => fn ($query) => $query->where('is_active', true)->orderBy('id')])
-            ->orderBy('name')
+            ->with(['prices' => fn ($q) => $q->where('is_active', true)->orderBy('id')])
+            ->orderBy('name');
+
+        $allowedIds = $partnership->allowedPrograms()->pluck('programs.id')->map(fn ($id) => (int) $id)->all();
+        if ($allowedIds !== []) {
+            $query->whereIn('id', $allowedIds);
+        }
+
+        return $query
             ->get(['id', 'name', 'description', 'target_audience', 'sessions_count', 'hours_count'])
             ->filter(fn (Program $program) => $program->prices->isNotEmpty())
             ->values();
@@ -111,6 +118,12 @@ class PartnerPortalSelfServeService
             Partnership::STAGE_DIAGNOSIS,
             null,
             'إرسال استبانة التشخيص من بوابة الشريك',
+        );
+        app(PartnershipPipelineService::class)->advanceIfBefore(
+            $link->partnership->fresh(),
+            Partnership::STAGE_QUOTE,
+            null,
+            'اكتمال التشخيص — الانتقال لعرض السعر',
         );
     }
 
@@ -206,10 +219,7 @@ class PartnerPortalSelfServeService
             if (! $price) {
                 throw new \RuntimeException('لا يوجد سعر نشط للخدمة المختارة');
             }
-            $quantity = (float) ($quantities[$programId] ?? $quantities[(string) $programId] ?? 1);
-            if ($quantity < 0.01) {
-                throw new \RuntimeException('يجب أن تكون الكمية أكبر من صفر');
-            }
+            $quantity = app(QuoteService::class)->diagnosisQuantity($link->partnership()->firstOrFail());
             $items[] = [
                 'program_id' => $programId,
                 'service_type' => $price->service_type,

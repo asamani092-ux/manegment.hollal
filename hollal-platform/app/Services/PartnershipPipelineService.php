@@ -31,7 +31,7 @@ class PartnershipPipelineService
         }
 
         if ($stage === Partnership::STAGE_CONTRACTED) {
-            $this->assertContractedReady($partnership);
+            throw new \InvalidArgumentException('مرحلة التعاقد مدمجة في عرض السعر');
         }
 
         return DB::transaction(function () use ($partnership, $stage, $actor, $note) {
@@ -163,16 +163,19 @@ class PartnershipPipelineService
         }
     }
 
-    /** Kanban columns keyed by stage. */
+    /** Kanban columns keyed by stage. Legacy contracted rows sit under quote. Time: O(n) | Space: O(n) */
     public function board(): Collection
     {
+        $visible = Partnership::PIPELINE_STAGES;
         $partnerships = Partnership::query()
-            ->whereIn('stage', Partnership::PIPELINE_STAGES)
+            ->whereIn('stage', [...$visible, Partnership::STAGE_CONTRACTED])
             ->with(['organization', 'owner'])
             ->get();
 
-        return collect(Partnership::PIPELINE_STAGES)->mapWithKeys(fn (int $stage) => [
-            $stage => $partnerships->where('stage', $stage)->values(),
+        return collect($visible)->mapWithKeys(fn (int $stage) => [
+            $stage => $partnerships
+                ->filter(fn (Partnership $p) => $p->pipelineColumnStage() === $stage)
+                ->values(),
         ]);
     }
 

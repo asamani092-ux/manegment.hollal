@@ -23,8 +23,8 @@ use Livewire\Component;
 use Livewire\WithFileUploads;
 
 /**
- * 05-B3..05-B7 — the partnership workspace: quotes, contract + signed copy,
- * payments, the partner link, and the «توليد مشروع» handoff.
+ * Partnership workspace from diagnosis: link, quotes, contract, payments, generate.
+ * Commercial close stays under عرض السعر; execution starts on generate.
  */
 class PartnershipShow extends Component
 {
@@ -41,6 +41,19 @@ class PartnershipShow extends Component
     protected $queryString = [
         'workspaceStep' => ['except' => 1],
     ];
+
+    // — diagnosis (workspace step 1)
+    public string $diagnosisAudience = '';
+
+    public string $diagnosisCount = '';
+
+    public string $diagnosisEnvironment = '';
+
+    /** @var array<int|string, string> */
+    public array $diagnosisAnswers = [];
+
+    /** @var list<int> */
+    public array $quoteProgramIds = [];
 
     // — quote builder (05-B3)
     public bool $showQuoteModal = false;
@@ -127,11 +140,98 @@ class PartnershipShow extends Component
     public function openQuoteModal(?int $reviseId = null): void
     {
         $this->authorize('partnerships.quotes.create');
-        $this->syncWorkspace(1);
+        $this->syncWorkspace(2);
         $this->revisingQuoteId = $reviseId;
         $this->resetQuoteLines();
         $this->quoteDiscount = '0';
         $this->showQuoteModal = true;
+    }
+
+    /** Prefill quote lines from diagnosis × priced services. Time: O(p·s + q) | Space: O(p·s) */
+    public function openQuoteFromDiagnosis(): void
+    {
+        $this->authorize('partnerships.quotes.create');
+        $this->syncWorkspace(2);
+
+        $programIds = array_values(array_filter(array_map('intval', $this->quoteProgramIds)));
+        if ($programIds === []) {
+            $programIds = $this->partnership->allowedPrograms()->pluck('programs.id')->map(fn ($id) => (int) $id)->all();
+        }
+
+        $items = app(QuoteService::class)->suggestItemsFromDiagnosis($this->partnership, $programIds);
+        if ($items === []) {
+            $this->addError('quote', 'اختر برنامجًا مسعّرًا أو أكمل التشخيص أولًا');
+            $this->dispatch('ds-toast', message: 'اختر برنامجًا مسعّرًا أو أكمل التشخيص أولًا');
+
+            return;
+        }
+
+        $this->revisingQuoteId = null;
+        $this->quoteDiscount = '0';
+        $this->quoteLines = array_map(fn (array $item) => [
+            'program_id' => (string) $item['program_id'],
+            'service_type' => $item['service_type'],
+            'quantity' => (string) $item['quantity'],
+            'unit_price' => (string) $item['unit_price'],
+        ], $items);
+        $this->showQuoteModal = true;
+    }
+
+    /** Manager submits diagnosis in workspace. Time: O(q) | Space: O(q) */
+    public function submitWorkspaceDiagnosis(): void
+    {
+        $this->authorize('partnerships.pipeline.manage');
+        $this->syncWorkspace(1);
+
+        $questions = app(DiagnosisQuestionService::class)->activeQuestions();
+        $answers = [];
+
+        if ($questions->isEmpty()) {
+            $this->validate([
+                'diagnosisAudience' => 'required|string|max:255',
+                'diagnosisCount' => 'required|numeric|min:1',
+            ], [], ['diagnosisAudience' => 'الفئة', 'diagnosisCount' => 'الأعداد']);
+        } else {
+            foreach ($questions as $question) {
+                $value = match ($question->key) {
+                    'audience' => $this->diagnosisAudience,
+                    'count' => $this->diagnosisCount,
+                    'environment' => $this->diagnosisEnvironment,
+                    default => (string) ($this->diagnosisAnswers[$question->id] ?? ''),
+                };
+                if ($question->required && trim($value) === '') {
+                    $this->addError('diagnosisAudience', $question->label.' مطلوب');
+
+                    return;
+                }
+                if (trim($value) !== '') {
+                    $answers[$question->id] = $value;
+                }
+            }
+            app(DiagnosisQuestionService::class)->recordAnswers($this->partnership, $answers);
+        }
+
+        if ($this->quoteProgramIds !== []) {
+            $this->partnership->allowedPrograms()->syncWithoutDetaching(
+                array_values(array_filter(array_map('intval', $this->quoteProgramIds)))
+            );
+        }
+
+        app(\App\Services\PartnershipPipelineService::class)->advanceIfBefore(
+            $this->partnership,
+            Partnership::STAGE_DIAGNOSIS,
+            auth()->user(),
+            'تسجيل التشخيص من مساحة العمل',
+        );
+        app(\App\Services\PartnershipPipelineService::class)->advanceIfBefore(
+            $this->partnership->fresh(),
+            Partnership::STAGE_QUOTE,
+            auth()->user(),
+            'اكتمال التشخيص — الانتقال لعرض السعر',
+        );
+        $this->partnership->refresh();
+        $this->syncWorkspace(2);
+        $this->dispatch('ds-toast', message: 'تم حفظ التشخيص والانتقال لعرض السعر');
     }
 
     public function addQuoteLine(): void
@@ -231,7 +331,7 @@ class PartnershipShow extends Component
     public function openContractModal(int $quoteId): void
     {
         $this->authorize('partnerships.contracts.create');
-        $this->syncWorkspace(2);
+        $this->syncWorkspace(3);
         $this->contractQuoteId = $quoteId;
         $quote = $this->quote($quoteId);
         $this->scheduleRows = [[
@@ -366,7 +466,7 @@ class PartnershipShow extends Component
     public function issueLink(): void
     {
         $this->authorize('partnerships.links.manage');
-        $this->syncWorkspace(4);
+        $this->syncWorkspace(1);
         $this->validate([
             'linkExpiryDays' => 'required|integer|min:1|max:365',
         ], [], ['linkExpiryDays' => 'مدة الرابط']);
@@ -381,6 +481,14 @@ class PartnershipShow extends Component
             auth()->user(),
             $this->linkExpiryDays,
         );
+
+        app(\App\Services\PartnershipPipelineService::class)->advanceIfBefore(
+            $this->partnership,
+            Partnership::STAGE_DIAGNOSIS,
+            auth()->user(),
+            'إصدار رابط الجهة لمرحلة التشخيص',
+        );
+        $this->partnership->refresh();
 
         $this->dispatch('ds-toast', message: 'تم إصدار رابط الجهة: '.app(PartnerPortalService::class)->portalUrl($link->token));
     }
@@ -477,6 +585,7 @@ class PartnershipShow extends Component
                 Quote::STATUS_SENT, Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED, Quote::STATUS_REJECTED,
             ],
             'diagnosisSnapshot' => app(DiagnosisQuestionService::class)->latestLabeledAnswers($this->partnership),
+            'diagnosisQuestions' => app(DiagnosisQuestionService::class)->activeQuestions(),
             'linkDefaultDays' => (int) Setting::get('links.default_expiry_days', 7),
         ])->layout('layouts.app', ['title' => 'ملف الشراكة']);
     }
@@ -492,16 +601,22 @@ class PartnershipShow extends Component
         $this->dispatch('open-workspace', step: $step);
     }
 
+    /**
+     * 1 diagnosis/link → 2 quotes → 3 contract → 4 payments → 5 generate.
+     * Time: O(1) | Space: O(1)
+     */
     private function defaultWorkspaceStep(Partnership $partnership): int
     {
         $partnership->loadMissing(['quotes:id,partnership_id', 'partnershipContracts:id,partnership_id', 'links:id,partnership_id']);
         $stage = (int) $partnership->stage;
+        $hasDiagnosis = $partnership->diagnosisAnswers()->exists();
 
         return match (true) {
-            $partnership->quotes->isEmpty() => 1,
-            $partnership->partnershipContracts->isEmpty() => 2,
-            $stage < Partnership::STAGE_CONTRACTED => 3,
-            $partnership->links->isEmpty() => 4,
+            $stage < Partnership::STAGE_DIAGNOSIS && ! $hasDiagnosis => 1,
+            ! $hasDiagnosis && $partnership->quotes->isEmpty() => 1,
+            $partnership->quotes->isEmpty() => 2,
+            $partnership->partnershipContracts->isEmpty() => 3,
+            $stage < Partnership::STAGE_EXECUTION => 4,
             default => 5,
         };
     }

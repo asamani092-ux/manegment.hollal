@@ -6,7 +6,7 @@
             <h2 class="ds-section-title">بانتظار اعتمادك</h2>
             @foreach ($pendingFinalQuotes as $pendingQuote)
                 <p>
-                    <a class="ds-link" href="{{ route('partnerships.show', $pendingQuote->partnership_id) }}?workspaceStep=1">
+                    <a class="ds-link" href="{{ route('partnerships.show', $pendingQuote->partnership_id) }}?workspaceStep=2">
                         اعتماد نهائي لعرض {{ $pendingQuote->partnership?->entity_name ?? '#'.$pendingQuote->partnership_id }}
                     </a>
                 </p>

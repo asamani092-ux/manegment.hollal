@@ -255,11 +255,11 @@ class PartnershipContractService
                 'internal_approval_notes' => null,
             ])->save();
 
-            app(PartnershipPipelineService::class)->moveTo(
+            app(PartnershipPipelineService::class)->advanceIfBefore(
                 $contract->partnership,
-                Partnership::STAGE_CONTRACTED,
+                Partnership::STAGE_QUOTE,
                 $confirmer,
-                'اكتمال شروط التعاقد',
+                'اكتمال شروط التعاقد داخل عرض السعر',
             );
 
             return $contract;

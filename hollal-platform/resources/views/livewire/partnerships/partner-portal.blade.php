@@ -47,13 +47,13 @@
             <section class="ds-portal-page ds-journey-active">
                 <header class="ds-portal-page-head">
                     <h2 class="ds-section-title">1. البرامج</h2>
-                    <p class="ds-text-muted">اختر البرامج والكميات. يُبنى العرض تلقائيًا من الأسعار المعتمدة.</p>
+                    <p class="ds-text-muted">اختر البرامج والخدمة. الأعداد تُحسب من التشخيص وليست إدخالًا حرًا هنا.</p>
                 </header>
                 <form method="POST" action="{{ route('partner.portal.programs.save', ['token' => $link->token], false) }}">
                     @csrf
                     <x-ds-table>
                         <x-slot:head>
-                            <tr><th>اختيار</th><th>البرنامج</th><th>الخدمة</th><th>الكمية</th></tr>
+                            <tr><th>اختيار</th><th>البرنامج</th><th>الخدمة</th></tr>
                         </x-slot:head>
                         @forelse ($programs as $program)
                             <tr wire:key="portal-program-{{ $program->id }}">
@@ -72,14 +72,9 @@
                                         @endforeach
                                     </select>
                                 </td>
-                                <td>
-                                    <input type="number" min="0.01" step="0.01" class="ds-input ds-ltr-num"
-                                           name="programQuantities[{{ $program->id }}]"
-                                           value="{{ $programQuantities[$program->id] ?? '1' }}">
-                                </td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="ds-text-muted ds-table-empty">لا توجد برامج متاحة حاليًا</td></tr>
+                            <tr><td colspan="3" class="ds-text-muted ds-table-empty">لا توجد برامج متاحة حاليًا</td></tr>
                         @endforelse
                     </x-ds-table>
                     <button type="submit" class="ds-btn ds-btn-primary">حفظ الاختيار وبناء العرض</button>
@@ -89,7 +84,7 @@
             <section class="ds-portal-page ds-journey-active">
                 <header class="ds-portal-page-head">
                     <h2 class="ds-section-title">2. التشخيص</h2>
-                    <p class="ds-text-muted">أجب عن الاستبانة ثم انتقل لصفحة عروض الأسعار بعد الاعتماد النهائي.</p>
+                    <p class="ds-text-muted">أجب عن الاستبانة. الأعداد تُستخدم لاحقًا لحسبة العرض من الخدمات المسعّرة.</p>
                 </header>
                 <form method="POST" action="{{ route('partner.portal.diagnosis.save', ['token' => $link->token], false) }}">
                     @csrf

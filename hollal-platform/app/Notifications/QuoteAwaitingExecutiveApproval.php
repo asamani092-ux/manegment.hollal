@@ -36,7 +36,7 @@ class QuoteAwaitingExecutiveApproval extends Notification implements ShouldQueue
 
         return [
             'message' => 'عرض سعر بانتظار اعتمادك النهائي — '.$name,
-            'url' => RecordUrl::partnership((int) $this->quote->partnership_id).'?workspaceStep=1',
+            'url' => RecordUrl::partnership((int) $this->quote->partnership_id).'?workspaceStep=2',
             'partnership_id' => $this->quote->partnership_id,
             'quote_id' => $this->quote->id,
         ];

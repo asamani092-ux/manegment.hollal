@@ -26,6 +26,7 @@ class Partnership extends Model
 
     public const STAGE_QUOTE = 5;
 
+    /** @deprecated Merged into STAGE_QUOTE; kept for legacy rows only. */
     public const STAGE_CONTRACTED = 6;
 
     public const STAGE_EXECUTION = 7;
@@ -41,14 +42,18 @@ class Partnership extends Model
         self::STAGE_MEETING => 'لقاء/عرض تعريفي',
         self::STAGE_DIAGNOSIS => 'تشخيص الاحتياج',
         self::STAGE_QUOTE => 'عرض السعر',
-        self::STAGE_CONTRACTED => 'تعاقد',
+        self::STAGE_CONTRACTED => 'عرض السعر',
         self::STAGE_EXECUTION => 'تنفيذ',
         self::STAGE_STALLED => 'متعثرة',
         self::STAGE_CLOSED => 'مغلقة',
     ];
 
-    /** @var list<int> the seven pipeline columns (terminal states are not columns) */
-    public const PIPELINE_STAGES = [1, 2, 3, 4, 5, 6, 7];
+    /**
+     * Pipeline columns — تعاقد folded into عرض السعر.
+     *
+     * @var list<int>
+     */
+    public const PIPELINE_STAGES = [1, 2, 3, 4, 5, 7];
 
     protected $fillable = [
         'organization_id',
@@ -241,5 +246,19 @@ class Partnership extends Model
     public function latestContract(): ?PartnershipContract
     {
         return $this->partnershipContracts()->latest('id')->first();
+    }
+
+    /** Commercial work (quote → contract → payments) lives under عرض السعر. */
+    public function isCommercialStage(): bool
+    {
+        return in_array((int) $this->stage, [self::STAGE_QUOTE, self::STAGE_CONTRACTED], true);
+    }
+
+    /** Map legacy contracted rows onto the quote column. Time: O(1) | Space: O(1) */
+    public function pipelineColumnStage(): int
+    {
+        $stage = (int) $this->stage;
+
+        return $stage === self::STAGE_CONTRACTED ? self::STAGE_QUOTE : $stage;
     }
 }

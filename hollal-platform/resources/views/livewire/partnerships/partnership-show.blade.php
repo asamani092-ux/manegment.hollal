@@ -36,31 +36,161 @@
 
     <div class="ds-workspace">
     <h2 class="ds-section-title">مساحة العمل</h2>
-    <p class="ds-text-muted">أدوات الملف — ليست مراحل الرحلة. اختر خطوة للعمل عليها دون قفل.</p>
+    <p class="ds-text-muted">تبدأ من التشخيص مع الرحلة. الرابط من هنا، ثم عرض السعر (يشمل العقد والدفعات) حتى التنفيذ.</p>
     <ol class="ds-journey-steps">
         <li class="{{ $workspaceStep === 1 ? 'is-current' : '' }}">
-            <button type="button" class="ds-pill {{ $workspaceStep === 1 ? 'is-selected' : '' }}" wire:click="openWorkspace(1)">1 عروض الأسعار</button>
+            <button type="button" class="ds-pill {{ $workspaceStep === 1 ? 'is-selected' : '' }}" wire:click="openWorkspace(1)">1 التشخيص والرابط</button>
         </li>
         <li class="{{ $workspaceStep === 2 ? 'is-current' : '' }}">
-            <button type="button" class="ds-pill {{ $workspaceStep === 2 ? 'is-selected' : '' }}" wire:click="openWorkspace(2)">2 عقد الشراكة</button>
+            <button type="button" class="ds-pill {{ $workspaceStep === 2 ? 'is-selected' : '' }}" wire:click="openWorkspace(2)">2 عروض الأسعار</button>
         </li>
         <li class="{{ $workspaceStep === 3 ? 'is-current' : '' }}">
-            <button type="button" class="ds-pill {{ $workspaceStep === 3 ? 'is-selected' : '' }}" wire:click="openWorkspace(3)">3 الدفعات</button>
+            <button type="button" class="ds-pill {{ $workspaceStep === 3 ? 'is-selected' : '' }}" wire:click="openWorkspace(3)">3 عقد الشراكة</button>
         </li>
         <li class="{{ $workspaceStep === 4 ? 'is-current' : '' }}">
-            <button type="button" class="ds-pill {{ $workspaceStep === 4 ? 'is-selected' : '' }}" wire:click="openWorkspace(4)">4 رابط الجهة</button>
+            <button type="button" class="ds-pill {{ $workspaceStep === 4 ? 'is-selected' : '' }}" wire:click="openWorkspace(4)">4 الدفعات</button>
         </li>
         <li class="{{ $workspaceStep === 5 ? 'is-current' : '' }}">
             <button type="button" class="ds-pill {{ $workspaceStep === 5 ? 'is-selected' : '' }}" wire:click="openWorkspace(5)">5 توليد مشروع</button>
         </li>
     </ol>
 
-    <section id="step-quotes" class="ds-section {{ $workspaceStep === 1 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 1) hidden @endif>
-        <h2 class="ds-section-title">1. عروض الأسعار</h2>
-        <p class="ds-text-muted">المسودة تُعتمد داخليًا ثم نهائيًا. إصدار الرابط هو الإرسال، والعرض يظهر للجهة بعد الاعتماد النهائي.</p>
+    <section id="step-diagnosis" class="ds-section {{ $workspaceStep === 1 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 1) hidden @endif>
+        <h2 class="ds-section-title">1. التشخيص والرابط</h2>
+        <p class="ds-text-muted">أنشئ الرابط فورًا، أو سجّل التشخيص هنا، أو أرسل الرابط لمسؤول الجهة. بعد اكتمال التشخيص تنتقل الرحلة لعرض السعر.</p>
+
+        @can('partnerships.links.manage')
+            <div class="ds-form-row">
+                <x-ds-form-group label="مدة الرابط بالأيام (الافتراضي {{ $linkDefaultDays }})" :error="$errors->first('linkExpiryDays')">
+                    <input type="number" min="1" max="365" class="ds-input ds-ltr-num" wire:model="linkExpiryDays">
+                </x-ds-form-group>
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="issueLink">إصدار رابط التشخيص</button>
+            </div>
+            <div class="ds-section-spaced">
+                <h3 class="ds-section-heading">ما يظهر للجهة على رابطها</h3>
+                <p class="ds-text-muted">الافتراضي برامج + تشخيص. العروض/الدفعات/العقد تُفعَّل تلقائيًا لاحقًا.</p>
+                <div class="ds-portal-feature-grid">
+                    <label class="ds-portal-feature-card">
+                        <span><input type="checkbox" wire:model="portalFeatures.programs"> <strong>البرامج</strong></span>
+                        <small>اختيار البرامج من النطاق المسموح</small>
+                    </label>
+                    <label class="ds-portal-feature-card">
+                        <span><input type="checkbox" wire:model="portalFeatures.diagnosis"> <strong>التشخيص</strong></span>
+                        <small>استبانة الاحتياج</small>
+                    </label>
+                    <label class="ds-portal-feature-card">
+                        <span><input type="checkbox" wire:model="portalFeatures.quotes"> <strong>عروض الأسعار</strong></span>
+                        <small>بعد الاعتماد النهائي</small>
+                    </label>
+                    <label class="ds-portal-feature-card">
+                        <span><input type="checkbox" wire:model="portalFeatures.payments"> <strong>الدفعات</strong></span>
+                        <small>بعد قبول العرض</small>
+                    </label>
+                    <label class="ds-portal-feature-card">
+                        <span><input type="checkbox" wire:model="portalFeatures.contract"> <strong>العقد</strong></span>
+                        <small>بعد قبول العرض</small>
+                    </label>
+                </div>
+                <button type="button" class="ds-btn ds-btn-sm" wire:click="savePortalFeatures">حفظ التحكم</button>
+            </div>
+        @endcan
+
+        <x-ds-table>
+            <x-slot:head>
+                <tr><th>الرابط</th><th>الصلاحية</th><th>الحالة</th><th>آخر استخدام</th><th>إجراءات</th></tr>
+            </x-slot:head>
+            @forelse ($partnership->links as $link)
+                <tr wire:key="link-{{ $link->id }}">
+                    <td dir="ltr">
+                        <span x-data="{ copied: false }">
+                            <input class="ds-input" readonly value="{{ app(\App\Services\PartnerPortalService::class)->portalUrl($link->token) }}"
+                                   x-ref="url">
+                            <button type="button" class="ds-btn ds-btn-sm"
+                                    @click="navigator.clipboard.writeText($refs.url.value); copied = true">
+                                <span x-text="copied ? 'تم النسخ' : 'نسخ الرابط الكامل'"></span>
+                            </button>
+                        </span>
+                    </td>
+                    <td dir="ltr">{{ $link->expires_at?->format('Y-m-d') ?? '—' }}</td>
+                    <td>{{ $link->isUsable() ? 'فعّال' : 'منتهٍ/مُبطل' }}</td>
+                    <td dir="ltr">{{ hollal_dt($link->last_used_at) }}</td>
+                    <td>
+                        @can('partnerships.links.manage')
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="sendLinkEmail({{ $link->id }})">إرسال بالبريد</button>
+                            <button type="button" class="ds-btn ds-btn-sm"
+                                    x-data
+                                    @click="navigator.clipboard.writeText(@js(app(\App\Services\PartnerPortalService::class)->whatsappText($link)))">
+                                نسخ واتساب
+                            </button>
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="revokeLink({{ $link->id }})">إبطال</button>
+                            @if (! $link->isUsable())
+                                <button type="button" class="ds-btn ds-btn-sm" wire:click="deleteLink({{ $link->id }})">حذف</button>
+                            @endif
+                        @endcan
+                    </td>
+                </tr>
+            @empty
+                <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد روابط — أصدر رابط التشخيص أعلاه</td></tr>
+            @endforelse
+        </x-ds-table>
+
+        <div class="ds-section-spaced">
+            <h3 class="ds-section-heading">تشخيص المدير</h3>
+            @if ($diagnosisSnapshot !== [])
+                <p class="ds-text-muted">آخر إجابات محفوظة:</p>
+                @foreach ($diagnosisSnapshot as $answer)
+                    <p>{{ $answer['label'] }}: {{ $answer['value'] }}</p>
+                @endforeach
+            @endif
+            @can('partnerships.pipeline.manage')
+                <x-ds-form-group label="برامج العرض (للمسودة من التشخيص)">
+                    <select class="ds-input" multiple wire:model="quoteProgramIds" size="4">
+                        @foreach ($programs as $program)
+                            <option value="{{ $program->id }}">{{ $program->name }}</option>
+                        @endforeach
+                    </select>
+                </x-ds-form-group>
+                @forelse ($diagnosisQuestions as $question)
+                    @if ($question->key === 'audience')
+                        <x-ds-form-group :label="$question->label" :error="$errors->first('diagnosisAudience')">
+                            <input type="text" class="ds-input" wire:model="diagnosisAudience">
+                        </x-ds-form-group>
+                    @elseif ($question->key === 'count')
+                        <x-ds-form-group :label="$question->label" :error="$errors->first('diagnosisCount')">
+                            <input type="number" class="ds-input" wire:model="diagnosisCount">
+                        </x-ds-form-group>
+                    @elseif ($question->key === 'environment')
+                        <x-ds-form-group :label="$question->label">
+                            <textarea class="ds-input" wire:model="diagnosisEnvironment"></textarea>
+                        </x-ds-form-group>
+                    @else
+                        <x-ds-form-group :label="$question->label">
+                            <input type="{{ $question->type === 'number' ? 'number' : 'text' }}" class="ds-input" wire:model="diagnosisAnswers.{{ $question->id }}">
+                        </x-ds-form-group>
+                    @endif
+                @empty
+                    <x-ds-form-group label="الفئة" :error="$errors->first('diagnosisAudience')">
+                        <input type="text" class="ds-input" wire:model="diagnosisAudience">
+                    </x-ds-form-group>
+                    <x-ds-form-group label="الأعداد" :error="$errors->first('diagnosisCount')">
+                        <input type="number" class="ds-input" wire:model="diagnosisCount">
+                    </x-ds-form-group>
+                    <x-ds-form-group label="البيئة">
+                        <textarea class="ds-input" wire:model="diagnosisEnvironment"></textarea>
+                    </x-ds-form-group>
+                @endforelse
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="submitWorkspaceDiagnosis">حفظ التشخيص والانتقال للعرض</button>
+            @endcan
+        </div>
+    </section>
+
+    <section id="step-quotes" class="ds-section {{ $workspaceStep === 2 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 2) hidden @endif>
+        <h2 class="ds-section-title">2. عروض الأسعار</h2>
+        <p class="ds-text-muted">المسودة من التشخيص (قابلة للتعديل) أو يدويًا. الاعتماد داخلي ثم نهائي. العقد والدفعات ضمن مرحلة عرض السعر حتى التنفيذ.</p>
         <p class="ds-text-muted">الفاتورة الضريبية ليست العرض: تُصدر من خطوة الدفعات بعد تأكيد المالية عبر زر إصدار فاتورة.</p>
         @can('partnerships.quotes.create')
-            <button type="button" class="ds-btn ds-btn-primary" wire:click="openQuoteModal">عرض جديد</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="openQuoteFromDiagnosis">عرض من التشخيص</button>
+            <button type="button" class="ds-btn" wire:click="openQuoteModal">عرض يدوي</button>
         @endcan
 
         <x-ds-table>
@@ -122,8 +252,8 @@
     </section>
 
     @php $acceptedQuote = $partnership->quotes->firstWhere('status', \App\Models\Quote::STATUS_ACCEPTED); @endphp
-    <section id="step-contract" class="ds-section {{ $workspaceStep === 2 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 2) hidden @endif>
-        <h2 class="ds-section-title">2. عقد الشراكة</h2>
+    <section id="step-contract" class="ds-section {{ $workspaceStep === 3 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 3) hidden @endif>
+        <h2 class="ds-section-title">3. عقد الشراكة</h2>
         <p class="ds-text-muted">قبول الجهة للعرض ينشئ عقدًا بانتظار التوقيع تلقائيًا. يمكن إنشاء عقد يدوي من عرض مقبول وتحديد جدول الدفعات.</p>
         @can('partnerships.contracts.create')
             @if ($acceptedQuote)
@@ -194,8 +324,8 @@
         @endif
     </section>
 
-    <section id="step-payments" class="ds-section {{ $workspaceStep === 3 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 3) hidden @endif>
-        <h2 class="ds-section-title">3. الدفعات</h2>
+    <section id="step-payments" class="ds-section {{ $workspaceStep === 4 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 4) hidden @endif>
+        <h2 class="ds-section-title">4. الدفعات</h2>
         <p class="ds-text-muted">فريق حلل يحدد جدول الدفعات عند إنشاء العقد. الجهة ترفع الإثبات، والمالية تؤكد ثم تصدر الفاتورة.</p>
         <x-ds-table>
             <x-slot:head>
@@ -251,95 +381,9 @@
         </x-ds-table>
     </section>
 
-    <section id="step-link" class="ds-section {{ $workspaceStep === 4 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 4) hidden @endif>
-        <h2 class="ds-section-title">4. رابط الجهة الفريد</h2>
-        @can('partnerships.links.manage')
-            <div class="ds-form-row">
-                <x-ds-form-group label="مدة الرابط بالأيام (الافتراضي {{ $linkDefaultDays }})" :error="$errors->first('linkExpiryDays')">
-                    <input type="number" min="1" max="365" class="ds-input ds-ltr-num" wire:model="linkExpiryDays">
-                </x-ds-form-group>
-                <button type="button" class="ds-btn" wire:click="issueLink">إصدار رابط</button>
-            </div>
-            <div class="ds-section-spaced">
-                <h3 class="ds-section-heading">ما يظهر للجهة على رابطها</h3>
-                <p class="ds-text-muted">فعّل الأقسام المطلوبة ثم احفظ. لا يغيّر المرحلة؛ يتحكم فقط بما تراه الجهة.</p>
-                <div class="ds-portal-feature-grid">
-                    <label class="ds-portal-feature-card">
-                        <span><input type="checkbox" wire:model="portalFeatures.programs"> <strong>البرامج</strong></span>
-                        <small>اختيار البرامج والكميات من الكتالوج</small>
-                    </label>
-                    <label class="ds-portal-feature-card">
-                        <span><input type="checkbox" wire:model="portalFeatures.diagnosis"> <strong>التشخيص</strong></span>
-                        <small>استبانة الاحتياج</small>
-                    </label>
-                    <label class="ds-portal-feature-card">
-                        <span><input type="checkbox" wire:model="portalFeatures.quotes"> <strong>عروض الأسعار</strong></span>
-                        <small>المسودة والقبول</small>
-                    </label>
-                    <label class="ds-portal-feature-card">
-                        <span><input type="checkbox" wire:model="portalFeatures.payments"> <strong>الدفعات</strong></span>
-                        <small>المستحق وإثبات التحويل</small>
-                    </label>
-                    <label class="ds-portal-feature-card">
-                        <span><input type="checkbox" wire:model="portalFeatures.contract"> <strong>العقد</strong></span>
-                        <small>التنزيل والتوقيع الإلكتروني</small>
-                    </label>
-                </div>
-                <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="savePortalFeatures">حفظ التحكم</button>
-            </div>
-        @endcan
-        <div class="ds-section-spaced">
-            <h3 class="ds-section-heading">ما حفظته الجهة من البوابة</h3>
-            <p class="ds-text-muted">البرامج المختارة: {{ $partnership->allowedPrograms->pluck('name')->join('، ') ?: '—' }}</p>
-            @forelse ($diagnosisSnapshot as $answer)
-                <p>{{ $answer['label'] }}: {{ $answer['value'] }}</p>
-            @empty
-                <p class="ds-text-muted">لم تُرسل استبانة التشخيص بعد.</p>
-            @endforelse
-        </div>
-        <x-ds-table>
-            <x-slot:head>
-                <tr><th>الرابط</th><th>الصلاحية</th><th>الحالة</th><th>آخر استخدام</th><th>إجراءات</th></tr>
-            </x-slot:head>
-            @forelse ($partnership->links as $link)
-                <tr wire:key="link-{{ $link->id }}">
-                    <td dir="ltr">
-                        <span x-data="{ copied: false }">
-                            <input class="ds-input" readonly value="{{ app(\App\Services\PartnerPortalService::class)->portalUrl($link->token) }}"
-                                   x-ref="url">
-                            <button type="button" class="ds-btn ds-btn-sm"
-                                    @click="navigator.clipboard.writeText($refs.url.value); copied = true">
-                                <span x-text="copied ? 'تم النسخ' : 'نسخ الرابط الكامل'"></span>
-                            </button>
-                        </span>
-                    </td>
-                    <td dir="ltr">{{ $link->expires_at?->format('Y-m-d') ?? '—' }}</td>
-                    <td>{{ $link->isUsable() ? 'فعّال' : 'منتهٍ/مُبطل' }}</td>
-                    <td dir="ltr">{{ hollal_dt($link->last_used_at) }}</td>
-                    <td>
-                        @can('partnerships.links.manage')
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="sendLinkEmail({{ $link->id }})">إرسال بالبريد</button>
-                            <button type="button" class="ds-btn ds-btn-sm"
-                                    x-data
-                                    @click="navigator.clipboard.writeText(@js(app(\App\Services\PartnerPortalService::class)->whatsappText($link)))">
-                                نسخ واتساب
-                            </button>
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="revokeLink({{ $link->id }})">إبطال</button>
-                            @if (! $link->isUsable())
-                                <button type="button" class="ds-btn ds-btn-sm" wire:click="deleteLink({{ $link->id }})">حذف</button>
-                            @endif
-                        @endcan
-                    </td>
-                </tr>
-            @empty
-                <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا توجد روابط</td></tr>
-            @endforelse
-        </x-ds-table>
-    </section>
-
     <section id="step-generate" class="ds-section {{ $workspaceStep === 5 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 5) hidden @endif>
         <h2 class="ds-section-title">5. توليد مشروع</h2>
-        <p class="ds-text-muted">التوليد يدوي بعد تأكيد العقد. لا يحدث تلقائيًا بعد الدفع. يمكن التأكيد دون دفعة إذا أُلغي شرط الدفعة الأولى.</p>
+        <p class="ds-text-muted">التوليد يدوي بعد تأكيد العقد داخل عرض السعر. بعدها تبدأ مرحلة التنفيذ.</p>
         @can('partnerships.generate')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openGenerateModal">توليد مشروع</button>
         @endcan

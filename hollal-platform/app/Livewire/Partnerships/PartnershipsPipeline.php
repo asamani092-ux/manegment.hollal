@@ -67,7 +67,7 @@ class PartnershipsPipeline extends Component
                 auth()->user(),
                 $this->stageNote,
             );
-        } catch (\RuntimeException $exception) {
+        } catch (\RuntimeException|\InvalidArgumentException $exception) {
             $this->addError('targetStage', $exception->getMessage());
 
             return;

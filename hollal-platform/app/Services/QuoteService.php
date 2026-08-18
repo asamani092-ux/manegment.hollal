@@ -256,6 +256,80 @@ class QuoteService
             ->value('unit_price') ?? 0);
     }
 
+    /**
+     * Draft lines from diagnosis numeric answers × priced services on chosen programs.
+     * Time: O(p·s + q) | Space: O(p·s)
+     *
+     * @param  list<int>|null  $programIds
+     * @return list<array{program_id: int, service_type: string, quantity: float, unit_price: float}>
+     */
+    public function suggestItemsFromDiagnosis(Partnership $partnership, ?array $programIds = null): array
+    {
+        $ids = $programIds !== null && $programIds !== []
+            ? array_values(array_unique(array_map('intval', $programIds)))
+            : $partnership->allowedPrograms()->pluck('programs.id')->map(fn ($id) => (int) $id)->all();
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $quantity = $this->diagnosisQuantity($partnership);
+        $programs = Program::query()
+            ->whereIn('id', $ids)
+            ->with(['prices' => fn ($q) => $q->where('is_active', true)->orderBy('id')])
+            ->get();
+
+        $items = [];
+        foreach ($programs as $program) {
+            foreach ($program->prices as $price) {
+                $items[] = [
+                    'program_id' => (int) $program->id,
+                    'service_type' => (string) $price->service_type,
+                    'quantity' => $quantity,
+                    'unit_price' => (float) $price->unit_price,
+                ];
+            }
+        }
+
+        return $items;
+    }
+
+    /** Time: O(q) | Space: O(1) */
+    public function diagnosisQuantity(Partnership $partnership): float
+    {
+        $latest = app(DiagnosisQuestionService::class)->latestAnswers($partnership);
+        if ($latest === []) {
+            return 1.0;
+        }
+
+        $questions = \App\Models\DiagnosisQuestion::query()
+            ->whereIn('id', array_keys($latest))
+            ->get(['id', 'key', 'type'])
+            ->keyBy('id');
+
+        $fromCount = null;
+        $sum = 0.0;
+        foreach ($latest as $id => $value) {
+            if (! is_numeric($value)) {
+                continue;
+            }
+            $num = (float) $value;
+            $question = $questions->get($id);
+            if ($question?->key === 'count') {
+                $fromCount = $num;
+            }
+            if ($question?->type === 'number' || $question?->key === 'count' || is_numeric($value)) {
+                $sum += $num;
+            }
+        }
+
+        if ($fromCount !== null && $fromCount > 0) {
+            return $fromCount;
+        }
+
+        return $sum > 0 ? $sum : 1.0;
+    }
+
     public function taxRate(): float
     {
         return (float) Setting::get('finance.tax_rate', 0.15);

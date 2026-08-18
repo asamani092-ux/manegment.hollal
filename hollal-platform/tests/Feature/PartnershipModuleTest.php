@@ -335,7 +335,7 @@ class PartnershipModuleTest extends TestCase
         $confirmed = app(PartnershipContractService::class)->confirm($contract->fresh(), $manager);
 
         $this->assertSame(PartnershipContract::STATUS_CONFIRMED, $confirmed->status);
-        $this->assertSame(Partnership::STAGE_CONTRACTED, $confirmed->partnership->fresh()->stage);
+        $this->assertSame(Partnership::STAGE_QUOTE, $confirmed->partnership->fresh()->stage);
     }
 
     // ------------------------------------------------------------ 05-B5
@@ -751,8 +751,8 @@ class PartnershipModuleTest extends TestCase
         $component->assertSee('wire:click="openWorkspace(1)"', false)
             ->assertSee('wire:click="openWorkspace(2)"', false)
             ->assertDontSee('x-cloak', false)
-            ->assertSee('1. عروض الأسعار')
-            ->assertSee('2. عقد الشراكة');
+            ->assertSee('1. التشخيص والرابط')
+            ->assertSee('2. عروض الأسعار');
     }
 
     public function test_quote_pdf_preview_is_inline_and_portal_hides_unit_prices(): void
@@ -768,7 +768,7 @@ class PartnershipModuleTest extends TestCase
 
         Livewire::actingAs($this->manager())
             ->test(PartnershipShow::class, ['partnership' => $partnership])
-            ->call('openWorkspace', 1)
+            ->call('openWorkspace', 2)
             ->assertSee('معاينة')
             ->assertSee(route('quotes.pdf', $quote->id, false).'?print=1', false);
 
@@ -786,7 +786,8 @@ class PartnershipModuleTest extends TestCase
             ->test(PartnershipShow::class, ['partnership' => $partnership])
             ->call('openQuoteModal')
             ->assertSet('showQuoteModal', true)
-            ->call('openWorkspace', 2)
+            ->assertSet('workspaceStep', 2)
+            ->call('openWorkspace', 3)
             ->assertSee('إنشاء عقد')
             ->call('openContractModal', $quote->id)
             ->assertSet('showContractModal', true)
@@ -794,7 +795,7 @@ class PartnershipModuleTest extends TestCase
 
         $this->assertSame((string) $quote->total, $show->get('scheduleRows')[0]['amount']);
 
-        $show->call('openWorkspace', 4)
+        $show->call('openWorkspace', 1)
             ->set('linkExpiryDays', 3)
             ->call('issueLink')
             ->assertHasNoErrors();
@@ -809,6 +810,41 @@ class PartnershipModuleTest extends TestCase
         $show->call('revokeLink', $link->id)->assertHasNoErrors();
         $show->call('deleteLink', $link->id)->assertHasNoErrors();
         $this->assertNull($partnership->fresh()->links()->find($link->id));
+    }
+
+    public function test_workspace_diagnosis_advances_to_quote_and_suggests_priced_lines(): void
+    {
+        $partnership = $this->partnership();
+        $program = Program::create(['name' => 'برنامج التشخيص', 'stage' => Program::STAGE_ACTIVE]);
+        ProgramPrice::create([
+            'program_id' => $program->id,
+            'service_type' => ProgramPrice::SERVICE_TRAINING,
+            'unit_price' => 1000,
+            'is_active' => true,
+        ]);
+        ProgramPrice::create([
+            'program_id' => $program->id,
+            'service_type' => ProgramPrice::SERVICE_VISIT,
+            'unit_price' => 500,
+            'is_active' => true,
+        ]);
+
+        Livewire::actingAs($this->manager())
+            ->test(PartnershipShow::class, ['partnership' => $partnership])
+            ->set('quoteProgramIds', [$program->id])
+            ->set('diagnosisAudience', 'معلمون')
+            ->set('diagnosisCount', '10')
+            ->set('diagnosisEnvironment', 'قاعات')
+            ->call('submitWorkspaceDiagnosis')
+            ->assertHasNoErrors()
+            ->assertSet('workspaceStep', 2);
+
+        $this->assertSame(Partnership::STAGE_QUOTE, $partnership->fresh()->stage);
+
+        $items = app(QuoteService::class)->suggestItemsFromDiagnosis($partnership->fresh(), [$program->id]);
+        $this->assertCount(2, $items);
+        $this->assertSame(10.0, $items[0]['quantity']);
+        $this->assertContains($items[0]['service_type'], ProgramPrice::SERVICES);
     }
 
     public function test_generate_is_manual_after_confirmed_contract_without_payment(): void
