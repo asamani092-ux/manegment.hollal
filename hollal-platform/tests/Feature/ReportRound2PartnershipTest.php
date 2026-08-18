@@ -105,12 +105,9 @@ class ReportRound2PartnershipTest extends TestCase
         $this->assertSame(Quote::STATUS_ACCEPTED, $acceptedQuote->status);
         $this->assertSame('2300.00', (string) $acceptedQuote->total);
 
-        app(PartnershipContractService::class)->createFromQuote(
-            $acceptedQuote,
-            [['amount' => 2300, 'due_on' => now()->toDateString()]],
-            requiresFirstPayment: false,
-        );
-        $contract = PartnershipContract::firstOrFail();
+        $contract = PartnershipContract::query()->where('quote_id', $acceptedQuote->id)->firstOrFail();
+        $this->assertSame(PartnershipContract::STATUS_AWAITING_SIGNATURE, $contract->status);
+        $this->assertFalse($contract->requires_first_payment);
 
         $png = 'data:image/png;base64,'.base64_encode(base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='));
         $portal->set('signatureName', 'مدير الجهة')

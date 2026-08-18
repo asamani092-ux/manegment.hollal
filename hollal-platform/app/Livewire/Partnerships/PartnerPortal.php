@@ -153,6 +153,9 @@ class PartnerPortal extends Component
                 $this->link,
                 $quoteId,
                 $this->quoteNotes !== '' ? $this->quoteNotes : null,
+                $this->selectionDiffersFromQuote($quoteId) ? $this->selectedProgramIds : null,
+                $this->programQuantities,
+                $this->programServices,
             );
             $this->quoteNotes = '';
             $this->notice('تم قبول العرض — العقد جاهز للتوقيع');
@@ -329,6 +332,31 @@ class PartnerPortal extends Component
     private function log(string $action, array $metadata = []): void
     {
         app(PartnerPortalService::class)->log($this->link, $action, $metadata, request()->ip());
+    }
+
+    /** Time: O(items) | Space: O(items) */
+    private function selectionDiffersFromQuote(int $quoteId): bool
+    {
+        if ($this->selectedProgramIds === []) {
+            return false;
+        }
+
+        $items = $this->scopedQuote($quoteId)->items;
+        $selected = collect($this->selectedProgramIds)->map(fn ($id) => (int) $id)->sort()->values()->all();
+        $current = $items->pluck('program_id')->map(fn ($id) => (int) $id)->sort()->values()->all();
+        if ($selected !== $current) {
+            return true;
+        }
+
+        foreach ($items as $item) {
+            $qty = (float) ($this->programQuantities[$item->program_id] ?? $this->programQuantities[(string) $item->program_id] ?? $item->quantity);
+            $service = (string) ($this->programServices[$item->program_id] ?? $this->programServices[(string) $item->program_id] ?? $item->service_type);
+            if (abs($qty - (float) $item->quantity) > 0.001 || $service !== (string) $item->service_type) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private function initializeCatalogSelection(): void
