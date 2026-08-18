@@ -83,7 +83,10 @@ class ReportRound1PartMeetTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(PartnershipShow::class, ['partnership' => $partnership])
-            ->assertSee('عقد الشراكة');
+            ->assertSee('عقد الشراكة')
+            ->assertSee('دورة حياة الرحلة')
+            ->assertSee('فرصة')
+            ->assertSee('تنفيذ');
     }
 
     public function test_stage_move_mails_organization_contacts(): void

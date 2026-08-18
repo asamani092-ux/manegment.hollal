@@ -7,8 +7,23 @@
         back-label="{{ $returnTo === 'organization' ? 'رجوع لملف الجهة' : 'رجوع لرحلة الشراكات' }}" />
 
     <section class="ds-section">
+        <h2 class="ds-section-title">دورة حياة الرحلة</h2>
         <p>المرحلة الحالية: <strong>{{ $partnership->stageLabel() }}</strong> — منذ
             <span class="ds-ltr-num">{{ $partnership->stageAgeDays() }}</span> يومًا</p>
+        @php
+            $lifeStage = (int) $partnership->stage;
+            $lifeInPipeline = in_array($lifeStage, \App\Models\Partnership::PIPELINE_STAGES, true);
+        @endphp
+        <ol class="ds-journey-steps" aria-label="دورة حياة الشراكة">
+            @foreach (\App\Models\Partnership::PIPELINE_STAGES as $code)
+                <li class="{{ $lifeStage === $code ? 'is-current' : ($lifeInPipeline && $lifeStage > $code ? 'is-done' : '') }}">
+                    {{ \App\Models\Partnership::STAGE_LABELS[$code] }}
+                </li>
+            @endforeach
+            @if (! $lifeInPipeline)
+                <li class="is-current">{{ $partnership->stageLabel() }}</li>
+            @endif
+        </ol>
         @if ($partnership->awaiting_internal_approval)
             <p class="ds-badge ds-badge-warning">بانتظار الاعتماد النهائي</p>
         @elseif ($partnership->internal_approval_notes)
@@ -21,7 +36,8 @@
     <div class="ds-workspace"
          x-data="{ step: {{ (int) $workspaceStep }} }"
          @open-workspace.window="step = Number(($event.detail && $event.detail.step) || $event.detail[0] || step)">
-    <p class="ds-text-muted">اختر خطوة للعمل عليها. كل الخطوات قابلة للفتح دون قفل.</p>
+    <h2 class="ds-section-title">مساحة العمل</h2>
+    <p class="ds-text-muted">أدوات الملف — ليست مراحل الرحلة. اختر خطوة للعمل عليها دون قفل.</p>
     <ol class="ds-journey-steps">
         <li :class="step === 1 ? 'is-current' : ''">
             <button type="button" class="ds-pill" :class="step === 1 ? 'is-selected' : ''" @click="step = 1">1 عروض الأسعار</button>
