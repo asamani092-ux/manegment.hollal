@@ -33,6 +33,13 @@ class PartnershipShow extends Component
 
     public string $returnTo = 'pipeline';
 
+    public int $workspaceStep = 1;
+
+    /** @var array<string, mixed> */
+    protected $queryString = [
+        'workspaceStep' => ['except' => 1],
+    ];
+
     // — quote builder (05-B3)
     public bool $showQuoteModal = false;
 
@@ -96,13 +103,21 @@ class PartnershipShow extends Component
             403,
         );
         $this->partnership = $partnership;
-        $this->returnTo = request()->query('from') === 'organization' && $partnership->organization_id
-            ? 'organization'
-            : 'pipeline';
+        $this->returnTo = $partnership->organization_id ? 'organization' : 'pipeline';
+        if (! request()->filled('workspaceStep')) {
+            $this->workspaceStep = $this->defaultWorkspaceStep($partnership);
+        }
         $this->resetQuoteLines();
         $this->scheduleRows = [['label' => 'الدفعة الأولى', 'amount' => '', 'due_on' => now()->toDateString()]];
         $features = $partnership->portal_features ?? [];
         $this->portalFeatures = array_merge($this->portalFeatures, is_array($features) ? $features : []);
+    }
+
+    public function openWorkspace(int $step): void
+    {
+        if ($step >= 1 && $step <= 5) {
+            $this->workspaceStep = $step;
+        }
     }
 
     // ---------------------------------------------------------------- quotes
@@ -110,6 +125,7 @@ class PartnershipShow extends Component
     public function openQuoteModal(?int $reviseId = null): void
     {
         $this->authorize('partnerships.quotes.create');
+        $this->workspaceStep = 1;
         $this->revisingQuoteId = $reviseId;
         $this->resetQuoteLines();
         $this->quoteDiscount = '0';
@@ -191,6 +207,7 @@ class PartnershipShow extends Component
     public function openContractModal(int $quoteId): void
     {
         $this->authorize('partnerships.contracts.create');
+        $this->workspaceStep = 2;
         $this->contractQuoteId = $quoteId;
         $this->showContractModal = true;
     }
@@ -319,6 +336,7 @@ class PartnershipShow extends Component
     public function issueLink(): void
     {
         $this->authorize('partnerships.links.manage');
+        $this->workspaceStep = 4;
         $link = app(PartnerPortalService::class)->issue($this->partnership, auth()->user());
 
         $this->dispatch('ds-toast', message: 'تم إصدار رابط الجهة: '.app(PartnerPortalService::class)->portalUrl($link->token));
@@ -353,6 +371,7 @@ class PartnershipShow extends Component
     public function openGenerateModal(): void
     {
         $this->authorize('partnerships.generate');
+        $this->workspaceStep = 5;
         $this->generateLaunchDate = now()->addWeek()->toDateString();
         $this->showGenerateModal = true;
     }
@@ -398,6 +417,20 @@ class PartnershipShow extends Component
                 Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED, Quote::STATUS_REJECTED,
             ],
         ])->layout('layouts.app', ['title' => 'ملف الشراكة']);
+    }
+
+    private function defaultWorkspaceStep(Partnership $partnership): int
+    {
+        $partnership->loadMissing(['quotes:id,partnership_id', 'partnershipContracts:id,partnership_id', 'links:id,partnership_id']);
+        $stage = (int) $partnership->stage;
+
+        return match (true) {
+            $partnership->quotes->isEmpty() => 1,
+            $partnership->partnershipContracts->isEmpty() => 2,
+            $stage < Partnership::STAGE_CONTRACTED => 3,
+            $partnership->links->isEmpty() => 4,
+            default => 5,
+        };
     }
 
     private function quote(int $id): Quote

@@ -43,7 +43,7 @@
 
     <section class="ds-section">
         <h2 class="ds-section-title">رحلات الشراكة</h2>
-        <p class="ds-text-muted">كل صف رحلة واحدة تحت الجهة. «فتح ملف الرحلة» يعرض العروض والعقد والدفعات.</p>
+        <p class="ds-text-muted">كل صف رحلة واحدة تحت الجهة. الشراكة لا تُغلق إلا بانتهاء مشروعها دون تجديد.</p>
         @error('renewal') <p class="ds-badge ds-badge-danger">{{ $message }}</p> @enderror
         <x-ds-table>
             <x-slot:head>
@@ -72,13 +72,6 @@
                         <a class="ds-btn ds-btn-sm ds-btn-primary" href="{{ route('partnerships.show', $partnership->id) }}?from=organization">
                             فتح ملف الرحلة
                         </a>
-                        @can('partnerships.organizations.manage')
-                            @if (in_array($partnership->stage, [\App\Models\Partnership::STAGE_STALLED, \App\Models\Partnership::STAGE_CLOSED], true))
-                                <button type="button" class="ds-btn ds-btn-sm" wire:click="renewPartnership({{ $partnership->id }})">
-                                    تجديد الرحلة
-                                </button>
-                            @endif
-                        @endcan
                     </td>
                 </tr>
             @empty
@@ -89,7 +82,7 @@
 
     <section class="ds-section">
         <h2 class="ds-section-title">مشاريعها</h2>
-        <p class="ds-text-muted">تجديد مشروع منتهٍ أو متوقف يفتح رحلة فرصة جديدة مربوطة بالرحلة الأم.</p>
+        <p class="ds-text-muted">التجديد من هنا فقط: مشروع منتهٍ أو متوقف يفتح رحلة فرصة جديدة ويُغلق الرحلة الأم.</p
         <x-ds-table>
             <x-slot:head>
                 <tr><th>المشروع</th><th>الحالة</th><th>إجراءات</th></tr>

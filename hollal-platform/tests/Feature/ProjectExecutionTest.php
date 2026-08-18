@@ -399,7 +399,7 @@ class ProjectExecutionTest extends TestCase
         $closure->markDelivered($project);
     }
 
-    public function test_closure_flow_generates_approves_delivers_and_opens_renewal(): void
+    public function test_closure_flow_generates_approves_delivers_and_closes_partnership(): void
     {
         $project = $this->readyToCloseProject();
         $closure = app(ProjectClosureService::class);
@@ -417,9 +417,10 @@ class ProjectExecutionTest extends TestCase
 
         $this->assertNotNull($closed->closed_at);
         $this->assertSame('مغلق', $closed->status);
-        $this->assertTrue(
+        $this->assertSame(Partnership::STAGE_CLOSED, $project->partnership?->fresh()?->stage);
+        $this->assertFalse(
             Partnership::where('renewed_from_id', $project->partnership_id)->exists(),
-            'a renewal opportunity should be opened on closure'
+            'closing a project without renew must not open a new journey'
         );
         $this->assertTrue(OrganizationImpactRecord::where('project_id', $project->id)->exists());
     }

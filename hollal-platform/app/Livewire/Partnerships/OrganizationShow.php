@@ -7,8 +7,8 @@ use App\Models\OrganizationContact;
 use App\Models\Partnership;
 use App\Models\Program;
 use App\Models\User;
-use App\Services\PartnershipPipelineService;
 use App\Services\PartnershipQuickCreateService;
+use App\Services\ProjectClosureService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -142,20 +142,6 @@ class OrganizationShow extends Component
         $this->redirect(route('partnerships.show', ['partnership' => $partnership->id]).'?from=organization');
     }
 
-    public function renewPartnership(int $partnershipId): void
-    {
-        $this->authorize('partnerships.organizations.manage');
-        $partnership = $this->organization->partnerships()->with('project')->findOrFail($partnershipId);
-
-        if (! in_array($partnership->stage, [Partnership::STAGE_STALLED, Partnership::STAGE_CLOSED], true)) {
-            $this->addError('renewal', 'تجديد الرحلة من هنا لرحلة متعثرة أو مغلقة فقط. مشروع منتهٍ/متوقف يُجدَّد من جدول المشاريع.');
-
-            return;
-        }
-
-        $this->openRenewalAndGo($partnership, 'تجديد تراكمي لرحلة متعثرة أو مغلقة');
-    }
-
     public function renewFromProject(int $projectId): void
     {
         $this->authorize('partnerships.organizations.manage');
@@ -167,27 +153,18 @@ class OrganizationShow extends Component
             return;
         }
 
-        $partnership = $project->partnership
-            ?? $this->organization->partnerships()->where('project_id', $project->id)->first();
+        $renewal = app(ProjectClosureService::class)->openRenewalOpportunity(
+            $project,
+            auth()->user(),
+        );
 
-        if ($partnership === null) {
+        if ($renewal === null) {
             $this->addError('renewal', 'لا توجد رحلة مربوطة بهذا المشروع');
 
             return;
         }
 
-        $this->openRenewalAndGo($partnership, 'تجديد بعد مشروع منتهٍ أو متوقف');
-    }
-
-    private function openRenewalAndGo(Partnership $partnership, string $note): void
-    {
-        $renewal = app(PartnershipPipelineService::class)->openRenewal(
-            $partnership,
-            auth()->user(),
-            $note,
-        );
-
-        $this->dispatch('ds-toast', message: 'فُتحت رحلة تجديد جديدة دون استبدال القديمة');
+        $this->dispatch('ds-toast', message: 'فُتحت رحلة تجديد جديدة وأُغلقت الرحلة الأم');
         $this->redirect(route('partnerships.show', ['partnership' => $renewal->id]).'?from=organization');
     }
 

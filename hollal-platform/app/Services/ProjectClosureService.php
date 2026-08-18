@@ -142,7 +142,9 @@ class ProjectClosureService
     }
 
     /**
-     * Close the project and open the renewal opportunity on the partnership.
+     * Close the project. The linked partnership closes with it — renewal is
+     * an explicit later action on the ended project, never automatic.
+     * Time: O(1) | Space: O(1)
      */
     public function close(Project $project, User $actor): Project
     {
@@ -160,28 +162,49 @@ class ProjectClosureService
             ])->save();
 
             app(MeasurementService::class)->ascendImpact($project);
-            $this->openRenewalOpportunity($project, $actor);
+            $this->closeLinkedPartnership($project, $actor, 'انتهى المشروع ولم يُجدَّد');
 
             return $project->fresh();
         });
     }
 
     /**
-     * 06B-B5 — a closed project suggests a renewal journey for the partnerships
-     * manager, linked back to the partnership it came from.
+     * Explicit renewal from an ended/stopped project: close the parent journey
+     * if still open, then open a new opportunity linked by renewed_from_id.
+     * Time: O(1) | Space: O(1)
      */
     public function openRenewalOpportunity(Project $project, ?User $actor = null): ?Partnership
     {
-        $partnership = $project->partnership;
+        $partnership = $project->partnership
+            ?? Partnership::query()->where('project_id', $project->id)->first();
 
         if (! $partnership) {
             return null;
         }
 
+        $this->closeLinkedPartnership($project, $actor, 'أُغلق عند تجديد المشروع');
+
         return app(PartnershipPipelineService::class)->openRenewal(
-            $partnership,
+            $partnership->fresh() ?? $partnership,
             $actor,
-            'فرصة تجديد بعد إغلاق مشروع: '.$project->name,
+            'تجديد بعد مشروع: '.$project->name,
+        );
+    }
+
+    private function closeLinkedPartnership(Project $project, ?User $actor, string $note): void
+    {
+        $partnership = $project->partnership
+            ?? Partnership::query()->where('project_id', $project->id)->first();
+
+        if ($partnership === null || (int) $partnership->stage === Partnership::STAGE_CLOSED) {
+            return;
+        }
+
+        app(PartnershipPipelineService::class)->moveTo(
+            $partnership,
+            Partnership::STAGE_CLOSED,
+            $actor,
+            $note,
         );
     }
 }

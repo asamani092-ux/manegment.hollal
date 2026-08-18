@@ -611,16 +611,23 @@ class PartnershipModuleTest extends TestCase
         $this->assertSame(Partnership::STAGE_QUOTE, $partnership->fresh()->stage);
     }
 
-    public function test_first_contact_and_renewal_are_cumulative(): void
+    public function test_renewal_comes_from_ended_project_and_closes_parent(): void
     {
         $manager = $this->manager();
         $organization = Organization::create(['name' => 'جهة التجديد']);
         $partnership = $this->partnership($organization);
-        $partnership->forceFill(['stage' => Partnership::STAGE_CLOSED, 'closed_reason' => 'انتهت'])->save();
+        $partnership->forceFill(['stage' => Partnership::STAGE_EXECUTION])->save();
+        $project = Project::factory()->create([
+            'partnership_id' => $partnership->id,
+            'status' => 'مغلق',
+        ]);
+        $partnership->forceFill(['project_id' => $project->id])->save();
 
         Livewire::actingAs($manager)
             ->test(OrganizationShow::class, ['organization' => $organization])
-            ->call('renewPartnership', $partnership->id)
+            ->assertDontSee('تجديد الرحلة')
+            ->assertSee('تجديد')
+            ->call('renewFromProject', $project->id)
             ->assertHasNoErrors();
 
         $renewal = Partnership::query()->where('renewed_from_id', $partnership->id)->first();
@@ -661,12 +668,16 @@ class PartnershipModuleTest extends TestCase
         $this->assertSame(['جهة استشارية'], $organization->roleLabels());
 
         $partnership = $this->partnership($organization);
-        $component = Livewire::withQueryParams(['from' => 'organization'])
-            ->actingAs($manager)
+        $component = Livewire::actingAs($manager)
             ->test(PartnershipShow::class, ['partnership' => $partnership]);
 
         $this->assertSame('organization', $component->get('returnTo'));
         $component->assertSee('رجوع لملف الجهة');
+        $component->assertSee('1. عروض الأسعار')
+            ->assertDontSee('2. عقد الشراكة')
+            ->call('openWorkspace', 2)
+            ->assertSee('2. عقد الشراكة')
+            ->assertDontSee('1. عروض الأسعار');
     }
 
     public function test_quote_pdf_preview_is_inline_and_portal_hides_unit_prices(): void
@@ -682,6 +693,7 @@ class PartnershipModuleTest extends TestCase
 
         Livewire::actingAs($this->manager())
             ->test(PartnershipShow::class, ['partnership' => $partnership])
+            ->call('openWorkspace', 1)
             ->assertSee('معاينة');
 
         Livewire::test(PartnerPortal::class, ['token' => $link->token])

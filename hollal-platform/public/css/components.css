@@ -1786,3 +1786,10 @@
   gap: 0.35rem;
 }
 
+@media (max-width: 640px) {
+  .ds-quote-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+

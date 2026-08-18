@@ -204,10 +204,6 @@ class Partnership extends Model
 
     public function canRenewJourney(): bool
     {
-        if (in_array($this->stage, [self::STAGE_STALLED, self::STAGE_CLOSED], true)) {
-            return true;
-        }
-
         return self::projectStatusAllowsRenewal($this->project?->status);
     }
 
