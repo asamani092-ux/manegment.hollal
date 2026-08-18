@@ -123,7 +123,7 @@ class PartnerPortalSelfServeTest extends TestCase
 
         [$partnership, $program, $link] = $this->openPortal();
 
-        Livewire::test(PartnerPortal::class, ['token' => $link->token])
+        Livewire::test(PartnerPortal::class, ['token' => $link->token, 'page' => 'diagnosis'])
             ->assertSee('احتياج إضافي')
             ->set('diagnosisAudience', 'معلمون')
             ->set('diagnosisCount', '15')
@@ -142,6 +142,33 @@ class PartnerPortalSelfServeTest extends TestCase
             ->test(PartnershipShow::class, ['partnership' => $partnership->fresh()])
             ->assertSee('احتياج إضافي')
             ->assertSee('تدريب ميداني');
+    }
+
+    public function test_each_portal_option_is_its_own_page_and_quote_contract_are_solo(): void
+    {
+        [$partnership, $program, $link] = $this->openPortal();
+        unset($partnership, $program);
+
+        $this->get('/portal/'.$link->token)
+            ->assertOk()
+            ->assertSee('حفظ الاختيار وبناء العرض')
+            ->assertDontSee('قبول العرض')
+            ->assertDontSee('اعتماد التوقيع');
+
+        $this->get(route('partner.portal.page', ['token' => $link->token, 'page' => 'quotes']))
+            ->assertOk()
+            ->assertSee('قبول العرض')
+            ->assertSee('3. عروض الأسعار')
+            ->assertDontSee('حفظ الاختيار وبناء العرض')
+            ->assertDontSee('اعتماد التوقيع');
+
+        $this->get(route('partner.portal.page', ['token' => $link->token, 'page' => 'contract']))
+            ->assertOk()
+            ->assertSee('5. العقد')
+            ->assertDontSee('حفظ الاختيار وبناء العرض')
+            ->assertDontSee('قبول العرض');
+
+        $this->get('/portal/'.$link->token.'/unknown')->assertNotFound();
     }
 
     /** @return array{0: Partnership, 1: Program, 2: \App\Models\PartnerLink} */

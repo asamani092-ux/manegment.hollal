@@ -1418,6 +1418,38 @@
   gap: 0.75rem;
 }
 
+.ds-portal-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.ds-portal-page-head {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.ds-portal-page-solo .ds-portal-page-card,
+.ds-portal-page-card {
+  background: var(--ds-card, #fff);
+  border: 1px solid var(--ds-border);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: grid;
+  gap: 0.65rem;
+}
+
+.ds-portal-total {
+  font-weight: 700;
+}
+
+.ds-portal-page-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: space-between;
+  margin-top: 0.5rem;
+}
+
 .ds-link-list {
   list-style: none;
   padding: 0;

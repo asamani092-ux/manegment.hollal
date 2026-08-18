@@ -91,6 +91,10 @@ Route::middleware('throttle:portal')->group(function () {
     Route::get('/portal/{token}/contracts/{contract}/pdf', PartnerPortalContractPdfController::class)
         ->name('partner.portal.contract.pdf');
 
+    Route::get('/portal/{token}/{page}', PartnerPortal::class)
+        ->whereIn('page', ['programs', 'diagnosis', 'quotes', 'payments', 'contract'])
+        ->name('partner.portal.page');
+
     // P2 wave C — external meeting guest (no employee account): view + confirm/sign.
     Route::get('/meetings/guest/{token}', MeetingGuestPortal::class)
         ->name('meetings.guest.portal');

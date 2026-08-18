@@ -70,7 +70,16 @@ class PartnerPortal extends Component
 
     public int $focusStep = 0;
 
-    public function mount(string $token): void
+    /** @var array<int, string> */
+    public const PAGE_KEYS = [
+        1 => 'programs',
+        2 => 'diagnosis',
+        3 => 'quotes',
+        4 => 'payments',
+        5 => 'contract',
+    ];
+
+    public function mount(string $token, ?string $page = null): void
     {
         $link = app(PartnerPortalService::class)->resolve($token);
 
@@ -79,7 +88,14 @@ class PartnerPortal extends Component
         $this->link = $link;
         $this->initializeCatalogSelection();
         $this->loadSavedDiagnosisAnswers();
-        $this->log('portal.opened');
+        if (is_string($page) && $page !== '') {
+            $stepId = array_search($page, self::PAGE_KEYS, true);
+            abort_if($stepId === false, 404);
+            $this->focusStep = (int) $stepId;
+        }
+        if ($page === null) {
+            $this->log('portal.opened');
+        }
     }
 
     public function submitInterest(): void
@@ -262,14 +278,16 @@ class PartnerPortal extends Component
             ->take(1)
             ->values();
 
+        $wizard = $this->wizardState($partnership, $features, $quotes);
+
         return view('livewire.partnerships.partner-portal', [
             'partnership' => $partnership,
             'programs' => $this->allowedPrograms(),
             'quotes' => $quotes,
             'features' => $features,
             'diagnosisQuestions' => app(DiagnosisQuestionService::class)->activeQuestions(),
-            'wizard' => $this->wizardState($partnership, $features, $quotes),
-        ])->layout('layouts.guest', ['title' => 'بوابة الجهة']);
+            'wizard' => $wizard,
+        ])->layout('layouts.guest', ['title' => $this->pageTitle($wizard['focus'])]);
     }
 
     /**
@@ -329,7 +347,24 @@ class PartnerPortal extends Component
 
     public function openPortalStep(int $stepId): void
     {
+        if (! isset(self::PAGE_KEYS[$stepId])) {
+            return;
+        }
+
         $this->focusStep = $stepId;
+    }
+
+    /** Time: O(1) | Space: O(1) */
+    private function pageTitle(int $focus): string
+    {
+        return match ($focus) {
+            1 => 'بوابة الجهة — البرامج',
+            2 => 'بوابة الجهة — التشخيص',
+            3 => 'بوابة الجهة — قبول العرض',
+            4 => 'بوابة الجهة — الدفعات',
+            5 => 'بوابة الجهة — العقد',
+            default => 'بوابة الجهة',
+        };
     }
 
     /** @param array<string, mixed> $metadata */
