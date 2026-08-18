@@ -49,6 +49,7 @@ use App\Livewire\Meetings\MeetingsArchiveIndex;
 use App\Livewire\Meetings\MeetingsIndex;
 use App\Livewire\Meetings\OpenDecisionsIndex;
 use App\Livewire\Partnerships\OrganizationShow;
+use App\Livewire\Partnerships\DiagnosisQuestionsIndex;
 use App\Livewire\Partnerships\OrganizationsIndex;
 use App\Livewire\Partnerships\PartnerPortal;
 use App\Livewire\Partnerships\PartnershipShow;
@@ -316,6 +317,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/organizations/{organization}', OrganizationShow::class)
         ->middleware('permission:partnerships.organizations.view')
         ->name('organizations.show');
+
+    Route::get('/partnerships/diagnosis-questions', DiagnosisQuestionsIndex::class)
+        ->middleware('permission:partnerships.organizations.view')
+        ->name('partnerships.diagnosis-questions.index');
 
     Route::get('/partnerships/pipeline', PartnershipsPipeline::class)
         ->middleware('permission:partnerships.pipeline.view')

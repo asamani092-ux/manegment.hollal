@@ -135,6 +135,12 @@ class Partnership extends Model
         return $this->hasMany(PartnerLink::class);
     }
 
+    /** @return HasMany<DiagnosisAnswer, $this> */
+    public function diagnosisAnswers(): HasMany
+    {
+        return $this->hasMany(DiagnosisAnswer::class);
+    }
+
     /** @return BelongsToMany<Program, $this> */
     public function allowedPrograms(): BelongsToMany
     {

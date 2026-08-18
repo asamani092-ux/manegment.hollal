@@ -10,6 +10,7 @@ use App\Models\Program;
 use App\Models\ProgramPrice;
 use App\Models\Quote;
 use App\Models\User;
+use App\Services\DiagnosisQuestionService;
 use App\Services\PartnerPortalService;
 use App\Services\PartnershipContractService;
 use App\Services\PartnershipPaymentService;
@@ -405,7 +406,7 @@ class PartnershipShow extends Component
         return view('livewire.partnerships.partnership-show', [
             'partnership' => $this->partnership->load([
                 'organization', 'quotes.items', 'partnershipContracts.schedule',
-                'payments', 'links', 'generationRequests.program',
+                'payments', 'links', 'generationRequests.program', 'allowedPrograms:id,name',
             ]),
             'programs' => Program::orderBy('name')->get(['id', 'name']),
             'managers' => User::orderBy('name')->get(['id', 'name']),
@@ -414,6 +415,7 @@ class PartnershipShow extends Component
                 Quote::STATUS_DRAFT, Quote::STATUS_APPROVED, Quote::STATUS_SENT,
                 Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED, Quote::STATUS_REJECTED,
             ],
+            'diagnosisSnapshot' => app(DiagnosisQuestionService::class)->latestLabeledAnswers($this->partnership),
         ])->layout('layouts.app', ['title' => 'ملف الشراكة']);
     }
 

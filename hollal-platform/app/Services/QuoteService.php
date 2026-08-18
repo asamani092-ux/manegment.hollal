@@ -21,9 +21,9 @@ class QuoteService
     /**
      * @param  list<array{program_id?: ?int, service_type: string, description?: string, quantity?: float|int, unit_price?: float|int}>  $items
      */
-    public function create(Partnership $partnership, array $items, float $discount = 0, ?User $author = null): Quote
+    public function create(Partnership $partnership, array $items, float $discount = 0, ?User $author = null, bool $advanceStage = true): Quote
     {
-        return DB::transaction(function () use ($partnership, $items, $discount, $author) {
+        return DB::transaction(function () use ($partnership, $items, $discount, $author, $advanceStage) {
             $version = (int) $partnership->quotes()->max('version') + 1;
 
             $quote = Quote::create([
@@ -37,12 +37,14 @@ class QuoteService
             $this->fillItems($quote, $items);
             $this->recalculate($quote);
 
-            app(PartnershipPipelineService::class)->advanceIfBefore(
-                $partnership,
-                Partnership::STAGE_QUOTE,
-                $author,
-                'إصدار عرض سعر',
-            );
+            if ($advanceStage) {
+                app(PartnershipPipelineService::class)->advanceIfBefore(
+                    $partnership,
+                    Partnership::STAGE_QUOTE,
+                    $author,
+                    'إصدار عرض سعر',
+                );
+            }
 
             return $quote->fresh(['items']);
         });

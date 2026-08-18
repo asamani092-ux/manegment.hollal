@@ -72,6 +72,7 @@ return [
             'label' => 'الشراكات',
             'items' => [
                 ['label' => 'الجهات الشريكة', 'route' => 'organizations.index', 'icon' => 'fa-building', 'permission' => 'partnerships.organizations.view'],
+                ['label' => 'أسئلة التشخيص', 'route' => 'partnerships.diagnosis-questions.index', 'icon' => 'fa-clipboard-list', 'permission' => 'partnerships.organizations.view'],
                 ['label' => 'رحلة الشراكات', 'route' => 'partnerships.pipeline', 'icon' => 'fa-stream', 'permission' => 'partnerships.pipeline.view'],
             ],
         ],

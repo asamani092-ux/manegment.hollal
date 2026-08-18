@@ -16,18 +16,20 @@
             </li>
         @endforeach
     </ol>
-    <p class="ds-text-muted">يمكنك الرجوع لأي خطوة مكتملة أو حالية. الخطوات التالية تبقى مقفلة حتى يكتمل شرطها.</p>
+    <p class="ds-text-muted">الأقسام الخمسة تتبع إعداد رابط الجهة. اختر البرامج ليُبنى العرض من الأسعار المعتمدة، ثم أكمل التشخيص وقبول العرض.</p>
 
     @php
         $current = $wizard['current'];
         $focus = $wizard['focus'] ?? $current;
-        $can = fn (int $id) => $focus === $id && $id <= $current;
+        $quoteAccepted = $quotes->contains(fn ($quote) => $quote->status === \App\Models\Quote::STATUS_ACCEPTED);
+        $hasContract = $partnership->partnershipContracts->isNotEmpty();
+        $can = fn (int $id) => $id <= 3 || $quoteAccepted || $hasContract;
         $show = fn (int $id) => collect($wizard['steps'])->contains(fn ($step) => $step['id'] === $id);
     @endphp
 
     @if ($show(1))
-        <section class="ds-section {{ $can(1) ? 'ds-journey-active' : '' }}">
-            <h2 class="ds-section-title">1. اختيار البرامج</h2>
+        <section class="ds-section {{ $focus === 1 ? 'ds-journey-active' : '' }}">
+            <h2 class="ds-section-title">1. البرامج</h2>
             <x-ds-table>
                 <x-slot:head>
                     <tr><th>اختيار</th><th>البرنامج</th><th>الخدمة</th><th>الكمية</th></tr>
@@ -57,31 +59,42 @@
                     <tr><td colspan="4" class="ds-text-muted ds-table-empty">لا توجد برامج متاحة حاليًا</td></tr>
                 @endforelse
             </x-ds-table>
-            @if ($can(1) && $quotes->isNotEmpty())
-                <button type="button" class="ds-btn ds-btn-primary" wire:click="saveProgramSelection({{ $quotes->first()->id }})">
-                    حفظ الاختيار
-                </button>
-            @elseif ($can(1))
-                <x-ds-form-group label="البرامج محل الاهتمام" :error="$errors->first('interestedPrograms')">
-                    <input type="text" class="ds-input" wire:model="interestedPrograms">
-                </x-ds-form-group>
-                <button type="button" class="ds-btn ds-btn-primary" wire:click="submitInterest">تأكيد الاهتمام</button>
+            @if ($can(1))
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="confirmPrograms">حفظ الاختيار وبناء العرض</button>
             @endif
         </section>
     @endif
 
     @if ($show(2))
-        <section class="ds-section {{ $can(2) ? 'ds-journey-active' : ($current > 2 ? '' : 'ds-portal-locked') }}">
-            <h2 class="ds-section-title">2. استبانة التشخيص</h2>
-            <x-ds-form-group label="الفئة" :error="$errors->first('diagnosisAudience')">
-                <input type="text" class="ds-input" wire:model="diagnosisAudience" @disabled(! $can(2))>
-            </x-ds-form-group>
-            <x-ds-form-group label="الأعداد" :error="$errors->first('diagnosisCount')">
-                <input type="number" class="ds-input" wire:model="diagnosisCount" @disabled(! $can(2))>
-            </x-ds-form-group>
-            <x-ds-form-group label="البيئة" :error="$errors->first('diagnosisEnvironment')">
-                <textarea class="ds-input" wire:model="diagnosisEnvironment" @disabled(! $can(2))></textarea>
-            </x-ds-form-group>
+        <section class="ds-section {{ $focus === 2 ? 'ds-journey-active' : '' }}">
+            <h2 class="ds-section-title">2. التشخيص</h2>
+            @forelse ($diagnosisQuestions as $question)
+                <x-ds-form-group :label="$question->label" :error="$errors->first('diagnosisAnswers.'.$question->id)">
+                    @if ($question->key === 'audience')
+                        <input type="text" class="ds-input" wire:model="diagnosisAudience" @disabled(! $can(2))>
+                    @elseif ($question->key === 'count')
+                        <input type="number" class="ds-input" wire:model="diagnosisCount" @disabled(! $can(2))>
+                    @elseif ($question->key === 'environment')
+                        <textarea class="ds-input" wire:model="diagnosisEnvironment" @disabled(! $can(2))></textarea>
+                    @elseif ($question->type === 'number')
+                        <input type="number" class="ds-input" wire:model="diagnosisAnswers.{{ $question->id }}" @disabled(! $can(2))>
+                    @elseif ($question->type === 'textarea')
+                        <textarea class="ds-input" wire:model="diagnosisAnswers.{{ $question->id }}" @disabled(! $can(2))></textarea>
+                    @else
+                        <input type="text" class="ds-input" wire:model="diagnosisAnswers.{{ $question->id }}" @disabled(! $can(2))>
+                    @endif
+                </x-ds-form-group>
+            @empty
+                <x-ds-form-group label="الفئة" :error="$errors->first('diagnosisAudience')">
+                    <input type="text" class="ds-input" wire:model="diagnosisAudience" @disabled(! $can(2))>
+                </x-ds-form-group>
+                <x-ds-form-group label="الأعداد" :error="$errors->first('diagnosisCount')">
+                    <input type="number" class="ds-input" wire:model="diagnosisCount" @disabled(! $can(2))>
+                </x-ds-form-group>
+                <x-ds-form-group label="البيئة" :error="$errors->first('diagnosisEnvironment')">
+                    <textarea class="ds-input" wire:model="diagnosisEnvironment" @disabled(! $can(2))></textarea>
+                </x-ds-form-group>
+            @endforelse
             @if ($can(2))
                 <button type="button" class="ds-btn ds-btn-primary" wire:click="submitDiagnosis">إرسال الاستبانة</button>
             @endif
@@ -89,8 +102,8 @@
     @endif
 
     @if ($show(3))
-        <section class="ds-section {{ $can(3) ? 'ds-journey-active' : ($current > 3 ? '' : 'ds-portal-locked') }}">
-            <h2 class="ds-section-title">3. قبول العرض</h2>
+        <section class="ds-section {{ $focus === 3 ? 'ds-journey-active' : '' }}">
+            <h2 class="ds-section-title">3. عروض الأسعار</h2>
             @forelse ($quotes as $quote)
                 <div class="ds-kanban-card" wire:key="portal-quote-{{ $quote->id }}">
                     <p>نسخة <span class="ds-ltr-num">{{ $quote->version }}</span> — الحالة: {{ $quote->status }}</p>
@@ -109,25 +122,62 @@
                     @endif
                 </div>
             @empty
-                <p class="ds-text-muted">لا توجد عروض مرسلة</p>
+                <p class="ds-text-muted">احفظ اختيار البرامج ليُبنى العرض تلقائيًا من أسعار الخدمات.</p>
             @endforelse
         </section>
     @endif
 
     @if ($show(4))
-        <section class="ds-section {{ $can(4) ? 'ds-journey-active' : ($current > 4 ? '' : 'ds-portal-locked') }}">
-            <h2 class="ds-section-title">4. توقيع العقد</h2>
-            @foreach ($partnership->partnershipContracts as $contract)
+        <section class="ds-section {{ $focus === 4 ? 'ds-journey-active' : ($can(4) ? '' : 'ds-portal-locked') }}">
+            <h2 class="ds-section-title">4. الدفعات</h2>
+            @forelse ($partnership->partnershipContracts as $contract)
+                <x-ds-table>
+                    <x-slot:head>
+                        <tr><th>الدفعة</th><th>المبلغ</th><th>الاستحقاق</th><th>تسجيل</th></tr>
+                    </x-slot:head>
+                    @foreach ($contract->schedule as $row)
+                        <tr wire:key="portal-schedule-{{ $row->id }}">
+                            <td>{{ $row->label }}</td>
+                            <td class="ds-ltr-num">{{ number_format((float) $row->amount, 2) }}</td>
+                            <td dir="ltr">{{ $row->due_on->format('Y-m-d') }}</td>
+                            <td>
+                                @if ($can(4))
+                                    <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="paymentAmount">
+                                    <input type="file" class="ds-input" wire:model="paymentProof" accept=".pdf,image/*">
+                                    @error('paymentProof') <small class="ds-error">{{ $message }}</small> @enderror
+                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="recordPayment({{ $row->id }})">
+                                        إرسال إثبات التحويل
+                                    </button>
+                                @else
+                                    —
+                                @endif
+                            </td>
+                        </tr>
+                    @endforeach
+                </x-ds-table>
+            @empty
+                <p class="ds-text-muted">سيظهر جدول الدفعات بعد إصدار العقد من ملف الشراكة.</p>
+            @endforelse
+        </section>
+    @endif
+
+    @if ($show(5))
+        <section class="ds-section {{ $focus === 5 ? 'ds-journey-active' : ($can(5) ? '' : 'ds-portal-locked') }}">
+            <h2 class="ds-section-title">5. العقد</h2>
+            @forelse ($partnership->partnershipContracts as $contract)
                 <div class="ds-kanban-card" wire:key="portal-contract-{{ $contract->id }}">
                     <p>عقد #{{ $contract->id }} — الحالة: {{ $contract->status }}</p>
                     <p>القيمة: <span class="ds-ltr-num">{{ number_format((float) $contract->total_value, 2) }}</span></p>
                     <p>يشترط الدفعة الأولى: {{ $contract->requires_first_payment ? 'نعم' : 'لا' }}</p>
+                    <p>
+                        <a class="ds-link" href="{{ route('partner.portal.contract.pdf', ['token' => $link->token, 'contract' => $contract->id]) }}" target="_blank" rel="noopener">تنزيل العقد</a>
+                    </p>
 
                     @if ($contract->signed_pdf_path)
                         <p class="ds-text-muted">
                             تم التوقيع ({{ $contract->signature_method ?? '—' }}) — الحالة: {{ $contract->status }}
                         </p>
-                    @elseif ($can(4))
+                    @elseif ($can(5))
                         <x-ds-form-group label="اسم الموقّع" :error="$errors->first('signatureName')">
                             <input type="text" class="ds-input" wire:model="signatureName">
                         </x-ds-form-group>
@@ -181,39 +231,9 @@
                         </div>
                     @endif
                 </div>
-            @endforeach
-        </section>
-    @endif
-
-    @if ($show(5))
-        <section class="ds-section {{ $can(5) ? 'ds-journey-active' : 'ds-portal-locked' }}">
-            <h2 class="ds-section-title">5. إثبات الدفع</h2>
-            @foreach ($partnership->partnershipContracts as $contract)
-                <x-ds-table>
-                    <x-slot:head>
-                        <tr><th>الدفعة</th><th>المبلغ</th><th>الاستحقاق</th><th>تسجيل</th></tr>
-                    </x-slot:head>
-                    @foreach ($contract->schedule as $row)
-                        <tr wire:key="portal-schedule-{{ $row->id }}">
-                            <td>{{ $row->label }}</td>
-                            <td class="ds-ltr-num">{{ number_format((float) $row->amount, 2) }}</td>
-                            <td dir="ltr">{{ $row->due_on->format('Y-m-d') }}</td>
-                            <td>
-                                @if ($can(5))
-                                    <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="paymentAmount">
-                                    <input type="file" class="ds-input" wire:model="paymentProof" accept=".pdf,image/*">
-                                    @error('paymentProof') <small class="ds-error">{{ $message }}</small> @enderror
-                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="recordPayment({{ $row->id }})">
-                                        إرسال إثبات التحويل
-                                    </button>
-                                @else
-                                    —
-                                @endif
-                            </td>
-                        </tr>
-                    @endforeach
-                </x-ds-table>
-            @endforeach
+            @empty
+                <p class="ds-text-muted">سيظهر العقد بعد إصداره من ملف الشراكة.</p>
+            @endforelse
         </section>
     @endif
 </div>

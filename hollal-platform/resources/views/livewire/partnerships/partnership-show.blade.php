@@ -58,7 +58,7 @@
 
     <section id="step-quotes" class="ds-section ds-journey-active" x-show="step === 1" x-cloak>
         <h2 class="ds-section-title">1. عروض الأسعار</h2>
-        <p class="ds-text-muted">مسودة أو بملاحظات → اعتماد داخلي → إرسال. تعديل يصدر نسخة جديدة ويبقي القديمة.</p>
+        <p class="ds-text-muted">الجهة تبني المسودة من البوابة حسب أسعار البرامج وتقبلها دون إرسال. التعديل الداخلي يصدر نسخة جديدة ويبقي القديمة.</p>
         @can('partnerships.quotes.create')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openQuoteModal">عرض جديد</button>
         @endcan
@@ -246,6 +246,15 @@
                 <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="savePortalFeatures">حفظ التحكم</button>
             </div>
         @endcan
+        <div class="ds-section-spaced">
+            <h3 class="ds-section-heading">ما حفظته الجهة من البوابة</h3>
+            <p class="ds-text-muted">البرامج المختارة: {{ $partnership->allowedPrograms->pluck('name')->join('، ') ?: '—' }}</p>
+            @forelse ($diagnosisSnapshot as $answer)
+                <p>{{ $answer['label'] }}: {{ $answer['value'] }}</p>
+            @empty
+                <p class="ds-text-muted">لم تُرسل استبانة التشخيص بعد.</p>
+            @endforelse
+        </div>
         <x-ds-table>
             <x-slot:head>
                 <tr><th>الرابط</th><th>الصلاحية</th><th>الحالة</th><th>آخر استخدام</th><th>إجراءات</th></tr>

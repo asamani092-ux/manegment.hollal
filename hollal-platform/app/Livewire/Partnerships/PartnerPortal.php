@@ -3,14 +3,18 @@
 namespace App\Livewire\Partnerships;
 
 use App\Models\ContractPaymentSchedule;
+use App\Models\DiagnosisQuestion;
 use App\Models\PartnerLink;
+use App\Models\Partnership;
 use App\Models\PartnershipContract;
 use App\Models\PartnershipPayment;
 use App\Models\Program;
 use App\Models\Quote;
+use App\Services\DiagnosisQuestionService;
 use App\Services\PartnerPortalService;
 use App\Services\PartnershipContractService;
 use App\Services\PartnershipPaymentService;
+use App\Services\PartnershipPipelineService;
 use App\Services\QuoteService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
@@ -46,6 +50,9 @@ class PartnerPortal extends Component
 
     public string $diagnosisEnvironment = '';
 
+    /** @var array<int|string, string> */
+    public array $diagnosisAnswers = [];
+
     public string $quoteNotes = '';
 
     public string $paymentAmount = '';
@@ -71,6 +78,7 @@ class PartnerPortal extends Component
 
         $this->link = $link;
         $this->initializeCatalogSelection();
+        $this->hydrateDiagnosisAnswers();
         $this->log('portal.opened');
     }
 
@@ -84,21 +92,52 @@ class PartnerPortal extends Component
 
     public function submitDiagnosis(): void
     {
-        $this->validate([
-            'diagnosisAudience' => 'required|string|max:255',
-            'diagnosisCount' => 'required|integer|min:1',
-            'diagnosisEnvironment' => 'nullable|string|max:1000',
-        ]);
+        $questions = app(DiagnosisQuestionService::class)->activeQuestions();
+        $answers = [];
+
+        if ($questions->isEmpty()) {
+            $this->validate([
+                'diagnosisAudience' => 'required|string|max:255',
+                'diagnosisCount' => 'required|integer|min:1',
+                'diagnosisEnvironment' => 'nullable|string|max:1000',
+            ]);
+        } else {
+            foreach ($questions as $question) {
+                $value = $this->diagnosisValue($question);
+                if ($question->required && trim($value) === '') {
+                    $this->addError('diagnosisAnswers.'.$question->id, 'هذا السؤال مطلوب');
+                } elseif ($question->type === 'number' && $value !== '' && ! is_numeric($value)) {
+                    $this->addError('diagnosisAnswers.'.$question->id, 'أدخل رقمًا صحيحًا');
+                }
+                $answers[$question->id] = $value;
+                if ($question->key === 'audience') {
+                    $this->diagnosisAudience = $value;
+                }
+                if ($question->key === 'count') {
+                    $this->diagnosisCount = $value;
+                }
+                if ($question->key === 'environment') {
+                    $this->diagnosisEnvironment = $value;
+                }
+            }
+
+            if ($this->getErrorBag()->isNotEmpty()) {
+                return;
+            }
+
+            app(DiagnosisQuestionService::class)->recordAnswers($this->link->partnership, $answers);
+        }
 
         $this->log('portal.diagnosis_submitted', [
             'audience' => $this->diagnosisAudience,
             'count' => (int) $this->diagnosisCount,
             'environment' => $this->diagnosisEnvironment,
+            'answers' => $answers,
         ]);
 
-        app(\App\Services\PartnershipPipelineService::class)->advanceIfBefore(
+        app(PartnershipPipelineService::class)->advanceIfBefore(
             $this->link->partnership,
-            \App\Models\Partnership::STAGE_DIAGNOSIS,
+            Partnership::STAGE_DIAGNOSIS,
             null,
             'إرسال استبانة التشخيص من بوابة الشريك',
         );
@@ -106,13 +145,37 @@ class PartnerPortal extends Component
         $this->dispatch('ds-toast', message: 'تم استلام استبانة التشخيص');
     }
 
+    public function confirmPrograms(): void
+    {
+        try {
+            $this->syncQuoteFromSelection();
+            $this->dispatch('ds-toast', message: 'حُفظ الاختيار وبُني العرض من أسعار البرامج');
+        } catch (\RuntimeException $exception) {
+            $this->addError('selectedProgramIds', $exception->getMessage());
+            $this->dispatch('ds-toast', message: $exception->getMessage());
+        }
+    }
+
     public function acceptQuote(int $quoteId): void
     {
-        $quote = $this->saveProgramSelection($quoteId);
+        try {
+            $quote = $this->saveProgramSelection($quoteId);
+        } catch (\RuntimeException $exception) {
+            $this->addError('selectedProgramIds', $exception->getMessage());
+            $this->dispatch('ds-toast', message: $exception->getMessage());
+
+            return;
+        }
 
         app(QuoteService::class)->accept($quote, $this->quoteNotes !== '' ? $this->quoteNotes : null);
         $this->quoteNotes = '';
         $this->log('portal.quote_accepted', ['quote_id' => $quote->id]);
+        app(PartnershipPipelineService::class)->advanceIfBefore(
+            $this->link->partnership,
+            Partnership::STAGE_QUOTE,
+            null,
+            'قبول العرض من بوابة الشريك',
+        );
 
         $this->dispatch('ds-toast', message: 'تم قبول العرض');
     }
@@ -124,60 +187,8 @@ class PartnerPortal extends Component
     public function saveProgramSelection(int $quoteId): Quote
     {
         $quote = $this->scopedQuote($quoteId);
-        $allowedPrograms = $this->allowedPrograms();
-        $allowedIds = $allowedPrograms->pluck('id')->map(fn ($id) => (int) $id)->all();
-        $selectedIds = collect($this->selectedProgramIds)
-            ->map(fn ($id) => (int) $id)
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
 
-        $this->validate([
-            'selectedProgramIds' => 'required|array|min:1',
-            'programQuantities' => 'array',
-            'programServices' => 'array',
-        ], [], ['selectedProgramIds' => 'البرامج المختارة']);
-
-        if (array_diff($selectedIds, $allowedIds) !== []) {
-            throw new \RuntimeException('لا يمكن اختيار برنامج خارج كتالوج الشراكة');
-        }
-
-        $items = [];
-        foreach ($selectedIds as $programId) {
-            $program = $allowedPrograms->firstWhere('id', $programId);
-            $service = (string) ($this->programServices[$programId] ?? $program?->prices->first()?->service_type);
-            $price = $program?->prices->firstWhere('service_type', $service);
-
-            if (! $price) {
-                throw new \RuntimeException('لا يوجد سعر نشط للخدمة المختارة');
-            }
-
-            $quantity = (float) ($this->programQuantities[$programId] ?? 1);
-            if ($quantity < 0.01) {
-                throw new \RuntimeException('يجب أن تكون الكمية أكبر من صفر');
-            }
-
-            $items[] = [
-                'program_id' => $programId,
-                'service_type' => $price->service_type,
-                'quantity' => $quantity,
-                'unit_price' => (float) $price->unit_price,
-            ];
-        }
-
-        $service = app(QuoteService::class);
-        $updated = $quote->status === Quote::STATUS_DRAFT
-            ? $service->updateDraft($quote, $items)
-            : $service->revise($quote, $items);
-
-        $this->log('portal.programs_selected', [
-            'quote_id' => $updated->id,
-            'program_ids' => $selectedIds,
-            'quantities' => $this->programQuantities,
-        ]);
-
-        return $updated;
+        return $this->applyItemsToQuote($quote, $this->selectionItems());
     }
 
     public function recordPayment(int $scheduleId): void
@@ -244,9 +255,7 @@ class PartnerPortal extends Component
         ])->firstOrFail();
         $features = $partnership->portalFeatureFlags();
         $quotes = $partnership->quotes
-            ->whereIn('status', [
-                Quote::STATUS_SENT, Quote::STATUS_WITH_NOTES, Quote::STATUS_ACCEPTED,
-            ])
+            ->whereNotIn('status', [Quote::STATUS_REJECTED])
             ->sortByDesc('version')
             ->take(1)
             ->values();
@@ -256,6 +265,7 @@ class PartnerPortal extends Component
             'programs' => $this->allowedPrograms(),
             'quotes' => $quotes,
             'features' => $features,
+            'diagnosisQuestions' => app(DiagnosisQuestionService::class)->activeQuestions(),
             'wizard' => $this->wizardState($partnership, $features, $quotes),
         ])->layout('layouts.guest', ['title' => 'بوابة الجهة']);
     }
@@ -273,19 +283,18 @@ class PartnerPortal extends Component
         $quoteVisible = $quotes->isNotEmpty();
         $contract = $partnership->partnershipContracts->last();
         $signed = $contract?->hasSignedCopy() ?? false;
-        $dueSchedule = $contract?->schedule->first(fn ($row) => $row->confirmedAmount() < (float) $row->amount);
         $paymentSubmitted = $partnership->payments->whereIn('status', [
             PartnershipPayment::STATUS_PENDING,
             PartnershipPayment::STATUS_CONFIRMED,
         ])->isNotEmpty();
-        $paymentRequired = $signed && $features['payments'] && ($contract?->requires_first_payment || $dueSchedule);
         $definitions = [
-            ['id' => 1, 'key' => 'programs', 'label' => 'البرامج', 'enabled' => $features['programs'], 'done' => $this->selectedProgramIds !== []],
-            ['id' => 2, 'key' => 'diagnosis', 'label' => 'الاستبانة', 'enabled' => $features['diagnosis'], 'done' => $diagnosisDone],
-            ['id' => 3, 'key' => 'quotes', 'label' => 'قبول العرض', 'enabled' => $features['quotes'] && $quoteVisible, 'done' => $quoteAccepted],
-            ['id' => 4, 'key' => 'contract', 'label' => 'توقيع العقد', 'enabled' => $features['contract'] && $contract !== null, 'done' => $signed],
-            ['id' => 5, 'key' => 'payments', 'label' => 'إثبات الدفع', 'enabled' => (bool) $paymentRequired, 'done' => $paymentSubmitted],
+            ['id' => 1, 'key' => 'programs', 'label' => 'البرامج', 'enabled' => $features['programs'], 'done' => $this->selectedProgramIds !== [] && $quoteVisible],
+            ['id' => 2, 'key' => 'diagnosis', 'label' => 'التشخيص', 'enabled' => $features['diagnosis'], 'done' => $diagnosisDone],
+            ['id' => 3, 'key' => 'quotes', 'label' => 'عروض الأسعار', 'enabled' => $features['quotes'], 'done' => $quoteAccepted],
+            ['id' => 4, 'key' => 'payments', 'label' => 'الدفعات', 'enabled' => $features['payments'], 'done' => $paymentSubmitted],
+            ['id' => 5, 'key' => 'contract', 'label' => 'العقد', 'enabled' => $features['contract'], 'done' => $signed],
         ];
+        $postQuoteOpen = $quoteAccepted || $contract !== null;
 
         $current = 1;
         foreach ($definitions as $step) {
@@ -303,7 +312,11 @@ class PartnerPortal extends Component
             if (! $step['enabled']) {
                 continue;
             }
-            $state = $step['id'] < $current ? 'done' : ($step['id'] === $current ? 'current' : 'locked');
+            if ($step['id'] >= 4 && $postQuoteOpen) {
+                $state = $step['done'] ? 'done' : ($step['id'] === $current ? 'current' : 'open');
+            } else {
+                $state = $step['id'] < $current ? 'done' : ($step['id'] === $current ? 'current' : ($step['id'] <= 3 ? 'open' : 'locked'));
+            }
             $steps[] = [...$step, 'state' => $state];
         }
 
@@ -329,6 +342,7 @@ class PartnerPortal extends Component
             ->with('quotes.items')
             ->firstOrFail()
             ->quotes
+            ->sortByDesc('version')
             ->first();
 
         foreach ($quote?->items ?? [] as $item) {
@@ -341,24 +355,157 @@ class PartnerPortal extends Component
             $this->programServices[$item->program_id] = $item->service_type;
         }
 
-        if ($this->selectedProgramIds === []) {
-            $first = $this->allowedPrograms()->first();
-            if ($first) {
-                $this->selectedProgramIds = [$first->id];
-                $this->programQuantities[$first->id] = '1';
-                $this->programServices[$first->id] = (string) $first->prices->first()?->service_type;
-            }
-        }
+        // لا اختيار تلقائي — الجهة تحدّد البرامج بنفسها.
     }
 
     private function allowedPrograms()
     {
-        return $this->link->partnership()
-            ->firstOrFail()
-            ->allowedPrograms()
+        $partnership = $this->link->partnership()->firstOrFail();
+        $catalog = $partnership->allowedPrograms()
             ->where('programs.stage', Program::STAGE_ACTIVE)
             ->with(['prices' => fn ($query) => $query->where('is_active', true)->orderBy('id')])
             ->get(['programs.id', 'programs.name', 'programs.description', 'programs.target_audience', 'programs.sessions_count', 'programs.hours_count']);
+
+        if ($catalog->isEmpty()) {
+            $catalog = Program::query()
+                ->where('stage', Program::STAGE_ACTIVE)
+                ->with(['prices' => fn ($query) => $query->where('is_active', true)->orderBy('id')])
+                ->orderBy('name')
+                ->get(['id', 'name', 'description', 'target_audience', 'sessions_count', 'hours_count']);
+        }
+
+        return $catalog->filter(fn (Program $program) => $program->prices->isNotEmpty())->values();
+    }
+
+    /** @return list<array{program_id: int, service_type: string, quantity: float, unit_price: float}> */
+    private function selectionItems(): array
+    {
+        $allowedPrograms = $this->allowedPrograms();
+        $allowedIds = $allowedPrograms->pluck('id')->map(fn ($id) => (int) $id)->all();
+        $selectedIds = collect($this->selectedProgramIds)
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        $this->validate([
+            'selectedProgramIds' => 'required|array|min:1',
+            'programQuantities' => 'array',
+            'programServices' => 'array',
+        ], [], ['selectedProgramIds' => 'البرامج المختارة']);
+
+        if (array_diff($selectedIds, $allowedIds) !== []) {
+            throw new \RuntimeException('لا يمكن اختيار برنامج خارج كتالوج الشراكة');
+        }
+
+        $items = [];
+        foreach ($selectedIds as $programId) {
+            $program = $allowedPrograms->firstWhere('id', $programId);
+            $service = (string) ($this->programServices[$programId] ?? $program?->prices->first()?->service_type);
+            $price = $program?->prices->firstWhere('service_type', $service);
+
+            if (! $price) {
+                throw new \RuntimeException('لا يوجد سعر نشط للخدمة المختارة');
+            }
+
+            $quantity = (float) ($this->programQuantities[$programId] ?? 1);
+            if ($quantity < 0.01) {
+                throw new \RuntimeException('يجب أن تكون الكمية أكبر من صفر');
+            }
+
+            $items[] = [
+                'program_id' => $programId,
+                'service_type' => $price->service_type,
+                'quantity' => $quantity,
+                'unit_price' => (float) $price->unit_price,
+            ];
+        }
+
+        return $items;
+    }
+
+    /** @param list<array{program_id: int, service_type: string, quantity: float, unit_price: float}> $items */
+    private function applyItemsToQuote(Quote $quote, array $items): Quote
+    {
+        $service = app(QuoteService::class);
+        $updated = $quote->status === Quote::STATUS_DRAFT
+            ? $service->updateDraft($quote, $items)
+            : $service->revise($quote, $items);
+
+        $this->rememberSelection($updated, $items);
+
+        return $updated;
+    }
+
+    private function syncQuoteFromSelection(): Quote
+    {
+        $items = $this->selectionItems();
+        $partnership = $this->link->partnership()->firstOrFail();
+        $partnership->allowedPrograms()->syncWithoutDetaching(
+            collect($items)->pluck('program_id')->all()
+        );
+
+        $open = $partnership->quotes()
+            ->whereNotIn('status', [Quote::STATUS_ACCEPTED, Quote::STATUS_REJECTED])
+            ->orderByDesc('version')
+            ->first();
+
+        if ($open) {
+            return $this->applyItemsToQuote($open, $items);
+        }
+
+        $created = app(QuoteService::class)->create($partnership, $items, advanceStage: false);
+        $this->rememberSelection($created, $items);
+
+        return $created;
+    }
+
+    /** @param list<array{program_id: int, service_type: string, quantity: float, unit_price: float}> $items */
+    private function rememberSelection(Quote $quote, array $items): void
+    {
+        $this->log('portal.programs_selected', [
+            'quote_id' => $quote->id,
+            'program_ids' => array_column($items, 'program_id'),
+            'quantities' => $this->programQuantities,
+        ]);
+    }
+
+    private function diagnosisValue(DiagnosisQuestion $question): string
+    {
+        if ($question->key === 'audience' && $this->diagnosisAudience !== '') {
+            return $this->diagnosisAudience;
+        }
+        if ($question->key === 'count' && $this->diagnosisCount !== '') {
+            return $this->diagnosisCount;
+        }
+        if ($question->key === 'environment' && $this->diagnosisEnvironment !== '') {
+            return $this->diagnosisEnvironment;
+        }
+
+        return trim((string) ($this->diagnosisAnswers[$question->id] ?? ''));
+    }
+
+    private function hydrateDiagnosisAnswers(): void
+    {
+        $latest = app(DiagnosisQuestionService::class)->latestAnswers($this->link->partnership);
+        $this->diagnosisAnswers = $latest;
+
+        foreach (app(DiagnosisQuestionService::class)->activeQuestions() as $question) {
+            $value = $latest[$question->id] ?? '';
+            if ($value === '') {
+                continue;
+            }
+            if ($question->key === 'audience') {
+                $this->diagnosisAudience = $value;
+            }
+            if ($question->key === 'count') {
+                $this->diagnosisCount = $value;
+            }
+            if ($question->key === 'environment') {
+                $this->diagnosisEnvironment = $value;
+            }
+        }
     }
 
     private function scopedQuote(int $quoteId): Quote
