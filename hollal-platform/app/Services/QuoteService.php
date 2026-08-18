@@ -123,15 +123,28 @@ class QuoteService
             'approved_at' => now(),
         ])->save();
 
+        $this->notifyFinalApprovers($quote->fresh(), $approver);
+
+        return $quote;
+    }
+
+    /** Time: O(r) | Space: O(r) */
+    private function notifyFinalApprovers(Quote $quote, User $approver): void
+    {
+        if (! \Spatie\Permission\Models\Permission::query()
+            ->where('name', 'partnerships.quotes.finalize')
+            ->where('guard_name', 'web')
+            ->exists()) {
+            return;
+        }
+
         $recipients = User::permission('partnerships.quotes.finalize')
             ->get()
             ->filter(fn (User $user) => $user->id !== $approver->id);
 
         if ($recipients->isNotEmpty()) {
-            Notification::send($recipients, new QuoteAwaitingExecutiveApproval($quote->fresh()));
+            Notification::send($recipients, new QuoteAwaitingExecutiveApproval($quote));
         }
-
-        return $quote;
     }
 
     /** Time: O(1) | Space: O(1) */
