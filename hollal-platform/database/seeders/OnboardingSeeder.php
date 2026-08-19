@@ -15,7 +15,7 @@ class OnboardingSeeder extends Seeder
 {
     public function run(): void
     {
-        $password = env('ADMIN_INITIAL_PASSWORD', 'OnboardDemo2026!');
+        $password = env('ADMIN_INITIAL_PASSWORD', '12341234');
 
         $departments = [
             Department::firstOrCreate(['name' => 'الإدارة التنفيذية']),
@@ -65,7 +65,7 @@ class OnboardingSeeder extends Seeder
             $role = $data['role'];
             unset($data['role']);
 
-            $user = User::firstOrCreate(
+            $user = User::updateOrCreate(
                 ['phone' => $data['phone']],
                 [
                     ...$data,

@@ -14,7 +14,7 @@
 
 ```
 الجوال: 0500000000
-كلمة المرور: قيمة ADMIN_INITIAL_PASSWORD من Secrets (نفسها في .env محلياً)
+كلمة المرور: 12341234
 ```
 
 إذا فشل الدخول بعد تغيير الـ Secret: أعد تشغيل Cloud Agent أو نفّذ `php artisan db:seed --class=AdminUserSeeder --force` داخل `hollal-platform`.

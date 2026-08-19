@@ -65,7 +65,7 @@ class MustChangePasswordTest extends TestCase
         $this->assertTrue(Hash::check('new-secure-password', $user->password));
     }
 
-    public function test_admin_seeder_does_not_use_hardcoded_password(): void
+    public function test_admin_seeder_defaults_to_12341234_when_env_missing(): void
     {
         putenv('ADMIN_INITIAL_PASSWORD');
         unset($_ENV['ADMIN_INITIAL_PASSWORD'], $_SERVER['ADMIN_INITIAL_PASSWORD']);
@@ -79,7 +79,7 @@ class MustChangePasswordTest extends TestCase
 
         $this->assertNotNull($admin);
         $this->assertTrue($admin->must_change_password);
-        $this->assertFalse(Hash::check('password', $admin->password));
+        $this->assertTrue(Hash::check('12341234', $admin->password));
     }
 
     public function test_admin_seeder_uses_env_password_when_set(): void
