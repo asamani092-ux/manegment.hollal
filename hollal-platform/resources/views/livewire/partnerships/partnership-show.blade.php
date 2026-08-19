@@ -335,7 +335,7 @@
 
     <section id="step-payments" class="ds-section {{ $workspaceStep === 4 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 4) hidden @endif>
         <h2 class="ds-section-title">4. الدفعات</h2>
-        <p class="ds-text-muted">فريق حلل يحدد جدول الدفعات عند إنشاء العقد. الجهة ترفع الإثبات، والمالية تؤكد ثم تصدر الفاتورة.</p>
+        <p class="ds-text-muted">فريق حلل يحدد جدول الدفعات عند إنشاء العقد. الجهة ترفع إثبات التحويل، والمالية تؤكد — ثم تنتقل الشراكة تلقائيًا إلى «تنفيذ» إذا كان العقد مؤكدًا.</p>
         <x-ds-table>
             <x-slot:head>
                 <tr><th>الدفعة</th><th>المبلغ</th><th>الاستحقاق</th><th>المؤكد</th><th>إجراءات</th></tr>
@@ -392,7 +392,7 @@
 
     <section id="step-generate" class="ds-section {{ $workspaceStep === 5 ? 'ds-journey-active' : '' }}" @if ($workspaceStep !== 5) hidden @endif>
         <h2 class="ds-section-title">5. توليد مشروع</h2>
-        <p class="ds-text-muted">التوليد يدوي بعد تأكيد العقد داخل عرض السعر. بعدها تبدأ مرحلة التنفيذ.</p>
+        <p class="ds-text-muted">بعد انتقال الرحلة إلى «تنفيذ»، أنشئ طلب توليد المشروع يدويًا هنا ثم نفّذ <code class="ds-ltr-num">php artisan projects:generate-pending</code>.</p>
         @can('partnerships.generate')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openGenerateModal">توليد مشروع</button>
         @endcan

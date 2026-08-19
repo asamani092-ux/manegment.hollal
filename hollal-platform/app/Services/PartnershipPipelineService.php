@@ -85,6 +85,29 @@ class PartnershipPipelineService
     }
 
     /**
+     * Execution when contract is confirmed and any required first payment is confirmed.
+     * Time: O(1) | Space: O(1)
+     */
+    public function tryAdvanceToExecution(Partnership $partnership, ?User $actor = null, ?string $note = null): ?PartnershipStageLog
+    {
+        $contract = $partnership->confirmedContract();
+        if ($contract === null) {
+            return null;
+        }
+
+        if (! $this->firstPaymentConfirmed($contract)) {
+            return null;
+        }
+
+        return $this->advanceIfBefore(
+            $partnership,
+            Partnership::STAGE_EXECUTION,
+            $actor,
+            $note ?? 'اكتمال التعاقد وتأكيد المالية — بدء التنفيذ',
+        );
+    }
+
+    /**
      * Cumulative renewal: new opportunity linked to the parent. Never overwrites.
      * Time: O(1) | Space: O(1)
      */

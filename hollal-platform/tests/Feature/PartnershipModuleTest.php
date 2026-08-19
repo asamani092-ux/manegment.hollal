@@ -362,7 +362,7 @@ class PartnershipModuleTest extends TestCase
         $confirmed = app(PartnershipContractService::class)->confirm($contract->fresh(), $manager);
 
         $this->assertSame(PartnershipContract::STATUS_CONFIRMED, $confirmed->status);
-        $this->assertSame(Partnership::STAGE_QUOTE, $confirmed->partnership->fresh()->stage);
+        $this->assertSame(Partnership::STAGE_EXECUTION, $confirmed->partnership->fresh()->stage);
     }
 
     // ------------------------------------------------------------ 05-B5
@@ -892,6 +892,8 @@ class PartnershipModuleTest extends TestCase
         );
         app(PartnershipContractService::class)->confirm($contract->fresh(), $manager);
 
+        $this->assertSame(Partnership::STAGE_QUOTE, $contract->partnership->fresh()->stage);
+
         $program = Program::firstOrFail();
         Livewire::actingAs($manager)
             ->test(PartnershipShow::class, ['partnership' => $contract->partnership->fresh()])
@@ -902,6 +904,59 @@ class PartnershipModuleTest extends TestCase
             ->assertHasNoErrors();
 
         $this->assertSame(ProjectGenerationRequest::STATUS_PENDING, ProjectGenerationRequest::firstOrFail()->status);
+    }
+
+    public function test_finance_confirm_advances_to_execution_when_contract_is_confirmed(): void
+    {
+        [$quote] = $this->acceptedQuote();
+        $manager = $this->manager();
+        $contract = app(PartnershipContractService::class)->createFromQuote($quote, [
+            ['label' => 'الدفعة الأولى', 'amount' => (float) $quote->total, 'due_on' => now()->toDateString()],
+        ], false);
+        app(PartnershipContractService::class)->uploadSignedCopy(
+            $contract,
+            UploadedFile::fake()->create('signed.pdf', 10, 'application/pdf'),
+            'مدير الجهة',
+        );
+        app(PartnershipContractService::class)->confirm($contract->fresh(), $manager);
+        $this->assertSame(Partnership::STAGE_QUOTE, $contract->partnership->fresh()->stage);
+
+        $finance = User::factory()->create(['must_change_password' => false]);
+        $finance->givePermissionTo('partnerships.payments.confirm');
+
+        $pending = app(PartnershipPaymentService::class)->record(
+            $contract->schedule()->orderBy('sequence')->firstOrFail(),
+            (float) $contract->total_value,
+        );
+
+        app(PartnershipPaymentService::class)->confirm($pending, $finance);
+
+        $this->assertSame(Partnership::STAGE_EXECUTION, $contract->partnership->fresh()->stage);
+    }
+
+    public function test_contract_confirm_advances_to_execution_after_required_first_payment(): void
+    {
+        [$quote] = $this->acceptedQuote();
+        $manager = $this->manager();
+        $contract = app(PartnershipContractService::class)->createFromQuote($quote, [
+            ['label' => 'الدفعة الأولى', 'amount' => (float) $quote->total, 'due_on' => now()->toDateString()],
+        ], true);
+        app(PartnershipContractService::class)->uploadSignedCopy(
+            $contract,
+            UploadedFile::fake()->create('signed.pdf', 10, 'application/pdf'),
+            'مدير الجهة',
+        );
+
+        $payment = app(PartnershipPaymentService::class)->record(
+            $contract->schedule()->orderBy('sequence')->firstOrFail(),
+            (float) $quote->total,
+        );
+        app(PartnershipPaymentService::class)->confirm($payment, $manager);
+        $this->assertSame(Partnership::STAGE_QUOTE, $contract->partnership->fresh()->stage);
+
+        app(PartnershipContractService::class)->confirm($contract->fresh(), $manager);
+
+        $this->assertSame(Partnership::STAGE_EXECUTION, $contract->partnership->fresh()->stage);
     }
 
     // ------------------------------------------------------------ helpers

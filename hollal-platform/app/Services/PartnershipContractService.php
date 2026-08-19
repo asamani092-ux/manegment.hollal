@@ -262,6 +262,12 @@ class PartnershipContractService
                 'اكتمال شروط التعاقد داخل عرض السعر',
             );
 
+            app(PartnershipPipelineService::class)->tryAdvanceToExecution(
+                $contract->partnership->fresh(),
+                $confirmer,
+                'تأكيد التعاقد بعد الدفعة — بدء التنفيذ',
+            );
+
             return $contract;
         });
     }

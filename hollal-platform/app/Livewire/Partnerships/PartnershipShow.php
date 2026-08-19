@@ -430,7 +430,10 @@ class PartnershipShow extends Component
         try {
             app(PartnershipContractService::class)->confirm($this->contract($contractId), auth()->user());
             $this->partnership->refresh();
-            $this->dispatch('ds-toast', message: 'تم التعاقد');
+            $message = (int) $this->partnership->stage === Partnership::STAGE_EXECUTION
+                ? 'تم التعاقد — انتقلت الشراكة إلى التنفيذ'
+                : 'تم التعاقد';
+            $this->dispatch('ds-toast', message: $message);
         } catch (\RuntimeException $e) {
             $this->addError('contract', $e->getMessage());
         }
@@ -479,7 +482,11 @@ class PartnershipShow extends Component
             auth()->user(),
         );
 
-        $this->dispatch('ds-toast', message: 'تم تأكيد الدفعة وإنشاء الإيراد');
+        $this->partnership->refresh();
+        $message = (int) $this->partnership->stage === Partnership::STAGE_EXECUTION
+            ? 'تم تأكيد الدفعة — انتقلت الشراكة إلى التنفيذ'
+            : 'تم تأكيد الدفعة وإنشاء الإيراد';
+        $this->dispatch('ds-toast', message: $message);
     }
 
     /** «إصدار فاتورة» — 05-B6 hook into 04-B7. */

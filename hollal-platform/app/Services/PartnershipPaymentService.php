@@ -62,6 +62,11 @@ class PartnershipPaymentService
             ])->save();
 
             $this->tryAdvanceToContracted($payment->fresh(['partnership.partnershipContracts.schedule']), $financeUser);
+            app(PartnershipPipelineService::class)->tryAdvanceToExecution(
+                $payment->partnership->fresh(),
+                $financeUser,
+                'تأكيد المالية لوصول الدفعة — بدء التنفيذ',
+            );
 
             return $payment;
         });
