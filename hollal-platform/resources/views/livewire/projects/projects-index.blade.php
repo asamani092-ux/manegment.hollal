@@ -26,7 +26,7 @@
             </div>
         </div>
 
-        <div class="ds-task-cards {{ $viewMode === 'cards' ? '' : 'ds-list-cards-mobile' }}">
+        <div class="ds-task-cards @if ($viewMode !== 'cards') ds-list-cards-mobile @endif">
             @forelse ($projects as $project)
                 <article class="ds-task-card" wire:key="project-card-{{ $project->id }}">
                     <h3 class="ds-task-card-title">{{ $project->name }}</h3>

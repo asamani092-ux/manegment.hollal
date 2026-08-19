@@ -68,6 +68,17 @@ class RtlUxPolishTest extends TestCase
         $this->assertStringContainsString('ds-page-header-bar', $html);
     }
 
+    public function test_list_cards_mobile_css_does_not_override_desktop_hide(): void
+    {
+        $components = (string) file_get_contents(public_path('css/components.css'));
+
+        $this->assertDoesNotMatchRegularExpression(
+            '/^\.ds-list-cards-mobile\s*\{[^}]*display:\s*grid/sm',
+            $components,
+        );
+        $this->assertStringContainsString('@media (max-width: 899px)', $components);
+    }
+
     public function test_arabic_validation_messages_available(): void
     {
         app()->setLocale('ar');
