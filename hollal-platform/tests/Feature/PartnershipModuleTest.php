@@ -31,6 +31,8 @@ use App\Services\PartnershipPipelineService;
 use App\Services\ProjectGenerationRequestService;
 use App\Services\QuoteService;
 use App\Support\Setting;
+use App\Models\PartnershipStageLog;
+use Database\Seeders\PartnershipReadinessSeeder;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -169,6 +171,31 @@ class PartnershipModuleTest extends TestCase
             'to_stage' => Partnership::STAGE_MEETING,
             'note' => 'حُدد اللقاء',
             'changed_by' => $actor->id,
+        ]);
+    }
+
+    public function test_readiness_seeder_clears_old_stage_logs(): void
+    {
+        $partnership = $this->partnership();
+        $pipeline = app(PartnershipPipelineService::class);
+
+        $pipeline->moveTo($partnership, Partnership::STAGE_CONTACT, null, 'تواصل قديم');
+        $pipeline->moveTo($partnership->fresh(), Partnership::STAGE_QUOTE, null, 'عرض سعر قديم');
+        $this->assertSame(2, PartnershipStageLog::query()->where('partnership_id', $partnership->id)->count());
+
+        $this->seed(PartnershipReadinessSeeder::class);
+
+        $partnership->refresh();
+        $this->assertSame(Partnership::STAGE_DIAGNOSIS, $partnership->stage);
+        $this->assertSame(1, PartnershipStageLog::query()->where('partnership_id', $partnership->id)->count());
+        $this->assertDatabaseMissing('partnership_stage_logs', [
+            'partnership_id' => $partnership->id,
+            'note' => 'عرض سعر قديم',
+        ]);
+        $this->assertDatabaseHas('partnership_stage_logs', [
+            'partnership_id' => $partnership->id,
+            'to_stage' => Partnership::STAGE_DIAGNOSIS,
+            'note' => 'تجديد البيانات لمرحلة الجاهزية (التشخيص)',
         ]);
     }
 

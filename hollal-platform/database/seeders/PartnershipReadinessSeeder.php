@@ -56,6 +56,11 @@ class PartnershipReadinessSeeder extends Seeder
 
             Partnership::withTrashed()->each(function (Partnership $partnership) {
                 $from = (int) $partnership->stage;
+
+                PartnershipStageLog::query()
+                    ->where('partnership_id', $partnership->id)
+                    ->delete();
+
                 $partnership->forceFill([
                     'stage' => Partnership::STAGE_DIAGNOSIS,
                     'stage_entered_at' => now(),
@@ -78,6 +83,6 @@ class PartnershipReadinessSeeder extends Seeder
             });
         });
 
-        $this->command?->info('كل الشراكات الآن في مرحلة التشخيص بدون عروض/روابط/عقود قديمة.');
+        $this->command?->info('كل الشراكات الآن في مرحلة التشخيص بدون عروض/روابط/عقود/سجل مراحل قديم.');
     }
 }
