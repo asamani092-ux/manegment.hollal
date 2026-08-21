@@ -66,6 +66,7 @@ return [
                 ['label' => 'الفواتير الضريبية', 'route' => 'tax-invoices.index', 'icon' => 'fa-file-invoice', 'permission' => 'finance.tax_invoices.view'],
                 ['label' => 'الميزانيات', 'route' => 'budgets.index', 'icon' => 'fa-balance-scale-left', 'permission' => 'finance.budgets.view'],
                 ['label' => 'التقرير المالي', 'route' => 'financial-reports.index', 'icon' => 'fa-chart-line', 'permission' => 'finance.reports.view'],
+                ['label' => 'دليل الحسابات', 'route' => 'chart-of-accounts.index', 'icon' => 'fa-sitemap', 'permission' => 'finance.accounting.manage'],
                 ['label' => 'المستندات المالية', 'route' => 'financial-documents.index', 'icon' => 'fa-folder-open', 'permission' => 'finance.revenues.view'],
             ],
         ],

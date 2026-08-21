@@ -15,6 +15,7 @@ use App\Livewire\Contracts\ContractsIndex;
 use App\Livewire\Documents\DocumentsIndex;
 use App\Livewire\Expenses\ExpensesIndex;
 use App\Livewire\Finance\BudgetsBoard;
+use App\Livewire\Finance\ChartOfAccountsIndex;
 use App\Livewire\Finance\FinancialDocumentsIndex;
 use App\Livewire\Finance\FinancialReportsIndex;
 use App\Livewire\DashboardIndex;
@@ -310,6 +311,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/budgets', BudgetsBoard::class)
         ->middleware('permission:finance.budgets.view')
         ->name('budgets.index');
+
+    Route::get('/chart-of-accounts', ChartOfAccountsIndex::class)
+        ->middleware('permission:finance.accounting.manage')
+        ->name('chart-of-accounts.index');
 
     Route::get('/financial-reports/pdf', \App\Http\Controllers\FinancialReportPdfController::class)
         ->middleware('permission:finance.reports.view')

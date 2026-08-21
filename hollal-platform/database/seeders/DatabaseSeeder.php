@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             RoleSeeder::class,
             PlatformSettingsSeeder::class,
             PlanTemplateSeeder::class,
+            ChartOfAccountsSeeder::class,
             AdminUserSeeder::class,
             DemoTrialSeeder::class,
         ]);

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\LogsFileDownloads;
+use App\Models\Custody;
 use App\Models\CustodySettlementItem;
 use App\Models\ExpenseRequest;
 use App\Models\PayrollRunItem;
@@ -22,17 +23,21 @@ class FinancialDocumentDownloadController extends Controller
         abort_unless(auth()->user()->can('finance.revenues.view'), 403);
 
         $target = match ($type) {
-            'expense_invoice' => ExpenseRequest::query()->findOrFail($id),
+            'expense_invoice', 'expense_payment_proof', 'expense_witness' => ExpenseRequest::query()->findOrFail($id),
             'revenue_document' => Revenue::query()->findOrFail($id),
             'custody_invoice' => CustodySettlementItem::query()->findOrFail($id),
+            'custody_disbursement_proof' => Custody::query()->findOrFail($id),
             'payroll_proof' => PayrollRunItem::query()->findOrFail($id),
             default => abort(404),
         };
 
         $path = match ($type) {
             'expense_invoice' => $target->official_document_path,
+            'expense_payment_proof' => $target->payment_proof_path,
+            'expense_witness' => $target->attachment,
             'revenue_document' => $target->external_document_path,
             'custody_invoice' => $target->invoice_file,
+            'custody_disbursement_proof' => $target->disbursement_proof_path,
             'payroll_proof' => $target->proof_file,
             default => null,
         };

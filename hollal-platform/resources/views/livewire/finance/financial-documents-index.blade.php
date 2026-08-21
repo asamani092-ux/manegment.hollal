@@ -5,8 +5,11 @@
         <select class="ds-input" wire:model.live="typeFilter">
             <option value="">كل الأنواع</option>
             <option value="expense_invoice">فواتير المصروفات</option>
+            <option value="expense_payment_proof">إثباتات الصرف</option>
+            <option value="expense_witness">شواهد المصروفات</option>
             <option value="revenue_document">مستندات الإيرادات</option>
             <option value="custody_invoice">فواتير العُهد</option>
+            <option value="custody_disbursement_proof">إثباتات صرف العهد</option>
             <option value="payroll_proof">إثباتات الرواتب</option>
         </select>
         <input type="month" class="ds-input" wire:model.live="monthFilter" dir="ltr">
