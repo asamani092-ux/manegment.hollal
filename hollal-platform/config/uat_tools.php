@@ -93,8 +93,8 @@ return [
             'items' => [
                 ['id' => 'depts', 'tool' => 'الأقسام', 'path' => '/departments', 'checks' => 'إنشاء · تعديل · مدير القسم'],
                 ['id' => 'org', 'tool' => 'الهيكل التنظيمي', 'path' => '/structure/org-tree', 'checks' => 'إدارة/وحدة/وظيفة بالعربية · نقل موظف'],
-                ['id' => 'jobs', 'tool' => 'الوظائف', 'path' => '/structure/jobs', 'checks' => 'بطاقة وظيفية · المسؤول المباشر · بحث وفلتر الوحدة'],
-                ['id' => 'committees', 'tool' => 'اللجان', 'path' => '/structure/committees', 'checks' => 'رئيس اللجنة · التفويض · فلتر النشطة'],
+                ['id' => 'jobs', 'tool' => 'الوظائف', 'path' => '/structure/org-tree?tab=jobs', 'checks' => 'بطاقة وظيفية · المسؤول المباشر · تبويب الوظائف'],
+                ['id' => 'committees', 'tool' => 'اللجان', 'path' => '/structure/org-tree?tab=committees', 'checks' => 'رئيس اللجنة · التفويض · تبويب اللجان'],
                 ['id' => 'profile', 'tool' => 'الملف الوظيفي', 'path' => '/users/{id}/profile', 'checks' => 'بيانات · عقد · مسؤوليات · رصيد الإجازات · مكوّنات الراتب الشهري · تفعيل الحضور'],
             ],
         ],
