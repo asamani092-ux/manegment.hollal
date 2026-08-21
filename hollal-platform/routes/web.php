@@ -219,6 +219,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:hr.employees.view')
         ->name('attendance.index');
 
+    Route::get('/attendance/cycle', \App\Livewire\Hr\AttendanceCycleIndex::class)
+        ->middleware('permission:hr.employees.update')
+        ->name('attendance.cycle');
+
     Route::get('/leaves', \App\Livewire\Hr\LeavesIndex::class)
         ->middleware('permission:hr.leaves.request|hr.leaves.approve|hr.leaves.view-all|hr.employees.view')
         ->name('leaves.index');
@@ -326,6 +330,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/accounting-reports', AccountingReportsIndex::class)
         ->middleware('permission:finance.accounting.manage')
         ->name('accounting-reports.index');
+
+    Route::get('/accounting-close', AccountingCloseIndex::class)
+        ->middleware('permission:finance.accounting.manage')
+        ->name('accounting-close.index');
 
     Route::get('/financial-reports/pdf', \App\Http\Controllers\FinancialReportPdfController::class)
         ->middleware('permission:finance.reports.view')

@@ -21,7 +21,7 @@ class PayrollRun extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'month', 'status', 'submitted_by', 'submitted_at',
+        'month', 'cycle_from', 'cycle_to', 'status', 'submitted_by', 'submitted_at',
         'finance_approved_by', 'finance_approved_at', 'notes',
     ];
 
@@ -31,6 +31,8 @@ class PayrollRun extends Model
         return [
             'submitted_at' => 'datetime',
             'finance_approved_at' => 'datetime',
+            'cycle_from' => 'date',
+            'cycle_to' => 'date',
         ];
     }
 

@@ -34,6 +34,7 @@ return [
                 ['label' => 'التقييم الدوري', 'route' => 'evaluations.index', 'icon' => 'fa-star-half-alt', 'permission' => 'hr.employees.view'],
                 ['label' => 'المسؤوليات', 'route' => 'responsibilities.index', 'icon' => 'fa-clipboard-list', 'permission' => 'hr.employees.update'],
                 ['label' => 'الحضور', 'route' => 'attendance.index', 'icon' => 'fa-user-clock', 'permission' => 'hr.employees.view'],
+                ['label' => 'دورة الحضور', 'route' => 'attendance.cycle', 'icon' => 'fa-calendar-week', 'permission' => 'hr.employees.update'],
                 ['label' => 'الإجازات', 'route' => 'leaves.index', 'icon' => 'fa-umbrella-beach', 'permission' => 'hr.leaves.request|hr.leaves.approve|hr.leaves.view-all|hr.employees.view'],
                 ['label' => 'التهيئة وإنهاء العلاقة', 'route' => 'hr-lifecycle.index', 'icon' => 'fa-user-slash', 'permission' => 'hr.employees.update'],
             ],
