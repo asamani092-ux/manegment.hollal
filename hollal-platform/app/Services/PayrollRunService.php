@@ -381,6 +381,11 @@ class PayrollRunService
             if ($run->submitter) {
                 $run->submitter->notify(new PayrollExecuted($run));
             }
+            try {
+                app(JournalService::class)->postPayrollExecuted($run->fresh());
+            } catch (\Throwable $e) {
+                report($e);
+            }
         }
 
         return $item;

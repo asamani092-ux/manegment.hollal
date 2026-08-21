@@ -65,6 +65,12 @@ class CustodyService
             'disbursement_proof_path' => $disbursementProofPath,
         ]);
 
+        try {
+            app(JournalService::class)->postCustodyDisbursed($custody->fresh(['category.account']));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
         return $custody;
     }
 
@@ -102,6 +108,12 @@ class CustodyService
         }
 
         $custody->update(['status' => Custody::STATUS_CLOSED, 'returned_amount' => $returnedAmount]);
+
+        try {
+            app(JournalService::class)->postCustodySettled($custody->fresh(['category.account', 'settlementItems']));
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return $custody;
     }

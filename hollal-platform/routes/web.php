@@ -17,6 +17,7 @@ use App\Livewire\Expenses\ExpensesIndex;
 use App\Livewire\Finance\BudgetsBoard;
 use App\Livewire\Finance\ChartOfAccountsIndex;
 use App\Livewire\Finance\FinancialDocumentsIndex;
+use App\Livewire\Finance\JournalEntriesIndex;
 use App\Livewire\Finance\FinancialReportsIndex;
 use App\Livewire\DashboardIndex;
 use App\Livewire\Hr\PayrollRunsIndex;
@@ -315,6 +316,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/chart-of-accounts', ChartOfAccountsIndex::class)
         ->middleware('permission:finance.accounting.manage')
         ->name('chart-of-accounts.index');
+
+    Route::get('/journal-entries', JournalEntriesIndex::class)
+        ->middleware('permission:finance.accounting.manage')
+        ->name('journal-entries.index');
 
     Route::get('/financial-reports/pdf', \App\Http\Controllers\FinancialReportPdfController::class)
         ->middleware('permission:finance.reports.view')

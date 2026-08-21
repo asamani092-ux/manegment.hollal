@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Revenue extends Model
@@ -31,5 +32,11 @@ class Revenue extends Model
             'received_at' => 'date',
             'confirmed_at' => 'datetime',
         ];
+    }
+
+    /** @return BelongsTo<RevenueCategory, $this> */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(RevenueCategory::class, 'category_id');
     }
 }
