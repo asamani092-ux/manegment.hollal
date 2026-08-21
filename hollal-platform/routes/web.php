@@ -14,6 +14,7 @@ use App\Http\Controllers\TaskFileDownloadController;
 use App\Livewire\Contracts\ContractsIndex;
 use App\Livewire\Documents\DocumentsIndex;
 use App\Livewire\Expenses\ExpensesIndex;
+use App\Livewire\Finance\AccountingCloseIndex;
 use App\Livewire\Finance\AccountingReportsIndex;
 use App\Livewire\Finance\BudgetsBoard;
 use App\Livewire\Finance\ChartOfAccountsIndex;

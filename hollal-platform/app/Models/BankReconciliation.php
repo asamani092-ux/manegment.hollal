@@ -5,26 +5,24 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class JournalLine extends Model
+class BankReconciliation extends Model
 {
     /** @var list<string> */
     protected $fillable = [
-        'journal_entry_id', 'account_id', 'cost_center_id', 'debit', 'credit', 'description',
+        'account_id', 'period_from', 'period_to', 'statement_balance',
+        'book_balance', 'difference', 'status', 'notes', 'created_by',
     ];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
         return [
-            'debit' => 'decimal:2',
-            'credit' => 'decimal:2',
+            'period_from' => 'date',
+            'period_to' => 'date',
+            'statement_balance' => 'decimal:2',
+            'book_balance' => 'decimal:2',
+            'difference' => 'decimal:2',
         ];
-    }
-
-    /** @return BelongsTo<JournalEntry, $this> */
-    public function entry(): BelongsTo
-    {
-        return $this->belongsTo(JournalEntry::class, 'journal_entry_id');
     }
 
     /** @return BelongsTo<ChartOfAccount, $this> */

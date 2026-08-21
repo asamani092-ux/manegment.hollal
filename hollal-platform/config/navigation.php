@@ -69,6 +69,7 @@ return [
                 ['label' => 'دليل الحسابات', 'route' => 'chart-of-accounts.index', 'icon' => 'fa-sitemap', 'permission' => 'finance.accounting.manage'],
                 ['label' => 'القيود اليومية', 'route' => 'journal-entries.index', 'icon' => 'fa-book', 'permission' => 'finance.accounting.manage'],
                 ['label' => 'الدفاتر والقوائم', 'route' => 'accounting-reports.index', 'icon' => 'fa-balance-scale', 'permission' => 'finance.accounting.manage'],
+                ['label' => 'مراكز التكلفة والإقفال', 'route' => 'accounting-close.index', 'icon' => 'fa-calendar-check', 'permission' => 'finance.accounting.manage'],
                 ['label' => 'المستندات المالية', 'route' => 'financial-documents.index', 'icon' => 'fa-folder-open', 'permission' => 'finance.revenues.view'],
             ],
         ],
