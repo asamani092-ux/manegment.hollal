@@ -14,6 +14,7 @@ use App\Http\Controllers\TaskFileDownloadController;
 use App\Livewire\Contracts\ContractsIndex;
 use App\Livewire\Documents\DocumentsIndex;
 use App\Livewire\Expenses\ExpensesIndex;
+use App\Livewire\Finance\AccountingReportsIndex;
 use App\Livewire\Finance\BudgetsBoard;
 use App\Livewire\Finance\ChartOfAccountsIndex;
 use App\Livewire\Finance\FinancialDocumentsIndex;
@@ -320,6 +321,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/journal-entries', JournalEntriesIndex::class)
         ->middleware('permission:finance.accounting.manage')
         ->name('journal-entries.index');
+
+    Route::get('/accounting-reports', AccountingReportsIndex::class)
+        ->middleware('permission:finance.accounting.manage')
+        ->name('accounting-reports.index');
 
     Route::get('/financial-reports/pdf', \App\Http\Controllers\FinancialReportPdfController::class)
         ->middleware('permission:finance.reports.view')

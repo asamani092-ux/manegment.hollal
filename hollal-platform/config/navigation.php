@@ -68,6 +68,7 @@ return [
                 ['label' => 'التقرير المالي', 'route' => 'financial-reports.index', 'icon' => 'fa-chart-line', 'permission' => 'finance.reports.view'],
                 ['label' => 'دليل الحسابات', 'route' => 'chart-of-accounts.index', 'icon' => 'fa-sitemap', 'permission' => 'finance.accounting.manage'],
                 ['label' => 'القيود اليومية', 'route' => 'journal-entries.index', 'icon' => 'fa-book', 'permission' => 'finance.accounting.manage'],
+                ['label' => 'الدفاتر والقوائم', 'route' => 'accounting-reports.index', 'icon' => 'fa-balance-scale', 'permission' => 'finance.accounting.manage'],
                 ['label' => 'المستندات المالية', 'route' => 'financial-documents.index', 'icon' => 'fa-folder-open', 'permission' => 'finance.revenues.view'],
             ],
         ],
