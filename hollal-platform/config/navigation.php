@@ -14,6 +14,12 @@ return [
             'permission' => 'dashboard.view',
         ],
         [
+            'label' => 'مساحتي',
+            'route' => 'employee-hub.index',
+            'icon' => 'fa-user',
+            'permission' => 'dashboard.view',
+        ],
+        [
             'label' => 'تقييم الأدوات (UAT)',
             'route' => 'uat.tools',
             'icon' => 'fa-clipboard-check',

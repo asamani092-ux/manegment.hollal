@@ -103,6 +103,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
 
+    Route::get('/my-space', \App\Livewire\Hr\EmployeeHub::class)
+        ->middleware('permission:dashboard.view')
+        ->name('employee-hub.index');
+
     Route::get('/uat/tools', ToolsChecklist::class)
         ->middleware(['uat.enabled', 'permission:dashboard.view'])
         ->name('uat.tools');
