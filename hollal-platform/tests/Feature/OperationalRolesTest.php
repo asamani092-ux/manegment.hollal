@@ -7,6 +7,7 @@ use App\Support\NavigationHelper;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class OperationalRolesTest extends TestCase
@@ -90,11 +91,46 @@ class OperationalRolesTest extends TestCase
     {
         $routes = $this->visibleNavRoutes($this->makeUserForRole('Employee', '0505555555'));
 
-        foreach (['dashboard', 'tasks.index', 'meetings.index', 'projects.index', 'documents.index'] as $route) {
+        foreach (['dashboard', 'employee-hub.index', 'tasks.index', 'meetings.index', 'projects.index', 'documents.index'] as $route) {
             $this->assertContains($route, $routes);
         }
 
         $this->assertNotContains('payroll.index', $routes);
+    }
+
+    public function test_super_admin_and_seven_roles_can_open_dashboard(): void
+    {
+        foreach ([
+            'Super Admin',
+            'General Manager',
+            'Executive Manager',
+            'Project Manager',
+            'Finance',
+            'Employee',
+            'Partnerships Manager',
+        ] as $i => $role) {
+            $user = $this->makeUserForRole($role, '05070'.$i.'0000');
+            $this->actingAs($user)->get(route('dashboard'))->assertOk();
+        }
+    }
+
+    public function test_finance_sees_accounting_nav_when_permitted(): void
+    {
+        $user = $this->makeUserForRole('Finance', '0504444444');
+        if (! $user->can('finance.accounting.manage')) {
+            $user->givePermissionTo('finance.accounting.manage');
+        }
+        $this->actingAs($user)->get(route('chart-of-accounts.index'))->assertOk();
+    }
+
+    public function test_grants_role_search_filters_roles(): void
+    {
+        $user = $this->makeUserForRole('General Manager', '0501111111');
+
+        Livewire::actingAs($user)
+            ->test(\App\Livewire\Settings\GrantsIndex::class)
+            ->set('roleQuery', 'Employee')
+            ->assertSee('Employee');
     }
 
     public function test_employee_cannot_access_payroll_or_roles_settings(): void

@@ -341,6 +341,11 @@ class ExpensesIndex extends Component
         $expense->update($data);
 
         app(AuditLogService::class)->record('expense.paid', $expense);
+        try {
+            app(\App\Services\JournalService::class)->postExpensePaid($expense->fresh(['category.account']), auth()->user());
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         $this->closePayModal();
         $this->dispatch('toast', type: 'success', message: 'تم تسجيل الدفع');

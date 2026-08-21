@@ -156,6 +156,7 @@ class RoleSeeder extends Seeder
         'finance.reports.view',
         'finance.tax_invoices.view',
         'finance.tax_invoices.issue',
+        'finance.accounting.manage',
         'partnerships.payments.view',
         'partnerships.payments.confirm',
         'hr.salaries.view',

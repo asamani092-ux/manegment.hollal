@@ -13,7 +13,7 @@ class ExpenseCategory extends Model
     use SoftDeletes;
 
     /** @var list<string> */
-    protected $fillable = ['name_ar', 'parent_id', 'icon', 'is_active'];
+    protected $fillable = ['name_ar', 'parent_id', 'account_id', 'icon', 'is_active'];
 
     /** @return array<string, string> */
     protected function casts(): array
@@ -37,5 +37,11 @@ class ExpenseCategory extends Model
     public function children(): HasMany
     {
         return $this->hasMany(self::class, 'parent_id');
+    }
+
+    /** @return BelongsTo<ChartOfAccount, $this> */
+    public function account(): BelongsTo
+    {
+        return $this->belongsTo(ChartOfAccount::class, 'account_id');
     }
 }

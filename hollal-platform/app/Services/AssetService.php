@@ -22,13 +22,21 @@ class AssetService
             $canBeCustody = (bool) (AssetCategory::find($categoryId)?->can_be_custody ?? false);
         }
 
-        return Asset::create(array_merge([
+        $asset = Asset::create(array_merge([
             'code' => $this->nextCode(),
             'name_ar' => $nameAr,
             'category_id' => $categoryId,
             'can_be_custody' => $canBeCustody,
             'condition' => $attributes['condition'] ?? Asset::CONDITION_GOOD,
         ], $attributes));
+
+        try {
+            app(JournalService::class)->postAssetPurchased($asset);
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return $asset;
     }
 
     public function handover(Asset $asset, User $toHolder, ?string $reason = null): AssetMovement

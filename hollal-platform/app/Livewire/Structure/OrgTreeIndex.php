@@ -20,6 +20,11 @@ class OrgTreeIndex extends Component
 
     public string $tab = 'tree'; // tree|jobs|transfers|committees
 
+    /** @var array<string, array<string, mixed>> */
+    protected $queryString = [
+        'tab' => ['except' => 'tree'],
+    ];
+
     // unit form
     public bool $showUnitModal = false;
 

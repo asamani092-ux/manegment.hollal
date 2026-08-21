@@ -153,6 +153,28 @@ class WorkloadBoard extends Component
         $this->dispatch('toast', type: 'success', message: 'أُرسل التذكير: '.implode(' + ', $channels));
     }
 
+    /** TASK-1 — تذكير جماعي لكل المرؤوسين ذوي مهام مفتوحة. Time: O(n) */
+    public function sendTeamReminder(): void
+    {
+        $this->authorize('esnad.tasks.team.view');
+        /** @var User $manager */
+        $manager = auth()->user();
+        $employees = User::query()->where('manager_id', $manager->id)->where('is_active', true)->get();
+        $sent = 0;
+        foreach ($employees as $employee) {
+            $hasOpen = Task::query()
+                ->where('assigned_to', $employee->id)
+                ->whereNotIn('status', ['completed'])
+                ->exists();
+            if (! $hasOpen) {
+                continue;
+            }
+            $employee->notify(new TaskReminder(null, 'تذكير جماعي: راجع مهامك المفتوحة في إسناد'));
+            $sent++;
+        }
+        $this->dispatch('toast', type: 'success', message: "أُرسل تذكير جماعي إلى {$sent} موظفاً");
+    }
+
     public function render(): View
     {
         /** @var User $user */

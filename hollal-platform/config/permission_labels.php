@@ -96,6 +96,7 @@ return [
         'finance.reports.view' => 'عرض التقارير المالية',
         'finance.tax_invoices.view' => 'عرض الفواتير الضريبية',
         'finance.tax_invoices.issue' => 'إصدار الفواتير والإشعارات الضريبية',
+        'finance.accounting.manage' => 'إدارة دليل الحسابات والقيود',
 
         'documents.view' => 'عرض المستندات',
         'documents.create' => 'رفع مستند',

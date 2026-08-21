@@ -82,7 +82,14 @@ class TaxInvoiceService
             );
             $invoice->save();
 
-            return $invoice->fresh(['items']);
+            $fresh = $invoice->fresh(['items']);
+            try {
+                app(JournalService::class)->postTaxInvoice($fresh, $issuer);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+
+            return $fresh;
         });
     }
 

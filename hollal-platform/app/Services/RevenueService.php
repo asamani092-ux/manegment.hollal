@@ -12,7 +12,7 @@ class RevenueService
 {
     public function recordManual(float $amount, ?int $categoryId, ?string $receivedAt, ?string $externalDocumentPath = null): Revenue
     {
-        return Revenue::create([
+        $revenue = Revenue::create([
             'source_type' => Revenue::SOURCE_MANUAL,
             'category_id' => $categoryId,
             'amount' => $amount,
@@ -20,6 +20,14 @@ class RevenueService
             'external_document_path' => $externalDocumentPath,
             'status' => Revenue::STATUS_RECORDED,
         ]);
+
+        try {
+            app(JournalService::class)->postRevenueConfirmed($revenue->fresh(['category.account']));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return $revenue;
     }
 
     /**
@@ -36,7 +44,7 @@ class RevenueService
             return $existing;
         }
 
-        return Revenue::create([
+        $revenue = Revenue::create([
             'source_type' => Revenue::SOURCE_PARTNERSHIP,
             'source_id' => $paymentId,
             'category_id' => $categoryId,
@@ -46,5 +54,13 @@ class RevenueService
             'confirmed_by' => $confirmedBy,
             'status' => Revenue::STATUS_CONFIRMED,
         ]);
+
+        try {
+            app(JournalService::class)->postRevenueConfirmed($revenue->fresh(['category.account']));
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        return $revenue;
     }
 }

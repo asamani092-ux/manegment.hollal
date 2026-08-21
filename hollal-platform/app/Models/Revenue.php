@@ -39,4 +39,10 @@ class Revenue extends Model
     {
         return $this->belongsTo(User::class, 'confirmed_by');
     }
+
+    /** @return BelongsTo<RevenueCategory, $this> */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(RevenueCategory::class, 'category_id');
+    }
 }

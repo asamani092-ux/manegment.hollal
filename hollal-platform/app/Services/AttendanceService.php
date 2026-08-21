@@ -152,4 +152,105 @@ class AttendanceService
             throw new \InvalidArgumentException('برنامج الحضور غير مُفعّل لهذا الموظف.');
         }
     }
+
+    /** ATT-3 — scan site barcode. Time: O(1) */
+    public function checkInViaBarcode(User $employee, string $token): AttendanceRecord
+    {
+        $expected = (string) Setting::get('attendance.site_barcode_token', '');
+        if ($expected === '' || ! hash_equals($expected, $token)) {
+            throw new \InvalidArgumentException('باركود المقر غير صالح');
+        }
+
+        $record = $this->checkIn($employee);
+        $record->forceFill([
+            'source' => 'باركود',
+            'late_minutes' => $this->latenessMinutes($record),
+        ])->save();
+
+        return $record->fresh();
+    }
+
+    /** ATT-3 — field work pending manager approval. */
+    public function startFieldWork(User $employee, string $location, ?string $proofPath = null): AttendanceRecord
+    {
+        $this->assertEnabled($employee);
+        if (! $employee->profile?->is_field_worker) {
+            throw new \InvalidArgumentException('الموظف غير مُعلَّم كميداني');
+        }
+
+        return AttendanceRecord::updateOrCreate(
+            ['employee_id' => $employee->id, 'date' => today()],
+            [
+                'check_in_at' => now(),
+                'type' => 'تكليف خارجي',
+                'source' => 'عن_بعد',
+                'field_location' => $location,
+                'field_proof_path' => $proofPath,
+                'approval_status' => 'بانتظار',
+                'declared_by' => $employee->id,
+            ],
+        );
+    }
+
+    public function approveFieldWork(AttendanceRecord $record, User $manager): AttendanceRecord
+    {
+        $record->forceFill(['approval_status' => 'معتمد'])->save();
+
+        return $record;
+    }
+
+    /**
+     * ATT-1 — import CSV: fingerprint_id,date,check_in,check_out
+     * Time: O(rows) | Space: O(1)
+     *
+     * @return array{import_id: int, rows: int}
+     */
+    public function importCsv(string $absolutePath, User $uploader): array
+    {
+        $handle = fopen($absolutePath, 'r');
+        if ($handle === false) {
+            throw new \RuntimeException('تعذر فتح ملف الاستيراد');
+        }
+
+        $count = 0;
+        $header = fgetcsv($handle);
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) < 3) {
+                continue;
+            }
+            [$fingerprint, $date, $checkIn] = $row;
+            $checkOut = $row[3] ?? null;
+            $profile = \App\Models\EmployeeProfile::query()->where('fingerprint_id', trim((string) $fingerprint))->first();
+            if (! $profile) {
+                continue;
+            }
+            $inAt = Carbon::parse(trim((string) $date).' '.trim((string) $checkIn));
+            $record = AttendanceRecord::updateOrCreate(
+                ['employee_id' => $profile->user_id, 'date' => $inAt->toDateString()],
+                [
+                    'check_in_at' => $inAt,
+                    'check_out_at' => $checkOut ? Carbon::parse(trim((string) $date).' '.trim((string) $checkOut)) : null,
+                    'type' => 'حضور',
+                    'source' => 'بصمة',
+                    'declared_by' => $uploader->id,
+                ],
+            );
+            $late = $this->latenessMinutes($record);
+            $hours = null;
+            if ($record->check_in_at && $record->check_out_at) {
+                $hours = round(($record->check_out_at->getTimestamp() - $record->check_in_at->getTimestamp()) / 3600, 2);
+            }
+            $record->forceFill(['late_minutes' => $late, 'work_hours' => $hours])->save();
+            $count++;
+        }
+        fclose($handle);
+
+        $import = \App\Models\AttendanceImport::create([
+            'file_path' => $absolutePath,
+            'rows_count' => $count,
+            'uploaded_by' => $uploader->id,
+        ]);
+
+        return ['import_id' => $import->id, 'rows' => $count];
+    }
 }

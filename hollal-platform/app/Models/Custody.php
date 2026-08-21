@@ -62,4 +62,10 @@ class Custody extends Model
     {
         return $this->belongsTo(User::class, 'employee_id');
     }
+
+    /** @return BelongsTo<ExpenseCategory, $this> */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(ExpenseCategory::class, 'category_id');
+    }
 }

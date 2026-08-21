@@ -34,7 +34,16 @@ class PayrollRunService
         $attendanceService = app(AttendanceService::class);
 
         return DB::transaction(function () use ($month, $monthEnd, $attendanceByEmployee, $attendanceService) {
-            $run = PayrollRun::create(['month' => $month, 'status' => PayrollRun::STATUS_DRAFT]);
+            $cycle = app(AttendanceDeductionService::class)->currentCycle(
+                Carbon::createFromFormat('Y-m', $month)->startOfMonth()
+            );
+
+            $run = PayrollRun::create([
+                'month' => $month,
+                'status' => PayrollRun::STATUS_DRAFT,
+                'cycle_from' => $cycle['from']->toDateString(),
+                'cycle_to' => $cycle['to']->toDateString(),
+            ]);
 
             $employees = User::query()
                 ->where('is_active', true)
@@ -380,6 +389,11 @@ class PayrollRunService
             $run->update(['status' => PayrollRun::STATUS_EXECUTED]);
             if ($run->submitter) {
                 $run->submitter->notify(new PayrollExecuted($run));
+            }
+            try {
+                app(JournalService::class)->postPayrollExecuted($run->fresh());
+            } catch (\Throwable $e) {
+                report($e);
             }
         }
 

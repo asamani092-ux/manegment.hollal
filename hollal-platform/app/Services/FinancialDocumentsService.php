@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Custody;
 use App\Models\CustodySettlementItem;
 use App\Models\ExpenseRequest;
 use App\Models\PayrollRunItem;
@@ -10,8 +11,7 @@ use Illuminate\Support\Collection;
 
 /**
  * 04-B4 — read-only aggregation of every financial attachment across the system
- * (expense invoices, revenue docs, custody invoices, payroll proofs). No upload
- * happens here; documents are attached from their own modules.
+ * (expense invoices, payment proofs, revenue docs, custody invoices/proofs, payroll proofs).
  */
 class FinancialDocumentsService
 {
@@ -37,6 +37,20 @@ class FinancialDocumentsService
                     $e->id,
                     $e->requester?->name
                 ))
+        );
+
+        $rows = $rows->merge(
+            ExpenseRequest::query()
+                ->whereNotNull('payment_proof_path')
+                ->get(['id', 'payment_proof_path', 'project_id', 'created_at'])
+                ->map(fn ($e) => $this->row('expense_payment_proof', 'إثبات صرف', $e->payment_proof_path, $e->created_at, $e->project_id, $e->id))
+        );
+
+        $rows = $rows->merge(
+            ExpenseRequest::query()
+                ->whereNotNull('attachment')
+                ->get(['id', 'attachment', 'project_id', 'created_at'])
+                ->map(fn ($e) => $this->row('expense_witness', 'شاهد المصروف', $e->attachment, $e->created_at, $e->project_id, $e->id))
         );
 
         $rows = $rows->merge(
@@ -72,6 +86,13 @@ class FinancialDocumentsService
         );
 
         $rows = $rows->merge(
+            Custody::query()
+                ->whereNotNull('disbursement_proof_path')
+                ->get(['id', 'disbursement_proof_path', 'created_at'])
+                ->map(fn ($c) => $this->row('custody_disbursement_proof', 'إثبات صرف عهدة', $c->disbursement_proof_path, $c->created_at, null, $c->id))
+        );
+
+        $rows = $rows->merge(
             PayrollRunItem::query()
                 ->whereNotNull('proof_file')
                 ->with('employee:id,name')
@@ -92,7 +113,7 @@ class FinancialDocumentsService
         }
 
         if (! empty($filters['month'])) {
-            $rows = $rows->where('month', $filters['month']);
+            $rows = $rows->filter(fn (array $row) => ($row['month'] ?? null) === $filters['month']);
         }
 
         if (! empty($filters['project_id'])) {

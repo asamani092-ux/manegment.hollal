@@ -5,7 +5,7 @@
     <style>
         @page { margin: 18px; }
         body {
-            font-family: amiri, 'DejaVu Sans', sans-serif;
+            font-family: {{ $pdfDefaultFont ?? 'amiri' }}, 'DejaVu Sans', sans-serif;
             font-size: 12px;
             line-height: 1.55;
             color: #2a3f5f;

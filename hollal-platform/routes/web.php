@@ -30,10 +30,14 @@ use App\Livewire\Documents\DocumentsIndex;
 use App\Livewire\Documents\DocumentTemplatesIndex;
 use App\Livewire\Documents\DocumentVersionsIndex;
 use App\Livewire\Expenses\ExpensesIndex;
+use App\Livewire\Finance\AccountingCloseIndex;
+use App\Livewire\Finance\AccountingReportsIndex;
 use App\Livewire\Finance\AssetsIndex;
 use App\Livewire\Finance\BudgetsBoard;
+use App\Livewire\Finance\ChartOfAccountsIndex;
 use App\Livewire\Finance\CustodiesIndex;
 use App\Livewire\Finance\FinancialDocumentsIndex;
+use App\Livewire\Finance\JournalEntriesIndex;
 use App\Livewire\Finance\FinancialReportsIndex;
 use App\Livewire\Finance\RevenuesIndex;
 use App\Livewire\Finance\TaxInvoicesIndex;
@@ -155,6 +159,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:dashboard.view')
         ->name('dashboard');
 
+    Route::get('/my-space', \App\Livewire\Hr\EmployeeHub::class)
+        ->middleware('permission:dashboard.view')
+        ->name('employee-hub.index');
+
     Route::get('/uat/tools', ToolsChecklist::class)
         ->middleware(['uat.enabled', 'permission:dashboard.view'])
         ->name('uat.tools');
@@ -274,6 +282,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:hr.employees.view')
         ->name('attendance.index');
 
+    Route::get('/attendance/cycle', \App\Livewire\Hr\AttendanceCycleIndex::class)
+        ->middleware('permission:hr.employees.update')
+        ->name('attendance.cycle');
+
     Route::get('/leaves', LeavesIndex::class)
         ->middleware('permission:hr.leaves.request|hr.leaves.approve|hr.leaves.view-all|hr.employees.view')
         ->name('leaves.index');
@@ -373,6 +385,22 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/budgets', BudgetsBoard::class)
         ->middleware('permission:finance.budgets.view')
         ->name('budgets.index');
+
+    Route::get('/chart-of-accounts', ChartOfAccountsIndex::class)
+        ->middleware('permission:finance.accounting.manage')
+        ->name('chart-of-accounts.index');
+
+    Route::get('/journal-entries', JournalEntriesIndex::class)
+        ->middleware('permission:finance.accounting.manage')
+        ->name('journal-entries.index');
+
+    Route::get('/accounting-reports', AccountingReportsIndex::class)
+        ->middleware('permission:finance.accounting.manage')
+        ->name('accounting-reports.index');
+
+    Route::get('/accounting-close', AccountingCloseIndex::class)
+        ->middleware('permission:finance.accounting.manage')
+        ->name('accounting-close.index');
 
     Route::get('/financial-reports/pdf', FinancialReportPdfController::class)
         ->middleware('permission:finance.reports.view')

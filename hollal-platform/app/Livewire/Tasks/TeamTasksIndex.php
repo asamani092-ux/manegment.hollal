@@ -20,6 +20,14 @@ class TeamTasksIndex extends Component
 
     public string $tab = 'approval';
 
+    public ?int $assigneeId = null;
+
+    /** @var array<string, array<string, mixed>> */
+    protected $queryString = [
+        'tab' => ['except' => 'approval'],
+        'assigneeId' => ['except' => null],
+    ];
+
     /** @var array<int, string> per-task final rating input */
     public array $approveRating = [];
 
@@ -129,6 +137,7 @@ class TeamTasksIndex extends Component
         return Task::query()
             ->overdue()
             ->whereIn('assigned_to', $scopeIds->unique())
+            ->when($this->assigneeId, fn ($q) => $q->where('assigned_to', $this->assigneeId))
             ->with(['assignee:id,name', 'project:id,name'])
             ->latest('due_date')
             ->get();
@@ -152,15 +161,23 @@ class TeamTasksIndex extends Component
                 ->find($this->detailTaskId);
         }
 
+        $teamTasks = $user->can('esnad.tasks.team.view')
+            ? Task::query()
+                ->teamOf($user)
+                ->when($this->assigneeId, fn ($q) => $q->where('assigned_to', $this->assigneeId))
+                ->with(['assignee:id,name', 'project:id,name'])
+                ->latest()
+                ->get()
+            : new Collection;
+
         return view('livewire.tasks.team-tasks-index', [
             'approvalQueue' => Task::query()
                 ->pendingApprovalFor($user)
+                ->when($this->assigneeId, fn ($q) => $q->where('assigned_to', $this->assigneeId))
                 ->with(['assignee:id,name', 'project:id,name'])
                 ->latest()
                 ->get(),
-            'teamTasks' => $user->can('esnad.tasks.team.view')
-                ? Task::query()->teamOf($user)->with(['assignee:id,name', 'project:id,name'])->latest()->get()
-                : new Collection,
+            'teamTasks' => $teamTasks,
             'overdueTasks' => $this->overdueTasks($user),
             'ratings' => Task::RATINGS,
             'detailTask' => $detailTask,
