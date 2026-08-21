@@ -106,8 +106,8 @@
           @endif
           <x-ds-action-icons
             :show-view="true"
-            :show-edit="auth()->user()->can('update', $meeting)"
-            :show-delete="auth()->user()->can('update', $meeting)"
+            :show-edit="! $meeting->isApproved() && auth()->user()->can('update', $meeting)"
+            :show-delete="! $meeting->isApproved() && auth()->user()->can('update', $meeting)"
             :view-action="'openItemView('.$item->id.')'"
             :edit-action="'openItemEdit('.$item->id.')'"
             :delete-action="'deleteItem('.$item->id.')'"

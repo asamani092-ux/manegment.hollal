@@ -52,6 +52,11 @@ class MeetingMinutes extends Component
     public function openItemEdit(int $id): void
     {
         $this->authorize('update', $this->meeting);
+        if ($this->meeting->isApproved()) {
+            $this->dispatch('toast', type: 'error', message: 'المحضر معتمد — التعديل عبر مسار التعديل فقط');
+
+            return;
+        }
         $item = MeetingItem::where('meeting_id', $this->meeting->id)->findOrFail($id);
         $this->fillItemForm($item);
         $this->itemViewOnly = false;
@@ -126,6 +131,11 @@ class MeetingMinutes extends Component
     public function deleteItem(int $id): void
     {
         $this->authorize('update', $this->meeting);
+        if ($this->meeting->isApproved()) {
+            $this->dispatch('toast', type: 'error', message: 'المحضر معتمد ولا يمكن حذف البنود');
+
+            return;
+        }
         MeetingItem::where('meeting_id', $this->meeting->id)->findOrFail($id)->delete();
         $this->dispatch('toast', type: 'success', message: 'تم حذف البند');
     }

@@ -2,6 +2,9 @@
     <x-ds-page-header title="عبء عمل الفريق" />
 
     <p class="ds-text-muted">حد التنبيه: أكثر من {{ $threshold }} مهمة مفتوحة</p>
+    <div class="ds-mb-3">
+        <button type="button" class="ds-btn ds-btn-primary" wire:click="sendTeamReminder" wire:confirm="إرسال تذكير جماعي لكل من لديه مهام مفتوحة؟">تذكير جماعي</button>
+    </div>
 
     <x-ds-table>
         <x-slot:head>
@@ -18,12 +21,14 @@
             <tr wire:key="workload-{{ $row['user']->id }}">
                 <td>{{ $row['user']->name }}</td>
                 <td>
-                    {{ $row['open'] }}
+                    <a href="{{ route('team-tasks.index', ['tab' => 'team', 'assigneeId' => $row['user']->id]) }}">{{ $row['open'] }}</a>
                     @if ($row['overloaded'])
                         <span class="ds-badge ds-badge-warning">عبء مرتفع</span>
                     @endif
                 </td>
-                <td>{{ $row['overdue'] }}</td>
+                <td>
+                    <a href="{{ route('team-tasks.index', ['tab' => 'overdue', 'assigneeId' => $row['user']->id]) }}">{{ $row['overdue'] }}</a>
+                </td>
                 <td>{{ $row['due_this_week'] }}</td>
                 <td>
                     @forelse ($row['ratings'] as $label => $count)

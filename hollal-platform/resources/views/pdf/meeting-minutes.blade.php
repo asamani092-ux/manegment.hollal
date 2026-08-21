@@ -6,7 +6,7 @@
         @page { margin: 24px; }
         {!! $pdfFontFace !!}
         body {
-            font-family: Amiri, dejavu sans, sans-serif;
+            font-family: {{ $pdfDefaultFont }}, dejavu sans, sans-serif;
             font-size: 12px;
             line-height: 1.6;
             color: #2a3f5f;
