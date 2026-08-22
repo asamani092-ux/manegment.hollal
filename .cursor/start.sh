@@ -3,6 +3,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/../hollal-platform"
 
+composer dump-autoload -q --no-interaction 2>/dev/null || true
+
 port_open() {
   php -r 'exit(@fsockopen("127.0.0.1", 8000) ? 0 : 1);'
 }
