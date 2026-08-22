@@ -10,7 +10,7 @@ port_open() {
 }
 
 if ! port_open; then
-  php artisan serve --host=0.0.0.0 --port=8000 >/tmp/laravel-serve.log 2>&1 &
+  php -d display_errors=0 artisan serve --host=0.0.0.0 --port=8000 >>/tmp/laravel-serve.log 2>&1 &
 fi
 
 for _ in $(seq 1 30); do
