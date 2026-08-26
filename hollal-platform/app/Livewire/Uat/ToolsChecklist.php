@@ -8,7 +8,7 @@ use Livewire\Component;
 
 /**
  * Interactive UAT tools evaluation page (pre-production only).
- * Three gated phases — next unlocks only when current is all «يعتمد».
+ * Eleven gated tabs — next unlocks only when current tab is all «يعتمد».
  * Time: O(n) tools | Space: O(n) current + O(k·n) snapshots.
  */
 class ToolsChecklist extends Component

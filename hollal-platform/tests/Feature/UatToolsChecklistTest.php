@@ -42,18 +42,22 @@ class UatToolsChecklistTest extends TestCase
         $this->actingAs($this->admin())
             ->get(route('uat.tools'))
             ->assertOk()
-            ->assertSee('تقييم أدوات المنصة (UAT) — 3 مراحل', false)
+            ->assertSee('تقييم أدوات المنصة (UAT) — 11 تبويباً', false)
             ->assertSee('نسخ التقرير كاملاً', false)
             ->assertSee('تقييم المرحلة 3 (17 أغسطس)', false)
             ->assertSee('تقييم 20:27', false)
             ->assertSee('تقييم 19:04', false)
             ->assertSee('2026-08-17 15:23', false)
-            ->assertSee('المرحلة 1 — الأساس والموارد', false)
-            ->assertSee('المرحلة 2 — التشغيل والمالية', false)
-            ->assertSee('المرحلة 3 — النمو والمحتوى', false)
+            ->assertSee('التبويب 1 — الموارد البشرية', false)
+            ->assertSee('التبويب 9 — المالية', false)
+            ->assertSee('التبويب 11 — المشاريع', false)
             ->assertSee('دليل العاملين', false)
+            ->assertSee('دورة الحضور', false)
+            ->assertSee('دليل الحسابات', false)
+            ->assertSee('أسئلة التشخيص', false)
+            ->assertSee('دورة الحياة', false)
             ->assertSee('الملاحظة', false)
-            ->assertSee('قاعدة المراحل', false)
+            ->assertSee('قاعدة التبويبات', false)
             ->assertSee('التقييم محفوظ على السيرفر', false);
     }
 
@@ -96,7 +100,7 @@ class UatToolsChecklistTest extends TestCase
                 'verdicts' => ['tasks' => 'يعتمد', 'sidebar' => 'يعتمد'],
                 'tags' => ['tasks' => ''],
                 'notes' => ['tasks' => 'أُغلقت بعد الإصلاح'],
-                'activePhase' => 3,
+                'activePhase' => 5,
                 'snapshot' => true,
                 'source' => 'copy-report',
             ])
@@ -110,17 +114,17 @@ class UatToolsChecklistTest extends TestCase
 
         $shared = app(\App\Services\UatToolChecklistService::class)->current();
         $this->assertNotNull($shared);
-        $this->assertSame(3, $shared['activePhase']);
+        $this->assertSame(5, $shared['activePhase']);
         $this->assertSame('يعتمد', $shared['verdicts']['tasks']);
         $this->assertSame('أُغلقت بعد الإصلاح', $shared['notes']['tasks']);
     }
 
-    public function test_phases_cover_all_groups_without_overlap(): void
+    public function test_tabs_cover_all_groups_without_overlap(): void
     {
         $phases = config('uat_tools.phases');
         $groups = collect(config('uat_tools.groups'));
 
-        $this->assertCount(3, $phases);
+        $this->assertCount(11, $phases);
 
         $assigned = collect($phases)->flatMap(fn (array $p) => $p['group_ids'])->sort()->values();
         $allIds = $groups->pluck('id')->sort()->values();
@@ -128,23 +132,38 @@ class UatToolsChecklistTest extends TestCase
         $this->assertSame($allIds->all(), $assigned->all());
 
         foreach ($groups as $group) {
-            $this->assertContains($group['phase'], [1, 2, 3]);
+            $this->assertGreaterThanOrEqual(1, $group['phase']);
+            $this->assertLessThanOrEqual(11, $group['phase']);
             $phase = collect($phases)->firstWhere('id', $group['phase']);
             $this->assertContains($group['id'], $phase['group_ids']);
         }
+    }
 
-        $counts = [];
-        foreach ($phases as $phase) {
-            $counts[$phase['id']] = $groups
-                ->whereIn('id', $phase['group_ids'])
-                ->sum(fn (array $g) => count($g['items']));
+    public function test_all_tools_have_unique_ids_and_nonempty_checks(): void
+    {
+        $ids = [];
+        foreach (config('uat_tools.groups', []) as $group) {
+            foreach ($group['items'] ?? [] as $item) {
+                $this->assertNotEmpty($item['id'] ?? '');
+                $this->assertNotEmpty($item['tool'] ?? '');
+                $this->assertNotEmpty($item['checks'] ?? '');
+                $this->assertArrayNotHasKey($item['id'], $ids, "Duplicate tool id: {$item['id']}");
+                $ids[$item['id']] = true;
+            }
         }
 
-        // Balanced within ~±5 of mean (~21)
-        foreach ($counts as $n) {
-            $this->assertGreaterThanOrEqual(18, $n);
-            $this->assertLessThanOrEqual(25, $n);
-        }
+        $this->assertGreaterThanOrEqual(60, count($ids));
+    }
+
+    public function test_active_phase_accepts_up_to_eleven(): void
+    {
+        $service = app(\App\Services\UatToolChecklistService::class);
+
+        $state = $service->normalize(['activePhase' => 11]);
+        $this->assertSame(11, $state['activePhase']);
+
+        $state = $service->normalize(['activePhase' => 12]);
+        $this->assertSame(1, $state['activePhase']);
     }
 
     public function test_phase3_report_is_default_and_unlocks_phase_three(): void
