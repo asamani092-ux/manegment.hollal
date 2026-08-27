@@ -97,7 +97,9 @@ class OffboardingService
             $holds[] = 'مهام إنهاء غير مكتملة ('.$incomplete.')';
         }
 
-        if ($this->isEarlyTermination($employee) && ! $this->hasClearanceDocument($employee)) {
+        if ($employee->offboarding_started_at
+            && $this->isEarlyTermination($employee)
+            && ! $this->hasClearanceDocument($employee)) {
             $contract = $this->activeContract($employee);
             $holds[] = 'إنهاء مبكر قبل نهاية العقد ('.$contract?->end_date?->format('Y-m-d').') — أرفق مخالصة في الملف الوظيفي';
         }
@@ -186,6 +188,9 @@ class OffboardingService
 
         $today = now()->startOfDay();
         foreach ($employeeIds as $employeeId) {
+            if (! in_array((int) $employeeId, $offboardingStarted, true)) {
+                continue;
+            }
             $contract = $contracts->get($employeeId)?->first();
             if (! $contract || ! $contract->end_date) {
                 continue;
