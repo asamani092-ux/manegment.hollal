@@ -24,6 +24,56 @@ class EvaluationService
         ]);
     }
 
+    /**
+     * Bulk create: ensure shared criteria as responsibilities, then create missing period evaluations.
+     * Time: O(e × c) | Space: O(e)
+     *
+     * @param  list<int>  $employeeIds
+     * @param  list<string>  $criteria
+     */
+    public function createBulk(array $employeeIds, string $period, User $evaluator, array $criteria): int
+    {
+        $created = 0;
+
+        foreach ($employeeIds as $employeeId) {
+            $employee = User::query()->find($employeeId);
+            if (! $employee) {
+                continue;
+            }
+
+            $order = 1;
+            foreach ($criteria as $body) {
+                $exists = Responsibility::query()
+                    ->where('employee_id', $employee->id)
+                    ->where('body', $body)
+                    ->where('is_active', true)
+                    ->exists();
+                if (! $exists) {
+                    Responsibility::create([
+                        'employee_id' => $employee->id,
+                        'body' => $body,
+                        'order' => $order,
+                        'is_active' => true,
+                    ]);
+                }
+                $order++;
+            }
+
+            $already = PeriodicEvaluation::query()
+                ->where('employee_id', $employee->id)
+                ->where('period', $period)
+                ->exists();
+            if ($already) {
+                continue;
+            }
+
+            $this->create($employee, $period, $evaluator);
+            $created++;
+        }
+
+        return $created;
+    }
+
     public function recordScore(PeriodicEvaluation $evaluation, Responsibility $responsibility, int $score, ?string $note = null): EvaluationScore
     {
         if ($score < 1 || $score > 5) {

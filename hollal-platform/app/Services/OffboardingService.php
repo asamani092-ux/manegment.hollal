@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use App\Models\Contract;
+use App\Models\EmployeeDocument;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\TaskLifecycleService;
@@ -12,6 +14,7 @@ use Illuminate\Support\Facades\Schema;
 /**
  * 01-B5 / HR-5 — offboarding starts إسناد checklist tasks; account disable is
  * the last step after every task is completed and holds are cleared.
+ * Early termination (before contract end) requires a clearance (مخالصة) attachment.
  */
 class OffboardingService
 {
@@ -21,6 +24,43 @@ class OffboardingService
         'نقل الملفات والمستندات',
         'إصدار المخالصة',
     ];
+
+    /**
+     * Active employment contract with the latest end_date, if any.
+     */
+    public function activeContract(User $employee): ?Contract
+    {
+        return Contract::query()
+            ->where('employee_id', $employee->id)
+            ->where('status', 'active')
+            ->orderByDesc('end_date')
+            ->first();
+    }
+
+    /**
+     * True when terminating before the active contract's end_date.
+     * Time: O(1)
+     */
+    public function isEarlyTermination(User $employee, ?\Carbon\CarbonInterface $asOf = null): bool
+    {
+        $contract = $this->activeContract($employee);
+        if (! $contract || ! $contract->end_date) {
+            return false;
+        }
+
+        $asOf ??= now()->startOfDay();
+
+        return $contract->end_date->copy()->startOfDay()->greaterThan($asOf);
+    }
+
+    public function hasClearanceDocument(User $employee): bool
+    {
+        return EmployeeDocument::query()
+            ->where('user_id', $employee->id)
+            ->where('type', EmployeeDocument::TYPE_CLEARANCE)
+            ->whereNotNull('file_path')
+            ->exists();
+    }
 
     /**
      * @return list<string> outstanding holds preventing offboarding close
@@ -55,6 +95,11 @@ class OffboardingService
         $incomplete = $this->incompleteTasks($employee)->count();
         if ($employee->offboarding_started_at && $incomplete > 0) {
             $holds[] = 'مهام إنهاء غير مكتملة ('.$incomplete.')';
+        }
+
+        if ($this->isEarlyTermination($employee) && ! $this->hasClearanceDocument($employee)) {
+            $contract = $this->activeContract($employee);
+            $holds[] = 'إنهاء مبكر قبل نهاية العقد ('.$contract?->end_date?->format('Y-m-d').') — أرفق مخالصة في الملف الوظيفي';
         }
 
         return $holds;
@@ -124,6 +169,33 @@ class OffboardingService
             $result[(int) $employeeId][] = 'مهام إنهاء غير مكتملة ('.$count.')';
         }
 
+        $contracts = Contract::query()
+            ->whereIn('employee_id', $employeeIds)
+            ->where('status', 'active')
+            ->orderByDesc('end_date')
+            ->get(['employee_id', 'end_date'])
+            ->groupBy('employee_id');
+
+        $clearances = EmployeeDocument::query()
+            ->whereIn('user_id', $employeeIds)
+            ->where('type', EmployeeDocument::TYPE_CLEARANCE)
+            ->whereNotNull('file_path')
+            ->pluck('user_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        $today = now()->startOfDay();
+        foreach ($employeeIds as $employeeId) {
+            $contract = $contracts->get($employeeId)?->first();
+            if (! $contract || ! $contract->end_date) {
+                continue;
+            }
+            if ($contract->end_date->copy()->startOfDay()->greaterThan($today)
+                && ! in_array((int) $employeeId, $clearances, true)) {
+                $result[(int) $employeeId][] = 'إنهاء مبكر قبل نهاية العقد ('.$contract->end_date->format('Y-m-d').') — أرفق مخالصة في الملف الوظيفي';
+            }
+        }
+
         return $result;
     }
 
@@ -162,6 +234,7 @@ class OffboardingService
 
     /**
      * Last step: disable login after checklist + custody/asset holds are clear.
+     * Early termination requires clearance document.
      * Time: O(t) tasks | Space: O(1)
      */
     public function complete(User $employee, User $actor): void
@@ -180,6 +253,10 @@ class OffboardingService
         }
 
         DB::transaction(function () use ($employee) {
+            $contract = $this->activeContract($employee);
+            if ($contract && $contract->status === 'active') {
+                $contract->forceFill(['status' => 'terminated'])->save();
+            }
             $employee->transitionStatus(User::STATUS_TERMINATED, viaOffboarding: true);
         });
     }

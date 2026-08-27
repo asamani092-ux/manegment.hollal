@@ -19,7 +19,15 @@ class EvaluationsIndex extends Component
 
     public bool $showCreate = false;
 
+    public bool $showBulkCreate = false;
+
     public ?int $employee_id = null;
+
+    /** @var list<int> */
+    public array $bulkEmployeeIds = [];
+
+    /** Shared criteria lines for bulk evaluation (one per line). */
+    public string $bulkCriteria = '';
 
     public string $period = '';
 
@@ -70,6 +78,16 @@ class EvaluationsIndex extends Component
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
         $this->showCreate = true;
+        $this->showBulkCreate = false;
+    }
+
+    public function openBulkCreate(): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        $this->showBulkCreate = true;
+        $this->showCreate = false;
+        $this->bulkEmployeeIds = [];
+        $this->bulkCriteria = "جودة العمل\nالالتزام بالمواعيد\nالتعاون مع الفريق\nالمبادرة والتطوير";
     }
 
     public function createEvaluation(): void
@@ -102,6 +120,47 @@ class EvaluationsIndex extends Component
 
         $this->showCreate = false;
         $this->dispatch('toast', type: 'success', message: 'تم إنشاء التقييم');
+    }
+
+    /**
+     * Create evaluations for many employees with shared criteria as responsibilities if missing.
+     * Time: O(e × c) | Space: O(e)
+     */
+    public function createBulkEvaluations(): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        $this->validate([
+            'period' => 'required|string|max:20|regex:/^\d{4}-Q[1-4]$/',
+            'bulkEmployeeIds' => 'required|array|min:1',
+            'bulkEmployeeIds.*' => 'integer|exists:users,id',
+            'bulkCriteria' => 'required|string|min:3|max:4000',
+        ], [
+            'period.regex' => 'صيغة الفترة يجب أن تكون مثل 2026-Q3.',
+            'bulkEmployeeIds.required' => 'اختر موظفاً واحداً على الأقل.',
+        ]);
+
+        $criteria = collect(preg_split('/\r\n|\r|\n/', $this->bulkCriteria) ?: [])
+            ->map(fn ($line) => trim((string) $line))
+            ->filter()
+            ->values()
+            ->all();
+
+        if ($criteria === []) {
+            $this->addError('bulkCriteria', 'أدخل بنداً واحداً على الأقل.');
+
+            return;
+        }
+
+        $created = app(EvaluationService::class)->createBulk(
+            $this->bulkEmployeeIds,
+            $this->period,
+            auth()->user(),
+            $criteria,
+        );
+
+        $this->showBulkCreate = false;
+        $this->dispatch('toast', type: 'success', message: "أُنشئ {$created} تقييماً جماعياً");
     }
 
     public function publish(int $id): void
@@ -232,6 +291,9 @@ class EvaluationsIndex extends Component
             'evaluations' => $query->paginate(15),
             'periods' => PeriodicEvaluation::query()->distinct()->orderByDesc('period')->pluck('period'),
             'employees' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'employeeOptions' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name'])
+                ->map(fn (User $u) => ['id' => $u->id, 'label' => $u->name])
+                ->all(),
             'canManage' => auth()->user()->can('hr.employees.update'),
             'scoringEvaluation' => $this->scoringId
                 ? PeriodicEvaluation::with(['employee:id,name', 'scores'])->find($this->scoringId)

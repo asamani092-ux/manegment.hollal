@@ -5,7 +5,18 @@
         button-label="تقييم جديد"
         button-icon="fa-plus"
         wire:click="openCreate"
-    />
+    >
+        @if ($canManage)
+            <x-slot:actions>
+                <button type="button" class="ds-btn ds-btn-outline" wire:click="openBulkCreate">
+                    <i class="fas fa-users" aria-hidden="true"></i> تقييم جماعي
+                </button>
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="openCreate">
+                    <i class="fas fa-plus" aria-hidden="true"></i> تقييم جديد
+                </button>
+            </x-slot:actions>
+        @endif
+    </x-ds-page-header>
 
     <p class="ds-text-muted ds-mb-3">
         أداة الموارد البشرية: التقييم <strong>داخلي</strong> افتراضيًا (مسودة → درجات).
@@ -79,17 +90,39 @@
 
     <x-ds-modal :show="$showCreate" title="تقييم جديد" close-action="$set('showCreate', false)">
         <x-ds-form-group label="الموظف" :error="$errors->first('employee_id')">
-            <select class="ds-input" wire:model="employee_id">
-                <option value="">—</option>
-                @foreach ($employees as $employee)
-                    <option value="{{ $employee->id }}">{{ $employee->name }}</option>
-                @endforeach
-            </select>
+            <x-ds-search-select
+                :options="$employeeOptions"
+                wire-model="employee_id"
+                value-key="id"
+                label-key="label"
+                placeholder="ابحث عن الموظف…"
+            />
         </x-ds-form-group>
         <x-ds-form-group label="الفترة" :error="$errors->first('period')">
             <input type="text" class="ds-input ds-ltr-num" wire:model="period" placeholder="2026-Q3">
         </x-ds-form-group>
         <button type="button" class="ds-btn ds-btn-primary" wire:click="createEvaluation">حفظ</button>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$showBulkCreate" title="تقييم جماعي" close-action="$set('showBulkCreate', false)" size="lg">
+        <p class="ds-text-muted ds-mb-3">يُنشأ تقييم لكل موظف مختار لنفس الفترة، مع بنود مشتركة شاملة (تُضاف كمسؤوليات إن لم تكن موجودة).</p>
+        <x-ds-form-group label="الفترة" :error="$errors->first('period')">
+            <input type="text" class="ds-input ds-ltr-num" wire:model="period" placeholder="2026-Q3">
+        </x-ds-form-group>
+        <x-ds-form-group label="الموظفون" :error="$errors->first('bulkEmployeeIds')">
+            <div class="ds-checkbox-list" style="max-height:12rem;overflow:auto">
+                @foreach ($employees as $employee)
+                    <label class="ds-checkbox-label" wire:key="bulk-emp-{{ $employee->id }}">
+                        <input type="checkbox" value="{{ $employee->id }}" wire:model="bulkEmployeeIds">
+                        <span>{{ $employee->name }}</span>
+                    </label>
+                @endforeach
+            </div>
+        </x-ds-form-group>
+        <x-ds-form-group label="البنود المشتركة (سطر لكل بند)" :error="$errors->first('bulkCriteria')">
+            <textarea class="ds-input" rows="6" wire:model="bulkCriteria"></textarea>
+        </x-ds-form-group>
+        <button type="button" class="ds-btn ds-btn-primary" wire:click="createBulkEvaluations">إنشاء التقييمات</button>
     </x-ds-modal>
 
     <x-ds-modal :show="$previewId !== null" title="إظهار التقييم للموظف (اختياري)" close-action="closePreview">
