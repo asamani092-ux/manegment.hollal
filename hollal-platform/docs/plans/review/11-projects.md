@@ -1,0 +1,3 @@
+# سجل مراجعة — projects
+
+> انسخ من [_TEMPLATE.md](./_TEMPLATE.md) عند بدء المراجعة.

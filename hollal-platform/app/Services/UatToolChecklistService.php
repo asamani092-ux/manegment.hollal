@@ -96,8 +96,13 @@ class UatToolChecklistService
             $notes[$id] = mb_substr($value, 0, 4000);
         }
 
+        $maxPhase = count(config('uat_tools.phases', []));
+        if ($maxPhase < 1) {
+            $maxPhase = 11;
+        }
+
         $phase = (int) ($payload['activePhase'] ?? 1);
-        if ($phase < 1 || $phase > 3) {
+        if ($phase < 1 || $phase > $maxPhase) {
             $phase = 1;
         }
 

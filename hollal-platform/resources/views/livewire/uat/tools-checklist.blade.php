@@ -5,7 +5,7 @@
         x-init="load()"
     >
         <div class="ds-page-header-bar">
-            <h1 class="ds-page-title">تقييم أدوات المنصة (UAT) — 3 مراحل</h1>
+            <h1 class="ds-page-title">تقييم أدوات المنصة (UAT) — 11 تبويباً</h1>
             <div class="ds-btn-group">
                 <button type="button" class="ds-btn ds-btn-primary" @click="copyReport()" :disabled="copying">
                     <i class="fas fa-copy" aria-hidden="true"></i>
@@ -27,7 +27,7 @@
         </div>
 
         <div class="ds-alert ds-alert-warning ds-mb-3">
-            <strong>قاعدة المراحل:</strong> لا تُفتح المرحلة التالية حتى تُعلَّم <em>كل</em> أدوات المرحلة الحالية «يعتمد».
+            <strong>قاعدة التبويبات:</strong> لا يُفتح التبويب التالي حتى تُعلَّم <em>كل</em> أدوات التبويب الحالي «يعتمد».
             التقييم محفوظ على السيرفر ويبقى بعد تغيير رابط Cloud.
             صفحة تجريبية فقط — تُحذف عند النشر (`APP_ENV=production` أو `UAT_TOOLS_ENABLED=false`).
             <template x-if="baseline?.date">
@@ -38,7 +38,7 @@
             </template>
         </div>
 
-        <nav class="uat-phase-nav ds-mb-3" aria-label="مراحل التقييم">
+        <nav class="uat-phase-nav ds-mb-3" aria-label="تبويبات التقييم">
             <template x-for="phase in phases" :key="phase.id">
                 <button
                     type="button"
@@ -67,7 +67,7 @@
 
         <div class="ds-filters-row">
             <div class="ds-filter-field">
-                <span class="ds-label">أدوات المرحلة</span>
+                <span class="ds-label">أدوات التبويب</span>
                 <strong class="ds-ltr-num" x-text="phaseToolCount(activePhase)"></strong>
             </div>
             <div class="ds-filter-field">
@@ -83,7 +83,7 @@
                 <strong class="ds-ltr-num" x-text="phaseCount(activePhase, 'غير مجرّب')"></strong>
             </div>
             <div class="ds-filter-field">
-                <label class="ds-label" for="uat-filter">تصفية داخل المرحلة</label>
+                <label class="ds-label" for="uat-filter">تصفية داخل التبويب</label>
                 <select id="uat-filter" class="ds-input" x-model="filter">
                     <option value="الكل">الكل</option>
                     @foreach ($verdicts as $verdict)
@@ -93,11 +93,11 @@
             </div>
         </div>
 
-        <template x-if="isPhaseComplete(activePhase) && activePhase < 3">
+        <template x-if="isPhaseComplete(activePhase) && activePhase < phases.length">
             <div class="ds-alert ds-alert-success ds-mb-3">
-                اكتملت المرحلة <span class="ds-ltr-num" x-text="activePhase"></span>.
+                اكتمل التبويب <span class="ds-ltr-num" x-text="activePhase"></span>.
                 <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" @click="selectPhase(activePhase + 1)">
-                    الانتقال للمرحلة التالية
+                    الانتقال للتبويب التالي
                 </button>
             </div>
         </template>
@@ -112,6 +112,7 @@
                                 <th scope="col">الأداة</th>
                                 <th scope="col">المسار</th>
                                 <th scope="col">ما يُتحقق منه</th>
+                                <th scope="col">دورة الحياة</th>
                                 <th scope="col">التقييم</th>
                                 <th scope="col">تصنيف الملاحظة</th>
                                 <th scope="col">الملاحظة</th>
@@ -130,6 +131,7 @@
                                     </td>
                                     <td class="ds-ltr-num" x-text="tool.path"></td>
                                     <td x-text="tool.checks"></td>
+                                    <td x-text="tool.lifecycle || '—'"></td>
                                     <td>
                                         <select class="ds-input" x-model="verdicts[tool.id]" @change="persist()">
                                             @foreach ($verdicts as $verdict)
@@ -182,7 +184,7 @@
         notes: {},
         copying: false,
         copied: false,
-        storageKey: 'hollal.uat.tools.v5',
+        storageKey: 'hollal.uat.tools.v6',
         _saveTimer: null,
 
         get total() {
@@ -407,7 +409,7 @@
         buildReport() {
             const tools = this.allTools();
             const lines = [
-                '# تقرير تقييم أدوات — منصة حلّل (3 مراحل)',
+                '# تقرير تقييم أدوات — منصة حلّل (11 تبويباً)',
                 `التاريخ: ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`,
                 `الملخص الكلي: ${this.total} إجمالي · ${this.count('يعتمد')} يعتمد · ${this.count('يحتاج تحسين')} يحتاج تحسين · ${this.count('غير مجرّب')} غير مجرّب`,
                 '',
@@ -436,9 +438,10 @@
                 if (!rows.length) return;
                 lines.push(`## ${title} (${rows.length})`);
                 rows.forEach((t) => {
-                    lines.push(`### مرحلة ${t.phase} — ${t.group} — ${t.tool}`);
+                    lines.push(`### تبويب ${t.phase} — ${t.group} — ${t.tool}`);
                     lines.push(`- المسار: \`${t.path}\``);
                     lines.push(`- ما يُتحقق منه: ${t.checks}`);
+                    if (t.lifecycle) lines.push(`- دورة الحياة: ${t.lifecycle}`);
                     lines.push(`- التقييم: ${verdict}`);
                     const tag = this.tags[t.id] || '';
                     if (tag) lines.push(`- تصنيف الملاحظة: ${tag}`);
