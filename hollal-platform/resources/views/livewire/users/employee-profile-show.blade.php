@@ -59,33 +59,51 @@
 
         <div class="ds-tab-panel">
             @if ($activeTab === 'data')
-                <dl class="ds-detail-grid">
-                    <div><dt>الاسم</dt><dd>{{ $user->name }}</dd></div>
-                    <div><dt>البريد</dt><dd dir="ltr">{{ $user->email }}</dd></div>
-                    <div><dt>الجوال</dt><dd dir="ltr">{{ $user->phone ?? '—' }}</dd></div>
-                    <div><dt>الهوية</dt><dd dir="ltr">{{ $user->profile?->national_id ?? '—' }}</dd></div>
-                    <div><dt>المدير المباشر</dt><dd>{{ $user->manager?->name ?? '—' }}</dd></div>
-                    <div><dt>الدور</dt><dd><x-ds-role-label :name="$user->roles->first()?->name ?? '—' " /></dd></div>
-                </dl>
+                <article class="ds-card ds-mb-3">
+                    <div class="ds-card-head">
+                        <h3 class="ds-section-title">بطاقة البيانات</h3>
+                        @if ($canUpdate)
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEdit">تعديل</button>
+                        @endif
+                    </div>
+                    <dl class="ds-detail-grid">
+                        <div><dt>الاسم</dt><dd>{{ $user->name }}</dd></div>
+                        <div><dt>البريد</dt><dd dir="ltr">{{ $user->email }}</dd></div>
+                        <div><dt>الجوال</dt><dd dir="ltr">{{ $user->phone ?? '—' }}</dd></div>
+                        <div><dt>الهوية</dt><dd dir="ltr">{{ $user->profile?->national_id ?? '—' }}</dd></div>
+                        <div><dt>المدير المباشر</dt><dd>{{ $user->manager?->name ?? '—' }}</dd></div>
+                        <div><dt>الدور</dt><dd><x-ds-role-label :name="$user->roles->first()?->name ?? ''" /></dd></div>
+                    </dl>
+                </article>
             @elseif ($activeTab === 'job')
-                <dl class="ds-detail-grid">
-                    <div><dt>المسمى الوظيفي</dt><dd>{{ $user->profile?->job_title ?? '—' }}</dd></div>
-                    <div><dt>نوع التوظيف</dt><dd>{{ $typeLabels[$user->profile?->employment_type] ?? ($user->profile?->employment_type ?? '—') }}</dd></div>
-                    <div><dt>تاريخ المباشرة</dt><dd>{{ $user->profile?->hire_date?->format('Y-m-d') ?? '—' }}</dd></div>
-                    <div><dt>القسم</dt><dd>{{ $user->department?->name ?? '—' }}</dd></div>
-                    <div><dt>الساعات الأساسية أسبوعيًا</dt><dd class="ds-ltr-num">{{ $user->profile?->weekly_hours ?? '—' }}</dd></div>
-                    <div><dt>برنامج الحضور</dt><dd>{{ $user->attendance_enabled ? 'مفعّل لهذا الموظف فقط' : 'متوقّف — التقييم على المهام' }}</dd></div>
-                </dl>
+                <article class="ds-card ds-mb-3">
+                    <div class="ds-card-head">
+                        <h3 class="ds-section-title">بطاقة الوظيفة</h3>
+                        @if ($canUpdate)
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEdit">تعديل</button>
+                        @endif
+                    </div>
+                    <dl class="ds-detail-grid">
+                        <div><dt>المسمى الوظيفي</dt><dd>{{ $user->profile?->job_title ?? '—' }}</dd></div>
+                        <div><dt>نوع التوظيف</dt><dd>{{ $typeLabels[$user->profile?->employment_type] ?? ($user->profile?->employment_type ?? '—') }}</dd></div>
+                        <div><dt>تاريخ المباشرة</dt><dd>{{ $user->profile?->hire_date?->format('Y-m-d') ?? '—' }}</dd></div>
+                        <div><dt>القسم</dt><dd>{{ $user->department?->name ?? '—' }}</dd></div>
+                        <div><dt>الساعات الأساسية أسبوعيًا</dt><dd class="ds-ltr-num">{{ $user->profile?->weekly_hours ?? '—' }}</dd></div>
+                        <div><dt>برنامج الحضور</dt><dd>{{ $user->attendance_enabled ? 'مفعّل لهذا الموظف فقط' : 'متوقّف — التقييم على المهام' }}</dd></div>
+                    </dl>
+                </article>
 
-                <h3 class="ds-section-title">المسؤوليات الوظيفية</h3>
-                @forelse ($responsibilities as $item)
-                    <p class="ds-mb-sm">{{ $item->order }}. {{ $item->body }}</p>
-                @empty
-                    <p class="ds-text-muted">لا توجد بنود مسؤولية.</p>
-                @endforelse
+                <article class="ds-card ds-mb-3">
+                    <h3 class="ds-section-title">المسؤوليات الوظيفية</h3>
+                    @forelse ($responsibilities as $item)
+                        <p class="ds-mb-sm">{{ $item->order }}. {{ $item->body }}</p>
+                    @empty
+                        <p class="ds-text-muted">لا توجد بنود مسؤولية.</p>
+                    @endforelse
+                </article>
 
                 @can('hr.employees.update')
-                    <section class="ds-section">
+                    <article class="ds-card ds-mb-3">
                         <h3 class="ds-section-title">إعدادات الحضور</h3>
                         <p class="ds-text-muted">يُفعَّل برنامج الحضور لكل موظف على حدة من هنا. من لم يُفعَّل له يبقى تقييمه على المهام.</p>
                         <label class="ds-checkbox">
@@ -96,9 +114,13 @@
                             <input type="number" class="ds-input ds-ltr-num" wire:model="weeklyHours" min="1" max="80">
                         </x-ds-form-group>
                         <button type="button" class="ds-btn ds-btn-primary" wire:click="saveAttendanceSettings">حفظ</button>
-                    </section>
+                    </article>
                 @endcan
             @elseif ($activeTab === 'salary')
+                <article class="ds-card ds-mb-3">
+                    <div class="ds-card-head">
+                        <h3 class="ds-section-title">بطاقة الراتب</h3>
+                    </div>
                 <dl class="ds-detail-grid">
                     <div><dt>السلم</dt><dd>{{ $user->profile?->payScale?->name_ar ?? '—' }}</dd></div>
                     <div><dt>الدرجة</dt><dd>{{ $user->profile?->grade_label ?? '—' }}</dd></div>
@@ -109,6 +131,7 @@
                     <div><dt>الساعات الإضافية</dt><dd>{{ $user->profile?->overtime_unlocked ? 'مفتوح' : 'مقفل' }}</dd></div>
                     <div><dt>قيمة ساعة الإضافي</dt><dd class="ds-ltr-num">{{ $user->profile?->overtime_hour_value ?? '0' }}</dd></div>
                 </dl>
+                </article>
 
                 <x-ds-table>
                     <x-slot:head>
@@ -350,16 +373,30 @@
                 <span>الحساب نشط (إلغاء التفعيل يمنع تسجيل الدخول)</span>
             </label>
         </div>
-        <x-ds-form-group label="المسمى">
+        <x-ds-form-group label="المسمى الوظيفي" :error="$errors->first('editJobTitle')">
             <input type="text" class="ds-input" wire:model="editJobTitle">
         </x-ds-form-group>
-        <x-ds-form-group label="نوع التوظيف">
+        <x-ds-form-group label="نوع التوظيف" :error="$errors->first('editEmploymentType')">
             <select class="ds-input" wire:model="editEmploymentType">
                 <option value="">—</option>
                 <option value="دوام_كامل">نظامي — دوام كامل</option>
                 <option value="دوام_جزئي">دوام جزئي</option>
                 <option value="متعاون">متعاون</option>
                 <option value="متطوع">متطوع</option>
+            </select>
+        </x-ds-form-group>
+        <x-ds-form-group label="تاريخ المباشرة" :error="$errors->first('editHireDate')">
+            <input type="date" class="ds-input ds-ltr-num" wire:model="editHireDate">
+        </x-ds-form-group>
+        <x-ds-form-group label="رقم الهوية" :error="$errors->first('editNationalId')">
+            <input type="text" class="ds-input ds-ltr-num" wire:model="editNationalId">
+        </x-ds-form-group>
+        <x-ds-form-group label="الدور" :error="$errors->first('editRoleName')">
+            <select class="ds-input" wire:model="editRoleName">
+                <option value="">— اختر دور —</option>
+                @foreach ($roles as $role)
+                    <option value="{{ $role->name }}">{{ hollal_role_label($role->name) }}</option>
+                @endforeach
             </select>
         </x-ds-form-group>
         <x-ds-form-group label="القسم">

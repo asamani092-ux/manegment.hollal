@@ -3,6 +3,7 @@
 namespace App\Livewire\Users;
 
 use App\Models\Department;
+use App\Models\EmployeeProfile;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
@@ -39,6 +40,12 @@ class UsersIndex extends Component
     public bool $is_active = true;
 
     public string $roleName = '';
+
+    public string $job_title = '';
+
+    public string $employment_type = '';
+
+    public string $hire_date = '';
 
     // 01-B1 — directory search / filters / view toggle.
     public string $search = '';
@@ -89,6 +96,7 @@ class UsersIndex extends Component
 
     protected function fillForm(User $user): void
     {
+        $user->loadMissing('profile');
         $this->userId = $user->id;
         $this->name = $user->name;
         $this->email = $user->email;
@@ -98,6 +106,9 @@ class UsersIndex extends Component
         $this->manager_id = $user->manager_id;
         $this->is_active = (bool) $user->is_active;
         $this->roleName = $user->roles->first()?->name ?? '';
+        $this->job_title = (string) ($user->profile?->job_title ?? '');
+        $this->employment_type = (string) ($user->profile?->employment_type ?? '');
+        $this->hire_date = $user->profile?->hire_date?->format('Y-m-d') ?? '';
     }
 
     public function save(): void
@@ -121,6 +132,9 @@ class UsersIndex extends Component
             'manager_id' => 'nullable|exists:users,id',
             'is_active' => 'boolean',
             'roleName' => 'required|string|exists:roles,name',
+            'job_title' => 'nullable|string|max:255',
+            'employment_type' => 'nullable|in:دوام_كامل,دوام_جزئي,متعاون,متطوع',
+            'hire_date' => 'nullable|date',
         ];
 
         if (! $this->userId) {
@@ -146,6 +160,16 @@ class UsersIndex extends Component
 
         $user = User::updateOrCreate(['id' => $this->userId], $data);
         $user->syncRoles([$this->roleName]);
+
+        $profile = EmployeeProfile::query()->firstOrCreate(
+            ['user_id' => $user->id],
+            ['job_title' => $this->job_title !== '' ? $this->job_title : $user->name],
+        );
+        $profile->forceFill([
+            'job_title' => $this->job_title !== '' ? $this->job_title : ($profile->job_title ?: $user->name),
+            'employment_type' => $this->employment_type !== '' ? $this->employment_type : null,
+            'hire_date' => $this->hire_date !== '' ? $this->hire_date : null,
+        ])->save();
 
         // 01-B5 — auto-generate onboarding tasks for a newly added employee.
         if ($user->wasRecentlyCreated) {
@@ -182,6 +206,9 @@ class UsersIndex extends Component
         $this->manager_id = null;
         $this->is_active = true;
         $this->roleName = '';
+        $this->job_title = '';
+        $this->employment_type = '';
+        $this->hire_date = '';
         $this->viewOnly = false;
         $this->resetValidation();
     }

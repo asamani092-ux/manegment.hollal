@@ -1,6 +1,6 @@
 <x-ds-page>
     @php
-        $roleLabels = ['Super Admin' => 'مدير النظام'];
+        $roleLabels = hollal_role_labels();
     @endphp
     <x-ds-page-header
         title="الفريق / المستخدمون"
@@ -166,6 +166,21 @@
                                 <option value="{{ $role->name }}">{{ $roleLabels[$role->name] ?? $role->name }}</option>
                             @endforeach
                         </select>
+                    </x-ds-form-group>
+                    <x-ds-form-group label="المسمى الوظيفي" :error="$errors->first('job_title')">
+                        <input type="text" class="ds-input" wire:model="job_title" @disabled($viewOnly)>
+                    </x-ds-form-group>
+                    <x-ds-form-group label="نوع التوظيف" :error="$errors->first('employment_type')">
+                        <select class="ds-input" wire:model="employment_type" @disabled($viewOnly)>
+                            <option value="">—</option>
+                            <option value="دوام_كامل">نظامي — دوام كامل</option>
+                            <option value="دوام_جزئي">دوام جزئي</option>
+                            <option value="متعاون">متعاون</option>
+                            <option value="متطوع">متطوع</option>
+                        </select>
+                    </x-ds-form-group>
+                    <x-ds-form-group label="تاريخ المباشرة" :error="$errors->first('hire_date')">
+                        <input type="date" class="ds-input ds-ltr-num" wire:model="hire_date" @disabled($viewOnly)>
                     </x-ds-form-group>
                     <div class="ds-form-group">
                         <label class="ds-checkbox-label">

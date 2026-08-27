@@ -10,6 +10,7 @@ use App\Models\PayScale;
 use App\Models\PeriodicEvaluation;
 use App\Models\ProfileAccessLog;
 use App\Models\Responsibility;
+use App\Models\Role;
 use App\Models\SalaryComponent;
 use App\Models\Task;
 use App\Models\User;
@@ -57,9 +58,22 @@ class EmployeeProfileShow extends Component
 
     public string $editEmploymentType = '';
 
+    public string $editHireDate = '';
+
+    public string $editNationalId = '';
+
+    public string $editRoleName = '';
+
     public string $editPassword = '';
 
     public bool $editIsActive = true;
+
+    /** Toggle editing panels on card UI (view vs edit). */
+    public bool $editDataCard = false;
+
+    public bool $editJobCard = false;
+
+    public bool $editSalaryCard = false;
 
     public ?int $payScaleId = null;
 
@@ -132,6 +146,9 @@ class EmployeeProfileShow extends Component
         $this->editManagerId = $user->manager_id;
         $this->editJobTitle = (string) ($user->profile?->job_title ?? '');
         $this->editEmploymentType = (string) ($user->profile?->employment_type ?? '');
+        $this->editHireDate = $user->profile?->hire_date?->format('Y-m-d') ?? '';
+        $this->editNationalId = (string) ($user->profile?->national_id ?? '');
+        $this->editRoleName = $user->roles->first()?->name ?? '';
         $this->editPassword = '';
         $this->editIsActive = (bool) $user->is_active;
         $this->showEdit = true;
@@ -151,11 +168,18 @@ class EmployeeProfileShow extends Component
             'editManagerId' => 'nullable|exists:users,id',
             'editJobTitle' => 'nullable|string|max:255',
             'editEmploymentType' => 'nullable|in:دوام_كامل,دوام_جزئي,متعاون,متطوع',
+            'editHireDate' => 'nullable|date',
+            'editNationalId' => 'nullable|string|max:50',
+            'editRoleName' => 'required|string|exists:roles,name',
             'editPassword' => 'nullable|string|min:8',
             'editIsActive' => 'boolean',
         ], [], [
             'editPassword' => 'كلمة المرور',
             'editIsActive' => 'حالة الحساب',
+            'editRoleName' => 'الدور',
+            'editHireDate' => 'تاريخ المباشرة',
+            'editNationalId' => 'الهوية',
+            'editJobTitle' => 'المسمى الوظيفي',
         ]);
 
         $payload = [
@@ -173,6 +197,7 @@ class EmployeeProfileShow extends Component
         }
 
         $user->update($payload);
+        $user->syncRoles([$this->editRoleName]);
 
         $profile = EmployeeProfile::query()->firstOrCreate(
             ['user_id' => $user->id],
@@ -181,6 +206,8 @@ class EmployeeProfileShow extends Component
         $profile->forceFill([
             'job_title' => $this->editJobTitle !== '' ? $this->editJobTitle : $profile->job_title,
             'employment_type' => $this->editEmploymentType !== '' ? $this->editEmploymentType : null,
+            'hire_date' => $this->editHireDate !== '' ? $this->editHireDate : null,
+            'national_id' => $this->editNationalId !== '' ? $this->editNationalId : null,
         ])->save();
 
         $this->showEdit = false;
@@ -396,6 +423,7 @@ class EmployeeProfileShow extends Component
             'canUpdate' => auth()->user()->can('hr.employees.update'),
             'departments' => Department::orderBy('name')->get(['id', 'name']),
             'managers' => User::orderBy('name')->get(['id', 'name']),
+            'roles' => Role::orderBy('name')->get(['id', 'name']),
             'payScales' => PayScale::query()->where('is_active', true)->orderBy('name_ar')->get(),
             'salaryComponents' => $this->canViewSalary()
                 ? SalaryComponent::query()->where('employee_id', $this->userId)->effectiveOn(today())->orderBy('type')->get()
