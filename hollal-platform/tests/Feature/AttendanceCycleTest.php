@@ -146,6 +146,69 @@ class AttendanceCycleTest extends TestCase
         @unlink($path);
     }
 
+    public function test_excel_import_then_deduction_applies_to_payroll(): void
+    {
+        if (! class_exists(\PhpOffice\PhpSpreadsheet\Spreadsheet::class)) {
+            $this->markTestSkipped('phpspreadsheet not installed');
+        }
+
+        $hr = User::factory()->create(['must_change_password' => false]);
+        $hr->givePermissionTo('hr.employees.update');
+
+        $employee = User::factory()->create(['attendance_enabled' => true, 'is_active' => true]);
+        EmployeeProfile::create([
+            'user_id' => $employee->id,
+            'fingerprint_id' => 'FP-XLS',
+        ]);
+        SalaryComponent::create([
+            'employee_id' => $employee->id,
+            'type' => SalaryComponent::TYPE_BASE,
+            'label_ar' => 'أساسي',
+            'amount' => 6000,
+            'valid_from' => now()->subMonths(2)->toDateString(),
+            'is_active' => true,
+        ]);
+
+        Carbon::setTestNow(Carbon::parse('2026-08-15'));
+
+        $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->fromArray([
+            ['fingerprint_id', 'date', 'check_in', 'check_out'],
+            ['FP-XLS', '2026-08-10', '08:40', '16:00'],
+        ], null, 'A1');
+        $path = storage_path('app/test-att.xlsx');
+        if (! is_dir(dirname($path))) {
+            mkdir(dirname($path), 0777, true);
+        }
+        (new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet))->save($path);
+
+        $imported = app(AttendanceService::class)->importFile($path, $hr);
+        $this->assertSame(1, $imported['rows']);
+        $this->assertTrue(
+            \App\Models\AttendanceRecord::query()
+                ->where('employee_id', $employee->id)
+                ->whereDate('date', '2026-08-10')
+                ->where('source', 'بصمة')
+                ->exists()
+        );
+
+        $svc = app(AttendanceDeductionService::class);
+        $cycle = $svc->currentCycle(now());
+        $approval = $svc->approveCycle($cycle['from'], $cycle['to'], $hr);
+        $run = app(PayrollRunService::class)->generate('2026-08');
+        $applied = $svc->applyApprovedToPayrollDraft($run, $approval);
+        $this->assertGreaterThanOrEqual(1, $applied);
+
+        $item = $run->items()->where('employee_id', $employee->id)->first();
+        $this->assertNotNull($item);
+        $vars = collect($item->variables ?? []);
+        $this->assertTrue($vars->contains(fn ($v) => ($v['label'] ?? '') === 'خصم حضور الدورة'));
+
+        @unlink($path);
+        Carbon::setTestNow();
+    }
+
     public function test_cycle_page_requires_hr_update(): void
     {
         $user = User::factory()->create(['must_change_password' => false]);
@@ -154,6 +217,8 @@ class AttendanceCycleTest extends TestCase
 
         $hr = User::factory()->create(['must_change_password' => false]);
         $hr->givePermissionTo('hr.employees.update');
-        $this->actingAs($hr)->get(route('attendance.cycle'))->assertOk();
+        $this->actingAs($hr)->get(route('attendance.cycle'))->assertOk()
+            ->assertSee('رفع ملف الحضور', false)
+            ->assertSee('تقرير الخصومات والمبالغ', false);
     }
 }

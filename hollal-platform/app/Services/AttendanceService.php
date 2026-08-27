@@ -200,27 +200,41 @@ class AttendanceService
     }
 
     /**
-     * ATT-1 — import CSV: fingerprint_id,date,check_in,check_out
+     * ATT-1 — import CSV or Excel (.xlsx): fingerprint_id,date,check_in,check_out
      * Time: O(rows) | Space: O(1)
      *
      * @return array{import_id: int, rows: int}
      */
     public function importCsv(string $absolutePath, User $uploader): array
     {
-        $handle = fopen($absolutePath, 'r');
-        if ($handle === false) {
-            throw new \RuntimeException('تعذر فتح ملف الاستيراد');
-        }
+        return $this->importFile($absolutePath, $uploader);
+    }
+
+    /**
+     * Import attendance movements from CSV or Excel.
+     * Time: O(rows) | Space: O(1)
+     *
+     * @return array{import_id: int, rows: int}
+     */
+    public function importFile(string $absolutePath, User $uploader): array
+    {
+        $ext = strtolower(pathinfo($absolutePath, PATHINFO_EXTENSION));
+        $rows = $ext === 'xlsx' || $ext === 'xls'
+            ? $this->readSpreadsheetRows($absolutePath)
+            : $this->readCsvRows($absolutePath);
 
         $count = 0;
-        $header = fgetcsv($handle);
-        while (($row = fgetcsv($handle)) !== false) {
+        foreach ($rows as $row) {
             if (count($row) < 3) {
                 continue;
             }
             [$fingerprint, $date, $checkIn] = $row;
             $checkOut = $row[3] ?? null;
-            $profile = \App\Models\EmployeeProfile::query()->where('fingerprint_id', trim((string) $fingerprint))->first();
+            $fingerprint = trim((string) $fingerprint);
+            if ($fingerprint === '' || strcasecmp($fingerprint, 'fingerprint_id') === 0) {
+                continue;
+            }
+            $profile = \App\Models\EmployeeProfile::query()->where('fingerprint_id', $fingerprint)->first();
             if (! $profile) {
                 continue;
             }
@@ -243,7 +257,6 @@ class AttendanceService
             $record->forceFill(['late_minutes' => $late, 'work_hours' => $hours])->save();
             $count++;
         }
-        fclose($handle);
 
         $import = \App\Models\AttendanceImport::create([
             'file_path' => $absolutePath,
@@ -252,5 +265,46 @@ class AttendanceService
         ]);
 
         return ['import_id' => $import->id, 'rows' => $count];
+    }
+
+    /**
+     * @return list<list<string|null>>
+     */
+    private function readCsvRows(string $absolutePath): array
+    {
+        $handle = fopen($absolutePath, 'r');
+        if ($handle === false) {
+            throw new \RuntimeException('تعذر فتح ملف الاستيراد');
+        }
+
+        $rows = [];
+        while (($row = fgetcsv($handle)) !== false) {
+            $rows[] = $row;
+        }
+        fclose($handle);
+
+        return $rows;
+    }
+
+    /**
+     * @return list<list<string|null>>
+     */
+    private function readSpreadsheetRows(string $absolutePath): array
+    {
+        if (! class_exists(\PhpOffice\PhpSpreadsheet\IOFactory::class)) {
+            throw new \RuntimeException('مكتبة Excel غير متوفرة — ثبّت phpoffice/phpspreadsheet');
+        }
+
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($absolutePath);
+        $sheet = $spreadsheet->getActiveSheet();
+        $rows = [];
+        foreach ($sheet->toArray(null, true, true, false) as $row) {
+            $rows[] = array_map(
+                static fn ($cell) => $cell === null ? null : (string) $cell,
+                array_slice($row, 0, 4)
+            );
+        }
+
+        return $rows;
     }
 }

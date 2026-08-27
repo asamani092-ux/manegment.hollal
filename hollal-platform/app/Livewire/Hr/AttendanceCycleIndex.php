@@ -30,10 +30,15 @@ class AttendanceCycleIndex extends Component
 
     public ?int $applyRunId = null;
 
+    public string $reportMonth = '';
+
+    public bool $showMonthlyReport = true;
+
     public function mount(): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
         $this->asOf = now()->toDateString();
+        $this->reportMonth = now()->format('Y-m');
     }
 
     public function approve(): void
@@ -60,12 +65,13 @@ class AttendanceCycleIndex extends Component
 
     public function importCsv(): void
     {
-        $this->validate(['csvFile' => 'required|file|mimes:csv,txt|max:5120']);
-        $path = $this->csvFile->storeAs('attendance-imports', 'import-'.now()->timestamp.'.csv');
+        $this->validate(['csvFile' => 'required|file|mimes:csv,txt,xlsx,xls|max:10240']);
+        $ext = strtolower($this->csvFile->getClientOriginalExtension() ?: 'csv');
+        $path = $this->csvFile->storeAs('attendance-imports', 'import-'.now()->timestamp.'.'.$ext);
         $abs = storage_path('app/'.$path);
-        $result = app(AttendanceService::class)->importCsv($abs, auth()->user());
+        $result = app(AttendanceService::class)->importFile($abs, auth()->user());
         $this->reset('csvFile');
-        $this->dispatch('toast', type: 'success', message: "استيراد {$result['rows']} سجل");
+        $this->dispatch('toast', type: 'success', message: "استيراد {$result['rows']} سجل — راجع تقرير الحضور والخصومات أدناه");
     }
 
     public function scanBarcode(): void
@@ -119,6 +125,10 @@ class AttendanceCycleIndex extends Component
                 ->latest('id')
                 ->limit(30)
                 ->get(),
+            'monthlyReport' => $this->showMonthlyReport && $this->reportMonth !== ''
+                ? app(AttendanceService::class)->monthlyReport($this->reportMonth)
+                : null,
+            'amountsTotal' => collect($rows)->sum(fn ($r) => (float) ($r['total_deduction'] ?? 0)),
         ])->layout('layouts.app', ['title' => 'دورة الحضور والخصم']);
     }
 }

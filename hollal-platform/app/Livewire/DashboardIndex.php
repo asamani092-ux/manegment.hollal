@@ -218,6 +218,29 @@ class DashboardIndex extends Component
                 });
         }
 
+        if ($user->can('hr.employees.view')) {
+            EmployeeDocument::query()
+                ->select(['id', 'user_id', 'type', 'expiry_date', 'document_number'])
+                ->whereNotNull('expiry_date')
+                ->whereDate('expiry_date', '<=', now()->addDays(30)->toDateString())
+                ->with('user:id,name')
+                ->orderBy('expiry_date')
+                ->limit(10)
+                ->get()
+                ->each(function (EmployeeDocument $doc) use ($items) {
+                    $days = $doc->daysUntilExpiry();
+                    $label = $doc->isExpired()
+                        ? 'وثيقة منتهية: '.$doc->type.' — '.($doc->user?->name ?? '')
+                        : 'وثيقة تنتهي خلال '.($days ?? 0).' يوم: '.$doc->type.' — '.($doc->user?->name ?? '');
+                    $items->push([
+                        'kind' => 'employee_document_expiring',
+                        'label' => $label,
+                        'url' => route('users.profile', $doc->user_id).'?tab=documents',
+                        'meta' => $doc->expiry_date?->format('Y-m-d'),
+                    ]);
+                });
+        }
+
         return $items;
     }
 
