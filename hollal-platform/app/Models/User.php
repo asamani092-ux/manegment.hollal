@@ -132,6 +132,12 @@ class User extends Authenticatable
         return $this->hasMany(Contract::class, 'employee_id');
     }
 
+    /** @return HasMany<EmployeeDocument, $this> */
+    public function employeeDocuments(): HasMany
+    {
+        return $this->hasMany(EmployeeDocument::class);
+    }
+
     /** @return HasMany<ExpenseRequest, $this> */
     public function expenseRequests(): HasMany
     {

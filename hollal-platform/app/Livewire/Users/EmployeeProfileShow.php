@@ -4,6 +4,7 @@ namespace App\Livewire\Users;
 
 use App\Models\Contract;
 use App\Models\Department;
+use App\Models\EmployeeDocument;
 use App\Models\EmployeeProfile;
 use App\Models\LeaveRequest;
 use App\Models\PayScale;
@@ -19,8 +20,11 @@ use App\Services\SalaryService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Locked;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 
 /**
  * 01-B1 + HR-1/2/4 — employee job profile with tabs. The salary tab is gated on
@@ -29,6 +33,7 @@ use Livewire\Component;
 class EmployeeProfileShow extends Component
 {
     use AuthorizesRequests;
+    use WithFileUploads;
 
     #[Locked]
     public int $userId;
@@ -96,6 +101,22 @@ class EmployeeProfileShow extends Component
     public string $overtimeHourValue = '';
 
     public string $employeeComment = '';
+
+    public bool $showDocumentModal = false;
+
+    public ?int $documentId = null;
+
+    public string $docType = EmployeeDocument::TYPE_ID;
+
+    public string $docNumber = '';
+
+    public string $docIssueDate = '';
+
+    public string $docExpiryDate = '';
+
+    public string $docNotes = '';
+
+    public $docFile = null;
 
     public function mount(User $user): void
     {
@@ -397,6 +418,96 @@ class EmployeeProfileShow extends Component
         $this->dispatch('toast', type: 'success', message: 'سُجّل تعليقك على التقييم');
     }
 
+    public function openDocumentModal(?int $id = null): void
+    {
+        $this->authorize('hr.employees.update');
+        $this->resetDocumentForm();
+
+        if ($id) {
+            $doc = EmployeeDocument::query()
+                ->where('user_id', $this->userId)
+                ->findOrFail($id);
+            $this->documentId = $doc->id;
+            $this->docType = $doc->type;
+            $this->docNumber = (string) ($doc->document_number ?? '');
+            $this->docIssueDate = $doc->issue_date?->format('Y-m-d') ?? '';
+            $this->docExpiryDate = $doc->expiry_date?->format('Y-m-d') ?? '';
+            $this->docNotes = (string) ($doc->notes ?? '');
+        }
+
+        $this->showDocumentModal = true;
+    }
+
+    public function saveDocument(): void
+    {
+        $this->authorize('hr.employees.update');
+
+        $this->validate([
+            'docType' => 'required|in:'.implode(',', EmployeeDocument::TYPES),
+            'docNumber' => 'nullable|string|max:100',
+            'docIssueDate' => 'nullable|date',
+            'docExpiryDate' => 'nullable|date|after_or_equal:docIssueDate',
+            'docNotes' => 'nullable|string|max:500',
+            'docFile' => 'nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx',
+        ], [], [
+            'docType' => 'نوع الوثيقة',
+            'docNumber' => 'رقم الوثيقة',
+            'docExpiryDate' => 'تاريخ الانتهاء',
+            'docFile' => 'الملف',
+        ]);
+
+        $payload = [
+            'user_id' => $this->userId,
+            'type' => $this->docType,
+            'document_number' => $this->docNumber !== '' ? $this->docNumber : null,
+            'issue_date' => $this->docIssueDate !== '' ? $this->docIssueDate : null,
+            'expiry_date' => $this->docExpiryDate !== '' ? $this->docExpiryDate : null,
+            'notes' => $this->docNotes !== '' ? $this->docNotes : null,
+            'uploaded_by' => auth()->id(),
+        ];
+
+        if ($this->docFile) {
+            $payload['file_path'] = $this->docFile->store('employee-documents/'.$this->userId, 'local');
+        }
+
+        if ($this->documentId) {
+            $doc = EmployeeDocument::query()->where('user_id', $this->userId)->findOrFail($this->documentId);
+            if (isset($payload['file_path']) && $doc->file_path) {
+                Storage::disk('local')->delete($doc->file_path);
+            }
+            $doc->forceFill($payload)->save();
+        } else {
+            EmployeeDocument::create($payload);
+        }
+
+        $this->showDocumentModal = false;
+        $this->resetDocumentForm();
+        $this->dispatch('toast', type: 'success', message: 'حُفظت الوثيقة الرسمية');
+    }
+
+    public function deleteDocument(int $id): void
+    {
+        $this->authorize('hr.employees.update');
+        $doc = EmployeeDocument::query()->where('user_id', $this->userId)->findOrFail($id);
+        if ($doc->file_path) {
+            Storage::disk('local')->delete($doc->file_path);
+        }
+        $doc->delete();
+        $this->dispatch('toast', type: 'success', message: 'حُذفت الوثيقة');
+    }
+
+    protected function resetDocumentForm(): void
+    {
+        $this->documentId = null;
+        $this->docType = EmployeeDocument::TYPE_ID;
+        $this->docNumber = '';
+        $this->docIssueDate = '';
+        $this->docExpiryDate = '';
+        $this->docNotes = '';
+        $this->docFile = null;
+        $this->resetValidation(['docType', 'docNumber', 'docIssueDate', 'docExpiryDate', 'docNotes', 'docFile']);
+    }
+
     private function logSalaryAccess(): void
     {
         ProfileAccessLog::create([
@@ -430,6 +541,11 @@ class EmployeeProfileShow extends Component
                 : collect(),
             'salaryTotals' => $salaryTotals,
             'contracts' => Contract::query()->where('employee_id', $this->userId)->latest('end_date')->get(),
+            'employeeDocuments' => EmployeeDocument::query()
+                ->where('user_id', $this->userId)
+                ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('expiry_date')
+                ->get(),
             'responsibilities' => Responsibility::query()->where('employee_id', $this->userId)->active()->orderBy('order')->get(),
             'evaluations' => PeriodicEvaluation::query()
                 ->where('employee_id', $this->userId)

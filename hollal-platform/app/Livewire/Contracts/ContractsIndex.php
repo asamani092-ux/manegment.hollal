@@ -25,6 +25,9 @@ class ContractsIndex extends Component
 
     public string $statusFilter = '';
 
+    /** When true, list active employees who have no employment contract. */
+    public bool $withoutContract = false;
+
     public bool $showModal = false;
 
     public bool $viewOnly = false;
@@ -75,6 +78,17 @@ class ContractsIndex extends Component
 
     public function updatingStatusFilter(): void
     {
+        $this->resetPage();
+    }
+
+    public function updatingWithoutContract(): void
+    {
+        $this->resetPage();
+    }
+
+    public function toggleWithoutContract(): void
+    {
+        $this->withoutContract = ! $this->withoutContract;
         $this->resetPage();
     }
 
@@ -284,17 +298,40 @@ class ContractsIndex extends Component
 
     public function render(): View
     {
+        $withoutContractUsers = collect();
+        if ($this->withoutContract) {
+            $withoutContractUsers = User::query()
+                ->select(['id', 'name', 'is_active', 'employment_status'])
+                ->where('is_active', true)
+                ->where('employment_status', '!=', User::STATUS_TERMINATED)
+                ->whereDoesntHave('contracts')
+                ->when($this->search, fn ($q) => $q->where('name', 'like', '%'.$this->search.'%'))
+                ->orderBy('name')
+                ->paginate(10);
+        }
+
         return view('livewire.contracts.contracts-index', [
-            'contracts' => Contract::query()
-                ->select(['id', 'employee_id', 'start_date', 'end_date', 'value', 'contract_file', 'status', 'created_at'])
-                ->with(['employee:id,name'])
-                ->when($this->search, fn ($q) => $q->whereHas(
-                    'employee',
-                    fn ($eq) => $eq->where('name', 'like', '%'.$this->search.'%')
-                ))
-                ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
-                ->orderByDesc('end_date')
-                ->paginate(10),
+            'contracts' => $this->withoutContract
+                ? new \Illuminate\Pagination\LengthAwarePaginator([], 0, 10)
+                : Contract::query()
+                    ->select(['id', 'employee_id', 'start_date', 'end_date', 'value', 'contract_file', 'status', 'created_at'])
+                    ->with(['employee:id,name'])
+                    ->when($this->search, fn ($q) => $q->whereHas(
+                        'employee',
+                        fn ($eq) => $eq->where('name', 'like', '%'.$this->search.'%')
+                    ))
+                    ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+                    ->orderByDesc('end_date')
+                    ->paginate(10),
+            'withoutContractUsers' => $withoutContractUsers,
+            'employeeDocuments' => \App\Models\EmployeeDocument::query()
+                ->select(['id', 'user_id', 'type', 'document_number', 'expiry_date', 'file_path'])
+                ->with('user:id,name')
+                ->when($this->search, fn ($q) => $q->whereHas('user', fn ($u) => $u->where('name', 'like', '%'.$this->search.'%')))
+                ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END')
+                ->orderBy('expiry_date')
+                ->limit(40)
+                ->get(),
             'employees' => User::query()->select(['id', 'name'])->orderBy('name')->get(),
             'statusOptions' => Contract::STATUSES,
             'statusLabels' => Contract::STATUS_LABELS,

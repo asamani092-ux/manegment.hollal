@@ -347,12 +347,98 @@
                     @endforelse
                 </x-ds-table>
             @elseif ($activeTab === 'documents')
-                <p class="ds-text-muted">مستندات الموظف تُدار من تبويب المستندات بتصنيف الموارد البشرية.</p>
+                <article class="ds-card ds-mb-3">
+                    <div class="ds-card-head">
+                        <h3 class="ds-section-title">الوثائق الرسمية</h3>
+                        @if ($canUpdate)
+                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openDocumentModal">إضافة وثيقة</button>
+                        @endif
+                    </div>
+                    <p class="ds-text-muted ds-mb-3">هوية · إقامة · جواز · عقد عمل · أخرى — مع رقم الوثيقة وتاريخ الانتهاء للتنبيه قبل التجديد.</p>
+                    <x-ds-table>
+                        <x-slot:head>
+                            <tr>
+                                <th>النوع</th>
+                                <th>الرقم</th>
+                                <th>الإصدار</th>
+                                <th>الانتهاء</th>
+                                <th>الحالة</th>
+                                <th>الملف</th>
+                                @if ($canUpdate)<th>إجراءات</th>@endif
+                            </tr>
+                        </x-slot:head>
+                        @forelse ($employeeDocuments as $doc)
+                            <tr wire:key="edoc-{{ $doc->id }}">
+                                <td>{{ $doc->type }}</td>
+                                <td class="ds-ltr-num">{{ $doc->document_number ?? '—' }}</td>
+                                <td class="ds-ltr-num">{{ $doc->issue_date?->format('Y-m-d') ?? '—' }}</td>
+                                <td class="ds-ltr-num">{{ $doc->expiry_date?->format('Y-m-d') ?? '—' }}</td>
+                                <td>
+                                    @if ($doc->isExpired())
+                                        <span class="ds-badge ds-badge-danger">منتهية</span>
+                                    @elseif ($doc->isExpiringSoon(30))
+                                        <span class="ds-badge ds-badge-warning">تنتهي خلال {{ $doc->daysUntilExpiry() }} يوم</span>
+                                    @elseif ($doc->expiry_date)
+                                        <span class="ds-badge ds-badge-success">سارية</span>
+                                    @else
+                                        <span class="ds-text-muted">—</span>
+                                    @endif
+                                </td>
+                                <td>
+                                    @if ($doc->file_path)
+                                        <a class="ds-link" href="{{ route('employee-documents.files.download', $doc) }}?inline=1" target="_blank" rel="noopener">معاينة</a>
+                                        ·
+                                        <a class="ds-link" href="{{ route('employee-documents.files.download', $doc) }}">تنزيل</a>
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                                @if ($canUpdate)
+                                    <td>
+                                        <button type="button" class="ds-link" wire:click="openDocumentModal({{ $doc->id }})">تعديل</button>
+                                        <button type="button" class="ds-link" wire:click="deleteDocument({{ $doc->id }})" wire:confirm="حذف هذه الوثيقة؟">حذف</button>
+                                    </td>
+                                @endif
+                            </tr>
+                        @empty
+                            <tr><td colspan="{{ $canUpdate ? 7 : 6 }}" class="ds-text-muted">لا توجد وثائق رسمية</td></tr>
+                        @endforelse
+                    </x-ds-table>
+                </article>
             @elseif ($activeTab === 'log')
                 <p class="ds-text-muted">سجل التغييرات الوظيفية يُحفظ في سجل النشاط.</p>
             @endif
         </div>
     </section>
+
+        <x-ds-modal :show="$showDocumentModal" title="وثيقة رسمية" close-action="$set('showDocumentModal', false)" size="lg">
+            <x-ds-form-group label="نوع الوثيقة" :error="$errors->first('docType')">
+                <select class="ds-input" wire:model="docType">
+                    @foreach (\App\Models\EmployeeDocument::TYPES as $type)
+                        <option value="{{ $type }}">{{ $type }}</option>
+                    @endforeach
+                </select>
+            </x-ds-form-group>
+            <x-ds-form-group label="رقم الوثيقة" :error="$errors->first('docNumber')">
+                <input type="text" class="ds-input ds-ltr-num" wire:model="docNumber">
+            </x-ds-form-group>
+            <x-ds-form-group label="تاريخ الإصدار" :error="$errors->first('docIssueDate')">
+                <input type="date" class="ds-input ds-ltr-num" wire:model="docIssueDate">
+            </x-ds-form-group>
+            <x-ds-form-group label="تاريخ الانتهاء" :error="$errors->first('docExpiryDate')">
+                <input type="date" class="ds-input ds-ltr-num" wire:model="docExpiryDate">
+            </x-ds-form-group>
+            <x-ds-form-group label="ملاحظات" :error="$errors->first('docNotes')">
+                <textarea class="ds-input" rows="2" wire:model="docNotes"></textarea>
+            </x-ds-form-group>
+            <x-ds-form-group label="المرفق" :error="$errors->first('docFile')">
+                <input type="file" class="ds-input" wire:model="docFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+            </x-ds-form-group>
+            <x-slot:footer>
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="saveDocument">حفظ</button>
+                <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('showDocumentModal', false)">إلغاء</button>
+            </x-slot:footer>
+        </x-ds-modal>
 
         <x-ds-modal :show="$showEdit" title="تعديل الملف الوظيفي" close-action="$set('showEdit', false)" size="lg">
         <x-ds-form-group label="الاسم" :error="$errors->first('editName')">

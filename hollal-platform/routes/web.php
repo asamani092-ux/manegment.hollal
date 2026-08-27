@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\ContractFileDownloadController;
 use App\Http\Controllers\DocumentDownloadController;
 use App\Http\Controllers\DutiesFileDownloadController;
+use App\Http\Controllers\EmployeeDocumentDownloadController;
 use App\Http\Controllers\ExpenseFileDownloadController;
 use App\Http\Controllers\FinancialDocumentDownloadController;
 use App\Http\Controllers\FinancialReportExcelController;
@@ -138,6 +139,9 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
 
         Route::get('/files/contracts/{contract}', ContractFileDownloadController::class)
             ->name('contracts.files.download');
+
+        Route::get('/files/employee-documents/{employeeDocument}', EmployeeDocumentDownloadController::class)
+            ->name('employee-documents.files.download');
 
         Route::get('/files/expenses/{expenseRequest}', ExpenseFileDownloadController::class)
             ->name('expenses.files.download');

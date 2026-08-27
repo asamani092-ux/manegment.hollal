@@ -18,15 +18,52 @@
         </div>
         <div class="ds-filter-field">
             <label class="ds-label">الحالة</label>
-            <select class="ds-input" wire:model.live="statusFilter">
+            <select class="ds-input" wire:model.live="statusFilter" @disabled($withoutContract)>
                 <option value="">الكل</option>
                 @foreach ($statusOptions as $option)
                     <option value="{{ $option }}">{{ $statusLabels[$option] ?? $option }}</option>
                 @endforeach
             </select>
         </div>
+        <div class="ds-filter-field">
+            <label class="ds-label">&nbsp;</label>
+            <button type="button"
+                    class="ds-btn {{ $withoutContract ? 'ds-btn-primary' : 'ds-btn-outline' }}"
+                    wire:click="toggleWithoutContract">
+                بدون عقود
+            </button>
+        </div>
     </div>
 
+    @if ($withoutContract)
+        <div class="ds-alert ds-alert-warning ds-mb-3">عرض الموظفون النشطون الذين ليس لهم عقد عمل.</div>
+        <div class="ds-table-wrap">
+            <x-ds-table>
+                <x-slot:head>
+                    <tr>
+                        <th>الموظف</th>
+                        <th>الحالة</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </x-slot:head>
+                @forelse ($withoutContractUsers as $employee)
+                    <tr wire:key="noc-{{ $employee->id }}">
+                        <td>{{ $employee->name }}</td>
+                        <td>{{ $employee->employment_status }}</td>
+                        <td>
+                            <a class="ds-link" href="{{ route('users.profile', $employee->id) }}">الملف الوظيفي</a>
+                            @can('create', App\Models\Contract::class)
+                                <button type="button" class="ds-link" wire:click="openCreate">إنشاء عقد</button>
+                            @endcan
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="3" class="ds-text-muted">كل الموظفين لديهم عقود</td></tr>
+                @endforelse
+            </x-ds-table>
+        </div>
+        {{ $withoutContractUsers->links() }}
+    @else
     <div class="ds-table-wrap">
         <x-ds-table>
             <x-slot:head>
@@ -99,6 +136,47 @@
     </div>
 
     {{ $contracts->links() }}
+    @endif
+
+    @if (! $withoutContract && $employeeDocuments->isNotEmpty())
+        <section class="ds-section ds-mt-4">
+            <h2 class="ds-section-title">الوثائق الرسمية للعاملين</h2>
+            <p class="ds-text-muted">هوية · إقامة · جواز · عقد · أخرى — تُدار أيضاً من الملف الوظيفي.</p>
+            <x-ds-table>
+                <x-slot:head>
+                    <tr>
+                        <th>الموظف</th>
+                        <th>النوع</th>
+                        <th>الرقم</th>
+                        <th>الانتهاء</th>
+                        <th>الملف</th>
+                    </tr>
+                </x-slot:head>
+                @foreach ($employeeDocuments as $doc)
+                    <tr wire:key="edoc-list-{{ $doc->id }}">
+                        <td><a class="ds-link" href="{{ route('users.profile', $doc->user_id) }}?tab=documents">{{ $doc->user?->name ?? '—' }}</a></td>
+                        <td>{{ $doc->type }}</td>
+                        <td class="ds-ltr-num">{{ $doc->document_number ?? '—' }}</td>
+                        <td class="ds-ltr-num">
+                            {{ $doc->expiry_date?->format('Y-m-d') ?? '—' }}
+                            @if ($doc->isExpired())
+                                <span class="ds-badge ds-badge-danger">منتهية</span>
+                            @elseif ($doc->isExpiringSoon(30))
+                                <span class="ds-badge ds-badge-warning">قريبة</span>
+                            @endif
+                        </td>
+                        <td>
+                            @if ($doc->file_path)
+                                <a class="ds-link" href="{{ route('employee-documents.files.download', $doc) }}?inline=1" target="_blank" rel="noopener">معاينة</a>
+                            @else
+                                —
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+            </x-ds-table>
+        </section>
+    @endif
 
     @if ($showModal)
         <div class="ds-modal-overlay" wire:click.self="closeModal">
