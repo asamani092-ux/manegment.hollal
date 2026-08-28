@@ -44,6 +44,7 @@ class UatToolsChecklistTest extends TestCase
             ->assertOk()
             ->assertSee('تقييم أدوات المنصة (UAT) — 11 تبويباً', false)
             ->assertSee('نسخ تقرير التبويب الحالي', false)
+            ->assertDontSee('نسخ التقرير كاملاً', false)
             ->assertSee('تقييم المرحلة 3 (17 أغسطس)', false)
             ->assertSee('تقييم 20:27', false)
             ->assertSee('تقييم 19:04', false)
@@ -58,8 +59,7 @@ class UatToolsChecklistTest extends TestCase
             ->assertSee('دورة الحياة', false)
             ->assertSee('الملاحظة', false)
             ->assertSee('قاعدة التبويبات', false)
-            ->assertSee('ملاحظات هذا التبويب فقط', false)
-            ->assertSee('phaseTools(phaseId)', false);
+            ->assertSee('التقييم محفوظ على السيرفر', false);
     }
 
     public function test_persist_state_is_shared_and_snapshots_accumulate(): void
