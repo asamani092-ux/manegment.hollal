@@ -192,7 +192,7 @@ class ReportRound1HrTest extends TestCase
             'employment_status' => User::STATUS_ACTIVE,
             'manager_id' => $hr->id,
         ]);
-        $employee->givePermissionTo('dashboard.view');
+        $employee->givePermissionTo(['dashboard.view', 'hr.employees.view']);
         EmployeeProfile::create([
             'user_id' => $employee->id,
             'hire_date' => '2025-01-01',

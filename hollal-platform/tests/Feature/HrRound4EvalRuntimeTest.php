@@ -106,16 +106,18 @@ class HrRound4EvalRuntimeTest extends TestCase
             ->assertSee('موظف ربعى', false)
             ->assertSee('مكتمل', false)
             ->assertDontSee('الالتزام بالسياسات', false)
-            ->assertDontSee('المجموع النهائي', false)
             ->call('openScoring', $ctx['evaluation']->id)
             ->assertSee('جودة العمل', false)
             ->assertDontSee('الالتزام بالسياسات', false);
+
+        $this->assertStringNotContainsString('المجموع:', Livewire::actingAs($ctx['manager'])->test(TeamEvaluationsIndex::class)->html());
     }
 
     public function test_approve_is_visible_to_employee_immediately(): void
     {
         Notification::fake();
         $ctx = $this->seededOpenEvaluation();
+        $ctx['employee']->givePermissionTo('hr.employees.view');
         $items = $ctx['cycle']->fresh()->items()->orderBy('sort_order')->get();
         $ctx['service']->recordScore($ctx['evaluation'], $items[0], 5);
         $ctx['service']->recordScore($ctx['evaluation']->fresh(), $items[1], 4);

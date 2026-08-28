@@ -110,13 +110,10 @@ class EvaluationsIndex extends Component
                 );
                 $this->dispatch('toast', type: 'success', message: 'حُفظت درجات قسم الموارد');
             }
+            $this->openScoring((int) $evaluation->id);
         } catch (\InvalidArgumentException|\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
-
-            return;
         }
-
-        $this->openScoring($evaluation->id);
     }
 
     public function approve(int $id): void
