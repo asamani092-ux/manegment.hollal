@@ -8,6 +8,7 @@ use App\Services\EvaluationService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Livewire\Concerns\UsesDsPagination;
 
 /**
  * Periodic evaluations index + create/publish.
@@ -16,6 +17,7 @@ use Livewire\WithPagination;
 class EvaluationsIndex extends Component
 {
     use WithPagination;
+    use UsesDsPagination;
 
     public bool $showCreate = false;
 

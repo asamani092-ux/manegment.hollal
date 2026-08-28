@@ -7,7 +7,9 @@
         wire:click="openForm"
     />
 
-    <p class="ds-text-muted ds-mb-3">الرصيد السنوي المتاح: <strong class="ds-ltr-num">{{ $balance }}</strong> يومًا</p>
+    <x-ds-collapsible-card title="رصيد الإجازات المتاح" :open="true">
+        <p class="ds-mb-0">رصيدك السنوي المتاح حالياً: <strong class="ds-ltr-num">{{ $balance }}</strong> يومًا (بعد خصم الأيام المعتمدة؛ الطلبات المقدَّمة تُحجز عند الإرسال).</p>
+    </x-ds-collapsible-card>
 
     <div class="ds-filters-row">
         <div class="ds-filter-field">
@@ -42,6 +44,9 @@
                     <span class="ds-ltr-num">{{ $leave->from_date?->format('Y-m-d') }}</span>
                     <span class="ds-ltr-num">{{ $leave->to_date?->format('Y-m-d') }}</span>
                     <span class="ds-ltr-num">{{ $leave->days_count }} يوم</span>
+                    @if ($leave->type === 'سنوية')
+                        <span>رصيد: <strong class="ds-ltr-num">{{ (int) ($leave->employee?->profile?->annual_leave_balance ?? 21) }}</strong></span>
+                    @endif
                 </div>
                 <x-ds-status-badge :status="$leave->status" />
                 @if ($canApprove && $leave->employee_id !== auth()->id() && $leave->status === \App\Models\LeaveRequest::STATUS_SUBMITTED)
@@ -65,6 +70,7 @@
                     <th scope="col">من</th>
                     <th scope="col">إلى</th>
                     <th scope="col">الأيام</th>
+                    <th scope="col">الرصيد المتاح</th>
                     <th scope="col">الحالة</th>
                     <th scope="col">إجراءات</th>
                 </tr>
@@ -76,6 +82,13 @@
                     <td class="ds-ltr-num">{{ $leave->from_date?->format('Y-m-d') }}</td>
                     <td class="ds-ltr-num">{{ $leave->to_date?->format('Y-m-d') }}</td>
                     <td class="ds-ltr-num">{{ $leave->days_count }}</td>
+                    <td class="ds-ltr-num">
+                        @if ($leave->type === 'سنوية')
+                            {{ (int) ($leave->employee?->profile?->annual_leave_balance ?? 21) }}
+                        @else
+                            —
+                        @endif
+                    </td>
                     <td><x-ds-status-badge :status="$leave->status" /></td>
                     <td>
                         @if ($canApprove && $leave->employee_id !== auth()->id() && $leave->status === \App\Models\LeaveRequest::STATUS_SUBMITTED)
@@ -85,7 +98,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="7"><x-ds-empty-state message="لا توجد طلبات إجازة" icon="fa-umbrella-beach" /></td></tr>
+                <tr><td colspan="8"><x-ds-empty-state message="لا توجد طلبات إجازة" icon="fa-umbrella-beach" /></td></tr>
             @endforelse
         </x-ds-table>
     </div>

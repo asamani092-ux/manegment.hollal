@@ -13,6 +13,7 @@
 
     <div class="ds-navbar-end">
         @auth
+            <livewire:hr.header-attendance-punch />
             <livewire:notification-bell />
         @endauth
         <div class="ds-user-dropdown" id="ds-user-dropdown">

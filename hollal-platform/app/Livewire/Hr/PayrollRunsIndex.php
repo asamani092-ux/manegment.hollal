@@ -10,6 +10,7 @@ use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Validation\ValidationException;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Livewire\Concerns\UsesDsPagination;
 
 /**
  * 01-B3 + HR-6 — payroll runs: generate, item detail, HR edit with reason,
@@ -19,6 +20,7 @@ class PayrollRunsIndex extends Component
 {
     use AuthorizesRequests;
     use WithPagination;
+    use UsesDsPagination;
 
     public string $month = '';
 

@@ -1869,3 +1869,43 @@
   background: var(--ds-card);
 }
 .ds-coa-spacer { width: 2rem; display: inline-block; }
+
+/* HR Round 2 — closed / collapsible cards (HR screens first) */
+.ds-collapsible-card {
+  border: 1px solid var(--ds-border);
+  border-radius: var(--ds-radius);
+  background: var(--ds-card);
+  margin-bottom: 0.75rem;
+}
+.ds-collapsible-card__summary {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.85rem 1rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+.ds-collapsible-card__summary::-webkit-details-marker { display: none; }
+.ds-collapsible-card__summary::after {
+  content: '▾';
+  color: var(--ds-text-muted);
+  font-weight: 400;
+  margin-inline-start: auto;
+}
+.ds-collapsible-card[open] > .ds-collapsible-card__summary::after { content: '▴'; }
+.ds-collapsible-card__body {
+  padding: 0 1rem 1rem;
+  border-top: 1px solid var(--ds-border);
+}
+.ds-navbar-attendance {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+@media (max-width: 640px) {
+  .ds-navbar-attendance .ds-btn { padding: 0.35rem 0.55rem; font-size: 0.8rem; }
+}

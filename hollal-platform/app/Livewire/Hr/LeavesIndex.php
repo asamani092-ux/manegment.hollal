@@ -8,6 +8,7 @@ use App\Services\LeaveService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Livewire\Concerns\UsesDsPagination;
 
 /**
  * Leave requests submit/approve UI.
@@ -16,6 +17,7 @@ use Livewire\WithPagination;
 class LeavesIndex extends Component
 {
     use WithPagination;
+    use UsesDsPagination;
 
     public bool $showForm = false;
 
@@ -162,7 +164,11 @@ class LeavesIndex extends Component
         $user = auth()->user();
         $query = LeaveRequest::query()
             ->select(['id', 'employee_id', 'type', 'from_date', 'to_date', 'days_count', 'reason', 'status', 'approver_id', 'created_at'])
-            ->with(['employee:id,name,manager_id', 'approver:id,name'])
+            ->with([
+                'employee:id,name,manager_id',
+                'employee.profile:id,user_id,annual_leave_balance',
+                'approver:id,name',
+            ])
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->typeFilter, fn ($q) => $q->where('type', $this->typeFilter))
             ->when($this->open, fn ($q) => $q->where('id', $this->open))

@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Livewire\Concerns\UsesDsPagination;
 
 /**
  * Employee responsibilities CRUD with multi-add and employee floating panel.
@@ -15,6 +16,7 @@ use Livewire\WithPagination;
 class ResponsibilitiesIndex extends Component
 {
     use WithPagination;
+    use UsesDsPagination;
 
     public bool $showForm = false;
 

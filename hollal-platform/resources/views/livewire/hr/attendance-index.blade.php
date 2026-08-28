@@ -12,8 +12,7 @@
     </p>
 
     @if ($canManage)
-        <section class="ds-card ds-mb-3 ds-no-print">
-            <h3 class="ds-section-title" style="margin-top:0">تفعيل الحضور للموظفين</h3>
+        <x-ds-collapsible-card title="تفعيل الحضور للموظفين" class="ds-no-print" :open="false">
             <p class="ds-text-muted">بدون تفعيل لا يستطيع الموظف تسجيل الحضور. يمكن أيضاً من الملف الوظيفي.</p>
             <div class="ds-filters-row">
                 <div class="ds-filter-field">
@@ -49,11 +48,10 @@
                     <tr><td colspan="3" class="ds-text-muted">لا يوجد موظفون مطابقون</td></tr>
                 @endforelse
             </x-ds-table>
-        </section>
+        </x-ds-collapsible-card>
     @endif
 
-    <section class="ds-card ds-mb-3 ds-no-print">
-        <h3 class="ds-section-title" style="margin-top:0">طباعة السجل الشهري</h3>
+    <x-ds-collapsible-card title="طباعة السجل الشهري" class="ds-no-print" :open="false">
         <p class="ds-text-muted">أيام الدوام المعتمدة في الإعدادات: <span class="ds-ltr-num">{{ $monthlyWorkingDays }}</span> · بداية الدوام: <span class="ds-ltr-num">{{ $officeStart }}</span></p>
         <div class="ds-filters-row">
             <div class="ds-filter-field">
@@ -66,19 +64,20 @@
                 </button>
             </div>
         </div>
-    </section>
+    </x-ds-collapsible-card>
 
     @if (! $attendanceEnabled)
         <p class="ds-badge ds-badge-warning ds-mb-3 ds-no-print">برنامج الحضور غير مفعّل لحسابك. يفعّله مسؤول الموارد من هذه الشاشة أو من الملف الوظيفي.</p>
     @endif
 
     @if ($attendanceEnabled)
-        <div class="ds-card ds-mb-3 ds-toolbar-actions ds-no-print">
-            <button type="button" class="ds-btn ds-btn-primary" wire:click="checkIn">تسجيل حضور</button>
-            <button type="button" class="ds-btn ds-btn-outline" wire:click="checkOut">تسجيل انصراف</button>
-        </div>
-        <div class="ds-card ds-mb-3 ds-no-print">
-            <h3 class="ds-section-title" style="margin-top:0">إقرار نوع يوم العمل</h3>
+        <x-ds-collapsible-card title="تسجيل حضور / انصراف" class="ds-no-print" :open="true">
+            <div class="ds-toolbar-actions">
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="checkIn">تسجيل حضور</button>
+                <button type="button" class="ds-btn ds-btn-outline" wire:click="checkOut">تسجيل انصراف</button>
+            </div>
+        </x-ds-collapsible-card>
+        <x-ds-collapsible-card title="إقرار نوع يوم العمل" class="ds-no-print" :open="false">
             <p class="ds-text-muted">الإقرار مرجع إداري فقط (حضور / عن بعد / تكليف / انقطاع). لا يعدّل وقت الحضور أو الانصراف المسجَّل ولا يخصم الراتب آليًا.</p>
             <x-ds-form-group label="نوع الإقرار">
                 <select class="ds-input" wire:model="type">
@@ -92,7 +91,7 @@
                 <input type="text" class="ds-input" wire:model="notes">
             </x-ds-form-group>
             <button type="button" class="ds-btn ds-btn-teal" wire:click="declareType">حفظ الإقرار</button>
-        </div>
+        </x-ds-collapsible-card>
     @endif
 
     <div class="ds-filters-row ds-no-print">

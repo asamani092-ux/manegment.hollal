@@ -9,6 +9,7 @@ use App\Support\Setting;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Livewire\Concerns\UsesDsPagination;
 
 /**
  * Attendance management: check-in/out, declarations, HR enablement, monthly print.
@@ -17,6 +18,7 @@ use Livewire\WithPagination;
 class AttendanceIndex extends Component
 {
     use WithPagination;
+    use UsesDsPagination;
 
     public string $type = 'حضور';
 
