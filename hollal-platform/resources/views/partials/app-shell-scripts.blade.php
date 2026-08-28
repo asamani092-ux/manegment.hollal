@@ -288,5 +288,20 @@
         if (window.Alpine) {
             registerDsSearchSelect();
         }
+
+        document.addEventListener('livewire:init', function () {
+            if (! window.Livewire || ! Livewire.hook) {
+                return;
+            }
+
+            Livewire.hook('request', ({ fail }) => {
+                fail(({ status, preventDefault }) => {
+                    if (status === 419) {
+                        preventDefault();
+                        window.location.href = '/login?expired=1';
+                    }
+                });
+            });
+        });
     })();
 </script>

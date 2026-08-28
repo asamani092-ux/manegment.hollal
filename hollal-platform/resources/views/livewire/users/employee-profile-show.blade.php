@@ -243,6 +243,7 @@
                 @endif
                 </x-ds-collapsible-card>
             @elseif ($activeTab === 'contracts')
+                <p class="ds-text-muted ds-mb-3">فترات التوظيف الرسمية (قراءة فقط): البداية والنهاية وحالة العقد. لرفع مرفقات أو وثائق هوية استخدم تبويب «المستندات».</p>
                 <x-ds-collapsible-card title="عقود التوظيف" :open="true">
                 <x-ds-table>
                     <x-slot:head>
@@ -408,7 +409,27 @@
                     </x-ds-table>
                 </x-ds-collapsible-card>
             @elseif ($activeTab === 'log')
-                <p class="ds-text-muted">سجل التغييرات الوظيفية يُحفظ في سجل النشاط.</p>
+                <p class="ds-text-muted ds-mb-3">سجل تراكمي: وصولات حساسة · نقلات الهيكل · أحداث النشاط المرتبطة بالموظف.</p>
+                <x-ds-table>
+                    <x-slot:head>
+                        <tr>
+                            <th scope="col">التاريخ</th>
+                            <th scope="col">الفاعل</th>
+                            <th scope="col">الحدث</th>
+                            <th scope="col">التفاصيل</th>
+                        </tr>
+                    </x-slot:head>
+                    @forelse ($profileLogEntries as $entry)
+                        <tr wire:key="plog-{{ $loop->index }}-{{ $entry['at']?->timestamp }}">
+                            <td class="ds-ltr-num">{{ $entry['at']?->format('Y-m-d H:i') ?? '—' }}</td>
+                            <td>{{ $entry['actor'] }}</td>
+                            <td>{{ $entry['event'] }}</td>
+                            <td>{{ $entry['detail'] }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" class="ds-text-muted">لا توجد أحداث مسجّلة بعد</td></tr>
+                    @endforelse
+                </x-ds-table>
             @endif
         </div>
     </section>

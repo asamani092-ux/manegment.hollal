@@ -68,6 +68,12 @@ class ResponsibilitiesIndex extends Component
         $this->showForm = true;
     }
 
+    public function openFormForEmployee(int $employeeId): void
+    {
+        $this->employee_id = $employeeId;
+        $this->openForm();
+    }
+
     public function openEdit(int $id): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
@@ -133,6 +139,18 @@ class ResponsibilitiesIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'تم إيقاف البند');
     }
 
+    public function deactivateAllForEmployee(int $employeeId): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        $count = Responsibility::query()
+            ->where('employee_id', $employeeId)
+            ->where('is_active', true)
+            ->update(['is_active' => false]);
+
+        $this->dispatch('toast', type: 'success', message: "أُوقفت {$count} مسؤولية");
+    }
+
     public function delete(int $id): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
@@ -165,16 +183,16 @@ class ResponsibilitiesIndex extends Component
         }
 
         return view('livewire.hr.responsibilities-index', [
-            'items' => Responsibility::query()
-                ->select(['id', 'employee_id', 'body', 'order', 'is_active'])
-                ->with('employee:id,name')
-                ->when($this->activeOnly, fn ($q) => $q->where('is_active', true))
-                ->when($this->search, fn ($q) => $q->whereHas(
-                    'employee',
-                    fn ($e) => $e->where('name', 'like', '%'.$this->search.'%')
-                ))
-                ->orderBy('employee_id')
-                ->orderBy('order')
+            'employeeRows' => User::query()
+                ->select(['users.id', 'users.name'])
+                ->selectRaw('COUNT(responsibilities.id) as responsibilities_count')
+                ->selectRaw('SUM(CASE WHEN responsibilities.is_active = 1 THEN 1 ELSE 0 END) as active_count')
+                ->join('responsibilities', 'responsibilities.employee_id', '=', 'users.id')
+                ->where('users.is_active', true)
+                ->when($this->activeOnly, fn ($q) => $q->where('responsibilities.is_active', true))
+                ->when($this->search !== '', fn ($q) => $q->where('users.name', 'like', '%'.$this->search.'%'))
+                ->groupBy('users.id', 'users.name')
+                ->orderBy('users.name')
                 ->paginate(20),
             'employees' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'employeeOptions' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name'])

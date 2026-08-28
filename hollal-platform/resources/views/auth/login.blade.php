@@ -14,6 +14,12 @@
             </div>
         @endif
 
+        @if (request()->query('expired'))
+            <div class="ds-alert ds-alert-warning ds-alert-spaced">
+                انتهت الجلسة — سجّل الدخول مرة أخرى.
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('login') }}">
             @csrf
             <x-ds-form-group label="رقم الجوال" for="phone">

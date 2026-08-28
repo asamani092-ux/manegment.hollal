@@ -101,7 +101,30 @@ class EvaluationService
             return;
         }
 
+        if (! $this->scoresComplete($evaluation)) {
+            throw new \RuntimeException('أكمل درجات كل المسؤوليات النشطة قبل الأرشفة.');
+        }
+
         $evaluation->update(['status' => PeriodicEvaluation::STATUS_ARCHIVED]);
+    }
+
+    public function scoresComplete(PeriodicEvaluation $evaluation): bool
+    {
+        $responsibilityIds = Responsibility::query()
+            ->where('employee_id', $evaluation->employee_id)
+            ->where('is_active', true)
+            ->pluck('id');
+
+        if ($responsibilityIds->isEmpty()) {
+            return false;
+        }
+
+        $scoredIds = $evaluation->scores()
+            ->whereIn('responsibility_id', $responsibilityIds)
+            ->whereNotNull('score')
+            ->pluck('responsibility_id');
+
+        return $scoredIds->count() === $responsibilityIds->count();
     }
 
     /**

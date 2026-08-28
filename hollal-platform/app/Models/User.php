@@ -96,6 +96,12 @@ class User extends Authenticatable
         return $this->hasMany(Task::class, 'assigned_to');
     }
 
+    /** @return HasMany<PeriodicEvaluation, $this> */
+    public function periodicEvaluations(): HasMany
+    {
+        return $this->hasMany(PeriodicEvaluation::class, 'employee_id');
+    }
+
     /** @return HasMany<Task, $this> */
     public function delegatedTasks(): HasMany
     {

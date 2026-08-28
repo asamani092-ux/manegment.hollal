@@ -2,16 +2,43 @@
 
 namespace App\Livewire\Hr;
 
+use App\Models\AttendanceRecord;
 use App\Services\AttendanceService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 /**
- * Navbar quick check-in / check-out for attendance-enabled users.
- * Time: O(1) | Space: O(1)
+ * Navbar attendance punch — single entry opens integrated panel.
+ * Time: O(1) punch · O(7) recent | Space: O(7)
  */
 class HeaderAttendancePunch extends Component
 {
+    public bool $showPanel = false;
+
+    public string $declareType = 'حضور';
+
+    public string $declareNotes = '';
+
+    public function openPanel(): void
+    {
+        $user = auth()->user();
+        abort_unless($user && ($user->attendance_enabled ?? false), 403);
+
+        $today = AttendanceRecord::query()
+            ->where('employee_id', $user->id)
+            ->whereDate('date', today())
+            ->first();
+
+        $this->declareType = (string) ($today?->type ?? 'حضور');
+        $this->declareNotes = (string) ($today?->notes ?? '');
+        $this->showPanel = true;
+    }
+
+    public function closePanel(): void
+    {
+        $this->showPanel = false;
+    }
+
     public function checkIn(): void
     {
         $user = auth()->user();
@@ -38,12 +65,56 @@ class HeaderAttendancePunch extends Component
         }
     }
 
+    public function saveDeclaration(): void
+    {
+        $this->validate([
+            'declareType' => 'required|string|in:حضور,عن بعد,تكليف خارجي,انقطاع',
+            'declareNotes' => 'nullable|string|max:500',
+        ]);
+
+        $user = auth()->user();
+        abort_unless($user && ($user->attendance_enabled ?? false), 403);
+
+        AttendanceRecord::updateOrCreate(
+            ['employee_id' => $user->id, 'date' => today()],
+            [
+                'type' => $this->declareType,
+                'notes' => $this->declareNotes !== '' ? $this->declareNotes : null,
+                'declared_by' => $user->id,
+            ]
+        );
+
+        $this->dispatch('toast', type: 'success', message: 'تم تسجيل الإقرار');
+    }
+
     public function render(): View
     {
-        $enabled = (bool) (auth()->user()?->attendance_enabled ?? false);
+        $user = auth()->user();
+        $enabled = (bool) ($user?->attendance_enabled ?? false);
+        $service = app(AttendanceService::class);
+        $officeStart = $service->officeStartTime();
+
+        $todayRecord = null;
+        $recentRecords = collect();
+        if ($enabled && $user) {
+            $todayRecord = AttendanceRecord::query()
+                ->where('employee_id', $user->id)
+                ->whereDate('date', today())
+                ->first();
+
+            $recentRecords = AttendanceRecord::query()
+                ->where('employee_id', $user->id)
+                ->orderByDesc('date')
+                ->limit(7)
+                ->get(['id', 'date', 'type', 'check_in_at', 'check_out_at']);
+        }
 
         return view('livewire.hr.header-attendance-punch', [
             'enabled' => $enabled,
+            'officeStart' => $officeStart,
+            'todayRecord' => $todayRecord,
+            'recentRecords' => $recentRecords,
+            'canManageAttendance' => (bool) $user?->can('hr.employees.update'),
         ]);
     }
 }

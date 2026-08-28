@@ -35,6 +35,8 @@ class LeavesIndex extends Component
 
     public string $search = '';
 
+    public string $viewMode = 'table';
+
     public ?int $open = null;
 
     /** @var array<string, array<string, string>> */
@@ -42,6 +44,7 @@ class LeavesIndex extends Component
         'statusFilter' => ['except' => ''],
         'typeFilter' => ['except' => ''],
         'search' => ['except' => ''],
+        'viewMode' => ['except' => 'table'],
         'open' => ['except' => null],
     ];
 
@@ -69,6 +72,13 @@ class LeavesIndex extends Component
             || auth()->user()->can('hr.employees.view'),
             403
         );
+    }
+
+    public function setViewMode(string $mode): void
+    {
+        if (in_array($mode, ['table', 'cards'], true)) {
+            $this->viewMode = $mode;
+        }
     }
 
     public function openForm(): void

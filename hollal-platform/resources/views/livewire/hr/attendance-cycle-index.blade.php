@@ -1,5 +1,5 @@
 <x-ds-page>
-    <x-ds-page-header title="دورة الحضور والخصم" />
+    <x-ds-page-header title="الحضور الشهري والخصم" />
 
     <div class="ds-alert ds-alert-warning ds-mb-3">
         <strong>النوع الأول (المعتمد حالياً):</strong>

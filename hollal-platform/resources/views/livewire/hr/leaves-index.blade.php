@@ -7,9 +7,11 @@
         wire:click="openForm"
     />
 
-    <x-ds-collapsible-card title="رصيد الإجازات المتاح" :open="true">
-        <p class="ds-mb-0">رصيدك السنوي المتاح حالياً: <strong class="ds-ltr-num">{{ $balance }}</strong> يومًا (بعد خصم الأيام المعتمدة؛ الطلبات المقدَّمة تُحجز عند الإرسال).</p>
-    </x-ds-collapsible-card>
+    @if ($canApprove)
+        <x-ds-collapsible-card title="رصيد الإجازات المتاح (ملخص)" :open="true">
+            <p class="ds-mb-0">رصيدك السنوي: <strong class="ds-ltr-num">{{ $balance }}</strong> يومًا.</p>
+        </x-ds-collapsible-card>
+    @endif
 
     <div class="ds-filters-row">
         <div class="ds-filter-field">
@@ -36,32 +38,34 @@
         </div>
     </div>
 
-    <div class="ds-task-cards ds-list-cards-mobile">
-        @forelse ($leaves as $leave)
-            <article class="ds-task-card {{ $open === $leave->id ? 'is-open-record' : '' }}" wire:key="leave-card-{{ $leave->id }}">
-                <h3 class="ds-task-card-title">{{ $leave->employee?->name ?? '—' }} — {{ $leave->type }}</h3>
-                <div class="ds-task-card-meta">
-                    <span class="ds-ltr-num">{{ $leave->from_date?->format('Y-m-d') }}</span>
-                    <span class="ds-ltr-num">{{ $leave->to_date?->format('Y-m-d') }}</span>
-                    <span class="ds-ltr-num">{{ $leave->days_count }} يوم</span>
-                    @if ($leave->type === 'سنوية')
-                        <span>رصيد: <strong class="ds-ltr-num">{{ (int) ($leave->employee?->profile?->annual_leave_balance ?? 21) }}</strong></span>
-                    @endif
-                </div>
-                <x-ds-status-badge :status="$leave->status" />
-                @if ($canApprove && $leave->employee_id !== auth()->id() && $leave->status === \App\Models\LeaveRequest::STATUS_SUBMITTED)
-                    <div class="ds-toolbar-actions">
-                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="approve({{ $leave->id }})">اعتماد</button>
-                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="reject({{ $leave->id }})">رفض</button>
-                    </div>
-                @endif
-            </article>
-        @empty
-            <x-ds-empty-state message="لا توجد طلبات إجازة" icon="fa-umbrella-beach" />
-        @endforelse
+    <div class="ds-view-toggle">
+        <button type="button" class="ds-btn ds-btn-sm {{ $viewMode === 'table' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setViewMode('table')">جدول</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $viewMode === 'cards' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setViewMode('cards')">بطاقات</button>
     </div>
 
-    <div class="ds-list-table-desktop">
+    @if ($viewMode === 'cards')
+        <div class="ds-task-cards">
+            @forelse ($leaves as $leave)
+                <article class="ds-task-card {{ $open === $leave->id ? 'is-open-record' : '' }}" wire:key="leave-card-{{ $leave->id }}">
+                    <h3 class="ds-task-card-title">{{ $leave->employee?->name ?? '—' }} — {{ $leave->type }}</h3>
+                    <div class="ds-task-card-meta">
+                        <span class="ds-ltr-num">{{ $leave->from_date?->format('Y-m-d') }}</span>
+                        <span class="ds-ltr-num">{{ $leave->to_date?->format('Y-m-d') }}</span>
+                        <span class="ds-ltr-num">{{ $leave->days_count }} يوم</span>
+                    </div>
+                    <x-ds-status-badge :status="$leave->status" />
+                    @if ($canApprove && $leave->employee_id !== auth()->id() && $leave->status === \App\Models\LeaveRequest::STATUS_SUBMITTED)
+                        <div class="ds-toolbar-actions">
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="approve({{ $leave->id }})">اعتماد</button>
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="reject({{ $leave->id }})">رفض</button>
+                        </div>
+                    @endif
+                </article>
+            @empty
+                <x-ds-empty-state message="لا توجد طلبات إجازة" icon="fa-umbrella-beach" />
+            @endforelse
+        </div>
+    @else
         <x-ds-table>
             <x-slot:head>
                 <tr>
@@ -70,7 +74,6 @@
                     <th scope="col">من</th>
                     <th scope="col">إلى</th>
                     <th scope="col">الأيام</th>
-                    <th scope="col">الرصيد المتاح</th>
                     <th scope="col">الحالة</th>
                     <th scope="col">إجراءات</th>
                 </tr>
@@ -82,13 +85,6 @@
                     <td class="ds-ltr-num">{{ $leave->from_date?->format('Y-m-d') }}</td>
                     <td class="ds-ltr-num">{{ $leave->to_date?->format('Y-m-d') }}</td>
                     <td class="ds-ltr-num">{{ $leave->days_count }}</td>
-                    <td class="ds-ltr-num">
-                        @if ($leave->type === 'سنوية')
-                            {{ (int) ($leave->employee?->profile?->annual_leave_balance ?? 21) }}
-                        @else
-                            —
-                        @endif
-                    </td>
                     <td><x-ds-status-badge :status="$leave->status" /></td>
                     <td>
                         @if ($canApprove && $leave->employee_id !== auth()->id() && $leave->status === \App\Models\LeaveRequest::STATUS_SUBMITTED)
@@ -98,13 +94,14 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="8"><x-ds-empty-state message="لا توجد طلبات إجازة" icon="fa-umbrella-beach" /></td></tr>
+                <tr><td colspan="7"><x-ds-empty-state message="لا توجد طلبات إجازة" icon="fa-umbrella-beach" /></td></tr>
             @endforelse
         </x-ds-table>
-    </div>
+    @endif
     {{ $leaves->links() }}
 
     <x-ds-modal :show="$showForm" title="طلب إجازة" close-action="$set('showForm', false)">
+        <p class="ds-text-muted ds-mb-3">رصيدك السنوي المتاح: <strong class="ds-ltr-num">{{ $balance }}</strong> يومًا (تُحجز الأيام عند الإرسال).</p>
         <x-ds-form-group label="النوع" :error="$errors->first('type')">
             <select class="ds-input" wire:model="type">
                 <option value="سنوية">سنوية</option>

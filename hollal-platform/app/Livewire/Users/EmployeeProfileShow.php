@@ -2,10 +2,12 @@
 
 namespace App\Livewire\Users;
 
+use App\Models\AuditLog;
 use App\Models\Contract;
 use App\Models\Department;
 use App\Models\EmployeeDocument;
 use App\Models\EmployeeProfile;
+use App\Models\EmployeeTransfer;
 use App\Models\LeaveRequest;
 use App\Models\OrgUnit;
 use App\Models\PayScale;
@@ -21,6 +23,7 @@ use App\Services\SalaryService;
 use App\Support\OrgJobCatalog;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Livewire\Attributes\Locked;
@@ -565,6 +568,63 @@ class EmployeeProfileShow extends Component
         ]);
     }
 
+    /**
+     * @return Collection<int, array{at:\Illuminate\Support\Carbon,actor:string,event:string,detail:string}>
+     */
+    private function profileLogEntries(): Collection
+    {
+        $entries = collect();
+
+        foreach (ProfileAccessLog::query()
+            ->where('target_user_id', $this->userId)
+            ->with('actor:id,name')
+            ->orderByDesc('accessed_at')
+            ->get(['user_id', 'tab_accessed', 'accessed_at']) as $log) {
+            $tabLabel = match ($log->tab_accessed) {
+                'salary' => 'الراتب',
+                default => (string) $log->tab_accessed,
+            };
+            $entries->push([
+                'at' => $log->accessed_at,
+                'actor' => $log->actor?->name ?? '—',
+                'event' => 'وصول تبويب',
+                'detail' => $tabLabel,
+            ]);
+        }
+
+        foreach (EmployeeTransfer::query()
+            ->where('user_id', $this->userId)
+            ->with(['fromUnit:id,name', 'toUnit:id,name', 'mover:id,name'])
+            ->orderByDesc('effective_on')
+            ->get() as $transfer) {
+            $from = $transfer->fromUnit?->name ?? '—';
+            $to = $transfer->toUnit?->name ?? '—';
+            $entries->push([
+                'at' => $transfer->effective_on->startOfDay(),
+                'actor' => $transfer->mover?->name ?? '—',
+                'event' => 'نقل هيكلي',
+                'detail' => "{$from} → {$to}".($transfer->reason ? " — {$transfer->reason}" : ''),
+            ]);
+        }
+
+        foreach (AuditLog::query()
+            ->where('target_type', User::class)
+            ->where('target_id', $this->userId)
+            ->with('actor:id,name')
+            ->orderByDesc('created_at')
+            ->limit(50)
+            ->get() as $audit) {
+            $entries->push([
+                'at' => $audit->created_at,
+                'actor' => $audit->actor?->name ?? '—',
+                'event' => $audit->actionLabel(),
+                'detail' => is_array($audit->metadata) ? json_encode($audit->metadata, JSON_UNESCAPED_UNICODE) : '—',
+            ]);
+        }
+
+        return $entries->sortByDesc(fn (array $row) => $row['at'])->values();
+    }
+
     public function render(): View
     {
         $user = User::with(['department:id,name', 'manager:id,name', 'profile.payScale', 'roles:id,name'])
@@ -613,6 +673,7 @@ class EmployeeProfileShow extends Component
                 ->get(),
             'leaves' => LeaveRequest::query()->where('employee_id', $this->userId)->latest()->limit(20)->get(),
             'tasks' => Task::query()->where('assigned_to', $this->userId)->latest()->limit(20)->get(['id', 'title', 'status', 'due_date']),
+            'profileLogEntries' => $this->activeTab === 'log' ? $this->profileLogEntries() : collect(),
         ])->layout('layouts.app', ['title' => 'الملف الوظيفي — '.$user->name]);
     }
 }

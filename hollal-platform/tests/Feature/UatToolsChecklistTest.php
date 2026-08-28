@@ -52,7 +52,7 @@ class UatToolsChecklistTest extends TestCase
             ->assertSee('التبويب 9 — المالية', false)
             ->assertSee('التبويب 11 — المشاريع', false)
             ->assertSee('دليل العاملين', false)
-            ->assertSee('دورة الحضور', false)
+            ->assertSee('الحضور الشهري', false)
             ->assertSee('دليل الحسابات', false)
             ->assertSee('أسئلة التشخيص', false)
             ->assertSee('دورة الحياة', false)

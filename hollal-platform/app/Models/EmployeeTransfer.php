@@ -40,4 +40,10 @@ class EmployeeTransfer extends Model
     {
         return $this->belongsTo(OrgUnit::class, 'to_org_unit_id');
     }
+
+    /** @return BelongsTo<User, $this> */
+    public function mover(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'moved_by');
+    }
 }

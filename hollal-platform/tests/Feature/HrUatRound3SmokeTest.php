@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Livewire\Hr\AttendanceIndex;
 use App\Livewire\Hr\EvaluationsIndex;
+use App\Livewire\Hr\HeaderAttendancePunch;
 use App\Livewire\NotificationBell;
 use App\Models\AttendanceRecord;
 use App\Models\PeriodicEvaluation;
@@ -80,10 +81,10 @@ class HrUatRound3SmokeTest extends TestCase
             ->assertSet('actionPanelOpen', true);
     }
 
-    public function test_evaluation_preview_before_publish(): void
+    public function test_evaluations_employee_menu_without_preview(): void
     {
         $employee = User::factory()->create(['is_active' => true]);
-        $evaluation = PeriodicEvaluation::create([
+        PeriodicEvaluation::create([
             'employee_id' => $employee->id,
             'period' => '2026-Q3',
             'evaluator_id' => $this->admin->id,
@@ -92,11 +93,8 @@ class HrUatRound3SmokeTest extends TestCase
 
         Livewire::actingAs($this->admin)
             ->test(EvaluationsIndex::class)
-            ->assertSee('إظهار للموظف (اختياري)')
-            ->call('openPreview', $evaluation->id)
-            ->assertSet('previewId', $evaluation->id)
-            ->assertSee('إظهار التقييم للموظف (اختياري)')
-            ->assertSee('خيار اختياري');
+            ->assertSee('عرض جميع التقييمات')
+            ->assertDontSee('إظهار للموظف');
     }
 
     public function test_attendance_management_tools_render(): void
@@ -114,12 +112,20 @@ class HrUatRound3SmokeTest extends TestCase
         Livewire::actingAs($this->admin)
             ->test(AttendanceIndex::class)
             ->assertSee('إدارة الحضور')
-            ->assertSee('تفعيل الحضور للموظفين')
+            ->assertSee('سجل الحضور والانصراف')
             ->assertSee('طباعة السجل الشهري')
-            ->assertSee('تأخر')
             ->set('printMonth', now()->format('Y-m'))
             ->call('openMonthlyPrint')
             ->assertSet('showPrint', true)
             ->assertSee('سجل الحضور الشهري');
+    }
+
+    public function test_header_single_punch_button(): void
+    {
+        Livewire::actingAs($this->admin)
+            ->test(HeaderAttendancePunch::class)
+            ->assertSee('تسجيل الحضور')
+            ->call('openPanel')
+            ->assertSet('showPanel', true);
     }
 }

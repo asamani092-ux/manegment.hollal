@@ -19,8 +19,7 @@
     </x-ds-page-header>
 
     <p class="ds-text-muted ds-mb-3">
-        أداة الموارد البشرية: التقييم <strong>داخلي</strong> افتراضيًا (مسودة → درجات).
-        «إظهار للموظف» اختياري. بعد الإكمال استخدم <strong>أرشفة</strong> لنقل التقييم إلى سجل الملف الوظيفي.
+        أداة الموارد البشرية: مسودة → درجات → <strong>أرشفة</strong> لظهور التقييم في سجل الملف الوظيفي (بعد اكتمال الدرجات).
     </p>
 
     <div class="ds-filters-row">
@@ -29,7 +28,7 @@
             <select id="eval-status" class="ds-input" wire:model.live="statusFilter">
                 <option value="">— الكل —</option>
                 <option value="مسودة">مسودة</option>
-                <option value="منشور">منشور (ظاهر للموظف)</option>
+                <option value="منشور">منشور</option>
                 <option value="مؤرشف">مؤرشف</option>
             </select>
         </div>
@@ -52,41 +51,48 @@
         <x-slot:head>
             <tr>
                 <th scope="col">الموظف</th>
-                <th scope="col">الفترة</th>
-                <th scope="col">المقيّم</th>
+                <th scope="col">آخر فترة</th>
                 <th scope="col">الحالة</th>
                 <th scope="col">إجراءات</th>
             </tr>
         </x-slot:head>
-        @forelse ($evaluations as $evaluation)
-            <tr wire:key="eval-{{ $evaluation->id }}">
-                <td>{{ $evaluation->employee?->name ?? '—' }}</td>
-                <td class="ds-ltr-num">{{ $evaluation->period }}</td>
-                <td>{{ $evaluation->evaluator?->name ?? '—' }}</td>
-                <td><x-ds-status-badge :status="$evaluation->status" /></td>
+        @forelse ($employeeRows as $employee)
+            @php $latest = $latestEvaluations->get($employee->id); @endphp
+            <tr wire:key="eval-emp-{{ $employee->id }}">
+                <td>{{ $employee->name }}</td>
+                <td class="ds-ltr-num">{{ $latest?->period ?? '—' }}</td>
                 <td>
-                    <button type="button" class="ds-link" wire:click="openScoring({{ $evaluation->id }})">الدرجات</button>
-                    @if ($canManage && $evaluation->status === \App\Models\PeriodicEvaluation::STATUS_DRAFT)
-                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openPreview({{ $evaluation->id }})">إظهار للموظف (اختياري)</button>
+                    @if ($latest)
+                        <x-ds-status-badge :status="$latest->status" />
+                    @else
+                        —
                     @endif
-                    @if ($canManage && $evaluation->status !== \App\Models\PeriodicEvaluation::STATUS_ARCHIVED)
-                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="archive({{ $evaluation->id }})">أرشفة</button>
-                    @endif
-                    <a class="ds-link" href="{{ route('users.profile', $evaluation->employee_id) }}?tab=evaluations">الملف الوظيفي</a>
+                </td>
+                <td>
+                    <x-ds-row-menu align="end">
+                        <button type="button" class="ds-dropdown-item" wire:click="openEmployeeEvaluations({{ $employee->id }})">عرض جميع التقييمات</button>
+                        @if ($canManage)
+                            <button type="button" class="ds-dropdown-item" wire:click="openLatestScoring({{ $employee->id }})">تقييم الفترة الجديدة</button>
+                        @endif
+                        <a class="ds-dropdown-item" href="{{ route('users.profile', $employee->id) }}?tab=evaluations">الملف الوظيفي</a>
+                        @if ($canManage && $latest && $latest->status !== \App\Models\PeriodicEvaluation::STATUS_ARCHIVED)
+                            <button type="button" class="ds-dropdown-item" wire:click="archiveForEmployee({{ $employee->id }})" wire:confirm="أرشفة آخر تقييم لهذا الموظف؟">أرشفة</button>
+                        @endif
+                    </x-ds-row-menu>
                 </td>
             </tr>
         @empty
             <tr>
-                <td colspan="5">
+                <td colspan="4">
                     <x-ds-empty-state
-                        message="لا توجد تقييمات بعد. أنشئ تقييمًا جديدًا بعد تعريف مسؤوليات الموظف من شاشة المسؤوليات؛ بدون مسؤوليات لن تظهر بنود للدرجات."
+                        message="لا توجد تقييمات بعد. أنشئ تقييمًا جديدًا بعد تعريف مسؤوليات الموظف."
                         icon="fa-star-half-stroke"
                     />
                 </td>
             </tr>
         @endforelse
     </x-ds-table>
-    {{ $evaluations->links() }}
+    {{ $employeeRows->links() }}
 
     <x-ds-modal :show="$showCreate" title="تقييم جديد" close-action="$set('showCreate', false)">
         <x-ds-form-group label="الموظف" :error="$errors->first('employee_id')">
@@ -105,7 +111,7 @@
     </x-ds-modal>
 
     <x-ds-modal :show="$showBulkCreate" title="تقييم جماعي" close-action="$set('showBulkCreate', false)" size="lg">
-        <p class="ds-text-muted ds-mb-3">يُنشأ تقييم لكل موظف مختار لنفس الفترة، مع بنود مشتركة شاملة (تُضاف كمسؤوليات إن لم تكن موجودة).</p>
+        <p class="ds-text-muted ds-mb-3">يُنشأ تقييم لكل موظف مختار لنفس الفترة، مع بنود مشتركة.</p>
         <x-ds-form-group label="الفترة" :error="$errors->first('period')">
             <input type="text" class="ds-input ds-ltr-num" wire:model="period" placeholder="2026-Q3">
         </x-ds-form-group>
@@ -125,36 +131,35 @@
         <button type="button" class="ds-btn ds-btn-primary" wire:click="createBulkEvaluations">إنشاء التقييمات</button>
     </x-ds-modal>
 
-    <x-ds-modal :show="$previewId !== null" title="إظهار التقييم للموظف (اختياري)" close-action="closePreview">
-        @if ($previewEvaluation)
-            <p class="ds-text-muted ds-mb-3">
-                الدورة الافتراضية داخلية للموارد. هذا الخيار يُظهر التقييم للموظف لمراجعة العميل (قبول/رفض السياسة لاحقًا). ليس إلزاميًا لإكمال التقييم.
-            </p>
-            <p><strong>الموظف:</strong> {{ $previewEvaluation->employee?->name ?? '—' }}</p>
-            <p><strong>الفترة:</strong> <span class="ds-ltr-num">{{ $previewEvaluation->period }}</span></p>
-            <p><strong>المقيّم:</strong> {{ $previewEvaluation->evaluator?->name ?? '—' }}</p>
-            @if ($previewEvaluation->scores->isNotEmpty())
-                <ul class="ds-mb-3">
-                    @foreach ($previewEvaluation->scores as $score)
-                        <li>
-                            {{ $score->responsibility?->body ?? ('بند #'.$score->responsibility_id) }}
-                            — <span class="ds-ltr-num">{{ $score->score }} / 5</span>
-                            @if ($score->note) — {{ $score->note }} @endif
-                        </li>
-                    @endforeach
-                </ul>
-            @else
-                <p class="ds-text-muted">لا توجد درجات مسجّلة بعد.</p>
-            @endif
-            <div class="ds-toolbar-actions">
-                <button type="button" class="ds-btn ds-btn-outline" wire:click="closePreview">إلغاء</button>
-                <button
-                    type="button"
-                    class="ds-btn ds-btn-primary"
-                    wire:click="publish({{ $previewId }})"
-                    wire:confirm="تأكيد إظهار التقييم للموظف؟ (خيار اختياري)"
-                >تأكيد الإظهار للموظف</button>
-            </div>
+    <x-ds-modal :show="$listEmployeeId !== null" :title="'تقييمات — '.($listEmployee?->name ?? '')" close-action="closeEmployeeEvaluations" size="lg">
+        @if ($listEmployee)
+            <x-ds-table>
+                <x-slot:head>
+                    <tr>
+                        <th>الفترة</th>
+                        <th>المقيّم</th>
+                        <th>الحالة</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </x-slot:head>
+                @forelse ($employeeEvaluations as $evaluation)
+                    <tr wire:key="emp-eval-{{ $evaluation->id }}">
+                        <td class="ds-ltr-num">{{ $evaluation->period }}</td>
+                        <td>{{ $evaluation->evaluator?->name ?? '—' }}</td>
+                        <td><x-ds-status-badge :status="$evaluation->status" /></td>
+                        <td>
+                            @if ($evaluation->status === \App\Models\PeriodicEvaluation::STATUS_DRAFT)
+                                <button type="button" class="ds-link" wire:click="openScoring({{ $evaluation->id }})">الدرجات</button>
+                            @endif
+                            @if ($canManage && $evaluation->status !== \App\Models\PeriodicEvaluation::STATUS_ARCHIVED)
+                                <button type="button" class="ds-link" wire:click="archive({{ $evaluation->id }})" wire:confirm="أرشفة هذا التقييم؟">أرشفة</button>
+                            @endif
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="4" class="ds-text-muted">لا توجد تقييمات</td></tr>
+                @endforelse
+            </x-ds-table>
         @endif
     </x-ds-modal>
 
@@ -178,20 +183,10 @@
                     @endif
                 </div>
             @empty
-                <p class="ds-text-muted">
-                    لا توجد مسؤوليات نشطة لهذا الموظف. أضف المسؤوليات من شاشة «المسؤوليات» أولًا، ثم أعد فتح الدرجات لتسجيل التقييم.
-                </p>
+                <p class="ds-text-muted">لا توجد مسؤوليات نشطة — عرّفها من شاشة المسؤوليات.</p>
             @endforelse
             @if ($scoringEvaluation->status === \App\Models\PeriodicEvaluation::STATUS_DRAFT && ($canManage || $scoringEvaluation->evaluator_id === auth()->id()))
                 <button type="button" class="ds-btn ds-btn-primary" wire:click="saveScores">حفظ الدرجات</button>
-            @endif
-            @if ($scoringEvaluation->isPublished() && $scoringEvaluation->employee_id === auth()->id())
-                <x-ds-form-group label="تعليق الموظف" :error="$errors->first('employeeComment')">
-                    <textarea class="ds-input" wire:model="employeeComment" rows="3"></textarea>
-                </x-ds-form-group>
-                <button type="button" class="ds-btn ds-btn-primary" wire:click="saveComment">إرسال التعليق</button>
-            @elseif ($scoringEvaluation->employee_comment)
-                <p>تعليق الموظف: {{ $scoringEvaluation->employee_comment }}</p>
             @endif
         @endif
     </x-ds-modal>

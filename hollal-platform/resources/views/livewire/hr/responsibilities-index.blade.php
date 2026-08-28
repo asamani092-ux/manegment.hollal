@@ -1,11 +1,11 @@
 <x-ds-page>
-    <x-ds-page-header
-        title="المسؤوليات"
-        :show-button="true"
-        button-label="بند جديد"
-        button-icon="fa-plus"
-        wire:click="openForm"
-    />
+    <div class="ds-toolbar-actions ds-mb-3">
+        <button type="button" class="ds-btn ds-btn-primary" wire:click="openForm">
+            <i class="fas fa-plus" aria-hidden="true"></i> بند جديد
+        </button>
+    </div>
+
+    <x-ds-page-header title="المسؤوليات" :show-button="false" />
 
     <div class="ds-filters-row">
         <div class="ds-filter-field">
@@ -24,36 +24,31 @@
     <x-ds-table>
         <x-slot:head>
             <tr>
-                <th scope="col">الموظف</th>
-                <th scope="col">البند</th>
-                <th scope="col">الترتيب</th>
+                <th scope="col">اسم الموظف</th>
+                <th scope="col">عدد المسؤوليات</th>
                 <th scope="col">الحالة</th>
                 <th scope="col">إجراءات</th>
             </tr>
         </x-slot:head>
-        @forelse ($items as $item)
-            <tr wire:key="resp-{{ $item->id }}">
+        @forelse ($employeeRows as $row)
+            <tr wire:key="resp-emp-{{ $row->id }}">
+                <td>{{ $row->name }}</td>
+                <td class="ds-ltr-num">{{ (int) $row->responsibilities_count }}</td>
                 <td>
-                    <button type="button" class="ds-link" wire:click="openEmployeePanel({{ $item->employee_id }})">
-                        {{ $item->employee?->name ?? '—' }}
-                    </button>
+                    <x-ds-status-badge :status="((int) $row->active_count) > 0 ? 'نشط' : 'موقوفة'" />
                 </td>
-                <td>{{ $item->body }}</td>
-                <td class="ds-ltr-num">{{ $item->order }}</td>
-                <td><x-ds-status-badge :status="$item->is_active ? 'نشط' : 'موقوفة'" /></td>
                 <td>
-                    <button type="button" class="ds-link" wire:click="openEdit({{ $item->id }})">تعديل</button>
-                    @if ($item->is_active)
-                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="deactivate({{ $item->id }})">إيقاف</button>
-                    @endif
-                    <button type="button" class="ds-link" wire:click="delete({{ $item->id }})" wire:confirm="حذف هذا البند؟">حذف</button>
+                    <x-ds-row-menu align="end">
+                        <button type="button" class="ds-dropdown-item" wire:click="openEmployeePanel({{ $row->id }})">عرض المسؤوليات</button>
+                        <button type="button" class="ds-dropdown-item" wire:click="deactivateAllForEmployee({{ $row->id }})" wire:confirm="إيقاف جميع مسؤوليات هذا الموظف؟">إيقاف مؤقت لجميع المسؤوليات</button>
+                    </x-ds-row-menu>
                 </td>
             </tr>
         @empty
-            <tr><td colspan="5"><x-ds-empty-state message="لا توجد مسؤوليات" icon="fa-list-check" /></td></tr>
+            <tr><td colspan="4"><x-ds-empty-state message="لا توجد مسؤوليات" icon="fa-list-check" /></td></tr>
         @endforelse
     </x-ds-table>
-    {{ $items->links() }}
+    {{ $employeeRows->links() }}
 
     <x-ds-modal :show="$showForm" :title="$editingId ? 'تعديل مسؤولية' : 'بند مسؤولية'" close-action="$set('showForm', false)" size="lg">
         <x-ds-form-group label="الموظف" :error="$errors->first('employee_id')">
@@ -81,20 +76,35 @@
 
     <x-ds-modal :show="$showEmployeePanel" :title="'مسؤوليات — '.($panelEmployee?->name ?? '')" close-action="closeEmployeePanel" size="lg">
         @if ($panelEmployee)
-            <p class="ds-text-muted ds-mb-3">كل مسؤوليات الموظف في مكان واحد.</p>
-            <ul>
+            <x-ds-table>
+                <x-slot:head>
+                    <tr>
+                        <th>البند</th>
+                        <th>الترتيب</th>
+                        <th>الحالة</th>
+                        <th>إجراءات</th>
+                    </tr>
+                </x-slot:head>
                 @forelse ($panelItems as $item)
-                    <li class="ds-mb-sm" wire:key="panel-{{ $item->id }}">
-                        <strong class="ds-ltr-num">{{ $item->order }}.</strong>
-                        {{ $item->body }}
-                        — <x-ds-status-badge :status="$item->is_active ? 'نشط' : 'موقوفة'" />
-                        <button type="button" class="ds-link" wire:click="openEdit({{ $item->id }})">تعديل</button>
-                    </li>
+                    <tr wire:key="panel-{{ $item->id }}">
+                        <td>{{ $item->body }}</td>
+                        <td class="ds-ltr-num">{{ $item->order }}</td>
+                        <td><x-ds-status-badge :status="$item->is_active ? 'نشط' : 'موقوفة'" /></td>
+                        <td>
+                            <x-ds-row-menu align="end">
+                                <button type="button" class="ds-dropdown-item" wire:click="openEdit({{ $item->id }})">تعديل</button>
+                                @if ($item->is_active)
+                                    <button type="button" class="ds-dropdown-item" wire:click="deactivate({{ $item->id }})">إيقاف</button>
+                                @endif
+                                <button type="button" class="ds-dropdown-item" wire:click="delete({{ $item->id }})" wire:confirm="حذف هذا البند؟">حذف</button>
+                            </x-ds-row-menu>
+                        </td>
+                    </tr>
                 @empty
-                    <li class="ds-text-muted">لا بنود</li>
+                    <tr><td colspan="4" class="ds-text-muted">لا بنود</td></tr>
                 @endforelse
-            </ul>
-            <button type="button" class="ds-btn ds-btn-primary" wire:click="openForm">إضافة بند</button>
+            </x-ds-table>
+            <button type="button" class="ds-btn ds-btn-primary ds-mt-3" wire:click="openFormForEmployee({{ $panelEmployee->id }})">إضافة بند</button>
         @endif
     </x-ds-modal>
 </x-ds-page>

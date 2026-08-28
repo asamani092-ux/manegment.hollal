@@ -41,7 +41,7 @@ class EvaluationsIndex extends Component
 
     public ?int $scoringId = null;
 
-    public ?int $previewId = null;
+    public ?int $listEmployeeId = null;
 
     /** @var array<int, array{score: string, note: string}> */
     public array $scoreInputs = [];
@@ -165,41 +165,71 @@ class EvaluationsIndex extends Component
         $this->dispatch('toast', type: 'success', message: "أُنشئ {$created} تقييماً جماعياً");
     }
 
-    public function publish(int $id): void
-    {
-        abort_unless(auth()->user()->can('hr.employees.update'), 403);
-        $evaluation = PeriodicEvaluation::findOrFail($id);
-        app(EvaluationService::class)->publish($evaluation);
-        $this->previewId = null;
-        $this->dispatch('toast', type: 'success', message: 'أُظهر التقييم للموظف (خيار اختياري) — الدورة الافتراضية تبقى داخلية للموارد');
-    }
-
     public function archive(int $id): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
         $evaluation = PeriodicEvaluation::findOrFail($id);
-        app(EvaluationService::class)->archive($evaluation);
+
+        try {
+            app(EvaluationService::class)->archive($evaluation);
+        } catch (\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
         $this->scoringId = null;
-        $this->previewId = null;
         $this->dispatch('toast', type: 'success', message: 'أُرشف التقييم — يظهر في سجل الملف الوظيفي');
     }
 
-    public function openPreview(int $id): void
+    public function archiveForEmployee(int $employeeId): void
     {
-        $evaluation = PeriodicEvaluation::with(['employee:id,name', 'evaluator:id,name', 'scores'])->findOrFail($id);
-        abort_unless(
-            auth()->user()->can('hr.employees.view')
-            || auth()->user()->can('hr.employees.update')
-            || $evaluation->evaluator_id === auth()->id(),
-            403
-        );
-        $this->previewId = $id;
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        $evaluation = PeriodicEvaluation::query()
+            ->where('employee_id', $employeeId)
+            ->where('status', '!=', PeriodicEvaluation::STATUS_ARCHIVED)
+            ->orderByDesc('period')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($evaluation === null) {
+            $this->dispatch('toast', type: 'error', message: 'لا يوجد تقييم قابل للأرشفة');
+
+            return;
+        }
+
+        $this->archive($evaluation->id);
+    }
+
+    public function openEmployeeEvaluations(int $employeeId): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.view'), 403);
+        $this->listEmployeeId = $employeeId;
         $this->scoringId = null;
     }
 
-    public function closePreview(): void
+    public function closeEmployeeEvaluations(): void
     {
-        $this->previewId = null;
+        $this->listEmployeeId = null;
+    }
+
+    public function openLatestScoring(int $employeeId): void
+    {
+        $evaluation = PeriodicEvaluation::query()
+            ->where('employee_id', $employeeId)
+            ->where('status', PeriodicEvaluation::STATUS_DRAFT)
+            ->orderByDesc('period')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($evaluation === null) {
+            $this->dispatch('toast', type: 'error', message: 'لا يوجد تقييم مسودة — أنشئ فترة جديدة أولاً');
+
+            return;
+        }
+
+        $this->openScoring($evaluation->id);
     }
 
     public function openScoring(int $id): void
@@ -276,21 +306,43 @@ class EvaluationsIndex extends Component
 
     public function render(): View
     {
-        // Anyone with hr.employees.view (required in mount) sees the full list.
-        // Create / score / publish remain gated by hr.employees.update (or evaluator for scores).
-        $query = PeriodicEvaluation::query()
-            ->select(['id', 'employee_id', 'period', 'evaluator_id', 'status', 'created_at'])
-            ->with(['employee:id,name', 'evaluator:id,name'])
-            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
-            ->when($this->periodFilter, fn ($q) => $q->where('period', $this->periodFilter))
-            ->when($this->search, fn ($q) => $q->whereHas(
-                'employee',
-                fn ($e) => $e->where('name', 'like', '%'.$this->search.'%')
-            ))
-            ->latest();
+        $employeeQuery = User::query()
+            ->select(['id', 'name'])
+            ->where('is_active', true)
+            ->whereHas('periodicEvaluations', function ($q) {
+                $q->when($this->statusFilter, fn ($inner) => $inner->where('status', $this->statusFilter))
+                    ->when($this->periodFilter, fn ($inner) => $inner->where('period', $this->periodFilter));
+            })
+            ->when($this->search !== '', fn ($q) => $q->where('name', 'like', '%'.$this->search.'%'))
+            ->orderBy('name');
+
+        $employeeRows = $employeeQuery->paginate(15);
+        $employeeIds = $employeeRows->getCollection()->pluck('id');
+
+        $latestEvaluations = PeriodicEvaluation::query()
+            ->select(['id', 'employee_id', 'period', 'status', 'evaluator_id'])
+            ->whereIn('employee_id', $employeeIds)
+            ->with('evaluator:id,name')
+            ->orderByDesc('period')
+            ->orderByDesc('id')
+            ->get()
+            ->unique('employee_id')
+            ->keyBy('employee_id');
+
+        $listEmployee = $this->listEmployeeId
+            ? User::query()->find($this->listEmployeeId, ['id', 'name'])
+            : null;
+        $employeeEvaluations = $this->listEmployeeId
+            ? PeriodicEvaluation::query()
+                ->where('employee_id', $this->listEmployeeId)
+                ->with(['evaluator:id,name'])
+                ->orderByDesc('period')
+                ->get()
+            : collect();
 
         return view('livewire.hr.evaluations-index', [
-            'evaluations' => $query->paginate(15),
+            'employeeRows' => $employeeRows,
+            'latestEvaluations' => $latestEvaluations,
             'periods' => PeriodicEvaluation::query()->distinct()->orderByDesc('period')->pluck('period'),
             'employees' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'employeeOptions' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name'])
@@ -307,9 +359,8 @@ class EvaluationsIndex extends Component
                     ->orderBy('order')
                     ->get()
                 : collect(),
-            'previewEvaluation' => $this->previewId
-                ? PeriodicEvaluation::with(['employee:id,name', 'evaluator:id,name', 'scores.responsibility'])->find($this->previewId)
-                : null,
+            'listEmployee' => $listEmployee,
+            'employeeEvaluations' => $employeeEvaluations,
         ]);
     }
 }

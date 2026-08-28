@@ -46,7 +46,7 @@ class AttendanceCycleIndex extends Component
         $svc = app(AttendanceDeductionService::class);
         $cycle = $svc->currentCycle(\Illuminate\Support\Carbon::parse($this->asOf));
         $svc->approveCycle($cycle['from'], $cycle['to'], auth()->user());
-        $this->dispatch('toast', type: 'success', message: 'تم اعتماد تقرير دورة الحضور');
+        $this->dispatch('toast', type: 'success', message: 'تم اعتماد تقرير الحضور الشهري');
     }
 
     public function applyToPayroll(): void
@@ -129,6 +129,6 @@ class AttendanceCycleIndex extends Component
                 ? app(AttendanceService::class)->monthlyReport($this->reportMonth)
                 : null,
             'amountsTotal' => collect($rows)->sum(fn ($r) => (float) ($r['total_deduction'] ?? 0)),
-        ])->layout('layouts.app', ['title' => 'دورة الحضور والخصم']);
+        ])->layout('layouts.app', ['title' => 'الحضور الشهري والخصم']);
     }
 }
