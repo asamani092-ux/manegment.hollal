@@ -55,6 +55,7 @@ class HrRound1Test extends TestCase
             ->set('job_title', 'محاسب')
             ->set('employment_type', 'دوام_كامل')
             ->set('hire_date', '2026-01-15')
+            ->set('onboarding_assignee_id', $admin->id)
             ->call('save')
             ->assertHasNoErrors();
 
