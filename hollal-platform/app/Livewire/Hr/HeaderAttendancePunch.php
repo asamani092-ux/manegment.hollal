@@ -96,6 +96,28 @@ class HeaderAttendancePunch extends Component
         $this->dispatch('toast', type: 'success', message: $msg);
     }
 
+    public function approvePending(int $recordId): void
+    {
+        $record = AttendanceRecord::query()->with('employee')->findOrFail($recordId);
+        try {
+            app(AttendanceService::class)->approveDayType($record, auth()->user());
+            $this->dispatch('toast', type: 'success', message: 'تم اعتماد اليوم');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
+    public function rejectPending(int $recordId): void
+    {
+        $record = AttendanceRecord::query()->with('employee')->findOrFail($recordId);
+        try {
+            app(AttendanceService::class)->rejectDayType($record, auth()->user());
+            $this->dispatch('toast', type: 'success', message: 'تم رفض اليوم');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
     public function render(): View
     {
         $user = auth()->user();
@@ -106,6 +128,7 @@ class HeaderAttendancePunch extends Component
         $todayRecord = null;
         $recentRecords = collect();
         $todayLate = 0;
+        $pendingForManager = collect();
         if ($enabled && $user) {
             $todayRecord = AttendanceRecord::query()
                 ->where('employee_id', $user->id)
@@ -123,6 +146,24 @@ class HeaderAttendancePunch extends Component
                 ->get(['id', 'date', 'type', 'check_in_at', 'check_out_at', 'approval_status', 'late_minutes']);
         }
 
+        if ($user) {
+            $subIds = \App\Models\User::query()->where('manager_id', $user->id)->pluck('id');
+            if ($subIds->isNotEmpty() || $user->can('hr.employees.update')) {
+                $pendingQuery = AttendanceRecord::query()
+                    ->select(['id', 'employee_id', 'date', 'type', 'approval_status'])
+                    ->with('employee:id,name,manager_id')
+                    ->where('approval_status', AttendanceService::APPROVAL_PENDING)
+                    ->whereIn('type', [AttendanceService::TYPE_REMOTE, AttendanceService::TYPE_FIELD])
+                    ->latest('date')
+                    ->limit(20);
+                if (! $user->can('hr.employees.update')) {
+                    $pendingQuery->whereIn('employee_id', $subIds);
+                }
+                $pendingForManager = $pendingQuery->get()
+                    ->filter(fn ($r) => $service->canDecideDayType($r, $user));
+            }
+        }
+
         return view('livewire.hr.header-attendance-punch', [
             'enabled' => $enabled,
             'officeStart' => $expected['start'],
@@ -131,7 +172,9 @@ class HeaderAttendancePunch extends Component
             'todayRecord' => $todayRecord,
             'todayLate' => $todayLate,
             'recentRecords' => $recentRecords,
+            'pendingForManager' => $pendingForManager,
             'canManageAttendance' => (bool) $user?->can('hr.employees.update'),
+            'showPanelAnyway' => $pendingForManager->isNotEmpty(),
         ]);
     }
 }
