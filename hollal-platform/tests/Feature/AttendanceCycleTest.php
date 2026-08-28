@@ -129,9 +129,13 @@ class AttendanceCycleTest extends TestCase
         $employee->forceFill(['manager_id' => $manager->id])->save();
 
         $att = app(AttendanceService::class);
+
+        Carbon::setTestNow(Carbon::parse('2026-08-20 08:10:00'));
         $rec = $att->checkInViaBarcode($employee, 'hollal-site-demo');
         $this->assertSame('باركود', $rec->source);
 
+        // Field on a different day — first-wins blocks a second check-in same day.
+        Carbon::setTestNow(Carbon::parse('2026-08-21 09:00:00'));
         $field = $att->startFieldWork($employee, 'موقع تجريبي');
         $this->assertSame('بانتظار', $field->approval_status);
         $this->assertSame('ميداني', $field->type);
@@ -147,6 +151,8 @@ class AttendanceCycleTest extends TestCase
         $result = $att->importCsv($path, $employee);
         $this->assertSame(1, $result['rows']);
         @unlink($path);
+
+        Carbon::setTestNow();
     }
 
     public function test_excel_import_then_deduction_applies_to_payroll(): void

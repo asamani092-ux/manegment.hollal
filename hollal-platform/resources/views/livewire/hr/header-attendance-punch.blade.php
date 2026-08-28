@@ -37,6 +37,9 @@
                     <p>
                         <strong>حضور:</strong>
                         <span class="ds-ltr-num">{{ $todayRecord?->check_in_at ? hollal_time($todayRecord->check_in_at) : '—' }}</span>
+                        @if ($todayRecord?->source)
+                            <span class="ds-text-muted">({{ $todayRecord->source }})</span>
+                        @endif
                         ·
                         <strong>انصراف:</strong>
                         <span class="ds-ltr-num">{{ $todayRecord?->check_out_at ? hollal_time($todayRecord->check_out_at) : '—' }}</span>
@@ -53,6 +56,34 @@
                     <button type="button" class="ds-btn ds-btn-primary" wire:click="checkIn">تسجيل حضور</button>
                     <button type="button" class="ds-btn ds-btn-outline" wire:click="checkOut">تسجيل انصراف</button>
                 </div>
+
+                <section class="ds-section ds-mb-3">
+                    <h3 class="ds-section-title">باركود المقر</h3>
+                    @if (! $barcodeConfigured)
+                        <p class="ds-text-muted">لم يُعرَّف باركود المقر بعد — يعرّفه مسؤول الموارد من شاشة الحضور أو الإعدادات.</p>
+                    @else
+                        <x-ds-form-group label="أدخل رمز المقر" :error="$errors->first('barcodeToken')">
+                            <input type="text" class="ds-input ds-ltr-num" wire:model="barcodeToken" autocomplete="off" placeholder="رمز الباركود">
+                        </x-ds-form-group>
+                        <button type="button" class="ds-btn ds-btn-teal" wire:click="checkInViaBarcode">تسجيل بالباركود</button>
+                    @endif
+                </section>
+
+                <section class="ds-section ds-mb-3" x-data>
+                    <h3 class="ds-section-title">الموقع الجغرافي</h3>
+                    <p class="ds-text-muted">يسجّل الحضور إن كنت داخل نطاق موقع مسموح.</p>
+                    <button
+                        type="button"
+                        class="ds-btn ds-btn-outline"
+                        x-on:click="
+                            if (!navigator.geolocation) { $wire.geoFailed('المتصفح لا يدعم تحديد الموقع'); return; }
+                            navigator.geolocation.getCurrentPosition(
+                                (p) => $wire.checkInViaGeo(p.coords.latitude, p.coords.longitude),
+                                () => $wire.geoFailed()
+                            )
+                        "
+                    >تسجيل بالموقع الحالي</button>
+                </section>
 
                 <section class="ds-section ds-mb-3">
                     <h3 class="ds-section-title">إقرار نوع اليوم</h3>

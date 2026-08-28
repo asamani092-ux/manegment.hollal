@@ -5,11 +5,13 @@
         <strong>دورة الحضور:</strong>
         (1) تفعيل البرنامج ←
         (2) تعريف الوردية وإسنادها ←
-        (3) تسجيل يومي من زر «تسجيل الحضور» في الشريط العلوي ←
-        (4) إقرار نوع اليوم (حضور / عن بعد / ميداني) ←
-        (5) اعتماد المدير للعن بعد والميداني ←
-        (6) طباعة شهرية ←
-        (7) <a href="{{ route('attendance.cycle') }}">الحضور الشهري</a> (استيراد بصمة وخصم).
+        (3) باركود المقر ومواقع السياج الجغرافي ←
+        (4) تسجيل يومي (يدوي / باركود / موقع) من زر الشريط العلوي ←
+        (5) إقرار نوع اليوم (حضور / عن بعد / ميداني) ←
+        (6) اعتماد المدير للعن بعد والميداني ←
+        (7) طباعة شهرية ←
+        (8) <a href="{{ route('attendance.cycle') }}">الحضور الشهري</a> (استيراد بصمة وخصم).
+        يُعتمد أول تسجيل حضور في اليوم؛ لا يُستبدل إلا ببصمة مستوردة.
     </p>
 
     @if (! $attendanceEnabled)
@@ -127,6 +129,60 @@
                         <button type="button" class="ds-btn ds-btn-primary" wire:click="assignShift">حفظ الإسناد</button>
                     </div>
                 </div>
+            </x-ds-collapsible-card>
+
+            <x-ds-collapsible-card title="3ب) باركود المقر الثابت" class="ds-attendance-grid-card" :open="false">
+                <p class="ds-text-muted">رمز واحد للمقر يمسحه أو يدخله الموظف بعد تفعيل برنامج الحضور. يظهر أيضاً في إعدادات المنصة.</p>
+                <x-ds-form-group label="رمز الباركود" :error="$errors->first('siteBarcodeToken')">
+                    <input type="text" class="ds-input ds-ltr-num" wire:model="siteBarcodeToken" autocomplete="off">
+                </x-ds-form-group>
+                <div class="ds-toolbar-actions">
+                    <button type="button" class="ds-btn ds-btn-primary" wire:click="saveSiteBarcode">حفظ الرمز</button>
+                    <button type="button" class="ds-btn ds-btn-outline" wire:click="rotateSiteBarcode" wire:confirm="توليد رمز جديد وإبطال الحالي؟">توليد رمز جديد</button>
+                </div>
+            </x-ds-collapsible-card>
+
+            <x-ds-collapsible-card title="3ج) مواقع الحضور (سياج جغرافي)" class="ds-attendance-grid-card" :open="false">
+                <p class="ds-text-muted">إحداثيات + نصف قطر بالمتر. يسجّل الموظف من موقع مسموح فقط.</p>
+                <div class="ds-toolbar-actions ds-mb-3">
+                    <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openLocationForm">موقع جديد</button>
+                </div>
+                <x-ds-table>
+                    <x-slot:head>
+                        <tr>
+                            <th scope="col">الاسم</th>
+                            <th scope="col">العرض</th>
+                            <th scope="col">الطول</th>
+                            <th scope="col">نصف القطر (م)</th>
+                            <th scope="col">الحالة</th>
+                            <th scope="col">إجراء</th>
+                        </tr>
+                    </x-slot:head>
+                    @forelse ($locations as $loc)
+                        <tr wire:key="loc-{{ $loc->id }}">
+                            <td>{{ $loc->name }}</td>
+                            <td class="ds-ltr-num">{{ $loc->latitude }}</td>
+                            <td class="ds-ltr-num">{{ $loc->longitude }}</td>
+                            <td class="ds-ltr-num">{{ $loc->radius_meters }}</td>
+                            <td>
+                                @if ($loc->is_active)
+                                    <span class="ds-badge ds-badge-success">نشط</span>
+                                @else
+                                    <span class="ds-badge ds-badge-warning">متوقف</span>
+                                @endif
+                            </td>
+                            <td>
+                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openLocationForm({{ $loc->id }})">تعديل</button>
+                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="toggleLocationActive({{ $loc->id }})">
+                                    {{ $loc->is_active ? 'إيقاف' : 'تفعيل' }}
+                                </button>
+                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="deleteLocation({{ $loc->id }})" wire:confirm="حذف الموقع؟">حذف</button>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="6" class="ds-text-muted">لا توجد مواقع بعد</td></tr>
+                    @endforelse
+                </x-ds-table>
             </x-ds-collapsible-card>
         @endif
 
@@ -270,6 +326,33 @@
             <div class="ds-toolbar-actions">
                 <button type="button" class="ds-btn ds-btn-primary" wire:click="saveShift">حفظ</button>
                 <button type="button" class="ds-btn ds-btn-outline" wire:click="closeShiftForm">إلغاء</button>
+            </div>
+        </x-ds-modal>
+    @endif
+
+    @if ($showLocationForm && $canManage)
+        <x-ds-modal :show="true" title="{{ $editingLocationId ? 'تعديل موقع حضور' : 'موقع حضور جديد' }}" close-action="closeLocationForm" size="md">
+            <x-ds-form-group label="الاسم" :error="$errors->first('locationName')">
+                <input type="text" class="ds-input" wire:model="locationName" placeholder="المقر الرئيسي">
+            </x-ds-form-group>
+            <div class="ds-filters-row">
+                <x-ds-form-group label="خط العرض" :error="$errors->first('locationLatitude')">
+                    <input type="text" class="ds-input ds-ltr-num" wire:model="locationLatitude" placeholder="24.7136000">
+                </x-ds-form-group>
+                <x-ds-form-group label="خط الطول" :error="$errors->first('locationLongitude')">
+                    <input type="text" class="ds-input ds-ltr-num" wire:model="locationLongitude" placeholder="46.6753000">
+                </x-ds-form-group>
+                <x-ds-form-group label="نصف القطر (متر)" :error="$errors->first('locationRadius')">
+                    <input type="number" min="20" max="5000" class="ds-input" wire:model="locationRadius">
+                </x-ds-form-group>
+            </div>
+            <label class="ds-checkbox-label ds-mb-3">
+                <input type="checkbox" wire:model="locationActive">
+                نشط للتسجيل
+            </label>
+            <div class="ds-toolbar-actions">
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="saveLocation">حفظ</button>
+                <button type="button" class="ds-btn ds-btn-outline" wire:click="closeLocationForm">إلغاء</button>
             </div>
         </x-ds-modal>
     @endif

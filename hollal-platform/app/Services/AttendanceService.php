@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AttendanceColumnMap;
 use App\Models\AttendanceImport;
+use App\Models\AttendanceLocation;
 use App\Models\AttendanceRecord;
 use App\Models\EmployeeProfile;
 use App\Models\User;
@@ -11,6 +12,7 @@ use App\Support\Setting;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 /**
  * 01-B4 — check-in/out for attendance-enabled employees. A day has a single
@@ -21,6 +23,10 @@ use Illuminate\Support\Facades\DB;
  *
  * Day types (path-2): حضور · عن بعد · ميداني. Remote/field stay pending until
  * the direct manager (or HR with hr.employees.update) approves/rejects.
+ *
+ * Path-2ب: fixed site barcode + multi geofence locations. First punch of the
+ * day wins chronologically; a later channel must not replace it. Only path-1
+ * imported fingerprint (بصمة) may replace a platform punch.
  *
  * Path-1 import (monthly file): a single upload *replaces* fingerprint
  * movements for that calendar month. When an imported fingerprint row
@@ -50,6 +56,8 @@ class AttendanceService
 
     public const SOURCE_BARCODE = 'باركود';
 
+    public const SOURCE_LOCATION = 'موقع';
+
     public const SOURCE_REMOTE = 'عن_بعد';
 
     /** Logical roles shown in Arabic mapping UI (internal keys only). */
@@ -74,31 +82,26 @@ class AttendanceService
 
     public function checkIn(User $employee, ?User $declaredBy = null): AttendanceRecord
     {
-        $this->assertEnabled($employee);
-        $this->assertNotFingerprintLocked($employee, today()->toDateString());
-        $this->assertShiftAllowsToday($employee);
-
-        $record = AttendanceRecord::updateOrCreate(
-            ['employee_id' => $employee->id, 'date' => today()],
-            [
-                'check_in_at' => now(),
-                'type' => self::TYPE_PRESENT,
-                'source' => self::SOURCE_MANUAL,
-                'approval_status' => null,
-                'declared_by' => ($declaredBy ?? $employee)->id,
-            ],
-        );
-
-        $late = $this->latenessMinutes($record);
-        $record->forceFill(['late_minutes' => $late])->save();
-
-        return $record->fresh();
+        return $this->punchCheckIn($employee, self::SOURCE_MANUAL, [
+            'type' => self::TYPE_PRESENT,
+            'approval_status' => null,
+            'declared_by' => ($declaredBy ?? $employee)->id,
+        ]);
     }
 
     public function checkOut(User $employee, ?User $declaredBy = null): AttendanceRecord
     {
         $this->assertEnabled($employee);
         $this->assertNotFingerprintLocked($employee, today()->toDateString());
+
+        $record = AttendanceRecord::query()
+            ->where('employee_id', $employee->id)
+            ->whereDate('date', today())
+            ->first();
+
+        if ($record && $record->check_out_at) {
+            throw new \InvalidArgumentException('تم تسجيل الانصراف مسبقاً لهذا اليوم — يُعتمد التسجيل الأسبق.');
+        }
 
         $record = AttendanceRecord::updateOrCreate(
             ['employee_id' => $employee->id, 'date' => today()],
@@ -440,26 +443,75 @@ class AttendanceService
         }
     }
 
-    /** ATT-3 — scan site barcode. Time: O(1) */
+    /** Current fixed site barcode token (empty if unset). */
+    public function siteBarcodeToken(): string
+    {
+        return (string) Setting::get('attendance.site_barcode_token', '');
+    }
+
+    /** Persist fixed site barcode (HR settings / resources screen). */
+    public function setSiteBarcodeToken(string $token): string
+    {
+        $token = trim($token);
+        if ($token === '') {
+            throw new \InvalidArgumentException('رمز باركود المقر مطلوب');
+        }
+        Setting::set('attendance.site_barcode_token', $token);
+
+        return $token;
+    }
+
+    /** Generate and store a new fixed site barcode token. */
+    public function rotateSiteBarcodeToken(): string
+    {
+        $token = 'hollal-'.Str::lower(Str::random(16));
+
+        return $this->setSiteBarcodeToken($token);
+    }
+
+    /**
+     * Path-2ب — fixed site barcode punch (settings token). Requires attendance_enabled.
+     * Time: O(1)
+     */
     public function checkInViaBarcode(User $employee, string $token): AttendanceRecord
     {
-        $expected = (string) Setting::get('attendance.site_barcode_token', '');
-        if ($expected === '' || ! hash_equals($expected, $token)) {
+        $expected = $this->siteBarcodeToken();
+        if ($expected === '') {
+            throw new \InvalidArgumentException('باركود المقر غير مُعرَّف — عرّفه من إعدادات الحضور.');
+        }
+        if (! hash_equals($expected, trim($token))) {
             throw new \InvalidArgumentException('باركود المقر غير صالح');
         }
 
-        $this->assertNotFingerprintLocked($employee, today()->toDateString());
-
-        $record = $this->checkIn($employee);
-        $record->forceFill([
-            'source' => self::SOURCE_BARCODE,
-            'late_minutes' => $this->latenessMinutes($record),
-        ])->save();
-
-        return $record->fresh();
+        return $this->punchCheckIn($employee, self::SOURCE_BARCODE, [
+            'type' => self::TYPE_PRESENT,
+            'approval_status' => null,
+            'declared_by' => $employee->id,
+            'attendance_location_id' => null,
+        ]);
     }
 
-    /** ATT-3 — field work pending manager approval. */
+    /**
+     * Path-2ب — geofence punch: employee must be inside an active location radius.
+     * Time: O(n) locations
+     */
+    public function checkInViaLocation(User $employee, float $latitude, float $longitude): AttendanceRecord
+    {
+        $site = AttendanceLocation::findContaining($latitude, $longitude);
+        if (! $site) {
+            throw new \InvalidArgumentException('أنت خارج نطاق المواقع المسموحة للحضور.');
+        }
+
+        return $this->punchCheckIn($employee, self::SOURCE_LOCATION, [
+            'type' => self::TYPE_PRESENT,
+            'approval_status' => null,
+            'declared_by' => $employee->id,
+            'attendance_location_id' => $site->id,
+            'field_location' => $site->name,
+        ]);
+    }
+
+    /** ATT-3 — field work pending manager approval. Respects first-wins on check-in. */
     public function startFieldWork(User $employee, string $location, ?string $proofPath = null): AttendanceRecord
     {
         $this->assertEnabled($employee);
@@ -467,6 +519,8 @@ class AttendanceService
         if (! $employee->profile?->is_field_worker) {
             throw new \InvalidArgumentException('الموظف غير مُعلَّم كميداني');
         }
+
+        $this->assertFirstWinsAllowsCheckIn($employee, today()->toDateString());
 
         return AttendanceRecord::updateOrCreate(
             ['employee_id' => $employee->id, 'date' => today()],
@@ -481,6 +535,55 @@ class AttendanceService
                 'late_minutes' => 0,
             ],
         );
+    }
+
+    /**
+     * Shared check-in writer with first-wins: earlier platform punch is kept;
+     * fingerprint import (path-1) is the only overwrite path.
+     *
+     * @param  array<string, mixed>  $extra
+     */
+    private function punchCheckIn(User $employee, string $source, array $extra = []): AttendanceRecord
+    {
+        $this->assertEnabled($employee);
+        $date = today()->toDateString();
+        $this->assertNotFingerprintLocked($employee, $date);
+        $this->assertShiftAllowsToday($employee);
+        $this->assertFirstWinsAllowsCheckIn($employee, $date);
+
+        $payload = array_merge([
+            'check_in_at' => now(),
+            'type' => self::TYPE_PRESENT,
+            'source' => $source,
+            'declared_by' => $employee->id,
+        ], $extra);
+        $payload['source'] = $source;
+
+        $record = AttendanceRecord::updateOrCreate(
+            ['employee_id' => $employee->id, 'date' => today()],
+            $payload,
+        );
+
+        $late = $this->latenessMinutes($record);
+        $record->forceFill(['late_minutes' => $late])->save();
+
+        return $record->fresh();
+    }
+
+    /** First-wins: reject a second check-in for the same day (unless path-1 fingerprint). */
+    private function assertFirstWinsAllowsCheckIn(User $employee, string $date): void
+    {
+        $existing = AttendanceRecord::query()
+            ->where('employee_id', $employee->id)
+            ->whereDate('date', $date)
+            ->whereNotNull('check_in_at')
+            ->first();
+
+        if ($existing) {
+            throw new \InvalidArgumentException(
+                'تم تسجيل الحضور مسبقاً لهذا اليوم — يُعتمد التسجيل الأسبق ولا يُستبدل إلا ببصمة مستوردة.'
+            );
+        }
     }
 
     public function approveFieldWork(AttendanceRecord $record, User $manager): AttendanceRecord

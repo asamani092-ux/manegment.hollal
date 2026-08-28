@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Hr;
 
+use App\Models\AttendanceLocation;
 use App\Models\AttendanceRecord;
 use App\Models\EmployeeProfile;
 use App\Models\User;
@@ -14,7 +15,8 @@ use Livewire\WithPagination;
 use App\Livewire\Concerns\UsesDsPagination;
 
 /**
- * Attendance management (path-2): shifts, enablement, approvals, monthly print.
+ * Attendance management (path-2): shifts, barcode, geofence locations,
+ * enablement, approvals, monthly print.
  * Time: O(n) list | Space: O(page)
  */
 class AttendanceIndex extends Component
@@ -62,6 +64,24 @@ class AttendanceIndex extends Component
 
     public ?int $assignShiftId = null;
 
+    /** Fixed site barcode (path-2ب) */
+    public string $siteBarcodeToken = '';
+
+    /** Location form (path-2ب) */
+    public bool $showLocationForm = false;
+
+    public ?int $editingLocationId = null;
+
+    public string $locationName = '';
+
+    public string $locationLatitude = '';
+
+    public string $locationLongitude = '';
+
+    public int $locationRadius = 150;
+
+    public bool $locationActive = true;
+
     /** @var array<string, array<string, string>> */
     protected $queryString = [
         'typeFilter' => ['except' => ''],
@@ -96,6 +116,117 @@ class AttendanceIndex extends Component
         if ($this->printMonth === '') {
             $this->printMonth = now()->format('Y-m');
         }
+        $this->siteBarcodeToken = app(AttendanceService::class)->siteBarcodeToken();
+    }
+
+    public function saveSiteBarcode(): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        $this->validate([
+            'siteBarcodeToken' => 'required|string|min:4|max:120',
+        ], [], ['siteBarcodeToken' => 'باركود المقر']);
+
+        try {
+            $this->siteBarcodeToken = app(AttendanceService::class)
+                ->setSiteBarcodeToken($this->siteBarcodeToken);
+            $this->dispatch('toast', type: 'success', message: 'تم حفظ باركود المقر');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
+    public function rotateSiteBarcode(): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        $this->siteBarcodeToken = app(AttendanceService::class)->rotateSiteBarcodeToken();
+        $this->dispatch('toast', type: 'success', message: 'تم توليد باركود مقر جديد');
+    }
+
+    public function openLocationForm(?int $id = null): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        if ($id) {
+            $loc = AttendanceLocation::query()->findOrFail($id);
+            $this->editingLocationId = $loc->id;
+            $this->locationName = $loc->name;
+            $this->locationLatitude = (string) $loc->latitude;
+            $this->locationLongitude = (string) $loc->longitude;
+            $this->locationRadius = (int) $loc->radius_meters;
+            $this->locationActive = (bool) $loc->is_active;
+        } else {
+            $this->editingLocationId = null;
+            $this->locationName = '';
+            $this->locationLatitude = '';
+            $this->locationLongitude = '';
+            $this->locationRadius = 150;
+            $this->locationActive = true;
+        }
+        $this->showLocationForm = true;
+    }
+
+    public function closeLocationForm(): void
+    {
+        $this->showLocationForm = false;
+        $this->editingLocationId = null;
+    }
+
+    public function saveLocation(): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        $this->validate([
+            'locationName' => 'required|string|max:120',
+            'locationLatitude' => ['required', 'numeric', 'between:-90,90'],
+            'locationLongitude' => ['required', 'numeric', 'between:-180,180'],
+            'locationRadius' => 'required|integer|min:20|max:5000',
+            'locationActive' => 'boolean',
+        ], [], [
+            'locationName' => 'اسم الموقع',
+            'locationLatitude' => 'خط العرض',
+            'locationLongitude' => 'خط الطول',
+            'locationRadius' => 'نصف القطر',
+        ]);
+
+        $payload = [
+            'name' => trim($this->locationName),
+            'latitude' => (float) $this->locationLatitude,
+            'longitude' => (float) $this->locationLongitude,
+            'radius_meters' => $this->locationRadius,
+            'is_active' => $this->locationActive,
+        ];
+
+        if ($this->editingLocationId) {
+            AttendanceLocation::query()->whereKey($this->editingLocationId)->update($payload);
+        } else {
+            AttendanceLocation::query()->create($payload);
+        }
+
+        $this->closeLocationForm();
+        $this->dispatch('toast', type: 'success', message: 'تم حفظ موقع الحضور');
+    }
+
+    public function deleteLocation(int $id): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        AttendanceLocation::query()->whereKey($id)->delete();
+        $this->dispatch('toast', type: 'success', message: 'تم حذف الموقع');
+    }
+
+    public function toggleLocationActive(int $id): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        $loc = AttendanceLocation::query()->findOrFail($id);
+        $loc->forceFill(['is_active' => ! $loc->is_active])->save();
+        $this->dispatch(
+            'toast',
+            type: 'success',
+            message: $loc->is_active ? 'فُعّل الموقع' : 'أُوقف الموقع'
+        );
     }
 
     public function checkIn(): void
@@ -349,6 +480,7 @@ class AttendanceIndex extends Component
         $shifts = collect();
         $assignCandidates = collect();
         $pendingApprovals = collect();
+        $locations = collect();
 
         if ($canManage) {
             $roster = User::query()
@@ -369,6 +501,8 @@ class AttendanceIndex extends Component
                 ->orderBy('name')
                 ->limit(50)
                 ->get();
+
+            $locations = AttendanceLocation::query()->orderBy('name')->get();
         }
 
         // Pending remote/field: manager sees subordinates; HR sees all.
@@ -404,6 +538,7 @@ class AttendanceIndex extends Component
             'shifts' => $shifts,
             'assignCandidates' => $assignCandidates,
             'pendingApprovals' => $pendingApprovals,
+            'locations' => $locations,
             'weekdayLabels' => WorkShift::WEEKDAY_LABELS,
         ]);
     }

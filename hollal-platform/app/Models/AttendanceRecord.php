@@ -10,7 +10,8 @@ class AttendanceRecord extends Model
     /** @var list<string> */
     protected $fillable = [
         'employee_id', 'date', 'check_in_at', 'check_out_at', 'type', 'declared_by', 'notes',
-        'source', 'device_id', 'work_hours', 'late_minutes', 'field_location', 'field_proof_path', 'approval_status',
+        'source', 'device_id', 'work_hours', 'late_minutes', 'field_location', 'field_proof_path',
+        'attendance_location_id', 'approval_status',
     ];
 
     /** @return array<string, string> */
@@ -29,5 +30,11 @@ class AttendanceRecord extends Model
     public function employee(): BelongsTo
     {
         return $this->belongsTo(User::class, 'employee_id');
+    }
+
+    /** @return BelongsTo<AttendanceLocation, $this> */
+    public function location(): BelongsTo
+    {
+        return $this->belongsTo(AttendanceLocation::class, 'attendance_location_id');
     }
 }

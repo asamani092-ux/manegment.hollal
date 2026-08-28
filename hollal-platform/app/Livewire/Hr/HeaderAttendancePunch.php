@@ -8,7 +8,7 @@ use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 /**
- * Navbar attendance punch — respects shift lateness and day-type approval.
+ * Navbar attendance punch — manual / barcode / geofence + day-type approval.
  * Time: O(1) punch · O(7) recent | Space: O(7)
  */
 class HeaderAttendancePunch extends Component
@@ -18,6 +18,8 @@ class HeaderAttendancePunch extends Component
     public string $declareType = AttendanceService::TYPE_PRESENT;
 
     public string $declareNotes = '';
+
+    public string $barcodeToken = '';
 
     public function openPanel(): void
     {
@@ -34,6 +36,7 @@ class HeaderAttendancePunch extends Component
             $this->declareType = AttendanceService::TYPE_PRESENT;
         }
         $this->declareNotes = (string) ($today?->notes ?? '');
+        $this->barcodeToken = '';
         $this->showPanel = true;
     }
 
@@ -53,6 +56,47 @@ class HeaderAttendancePunch extends Component
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
+    }
+
+    public function checkInViaBarcode(): void
+    {
+        $user = auth()->user();
+        abort_unless($user && ($user->attendance_enabled ?? false), 403);
+
+        $this->validate([
+            'barcodeToken' => 'required|string|max:120',
+        ], [], ['barcodeToken' => 'باركود المقر']);
+
+        try {
+            app(AttendanceService::class)->checkInViaBarcode($user, $this->barcodeToken);
+            $this->barcodeToken = '';
+            $this->dispatch('toast', type: 'success', message: 'تم تسجيل الحضور بالباركود');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
+    public function checkInViaGeo(float $latitude, float $longitude): void
+    {
+        $user = auth()->user();
+        abort_unless($user && ($user->attendance_enabled ?? false), 403);
+
+        try {
+            $record = app(AttendanceService::class)->checkInViaLocation($user, $latitude, $longitude);
+            $place = $record->field_location ?: 'موقع مسموح';
+            $this->dispatch('toast', type: 'success', message: 'تم تسجيل الحضور من: '.$place);
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
+    public function geoFailed(?string $message = null): void
+    {
+        $this->dispatch(
+            'toast',
+            type: 'error',
+            message: $message ?: 'تعذّر تحديد موقعك — اسمح بالوصول للموقع أو سجّل بالباركود.'
+        );
     }
 
     public function checkOut(): void
@@ -143,7 +187,7 @@ class HeaderAttendancePunch extends Component
                 ->where('employee_id', $user->id)
                 ->orderByDesc('date')
                 ->limit(7)
-                ->get(['id', 'date', 'type', 'check_in_at', 'check_out_at', 'approval_status', 'late_minutes']);
+                ->get(['id', 'date', 'type', 'check_in_at', 'check_out_at', 'approval_status', 'late_minutes', 'source']);
         }
 
         if ($user) {
@@ -175,6 +219,7 @@ class HeaderAttendancePunch extends Component
             'pendingForManager' => $pendingForManager,
             'canManageAttendance' => (bool) $user?->can('hr.employees.update'),
             'showPanelAnyway' => $pendingForManager->isNotEmpty(),
+            'barcodeConfigured' => $service->siteBarcodeToken() !== '',
         ]);
     }
 }
