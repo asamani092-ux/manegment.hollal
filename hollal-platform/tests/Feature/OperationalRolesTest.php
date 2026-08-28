@@ -129,8 +129,13 @@ class OperationalRolesTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(\App\Livewire\Settings\GrantsIndex::class)
+            ->call('setTab', 'perms')
             ->set('roleQuery', 'Employee')
-            ->assertSee('Employee');
+            ->assertSee('موظف')
+            ->assertViewHas('roles', function ($roles) {
+                return $roles->pluck('name')->contains('Employee')
+                    && $roles->count() === 1;
+            });
     }
 
     public function test_employee_cannot_access_payroll_or_roles_settings(): void
