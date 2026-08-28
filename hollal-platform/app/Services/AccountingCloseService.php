@@ -5,9 +5,9 @@ namespace App\Services;
 use App\Models\BankReconciliation;
 use App\Models\ChartOfAccount;
 use App\Models\CostCenter;
-use App\Models\Department;
 use App\Models\FiscalYearClose;
 use App\Models\JournalLine;
+use App\Models\OrgUnit;
 use App\Models\Project;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -22,10 +22,13 @@ class AccountingCloseService
     public function syncCostCentersFromStructure(): int
     {
         $count = 0;
-        foreach (Department::query()->orderBy('id')->get(['id', 'name']) as $department) {
+        foreach (OrgUnit::query()
+            ->where('level', OrgUnit::LEVEL_ADMINISTRATION)
+            ->orderBy('id')
+            ->get(['id', 'name']) as $admin) {
             CostCenter::updateOrCreate(
-                ['source_type' => 'department', 'source_id' => $department->id],
-                ['code' => 'D'.$department->id, 'name_ar' => $department->name, 'is_active' => true],
+                ['source_type' => 'administration', 'source_id' => $admin->id],
+                ['code' => 'A'.$admin->id, 'name_ar' => $admin->name, 'is_active' => true],
             );
             $count++;
         }

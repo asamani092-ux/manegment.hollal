@@ -7,7 +7,6 @@ use App\Livewire\Hr\HeaderAttendancePunch;
 use App\Livewire\Hr\LeavesIndex;
 use App\Livewire\Hr\ResponsibilitiesIndex;
 use App\Livewire\Users\EmployeeProfileShow;
-use App\Models\Department;
 use App\Models\EvaluationScore;
 use App\Models\OrgUnit;
 use App\Models\EmployeeProfile;
@@ -17,7 +16,6 @@ use App\Models\Responsibility;
 use App\Models\User;
 use App\Services\EvaluationService;
 use App\Services\OrgStructureService;
-use App\Support\OrgJobCatalog;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -48,21 +46,18 @@ class HrRound3Test extends TestCase
         return $user;
     }
 
-    public function test_org_create_unit_links_department_by_administration_name(): void
+    public function test_org_create_unit_uses_department_level_label(): void
     {
-        $dept = Department::create(['name' => 'إدارة التقنية']);
         $service = app(OrgStructureService::class);
 
         $admin = $service->createUnit('إدارة التقنية', OrgUnit::LEVEL_ADMINISTRATION);
-        $unit = $service->createUnit('وحدة التقنيات', OrgUnit::LEVEL_UNIT, $admin);
+        $unit = $service->createUnit('قسم التقنيات', OrgUnit::LEVEL_UNIT, $admin);
         $job = $service->createUnit('تقني', OrgUnit::LEVEL_JOB, $unit);
 
-        $this->assertSame($dept->id, $admin->fresh()->department_id);
-        $this->assertSame($dept->id, $job->fresh()->department_id);
-
-        $options = OrgJobCatalog::optionsForDepartment($dept->id);
-        $this->assertCount(1, $options);
-        $this->assertSame('تقني', $options[0]['label']);
+        $this->assertSame('قسم', $unit->level);
+        $this->assertSame(OrgUnit::LEVEL_UNIT, $unit->fresh()->level);
+        $this->assertSame($admin->id, $unit->parent_id);
+        $this->assertSame($unit->id, $job->parent_id);
     }
 
     public function test_evaluations_index_shows_employee_summary_without_preview_button(): void

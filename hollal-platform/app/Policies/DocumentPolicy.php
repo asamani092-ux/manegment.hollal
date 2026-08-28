@@ -3,6 +3,7 @@
 namespace App\Policies;
 
 use App\Models\Document;
+use App\Models\OrgUnit;
 use App\Models\User;
 
 /**
@@ -102,22 +103,43 @@ class DocumentPolicy
 
     protected function canAccessDepartment(User $user, Document $document): bool
     {
-        if (! $user->can('documents.view') || ! $user->department_id) {
+        if (! $user->can('documents.view') || ! $user->org_unit_id) {
             return false;
         }
 
         $uploader = $document->uploader;
 
-        return $uploader
-            && $uploader->department_id
-            && $user->department_id === $uploader->department_id;
+        if (! $uploader || ! $uploader->org_unit_id) {
+            return false;
+        }
+
+        return $this->sameAdministration($user->org_unit_id, $uploader->org_unit_id);
+    }
+
+    /**
+     * Same إدارة root via org tree walk. Time: O(depth) | Space: O(1)
+     */
+    protected function sameAdministration(int $aUnitId, int $bUnitId): bool
+    {
+        $rootOf = function (int $id): ?int {
+            $current = OrgUnit::query()->find($id, ['id', 'parent_id', 'level']);
+            while ($current && $current->parent_id) {
+                $current = OrgUnit::query()->find($current->parent_id, ['id', 'parent_id', 'level']);
+            }
+
+            return $current?->id;
+        };
+
+        $a = $rootOf($aUnitId);
+        $b = $rootOf($bUnitId);
+
+        return $a !== null && $a === $b;
     }
 
     protected function isManager(User $user): bool
     {
         return $user->subordinates()->exists()
             || $user->can('hr.salaries.manage')
-            || $user->can('structure.manage')
-            || $user->can('structure.departments.update');
+            || $user->can('structure.manage');
     }
 }

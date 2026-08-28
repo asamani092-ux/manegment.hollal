@@ -2,7 +2,6 @@
 
 namespace App\Livewire\Users;
 
-use App\Models\Department;
 use App\Models\EmployeeProfile;
 use App\Models\OrgUnit;
 use App\Models\Role;
@@ -35,7 +34,9 @@ class UsersIndex extends Component
 
     public string $password = '';
 
-    public ?int $department_id = null;
+    public ?int $administration_id = null;
+
+    public ?int $unit_id = null;
 
     public ?int $manager_id = null;
 
@@ -57,7 +58,7 @@ class UsersIndex extends Component
     // 01-B1 — directory search / filters / view toggle.
     public string $search = '';
 
-    public ?int $filterDepartment = null;
+    public ?int $filterAdministration = null;
 
     public string $filterStatus = '';
 
@@ -109,20 +110,32 @@ class UsersIndex extends Component
         $this->email = $user->email;
         $this->phone = $user->phone ?? '';
         $this->password = '';
-        $this->department_id = $user->department_id;
         $this->manager_id = $user->manager_id;
         $this->is_active = (bool) $user->is_active;
         $this->roleName = $user->roles->first()?->name ?? '';
         $this->job_title = (string) ($user->profile?->job_title ?? '');
         $this->job_org_unit_id = $user->org_unit_id;
+        $cascade = OrgJobCatalog::cascadeFromJob($user->org_unit_id);
+        $this->administration_id = $cascade['administration_id'];
+        $this->unit_id = $cascade['unit_id'];
         $this->employment_type = (string) ($user->profile?->employment_type ?? '');
         $this->hire_date = $user->profile?->hire_date?->format('Y-m-d') ?? '';
         $this->onboarding_assignee_id = null;
     }
 
-    public function updatedDepartmentId($value): void
+    /** Cascade step 1 → clears قسم + وظيفة. Time: O(1) | Space: O(1) */
+    public function updatedAdministrationId($value): void
     {
-        $this->department_id = $value !== null && $value !== '' ? (int) $value : null;
+        $this->administration_id = $value !== null && $value !== '' ? (int) $value : null;
+        $this->unit_id = null;
+        $this->job_org_unit_id = null;
+        $this->job_title = '';
+    }
+
+    /** Cascade step 2 → clears وظيفة. Time: O(1) | Space: O(1) */
+    public function updatedUnitId($value): void
+    {
+        $this->unit_id = $value !== null && $value !== '' ? (int) $value : null;
         $this->job_org_unit_id = null;
         $this->job_title = '';
     }
@@ -153,7 +166,8 @@ class UsersIndex extends Component
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,'.($this->userId ?? 'NULL'),
             'phone' => 'required|string|max:50|unique:users,phone,'.($this->userId ?? 'NULL'),
-            'department_id' => 'nullable|exists:departments,id',
+            'administration_id' => 'nullable|exists:org_units,id',
+            'unit_id' => 'nullable|exists:org_units,id',
             'manager_id' => 'nullable|exists:users,id',
             'is_active' => 'boolean',
             'roleName' => 'required|string|exists:roles,name',
@@ -167,7 +181,7 @@ class UsersIndex extends Component
                     $ok = OrgUnit::query()
                         ->whereKey((int) $value)
                         ->where('level', OrgUnit::LEVEL_JOB)
-                        ->when($this->department_id, fn ($q) => $q->where('department_id', $this->department_id))
+                        ->when($this->unit_id, fn ($q) => $q->where('parent_id', $this->unit_id))
                         ->exists();
                     if (! $ok) {
                         $fail('المسمى الوظيفي غير مرتبط بالقسم المختار.');
@@ -188,6 +202,8 @@ class UsersIndex extends Component
 
         $this->validate($rules, [], [
             'onboarding_assignee_id' => 'مسؤول مهام التهيئة',
+            'administration_id' => 'الإدارة',
+            'unit_id' => 'القسم',
             'job_org_unit_id' => 'المسمى الوظيفي',
         ]);
 
@@ -202,7 +218,6 @@ class UsersIndex extends Component
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
-            'department_id' => $this->department_id,
             'manager_id' => $this->manager_id,
             'is_active' => $this->is_active,
             'org_unit_id' => $this->job_org_unit_id,
@@ -257,7 +272,8 @@ class UsersIndex extends Component
         $this->email = '';
         $this->phone = '';
         $this->password = '';
-        $this->department_id = null;
+        $this->administration_id = null;
+        $this->unit_id = null;
         $this->manager_id = null;
         $this->is_active = true;
         $this->roleName = '';
@@ -272,12 +288,25 @@ class UsersIndex extends Component
 
     public function render(): View
     {
+        $jobIdsUnderAdmin = null;
+        if ($this->filterAdministration) {
+            $unitIds = OrgUnit::query()
+                ->where('level', OrgUnit::LEVEL_UNIT)
+                ->where('parent_id', $this->filterAdministration)
+                ->pluck('id');
+            $jobIdsUnderAdmin = OrgUnit::query()
+                ->where('level', OrgUnit::LEVEL_JOB)
+                ->whereIn('parent_id', $unitIds)
+                ->pluck('id');
+        }
+
         return view('livewire.users.users-index', [
             'users' => User::query()
-                ->select(['id', 'name', 'email', 'department_id', 'is_active', 'employment_status'])
+                ->select(['id', 'name', 'email', 'org_unit_id', 'is_active', 'employment_status'])
                 ->with([
                     'roles:id,name',
-                    'department:id,name',
+                    'orgUnit:id,name,level,parent_id',
+                    'orgUnit.parent:id,name,level',
                     'profile:id,user_id,job_title,employment_type',
                 ])
                 ->when($this->search !== '', function ($query) {
@@ -286,16 +315,17 @@ class UsersIndex extends Component
                             ->orWhere('email', 'like', '%'.$this->search.'%');
                     });
                 })
-                ->when($this->filterDepartment, fn ($query) => $query->where('department_id', $this->filterDepartment))
+                ->when($jobIdsUnderAdmin !== null, fn ($query) => $query->whereIn('org_unit_id', $jobIdsUnderAdmin))
                 ->when($this->filterStatus !== '', fn ($query) => $query->where('employment_status', $this->filterStatus))
                 ->when($this->filterType !== '', fn ($query) => $query->whereHas('profile', fn ($p) => $p->where('employment_type', $this->filterType)))
                 ->orderBy('name')
                 ->get(),
-            'departments' => Department::orderBy('name')->get(['id', 'name']),
+            'administrations' => OrgJobCatalog::administrations(),
             'managers' => User::orderBy('name')->get(['id', 'name']),
             'roles' => Role::orderBy('name')->get(['id', 'name']),
             'roleLabels' => hollal_role_labels(),
-            'jobOptions' => OrgJobCatalog::optionsForDepartment($this->department_id),
+            'unitOptions' => OrgJobCatalog::optionsForUnits($this->administration_id),
+            'jobOptions' => OrgJobCatalog::optionsForUnit($this->unit_id),
         ])->layout('layouts.app', ['title' => 'الفريق']);
     }
 }

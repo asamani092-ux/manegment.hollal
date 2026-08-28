@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * 09-B1 — an append-only record of a move between units/departments. History is
+ * 09-B1 — an append-only record of a move between org units. History is
  * never overwritten: the previous placement stays readable here.
  */
 class EmployeeTransfer extends Model
@@ -14,7 +14,7 @@ class EmployeeTransfer extends Model
     /** @var list<string> */
     protected $fillable = [
         'user_id', 'from_org_unit_id', 'to_org_unit_id',
-        'from_department_id', 'to_department_id', 'effective_on', 'reason', 'moved_by',
+        'effective_on', 'reason', 'moved_by',
     ];
 
     /** @return array<string, string> */

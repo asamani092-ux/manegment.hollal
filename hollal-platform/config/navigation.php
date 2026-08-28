@@ -118,8 +118,7 @@ return [
         [
             'label' => 'الأقسام والهيكلة',
             'items' => [
-                ['label' => 'الأقسام', 'route' => 'departments.index', 'icon' => 'fa-sitemap', 'permission' => 'structure.departments.view'],
-                ['label' => 'الهيكل التنظيمي', 'route' => 'structure.org-tree', 'icon' => 'fa-network-wired', 'permission' => 'structure.view|structure.departments.view|structure.manage'],
+                ['label' => 'الهيكل التنظيمي', 'route' => 'structure.org-tree', 'icon' => 'fa-network-wired', 'permission' => 'structure.view|structure.manage'],
             ],
         ],
         [

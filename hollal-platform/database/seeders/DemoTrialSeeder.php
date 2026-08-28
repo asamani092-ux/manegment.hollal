@@ -3,7 +3,6 @@
 namespace Database\Seeders;
 
 use App\Models\Custody;
-use App\Models\Department;
 use App\Models\ExpenseCategory;
 use App\Models\ExpenseRequest;
 use App\Models\Meeting;
@@ -33,8 +32,6 @@ class DemoTrialSeeder extends Seeder
             return;
         }
 
-        $dept = Department::first();
-
         Task::factory()->create([
             'title' => 'مهمة متأخرة — تجربة',
             'assigned_to' => $employee->id,
@@ -51,7 +48,6 @@ class DemoTrialSeeder extends Seeder
                 'amount' => 750,
                 'reason' => 'طلب صرف تجريبي بانتظار الموافقة',
                 'category_id' => $category->id,
-                'department_id' => $dept?->id,
             ]);
         }
 

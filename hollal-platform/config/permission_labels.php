@@ -22,10 +22,6 @@ return [
 
         'structure.view' => 'عرض الهيكل التنظيمي',
         'structure.manage' => 'إدارة الهيكل التنظيمي',
-        'structure.departments.view' => 'عرض الأقسام',
-        'structure.departments.create' => 'إنشاء قسم',
-        'structure.departments.update' => 'تعديل قسم',
-        'structure.departments.delete' => 'حذف قسم',
         'structure.positions.manage' => 'إدارة بطاقات الوظائف',
         'structure.committees.manage' => 'إدارة اللجان',
 

@@ -454,7 +454,6 @@ class DemoFinanceSeeder extends Seeder
                 ['reason' => $row['reason']],
                 [
                     'requester_id' => $row['requester']->id,
-                    'department_id' => $row['requester']->department_id,
                     'category_id' => $category?->id,
                     'type' => $row['type'],
                     'amount' => $row['amount'],

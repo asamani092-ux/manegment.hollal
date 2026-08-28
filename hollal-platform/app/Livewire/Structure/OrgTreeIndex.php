@@ -3,7 +3,6 @@
 namespace App\Livewire\Structure;
 
 use App\Models\Committee;
-use App\Models\Department;
 use App\Models\OrgUnit;
 use App\Models\User;
 use App\Services\OrgStructureService;
@@ -43,8 +42,6 @@ class OrgTreeIndex extends Component
 
     public ?int $transferUnitId = null;
 
-    public ?int $transferDepartmentId = null;
-
     public ?string $transferReason = null;
 
     // committee form
@@ -58,12 +55,12 @@ class OrgTreeIndex extends Component
 
     public function mount(): void
     {
-        $this->authorize('structure.departments.view');
+        $this->authorize('structure.view');
     }
 
     public function openUnitModal(?int $parentId = null): void
     {
-        $this->authorize('structure.departments.create');
+        $this->authorize('structure.manage');
 
         $this->parentId = $parentId;
         $parent = $parentId ? OrgUnit::find($parentId) : null;
@@ -76,13 +73,13 @@ class OrgTreeIndex extends Component
 
     public function saveUnit(): void
     {
-        $this->authorize('structure.departments.create');
+        $this->authorize('structure.manage');
 
         $this->validate([
             'unitName' => 'required|string|max:255',
             'unitLevel' => 'required|in:'.implode(',', array_keys(OrgUnit::CHILD_LEVEL)),
             'parentId' => 'nullable|exists:org_units,id',
-        ], [], ['unitName' => 'اسم الوحدة']);
+        ], [], ['unitName' => 'اسم الوحدة التنظيمية']);
 
         try {
             app(OrgStructureService::class)->createUnit(
@@ -97,7 +94,7 @@ class OrgTreeIndex extends Component
             );
 
             $this->showUnitModal = false;
-            $this->dispatch('ds-toast', message: 'تمت إضافة الوحدة');
+            $this->dispatch('ds-toast', message: 'تمت إضافة الوحدة التنظيمية');
         } catch (\InvalidArgumentException $e) {
             $this->addError('unitLevel', $e->getMessage());
         }
@@ -110,19 +107,17 @@ class OrgTreeIndex extends Component
 
     public function transfer(): void
     {
-        $this->authorize('structure.departments.update');
+        $this->authorize('structure.manage');
 
         $this->validate([
             'transferUserId' => 'required|exists:users,id',
             'transferUnitId' => 'nullable|exists:org_units,id',
-            'transferDepartmentId' => 'nullable|exists:departments,id',
             'transferReason' => 'nullable|string|max:255',
         ], [], ['transferUserId' => 'الموظف']);
 
         app(OrgStructureService::class)->transfer(
             User::findOrFail($this->transferUserId),
             $this->transferUnitId ? OrgUnit::find($this->transferUnitId) : null,
-            $this->transferDepartmentId,
             $this->transferReason,
             auth()->user(),
         );
@@ -133,7 +128,7 @@ class OrgTreeIndex extends Component
 
     public function saveCommittee(): void
     {
-        $this->authorize('structure.departments.create');
+        $this->authorize('structure.manage');
 
         $this->validate([
             'committeeName' => 'required|string|max:255',
@@ -221,7 +216,6 @@ class OrgTreeIndex extends Component
             'committeeDeleteTarget' => $deleteTarget,
             'users' => User::orderBy('name')->get(['id', 'name']),
             'units' => OrgUnit::orderBy('name')->get(['id', 'name', 'level']),
-            'departments' => Department::orderBy('name')->get(['id', 'name']),
             'jobCard' => $this->viewingJobId ? OrgUnit::find($this->viewingJobId) : null,
             'jobs' => OrgUnit::query()
                 ->where('level', OrgUnit::LEVEL_JOB)

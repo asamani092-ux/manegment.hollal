@@ -6,7 +6,6 @@ use App\Livewire\Settings\GrantsIndex;
 use App\Livewire\Structure\CommitteesIndex;
 use App\Livewire\Structure\OrgTreeIndex;
 use App\Models\Committee;
-use App\Models\Department;
 use App\Models\ExceptionalGrant;
 use App\Models\Meeting;
 use App\Models\OrgUnit;
@@ -43,8 +42,8 @@ class StructureRolesSettingsTest extends TestCase
     {
         $user = User::factory()->create(['must_change_password' => false]);
         $user->givePermissionTo([
-            'structure.departments.view', 'structure.departments.create', 'structure.departments.update',
-            'structure.committees.manage', 'structure.view',
+            'structure.view', 'structure.manage',
+            'structure.committees.manage',
             'roles.view', 'roles.update', 'settings.manage',
         ]);
 
@@ -58,10 +57,12 @@ class StructureRolesSettingsTest extends TestCase
         $service = app(OrgStructureService::class);
 
         $administration = $service->createUnit('إدارة البرامج', OrgUnit::LEVEL_ADMINISTRATION);
-        $unit = $service->createUnit('وحدة التدريب', OrgUnit::LEVEL_UNIT, $administration);
+        $unit = $service->createUnit('قسم التدريب', OrgUnit::LEVEL_UNIT, $administration);
         $job = $service->createUnit('مدرب أول', OrgUnit::LEVEL_JOB, $unit);
 
         $this->assertSame($administration->id, $unit->parent_id);
+        $this->assertSame(OrgUnit::LEVEL_UNIT, $unit->level);
+        $this->assertSame('قسم', $unit->level);
         $this->assertTrue($job->isJobCard());
 
         $this->expectException(\InvalidArgumentException::class);
@@ -71,14 +72,14 @@ class StructureRolesSettingsTest extends TestCase
     public function test_root_must_be_an_administration(): void
     {
         $this->expectException(\InvalidArgumentException::class);
-        app(OrgStructureService::class)->createUnit('وحدة يتيمة', OrgUnit::LEVEL_UNIT);
+        app(OrgStructureService::class)->createUnit('قسم يتيم', OrgUnit::LEVEL_UNIT);
     }
 
     public function test_tree_builds_the_visual_hierarchy(): void
     {
         $service = app(OrgStructureService::class);
         $administration = $service->createUnit('إدارة', OrgUnit::LEVEL_ADMINISTRATION);
-        $unit = $service->createUnit('وحدة', OrgUnit::LEVEL_UNIT, $administration);
+        $unit = $service->createUnit('قسم', OrgUnit::LEVEL_UNIT, $administration);
         $service->createUnit('وظيفة', OrgUnit::LEVEL_JOB, $unit);
 
         $tree = $service->tree();
@@ -92,12 +93,12 @@ class StructureRolesSettingsTest extends TestCase
     {
         $service = app(OrgStructureService::class);
         $administration = $service->createUnit('إدارة', OrgUnit::LEVEL_ADMINISTRATION);
-        $first = $service->createUnit('وحدة أولى', OrgUnit::LEVEL_UNIT, $administration);
-        $second = $service->createUnit('وحدة ثانية', OrgUnit::LEVEL_UNIT, $administration);
+        $first = $service->createUnit('قسم أول', OrgUnit::LEVEL_UNIT, $administration);
+        $second = $service->createUnit('قسم ثان', OrgUnit::LEVEL_UNIT, $administration);
 
         $employee = User::factory()->create();
-        $service->transfer($employee, $first, null, 'تعيين أولي', $this->admin());
-        $service->transfer($employee->fresh(), $second, null, 'إعادة توزيع', $this->admin());
+        $service->transfer($employee, $first, 'تعيين أولي', $this->admin());
+        $service->transfer($employee->fresh(), $second, 'إعادة توزيع', $this->admin());
 
         $history = $service->historyFor($employee->fresh());
 

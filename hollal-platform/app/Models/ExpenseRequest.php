@@ -35,7 +35,6 @@ class ExpenseRequest extends Model
     protected $fillable = [
         'requester_id',
         'project_id',
-        'department_id',
         'category_id',
         'official_document_path',
         'type',
@@ -84,12 +83,6 @@ class ExpenseRequest extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ExpenseCategory::class);
-    }
-
-    /** @return BelongsTo<Department, $this> */
-    public function department(): BelongsTo
-    {
-        return $this->belongsTo(Department::class);
     }
 
     /** @return BelongsTo<Project, $this> */

@@ -1,27 +1,32 @@
 <?php
 
-use App\Models\Department;
-use App\Models\OrgUnit;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Backfill org_units.department_id from administration name ↔ departments.name.
+ * Uses query builder only (Department model removed in HR Round 4).
  * Time: O(n) | Space: O(n)
  */
 return new class extends Migration
 {
     public function up(): void
     {
-        $departmentsByName = Department::query()
-            ->get(['id', 'name'])
-            ->keyBy(fn (Department $dept) => mb_strtolower(trim($dept->name)));
+        if (! Schema::hasTable('departments') || ! Schema::hasColumn('org_units', 'department_id')) {
+            return;
+        }
 
-        $units = OrgUnit::query()->get(['id', 'parent_id', 'level', 'name', 'department_id']);
+        $departmentsByName = DB::table('departments')
+            ->whereNull('deleted_at')
+            ->get(['id', 'name'])
+            ->keyBy(fn ($dept) => mb_strtolower(trim((string) $dept->name)));
+
+        $units = DB::table('org_units')->whereNull('deleted_at')->get(['id', 'parent_id', 'level', 'name', 'department_id']);
         $byId = $units->keyBy('id');
 
-        $resolveRootAdmin = function (OrgUnit $unit) use ($byId, &$resolveRootAdmin): ?OrgUnit {
-            if ($unit->level === OrgUnit::LEVEL_ADMINISTRATION) {
+        $resolveRootAdmin = function ($unit) use ($byId, &$resolveRootAdmin) {
+            if ($unit->level === 'إدارة') {
                 return $unit;
             }
 
@@ -44,7 +49,7 @@ return new class extends Migration
                 continue;
             }
 
-            $dept = $departmentsByName->get(mb_strtolower(trim($root->name)));
+            $dept = $departmentsByName->get(mb_strtolower(trim((string) $root->name)));
             if ($dept === null) {
                 continue;
             }

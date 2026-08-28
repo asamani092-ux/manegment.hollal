@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\Department;
 use App\Models\EmployeeTransfer;
 use App\Models\OrgUnit;
 use App\Models\User;
@@ -26,7 +25,7 @@ class OrgStructureService
 
         if ($parent && OrgUnit::CHILD_LEVEL[$parent->level] !== $level) {
             throw new \InvalidArgumentException(
-                'الترتيب الهرمي إدارة ← وحدة ← وظيفة لا يسمح بوضع «'.$level.'» تحت «'.$parent->level.'»'
+                'الترتيب الهرمي إدارة ← قسم ← وظيفة لا يسمح بوضع «'.$level.'» تحت «'.$parent->level.'»'
             );
         }
 
@@ -34,39 +33,14 @@ class OrgStructureService
             throw new \InvalidArgumentException('جذر الشجرة يجب أن يكون إدارة');
         }
 
-        $departmentId = $this->resolveDepartmentId($level, $parent, $name, $attributes);
+        unset($attributes['department_id']);
 
         return OrgUnit::create(array_merge($attributes, [
             'name' => $name,
             'level' => $level,
             'parent_id' => $parent?->id,
-            'department_id' => $departmentId,
             'position' => OrgUnit::where('parent_id', $parent?->id)->count(),
         ]));
-    }
-
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
-    private function resolveDepartmentId(string $level, ?OrgUnit $parent, string $name, array $attributes): ?int
-    {
-        if (array_key_exists('department_id', $attributes) && $attributes['department_id'] !== null) {
-            return (int) $attributes['department_id'];
-        }
-
-        if ($parent?->department_id !== null) {
-            return (int) $parent->department_id;
-        }
-
-        if ($level !== OrgUnit::LEVEL_ADMINISTRATION) {
-            return null;
-        }
-
-        $normalized = mb_strtolower(trim($name));
-
-        return Department::query()
-            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
-            ->value('id');
     }
 
     /**
@@ -95,18 +69,15 @@ class OrgStructureService
     public function transfer(
         User $employee,
         ?OrgUnit $toUnit,
-        ?int $toDepartmentId = null,
         ?string $reason = null,
         ?User $actor = null,
         ?string $effectiveOn = null,
     ): EmployeeTransfer {
-        return DB::transaction(function () use ($employee, $toUnit, $toDepartmentId, $reason, $actor, $effectiveOn) {
+        return DB::transaction(function () use ($employee, $toUnit, $reason, $actor, $effectiveOn) {
             $transfer = EmployeeTransfer::create([
                 'user_id' => $employee->id,
                 'from_org_unit_id' => $employee->org_unit_id,
                 'to_org_unit_id' => $toUnit?->id,
-                'from_department_id' => $employee->department_id,
-                'to_department_id' => $toDepartmentId ?? $employee->department_id,
                 'effective_on' => $effectiveOn ?? now()->toDateString(),
                 'reason' => $reason,
                 'moved_by' => $actor?->id,
@@ -114,7 +85,6 @@ class OrgStructureService
 
             $employee->forceFill([
                 'org_unit_id' => $toUnit?->id,
-                'department_id' => $toDepartmentId ?? $employee->department_id,
             ])->save();
 
             app(AuditLogService::class)->record(

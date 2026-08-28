@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\AuditLog;
 use App\Models\Committee;
-use App\Models\Department;
 use App\Models\Document;
 use App\Models\DocumentTemplate;
 use App\Models\DocumentVersion;
@@ -240,26 +239,21 @@ class DemoDocsStructureSeeder extends Seeder
         $meeting->forceFill(['committee_id' => $committee->id])->save();
     }
 
-    /** شجرة: إدارة ← وحدة ← وظيفة، مع مسؤول لكل عقدة. */
+    /** شجرة: إدارة ← قسم ← وظيفة، مع مسؤول لكل عقدة. */
     private function seedOrgTree(User $manager, User $executive, User $projectManager, User $employee): void
     {
-        $executiveDept = Department::query()->where('name', 'الإدارة التنفيذية')->first();
-        $projectsDept = Department::query()->where('name', 'إدارة المشاريع')->first();
 
         $executiveAdmin = $this->orgUnit('الإدارة التنفيذية', OrgUnit::LEVEL_ADMINISTRATION, null, [
-            'department_id' => $executiveDept?->id,
             'manager_id' => $executive->id,
             'position' => 0,
         ]);
 
         $planningUnit = $this->orgUnit('وحدة التخطيط والمتابعة', OrgUnit::LEVEL_UNIT, $executiveAdmin, [
-            'department_id' => $executiveDept?->id,
             'manager_id' => $manager->id,
             'position' => 0,
         ]);
 
         $this->orgUnit('أخصائي تخطيط ومتابعة', OrgUnit::LEVEL_JOB, $planningUnit, [
-            'department_id' => $executiveDept?->id,
             'manager_id' => $manager->id,
             'position' => 0,
             'job_purpose' => 'إعداد الخطة التشغيلية ومتابعة مؤشرات الأداء ربع السنوية ورفع تقارير الإنجاز.',
@@ -276,13 +270,11 @@ class DemoDocsStructureSeeder extends Seeder
         ]);
 
         $governanceUnit = $this->orgUnit('وحدة الحوكمة والالتزام', OrgUnit::LEVEL_UNIT, $executiveAdmin, [
-            'department_id' => $executiveDept?->id,
             'manager_id' => $executive->id,
             'position' => 1,
         ]);
 
         $this->orgUnit('مسؤول الحوكمة والالتزام', OrgUnit::LEVEL_JOB, $governanceUnit, [
-            'department_id' => $executiveDept?->id,
             'manager_id' => $executive->id,
             'position' => 0,
             'job_purpose' => 'ضمان التزام الجمعية باللوائح المنظمة ومراجعة السياسات في مواعيد مراجعتها.',
@@ -298,19 +290,16 @@ class DemoDocsStructureSeeder extends Seeder
         ]);
 
         $projectsAdmin = $this->orgUnit('إدارة المشاريع والبرامج', OrgUnit::LEVEL_ADMINISTRATION, null, [
-            'department_id' => $projectsDept?->id,
             'manager_id' => $projectManager->id,
             'position' => 1,
         ]);
 
         $executionUnit = $this->orgUnit('وحدة تنفيذ المشاريع', OrgUnit::LEVEL_UNIT, $projectsAdmin, [
-            'department_id' => $projectsDept?->id,
             'manager_id' => $projectManager->id,
             'position' => 0,
         ]);
 
         $this->orgUnit('منسق مشاريع', OrgUnit::LEVEL_JOB, $executionUnit, [
-            'department_id' => $projectsDept?->id,
             'manager_id' => $projectManager->id,
             'position' => 0,
             'job_purpose' => 'تنسيق تنفيذ المبادرات الميدانية وضبط الجدول الزمني والمستفيدين.',
@@ -326,7 +315,6 @@ class DemoDocsStructureSeeder extends Seeder
         ]);
 
         $this->orgUnit('أخصائي متابعة المستفيدين', OrgUnit::LEVEL_JOB, $executionUnit, [
-            'department_id' => $projectsDept?->id,
             'manager_id' => $employee->id,
             'position' => 1,
             'job_purpose' => 'التحقق من بيانات المستفيدين وقياس أثر الخدمات المقدمة لهم.',

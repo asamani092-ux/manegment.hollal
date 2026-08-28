@@ -23,7 +23,6 @@ class RoleSeeder extends Seeder
         'hr.leaves.view-all',
         'roles.view',
         'structure.view',
-        'structure.departments.view',
         'projects.view',
         'partnerships.view',
         'partnerships.pipeline.view',

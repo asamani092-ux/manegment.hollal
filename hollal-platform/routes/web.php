@@ -25,7 +25,6 @@ use App\Http\Controllers\TaskFileDownloadController;
 use App\Http\Controllers\TaxInvoicePdfController;
 use App\Livewire\Contracts\ContractsIndex;
 use App\Livewire\DashboardIndex;
-use App\Livewire\Departments\DepartmentsIndex;
 use App\Livewire\Documents\DocumentPoliciesIndex;
 use App\Livewire\Documents\DocumentsIndex;
 use App\Livewire\Documents\DocumentTemplatesIndex;
@@ -246,10 +245,6 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/meetings/{meeting}/minutes', MeetingMinutes::class)
         ->name('meetings.minutes');
 
-    Route::get('/departments', DepartmentsIndex::class)
-        ->middleware('permission:structure.departments.view')
-        ->name('departments.index');
-
     Route::get('/settings/grants', GrantsIndex::class)
         ->middleware('permission:roles.view')
         ->name('settings.grants');
@@ -259,7 +254,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     })->middleware('permission:roles.view')->name('settings.roles');
 
     Route::get('/structure/org-tree', OrgTreeIndex::class)
-        ->middleware('permission:structure.view|structure.departments.view|structure.manage')
+        ->middleware('permission:structure.view|structure.manage')
         ->name('structure.org-tree');
 
     Route::get('/settings/expenses', ExpenseSettingsIndex::class)

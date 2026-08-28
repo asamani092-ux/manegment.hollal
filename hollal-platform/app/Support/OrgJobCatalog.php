@@ -2,48 +2,93 @@
 
 namespace App\Support;
 
-use App\Models\Department;
 use App\Models\OrgUnit;
 use Illuminate\Support\Collection;
 
 /**
- * Job cards (OrgUnit level=وظيفة) filtered by department.
- * Time: O(k) direct | O(n) fallback | Space: O(k)
+ * Cascading org placement: إدارة → قسم → وظيفة from org_units only.
  */
 final class OrgJobCatalog
 {
     /**
      * @return Collection<int, OrgUnit>
      */
-    public static function jobsForDepartment(?int $departmentId): Collection
+    public static function administrations(): Collection
     {
-        if ($departmentId === null) {
+        return OrgUnit::query()
+            ->where('level', OrgUnit::LEVEL_ADMINISTRATION)
+            ->orderBy('name')
+            ->get(['id', 'name', 'level', 'parent_id']);
+    }
+
+    /**
+     * Children at مستوى قسم under an administration. Time: O(k) | Space: O(k)
+     *
+     * @return Collection<int, OrgUnit>
+     */
+    public static function unitsForAdministration(?int $administrationId): Collection
+    {
+        if ($administrationId === null) {
             return collect();
         }
 
-        $direct = OrgUnit::query()
-            ->where('level', OrgUnit::LEVEL_JOB)
-            ->where('department_id', $departmentId)
+        return OrgUnit::query()
+            ->where('level', OrgUnit::LEVEL_UNIT)
+            ->where('parent_id', $administrationId)
             ->orderBy('name')
-            ->get(['id', 'name', 'parent_id', 'department_id']);
+            ->get(['id', 'name', 'level', 'parent_id']);
+    }
 
-        if ($direct->isNotEmpty()) {
-            return $direct;
+    /**
+     * Job cards under a قسم. Time: O(k) | Space: O(k)
+     *
+     * @return Collection<int, OrgUnit>
+     */
+    public static function jobsForUnit(?int $unitId): Collection
+    {
+        if ($unitId === null) {
+            return collect();
         }
 
-        return self::jobsByAdministrationName($departmentId);
+        return OrgUnit::query()
+            ->where('level', OrgUnit::LEVEL_JOB)
+            ->where('parent_id', $unitId)
+            ->orderBy('name')
+            ->get(['id', 'name', 'level', 'parent_id']);
     }
 
     /**
      * @return list<array{id:int,label:string}>
      */
-    public static function optionsForDepartment(?int $departmentId): array
+    public static function optionsForUnit(?int $unitId): array
     {
-        return self::jobsForDepartment($departmentId)
+        return self::jobsForUnit($unitId)
             ->map(fn (OrgUnit $job) => [
                 'id' => (int) $job->id,
                 'label' => (string) $job->name,
             ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{id:int,label:string}>
+     */
+    public static function optionsForAdministrations(): array
+    {
+        return self::administrations()
+            ->map(fn (OrgUnit $u) => ['id' => (int) $u->id, 'label' => (string) $u->name])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{id:int,label:string}>
+     */
+    public static function optionsForUnits(?int $administrationId): array
+    {
+        return self::unitsForAdministration($administrationId)
+            ->map(fn (OrgUnit $u) => ['id' => (int) $u->id, 'label' => (string) $u->name])
             ->values()
             ->all();
     }
@@ -63,52 +108,38 @@ final class OrgJobCatalog
     }
 
     /**
-     * Fallback: match administration org node name to department name.
+     * Resolve إدارة + قسم ancestors from a وظيفة node. Time: O(1) | Space: O(1)
      *
-     * @return Collection<int, OrgUnit>
+     * @return array{administration_id:?int,unit_id:?int}
      */
-    private static function jobsByAdministrationName(int $departmentId): Collection
+    public static function cascadeFromJob(?int $jobOrgUnitId): array
     {
-        $deptName = Department::query()->whereKey($departmentId)->value('name');
-        if (! is_string($deptName) || trim($deptName) === '') {
-            return collect();
+        if ($jobOrgUnitId === null) {
+            return ['administration_id' => null, 'unit_id' => null];
         }
 
-        $normalized = mb_strtolower(trim($deptName));
-        $adminIds = OrgUnit::query()
-            ->where('level', OrgUnit::LEVEL_ADMINISTRATION)
-            ->whereRaw('LOWER(TRIM(name)) = ?', [$normalized])
-            ->pluck('id');
-
-        if ($adminIds->isEmpty()) {
-            return collect();
+        $job = OrgUnit::query()->whereKey($jobOrgUnitId)->first(['id', 'level', 'parent_id']);
+        if (! $job || $job->level !== OrgUnit::LEVEL_JOB) {
+            return ['administration_id' => null, 'unit_id' => null];
         }
 
-        $units = OrgUnit::query()->get(['id', 'parent_id', 'level', 'name']);
-        $byParent = $units->groupBy('parent_id');
-        $jobIds = collect();
+        $unit = $job->parent_id
+            ? OrgUnit::query()->whereKey($job->parent_id)->first(['id', 'level', 'parent_id'])
+            : null;
 
-        $walk = function (int $parentId) use (&$walk, $byParent, &$jobIds): void {
-            foreach ($byParent[$parentId] ?? [] as $unit) {
-                if ($unit->level === OrgUnit::LEVEL_JOB) {
-                    $jobIds->push($unit->id);
-                } else {
-                    $walk((int) $unit->id);
-                }
-            }
-        };
-
-        foreach ($adminIds as $adminId) {
-            $walk((int) $adminId);
+        if (! $unit || $unit->level !== OrgUnit::LEVEL_UNIT) {
+            return ['administration_id' => null, 'unit_id' => null];
         }
 
-        if ($jobIds->isEmpty()) {
-            return collect();
-        }
+        $admin = $unit->parent_id
+            ? OrgUnit::query()->whereKey($unit->parent_id)->first(['id', 'level'])
+            : null;
 
-        return OrgUnit::query()
-            ->whereIn('id', $jobIds->unique()->all())
-            ->orderBy('name')
-            ->get(['id', 'name', 'parent_id', 'department_id']);
+        return [
+            'administration_id' => ($admin && $admin->level === OrgUnit::LEVEL_ADMINISTRATION)
+                ? (int) $admin->id
+                : null,
+            'unit_id' => (int) $unit->id,
+        ];
     }
 }

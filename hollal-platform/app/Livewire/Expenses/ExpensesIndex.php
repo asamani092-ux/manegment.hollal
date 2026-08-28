@@ -64,8 +64,6 @@ class ExpensesIndex extends Component
 
     public ?int $category_id = null;
 
-    public ?int $department_id = null;
-
     public ?TemporaryUploadedFile $officialDocument = null;
 
     public ?string $existingOfficialDocPath = null;
@@ -188,7 +186,6 @@ class ExpensesIndex extends Component
             'priority' => 'nullable|in:low,normal,high,urgent',
             'payment_method' => 'nullable|in:transfer,pos,cheque,cash,other',
             'project_id' => 'nullable|exists:projects,id',
-            'department_id' => 'nullable|exists:departments,id',
             'officialDocument' => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png',
             'attachment' => 'nullable|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
             'cameraAttachment' => 'nullable|file|max:5120|mimes:jpg,jpeg,png',
@@ -204,7 +201,6 @@ class ExpensesIndex extends Component
             'priority' => $this->priority ?: 'normal',
             'payment_method' => $this->payment_method ?: 'transfer',
             'project_id' => $this->project_id,
-            'department_id' => $this->department_id,
             'category_id' => $this->category_id,
             'status' => 'draft',
             'rejection_reason' => null,
@@ -405,7 +401,6 @@ class ExpensesIndex extends Component
         $this->priority = $expense->priority ?? 'normal';
         $this->payment_method = $expense->payment_method;
         $this->project_id = $expense->project_id;
-        $this->department_id = $expense->department_id;
         $this->category_id = $expense->category_id;
         $this->existingAttachmentPath = $expense->attachment;
         $this->existingOfficialDocPath = $expense->official_document_path;
@@ -421,7 +416,6 @@ class ExpensesIndex extends Component
         $this->priority = 'normal';
         $this->payment_method = 'transfer';
         $this->project_id = null;
-        $this->department_id = null;
         $this->category_id = null;
         $this->officialDocument = null;
         $this->existingOfficialDocPath = null;
@@ -465,7 +459,6 @@ class ExpensesIndex extends Component
                 : null,
             'projects' => Project::orderBy('name')->get(['id', 'name']),
             'categories' => \App\Models\ExpenseCategory::active()->orderBy('name_ar')->get(['id', 'name_ar']),
-            'departments' => \App\Models\Department::orderBy('name')->get(['id', 'name']),
             'companyTaxNumberMissing' => blank(\App\Support\Setting::get('company.tax_number')),
             'statusOptions' => ExpenseRequest::STATUSES,
             'canViewAll' => $canViewAll,

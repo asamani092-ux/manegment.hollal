@@ -183,8 +183,7 @@ return [
             'phase' => 6,
             'title' => 'الأقسام والهيكلة',
             'items' => [
-                ['id' => 'depts', 'tool' => 'الأقسام', 'path' => '/departments', 'checks' => 'إنشاء · تعديل · مدير القسم', 'lifecycle' => 'إنشاء قسم → تعيين مدير → ربط موظفين'],
-                ['id' => 'org', 'tool' => 'الهيكل التنظيمي', 'path' => '/structure/org-tree', 'checks' => 'إدارة/وحدة/وظيفة · نقل موظف', 'lifecycle' => 'بناء هيكل → نقل → تحديث'],
+                ['id' => 'org', 'tool' => 'الهيكل التنظيمي', 'path' => '/structure/org-tree', 'checks' => 'إدارة/قسم/وظيفة · نقل موظف', 'lifecycle' => 'بناء هيكل → نقل → تحديث'],
                 ['id' => 'jobs', 'tool' => 'الوظائف', 'path' => '/structure/org-tree?tab=jobs', 'checks' => 'بطاقة وظيفية · المسؤول المباشر', 'lifecycle' => 'تعريف وظيفة → ربط موظف'],
                 ['id' => 'committees', 'tool' => 'اللجان', 'path' => '/structure/org-tree?tab=committees', 'checks' => 'رئيس اللجنة · التفويض', 'lifecycle' => 'تشكيل → تفويض → انتهاء'],
                 ['id' => 'profile', 'tool' => 'الملف الوظيفي', 'path' => '/users/{id}/profile', 'checks' => 'بيانات · عقد · مسؤوليات · رصيد الإجازات · الراتب', 'lifecycle' => 'عرض → تحديث → سجل تاريخي'],

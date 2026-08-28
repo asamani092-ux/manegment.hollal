@@ -14,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'electronic_signature', 'signature_image_path', 'email', 'phone', 'password', 'must_change_password', 'department_id', 'manager_id', 'org_unit_id', 'is_active', 'attendance_enabled', 'employment_status', 'offboarding_started_at'])]
+#[Fillable(['name', 'electronic_signature', 'signature_image_path', 'email', 'phone', 'password', 'must_change_password', 'manager_id', 'org_unit_id', 'is_active', 'attendance_enabled', 'employment_status', 'offboarding_started_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -60,16 +60,29 @@ class User extends Authenticatable
         $this->save();
     }
 
-    /** @return BelongsTo<Department, $this> */
-    public function department(): BelongsTo
-    {
-        return $this->belongsTo(Department::class);
-    }
-
     /** @return BelongsTo<User, $this> */
     public function manager(): BelongsTo
     {
         return $this->belongsTo(User::class, 'manager_id');
+    }
+
+    /**
+     * Display label for org placement (قسم or إدارة ancestor). Time: O(1) | Space: O(1)
+     */
+    public function orgPlacementLabel(): string
+    {
+        $node = $this->orgUnit;
+        if (! $node) {
+            return '—';
+        }
+
+        if ($node->level === OrgUnit::LEVEL_JOB) {
+            $unit = $node->relationLoaded('parent') ? $node->parent : $node->parent()->first();
+
+            return $unit?->name ?? $node->name;
+        }
+
+        return $node->name;
     }
 
     /** @return HasMany<User, $this> */

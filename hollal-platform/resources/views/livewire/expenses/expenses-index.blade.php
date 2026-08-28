@@ -317,14 +317,6 @@
                                 @endforeach
                             </select>
                         </x-ds-form-group>
-                        <x-ds-form-group label="القسم" :error="$errors->first('department_id')">
-                            <select class="ds-input" wire:model="department_id" @disabled($expenseViewOnly)>
-                                <option value="">— بدون —</option>
-                                @foreach ($departments as $dept)
-                                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
-                                @endforeach
-                            </select>
-                        </x-ds-form-group>
                         <x-ds-form-group label="تصنيف المصروف" :error="$errors->first('category_id')">
                             <select class="ds-input" wire:model="category_id" @disabled($expenseViewOnly)>
                                 <option value="">— اختر التصنيف —</option>

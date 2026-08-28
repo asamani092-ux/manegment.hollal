@@ -12,7 +12,7 @@
         \App\Models\OrgUnit::LEVEL_JOB => 'fa-briefcase',
         default => 'fa-circle',
     };
-    $badgeMod = $node->level === 'إدارة' ? 'admin' : ($node->level === 'وحدة' ? 'unit' : 'job');
+    $badgeMod = $node->level === 'إدارة' ? 'admin' : ($node->level === \App\Models\OrgUnit::LEVEL_UNIT ? 'unit' : 'job');
 @endphp
 <tr wire:key="org-node-{{ $node->id }}" class="org-node {{ $levelClass }}">
     <td style="padding-inline-start: {{ $depth * 22 }}px">
@@ -34,7 +34,7 @@
                 <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('structure.jobs', ['edit' => $node->id]) }}">تعديل</a>
             @endcan
         @endif
-        @can('structure.departments.create')
+        @can('structure.manage')
             @if (\App\Models\OrgUnit::CHILD_LEVEL[$node->level] !== null)
                 <button type="button" class="ds-btn ds-btn-sm" wire:click="openUnitModal({{ $node->id }})">
                     إضافة {{ \App\Models\OrgUnit::CHILD_LEVEL[$node->level] }}

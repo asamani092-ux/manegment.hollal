@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
- * 09-B1 — a node of the org tree: إدارة ← وحدة ← وظيفة. A وظيفة node doubles
+ * 09-B1 — a node of the org tree: إدارة ← قسم ← وظيفة. A وظيفة node doubles
  * as the job card (purpose, responsibilities, requirements).
  */
 class OrgUnit extends Model
@@ -17,7 +17,8 @@ class OrgUnit extends Model
 
     public const LEVEL_ADMINISTRATION = 'إدارة';
 
-    public const LEVEL_UNIT = 'وحدة';
+    /** Structural mid-level (Arabic label «قسم»; constant kept for callers). */
+    public const LEVEL_UNIT = 'قسم';
 
     public const LEVEL_JOB = 'وظيفة';
 
@@ -30,7 +31,7 @@ class OrgUnit extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'name', 'level', 'parent_id', 'department_id', 'manager_id',
+        'name', 'level', 'parent_id', 'manager_id',
         'job_purpose', 'job_responsibilities', 'job_requirements', 'position',
     ];
 

@@ -81,15 +81,34 @@ class Document extends Model
                     }
                 })
                 ->orWhere(function (Builder $dept) use ($user) {
-                    if ($user->can('documents.view') && $user->department_id) {
-                        $dept->where('confidentiality', 'department')
-                            ->whereHas('uploader', fn (Builder $u) => $u->where('department_id', $user->department_id));
+                    if (! $user->can('documents.view') || ! $user->org_unit_id) {
+                        return;
                     }
+
+                    $user->loadMissing('orgUnit.parent.parent');
+                    $node = $user->orgUnit;
+                    while ($node && $node->parent_id) {
+                        $node = $node->relationLoaded('parent') && $node->parent
+                            ? $node->parent
+                            : OrgUnit::query()->find($node->parent_id);
+                    }
+                    if (! $node) {
+                        return;
+                    }
+
+                    $unitIds = OrgUnit::query()
+                        ->where('id', $node->id)
+                        ->orWhere('parent_id', $node->id)
+                        ->orWhereIn('parent_id', OrgUnit::query()->where('parent_id', $node->id)->select('id'))
+                        ->pluck('id');
+
+                    $dept->where('confidentiality', 'department')
+                        ->whereHas('uploader', fn (Builder $u) => $u->whereIn('org_unit_id', $unitIds));
                 })
                 ->orWhere(function (Builder $managers) use ($user) {
                     if ($user->subordinates()->exists()
                         || $user->can('hr.salaries.manage')
-                        || $user->can('structure.departments.manage')) {
+                        || $user->can('structure.manage')) {
                         $managers->where('confidentiality', 'managers');
                     }
                 });

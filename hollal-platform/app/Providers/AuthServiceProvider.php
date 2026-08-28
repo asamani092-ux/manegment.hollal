@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Models\Contract;
-use App\Models\Department;
 use App\Models\Document;
 use App\Models\ExpenseRequest;
 use App\Models\Meeting;
@@ -14,7 +13,6 @@ use App\Models\Task;
 use App\Models\User;
 use App\Models\WeeklyReport;
 use App\Policies\ContractPolicy;
-use App\Policies\DepartmentPolicy;
 use App\Policies\DocumentPolicy;
 use App\Policies\ExpenseRequestPolicy;
 use App\Policies\MeetingPolicy;
@@ -42,7 +40,6 @@ class AuthServiceProvider extends ServiceProvider
         Contract::class => ContractPolicy::class,
         WeeklyReport::class => WeeklyReportPolicy::class,
         User::class => UserPolicy::class,
-        Department::class => DepartmentPolicy::class,
         Role::class => RolePolicy::class,
     ];
 

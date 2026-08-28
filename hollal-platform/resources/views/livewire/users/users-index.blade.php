@@ -17,10 +17,10 @@
     <section class="ds-section ds-filter-bar">
         <input type="search" class="ds-input" placeholder="بحث بالاسم أو البريد"
                wire:model.live.debounce.300ms="search">
-        <select class="ds-input" wire:model.live="filterDepartment">
-            <option value="">كل الأقسام</option>
-            @foreach ($departments as $dept)
-                <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+        <select class="ds-input" wire:model.live="filterAdministration">
+            <option value="">كل الإدارات</option>
+            @foreach ($administrations as $admin)
+                <option value="{{ $admin->id }}">{{ $admin->name }}</option>
             @endforeach
         </select>
         <select class="ds-input" wire:model.live="filterStatus">
@@ -65,7 +65,7 @@
                             —
                         @endif
                     </td>
-                    <td>{{ $user->department?->name ?? '—' }}</td>
+                    <td>{{ $user->orgPlacementLabel() }}</td>
                     <td>
                         <span class="ds-badge {{ $statusClasses[$user->employment_status] ?? 'ds-badge-pending' }}">
                             {{ $user->employment_status }}
@@ -100,7 +100,7 @@
                         </span>
                     </div>
                     <div class="ds-text-muted">{{ $user->profile?->job_title ?? '—' }}</div>
-                    <div class="ds-text-muted">{{ $user->department?->name ?? 'بدون قسم' }}</div>
+                    <div class="ds-text-muted">{{ $user->orgPlacementLabel() === '—' ? 'بدون قسم' : $user->orgPlacementLabel() }}</div>
                     <div class="ds-card-actions">
                         <a href="{{ route('users.profile', $user->id) }}" class="ds-link">الملف الوظيفي</a>
                     </div>
@@ -141,11 +141,19 @@
                             <input type="password" class="ds-input" wire:model="password">
                         </x-ds-form-group>
                     @endif
-                    <x-ds-form-group label="القسم">
-                        <select class="ds-input" wire:model.live="department_id" @disabled($viewOnly)>
-                            <option value="">— بدون قسم —</option>
-                            @foreach ($departments as $dept)
-                                <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                    <x-ds-form-group label="الإدارة" :error="$errors->first('administration_id')">
+                        <select class="ds-input" wire:model.live="administration_id" @disabled($viewOnly)>
+                            <option value="">— بدون إدارة —</option>
+                            @foreach ($administrations as $admin)
+                                <option value="{{ $admin->id }}">{{ $admin->name }}</option>
+                            @endforeach
+                        </select>
+                    </x-ds-form-group>
+                    <x-ds-form-group label="القسم" :error="$errors->first('unit_id')">
+                        <select class="ds-input" wire:model.live="unit_id" @disabled($viewOnly || ! $administration_id)>
+                            <option value="">{{ $administration_id ? '— اختر قسماً —' : '— اختر الإدارة أولاً —' }}</option>
+                            @foreach ($unitOptions as $unit)
+                                <option value="{{ $unit['id'] }}">{{ $unit['label'] }}</option>
                             @endforeach
                         </select>
                     </x-ds-form-group>
@@ -168,13 +176,13 @@
                         </select>
                     </x-ds-form-group>
                     <x-ds-form-group label="المسمى الوظيفي" :error="$errors->first('job_org_unit_id')">
-                        <select class="ds-input" wire:model.live="job_org_unit_id" @disabled($viewOnly || ! $department_id)>
-                            <option value="">{{ $department_id ? '— اختر من وظائف القسم —' : '— اختر القسم أولاً —' }}</option>
+                        <select class="ds-input" wire:model.live="job_org_unit_id" @disabled($viewOnly || ! $unit_id)>
+                            <option value="">{{ $unit_id ? '— اختر من وظائف القسم —' : '— اختر القسم أولاً —' }}</option>
                             @foreach ($jobOptions as $job)
                                 <option value="{{ $job['id'] }}">{{ $job['label'] }}</option>
                             @endforeach
                         </select>
-                        @if ($department_id && count($jobOptions) === 0)
+                        @if ($unit_id && count($jobOptions) === 0)
                             <p class="ds-text-muted ds-mt-sm">لا توجد بطاقات وظيفة مرتبطة بهذا القسم في الهيكل.</p>
                         @endif
                     </x-ds-form-group>

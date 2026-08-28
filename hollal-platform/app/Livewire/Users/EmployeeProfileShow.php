@@ -4,7 +4,6 @@ namespace App\Livewire\Users;
 
 use App\Models\AuditLog;
 use App\Models\Contract;
-use App\Models\Department;
 use App\Models\EmployeeDocument;
 use App\Models\EmployeeProfile;
 use App\Models\EmployeeTransfer;
@@ -60,7 +59,9 @@ class EmployeeProfileShow extends Component
 
     public string $editEmail = '';
 
-    public ?int $editDepartmentId = null;
+    public ?int $editAdministrationId = null;
+
+    public ?int $editUnitId = null;
 
     public ?int $editManagerId = null;
 
@@ -170,10 +171,12 @@ class EmployeeProfileShow extends Component
         $this->editName = $user->name;
         $this->editPhone = (string) ($user->phone ?? '');
         $this->editEmail = $user->email;
-        $this->editDepartmentId = $user->department_id;
         $this->editManagerId = $user->manager_id;
         $this->editJobTitle = (string) ($user->profile?->job_title ?? '');
         $this->editJobOrgUnitId = $user->org_unit_id;
+        $cascade = OrgJobCatalog::cascadeFromJob($user->org_unit_id);
+        $this->editAdministrationId = $cascade['administration_id'];
+        $this->editUnitId = $cascade['unit_id'];
         $this->editEmploymentType = (string) ($user->profile?->employment_type ?? '');
         $this->editHireDate = $user->profile?->hire_date?->format('Y-m-d') ?? '';
         $this->editNationalId = (string) ($user->profile?->national_id ?? '');
@@ -183,9 +186,19 @@ class EmployeeProfileShow extends Component
         $this->showEdit = true;
     }
 
-    public function updatedEditDepartmentId($value): void
+    /** Cascade step 1 → clears قسم + وظيفة. Time: O(1) | Space: O(1) */
+    public function updatedEditAdministrationId($value): void
     {
-        $this->editDepartmentId = $value !== null && $value !== '' ? (int) $value : null;
+        $this->editAdministrationId = $value !== null && $value !== '' ? (int) $value : null;
+        $this->editUnitId = null;
+        $this->editJobOrgUnitId = null;
+        $this->editJobTitle = '';
+    }
+
+    /** Cascade step 2 → clears وظيفة. Time: O(1) | Space: O(1) */
+    public function updatedEditUnitId($value): void
+    {
+        $this->editUnitId = $value !== null && $value !== '' ? (int) $value : null;
         $this->editJobOrgUnitId = null;
         $this->editJobTitle = '';
     }
@@ -209,7 +222,8 @@ class EmployeeProfileShow extends Component
             'editName' => 'required|string|max:255',
             'editPhone' => 'required|string|max:50|unique:users,phone,'.$this->userId,
             'editEmail' => 'required|email|unique:users,email,'.$this->userId,
-            'editDepartmentId' => 'nullable|exists:departments,id',
+            'editAdministrationId' => 'nullable|exists:org_units,id',
+            'editUnitId' => 'nullable|exists:org_units,id',
             'editManagerId' => 'nullable|exists:users,id',
             'editJobOrgUnitId' => [
                 'nullable',
@@ -221,7 +235,7 @@ class EmployeeProfileShow extends Component
                     $ok = OrgUnit::query()
                         ->whereKey((int) $value)
                         ->where('level', OrgUnit::LEVEL_JOB)
-                        ->when($this->editDepartmentId, fn ($q) => $q->where('department_id', $this->editDepartmentId))
+                        ->when($this->editUnitId, fn ($q) => $q->where('parent_id', $this->editUnitId))
                         ->exists();
                     if (! $ok) {
                         $fail('المسمى الوظيفي غير مرتبط بالقسم المختار.');
@@ -243,6 +257,8 @@ class EmployeeProfileShow extends Component
             'editNationalId' => 'الهوية',
             'editJobTitle' => 'المسمى الوظيفي',
             'editJobOrgUnitId' => 'المسمى الوظيفي',
+            'editAdministrationId' => 'الإدارة',
+            'editUnitId' => 'القسم',
         ]);
 
         if ($this->editJobOrgUnitId) {
@@ -256,7 +272,6 @@ class EmployeeProfileShow extends Component
             'name' => $this->editName,
             'phone' => $this->editPhone,
             'email' => $this->editEmail,
-            'department_id' => $this->editDepartmentId,
             'manager_id' => $this->editManagerId,
             'org_unit_id' => $this->editJobOrgUnitId,
             'is_active' => $this->editIsActive,
@@ -627,8 +642,13 @@ class EmployeeProfileShow extends Component
 
     public function render(): View
     {
-        $user = User::with(['department:id,name', 'manager:id,name', 'profile.payScale', 'roles:id,name'])
-            ->findOrFail($this->userId);
+        $user = User::with([
+            'manager:id,name',
+            'orgUnit:id,name,level,parent_id',
+            'orgUnit.parent:id,name,level',
+            'profile.payScale',
+            'roles:id,name',
+        ])->findOrFail($this->userId);
 
         $salaryTotals = $this->canViewSalary()
             ? app(SalaryService::class)->monthlyFromComponents($user)
@@ -639,10 +659,11 @@ class EmployeeProfileShow extends Component
             'canViewSalary' => $this->canViewSalary(),
             'canManageOvertime' => auth()->user()->can('hr.salaries.manage'),
             'canUpdate' => auth()->user()->can('hr.employees.update'),
-            'departments' => Department::orderBy('name')->get(['id', 'name']),
+            'administrations' => OrgJobCatalog::administrations(),
             'managers' => User::orderBy('name')->get(['id', 'name']),
             'roles' => Role::orderBy('name')->get(['id', 'name']),
-            'jobOptions' => OrgJobCatalog::optionsForDepartment($this->editDepartmentId),
+            'unitOptions' => OrgJobCatalog::optionsForUnits($this->editAdministrationId),
+            'jobOptions' => OrgJobCatalog::optionsForUnit($this->editUnitId),
             'payScales' => PayScale::query()->where('is_active', true)->orderBy('name_ar')->get(),
             'salaryComponents' => $this->canViewSalary()
                 ? SalaryComponent::query()->where('employee_id', $this->userId)->effectiveOn(today())->orderBy('type')->get()

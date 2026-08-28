@@ -41,7 +41,7 @@
             <span class="ds-badge {{ $statusLabels[$user->employment_status] ?? '' }}">
                 {{ $user->employment_status }}
             </span>
-            <div class="ds-text-muted">{{ $user->profile?->job_title ?? '—' }} — {{ $user->department?->name ?? 'بدون قسم' }}</div>
+            <div class="ds-text-muted">{{ $user->profile?->job_title ?? '—' }} — {{ $user->orgPlacementLabel() === '—' ? 'بدون قسم' : $user->orgPlacementLabel() }}</div>
         </div>
 
         <nav class="ds-tabs" role="tablist">
@@ -85,7 +85,7 @@
                         <div><dt>المسمى الوظيفي</dt><dd>{{ $user->profile?->job_title ?? '—' }}</dd></div>
                         <div><dt>نوع التوظيف</dt><dd>{{ $typeLabels[$user->profile?->employment_type] ?? ($user->profile?->employment_type ?? '—') }}</dd></div>
                         <div><dt>تاريخ المباشرة</dt><dd>{{ $user->profile?->hire_date?->format('Y-m-d') ?? '—' }}</dd></div>
-                        <div><dt>القسم</dt><dd>{{ $user->department?->name ?? '—' }}</dd></div>
+                        <div><dt>القسم</dt><dd>{{ $user->orgPlacementLabel() }}</dd></div>
                         <div><dt>الساعات الأساسية أسبوعيًا</dt><dd class="ds-ltr-num">{{ $user->profile?->weekly_hours ?? '—' }}</dd></div>
                         <div><dt>برنامج الحضور</dt><dd>{{ $user->attendance_enabled ? 'مفعّل لهذا الموظف فقط' : 'متوقّف — التقييم على المهام' }}</dd></div>
                     </dl>
@@ -482,17 +482,25 @@
                 <span>الحساب نشط (إلغاء التفعيل يمنع تسجيل الدخول)</span>
             </label>
         </div>
-        <x-ds-form-group label="القسم">
-            <select class="ds-input" wire:model.live="editDepartmentId">
+        <x-ds-form-group label="الإدارة" :error="$errors->first('editAdministrationId')">
+            <select class="ds-input" wire:model.live="editAdministrationId">
                 <option value="">—</option>
-                @foreach ($departments as $dept)
-                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                @foreach ($administrations as $admin)
+                    <option value="{{ $admin->id }}">{{ $admin->name }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+        <x-ds-form-group label="القسم" :error="$errors->first('editUnitId')">
+            <select class="ds-input" wire:model.live="editUnitId" @disabled(! $editAdministrationId)>
+                <option value="">{{ $editAdministrationId ? '— اختر قسماً —' : '— اختر الإدارة أولاً —' }}</option>
+                @foreach ($unitOptions as $unit)
+                    <option value="{{ $unit['id'] }}">{{ $unit['label'] }}</option>
                 @endforeach
             </select>
         </x-ds-form-group>
         <x-ds-form-group label="المسمى الوظيفي" :error="$errors->first('editJobOrgUnitId')">
-            <select class="ds-input" wire:model.live="editJobOrgUnitId" @disabled(! $editDepartmentId)>
-                <option value="">{{ $editDepartmentId ? '— اختر من وظائف القسم —' : '— اختر القسم أولاً —' }}</option>
+            <select class="ds-input" wire:model.live="editJobOrgUnitId" @disabled(! $editUnitId)>
+                <option value="">{{ $editUnitId ? '— اختر من وظائف القسم —' : '— اختر القسم أولاً —' }}</option>
                 @foreach ($jobOptions as $job)
                     <option value="{{ $job['id'] }}">{{ $job['label'] }}</option>
                 @endforeach

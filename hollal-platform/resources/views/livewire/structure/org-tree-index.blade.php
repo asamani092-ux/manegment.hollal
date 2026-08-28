@@ -6,7 +6,7 @@
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'jobs')">الوظائف</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'transfers')">النقل</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'committees')">اللجان</button>
-        @can('structure.departments.create')
+        @can('structure.manage')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openUnitModal">إضافة إدارة</button>
         @endcan
     </section>
@@ -76,7 +76,7 @@
     @endif
 
     @if ($tab === 'transfers')
-        @can('structure.departments.update')
+        @can('structure.manage')
             <section class="ds-section">
                 <h2 class="ds-section-title">نقل موظف</h2>
                 <x-ds-form-group label="الموظف" :error="$errors->first('transferUserId')">
@@ -87,19 +87,11 @@
                         @endforeach
                     </select>
                 </x-ds-form-group>
-                <x-ds-form-group label="الوحدة الجديدة">
+                <x-ds-form-group label="الوحدة التنظيمية الجديدة">
                     <select class="ds-input" wire:model="transferUnitId">
                         <option value="">—</option>
                         @foreach ($units as $unit)
                             <option value="{{ $unit->id }}">{{ $unit->name }} ({{ $unit->level }})</option>{{-- المستوى عربي من OrgUnit --}}
-                        @endforeach
-                    </select>
-                </x-ds-form-group>
-                <x-ds-form-group label="القسم الجديد">
-                    <select class="ds-input" wire:model="transferDepartmentId">
-                        <option value="">—</option>
-                        @foreach ($departments as $department)
-                            <option value="{{ $department->id }}">{{ $department->name }}</option>
                         @endforeach
                     </select>
                 </x-ds-form-group>
@@ -129,7 +121,7 @@
     @endif
 
     @if ($tab === 'committees')
-        @can('structure.departments.create')
+        @can('structure.manage')
             <section class="ds-section">
                 <x-ds-form-group label="اسم اللجنة" :error="$errors->first('committeeName')">
                     <input type="text" class="ds-input" wire:model="committeeName">
@@ -208,7 +200,7 @@
         <x-ds-form-group label="المستوى" :error="$errors->first('unitLevel')">
             <select class="ds-input" wire:model="unitLevel">
                 <option value="إدارة">إدارة</option>
-                <option value="وحدة">وحدة</option>
+                <option value="قسم">قسم</option>
                 <option value="وظيفة">وظيفة</option>
             </select>
         </x-ds-form-group>

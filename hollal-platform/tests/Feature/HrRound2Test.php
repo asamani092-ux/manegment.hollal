@@ -4,7 +4,6 @@ namespace Tests\Feature;
 
 use App\Livewire\Hr\HrLifecycleIndex;
 use App\Livewire\Users\UsersIndex;
-use App\Models\Department;
 use App\Models\EmployeeProfile;
 use App\Models\OrgUnit;
 use App\Models\Task;
@@ -41,34 +40,38 @@ class HrRound2Test extends TestCase
         return $user;
     }
 
-    public function test_job_catalog_filters_by_department(): void
+    public function test_job_catalog_filters_by_unit(): void
     {
-        $deptA = Department::create(['name' => 'قسم أ']);
-        $deptB = Department::create(['name' => 'قسم ب']);
-        $admin = OrgUnit::create([
+        $adminA = OrgUnit::create([
             'name' => 'إدارة أ',
             'level' => OrgUnit::LEVEL_ADMINISTRATION,
-            'department_id' => $deptA->id,
         ]);
-        $unit = OrgUnit::create([
-            'name' => 'وحدة أ',
+        $unitA = OrgUnit::create([
+            'name' => 'قسم أ',
             'level' => OrgUnit::LEVEL_UNIT,
-            'parent_id' => $admin->id,
-            'department_id' => $deptA->id,
+            'parent_id' => $adminA->id,
         ]);
         $jobA = OrgUnit::create([
             'name' => 'أخصائي أ',
             'level' => OrgUnit::LEVEL_JOB,
-            'parent_id' => $unit->id,
-            'department_id' => $deptA->id,
+            'parent_id' => $unitA->id,
+        ]);
+        $adminB = OrgUnit::create([
+            'name' => 'إدارة ب',
+            'level' => OrgUnit::LEVEL_ADMINISTRATION,
+        ]);
+        $unitB = OrgUnit::create([
+            'name' => 'قسم ب',
+            'level' => OrgUnit::LEVEL_UNIT,
+            'parent_id' => $adminB->id,
         ]);
         OrgUnit::create([
             'name' => 'أخصائي ب',
             'level' => OrgUnit::LEVEL_JOB,
-            'department_id' => $deptB->id,
+            'parent_id' => $unitB->id,
         ]);
 
-        $options = OrgJobCatalog::optionsForDepartment($deptA->id);
+        $options = OrgJobCatalog::optionsForUnit($unitA->id);
         $this->assertCount(1, $options);
         $this->assertSame($jobA->id, $options[0]['id']);
         $this->assertSame('أخصائي أ', OrgJobCatalog::resolveTitle($jobA->id));
@@ -80,11 +83,19 @@ class HrRound2Test extends TestCase
         $assignee = User::factory()->create(['must_change_password' => false, 'is_active' => true]);
         $assignee->assignRole('Employee');
 
-        $dept = Department::create(['name' => 'التنفيذية']);
+        $administration = OrgUnit::create([
+            'name' => 'التنفيذية',
+            'level' => OrgUnit::LEVEL_ADMINISTRATION,
+        ]);
+        $unit = OrgUnit::create([
+            'name' => 'قسم المشاريع',
+            'level' => OrgUnit::LEVEL_UNIT,
+            'parent_id' => $administration->id,
+        ]);
         $job = OrgUnit::create([
             'name' => 'منسق مشاريع',
             'level' => OrgUnit::LEVEL_JOB,
-            'department_id' => $dept->id,
+            'parent_id' => $unit->id,
         ]);
 
         Livewire::actingAs($admin)
@@ -95,7 +106,8 @@ class HrRound2Test extends TestCase
             ->set('phone', '0555111222')
             ->set('password', 'password123')
             ->set('roleName', 'Employee')
-            ->set('department_id', $dept->id)
+            ->set('administration_id', $administration->id)
+            ->set('unit_id', $unit->id)
             ->set('job_org_unit_id', $job->id)
             ->set('onboarding_assignee_id', $assignee->id)
             ->set('employment_type', 'دوام_كامل')
@@ -148,8 +160,9 @@ class HrRound2Test extends TestCase
     public function test_contracts_route_hidden_from_navigation_config(): void
     {
         $items = collect(config('navigation.groups'))
-            ->firstWhere('label', 'الموارد البشرية')['items'] ?? [];
-        $routes = collect($items)->pluck('route')->all();
-        $this->assertNotContains('contracts.index', $routes);
+            ->flatMap(fn ($g) => $g['items'] ?? [])
+            ->pluck('route');
+
+        $this->assertFalse($items->contains('contracts.index'));
     }
 }
