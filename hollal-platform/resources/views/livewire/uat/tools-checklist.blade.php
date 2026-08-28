@@ -9,7 +9,7 @@
             <div class="ds-btn-group">
                 <button type="button" class="ds-btn ds-btn-primary" @click="copyReport()" :disabled="copying">
                     <i class="fas fa-copy" aria-hidden="true"></i>
-                    <span x-text="copied ? 'تم النسخ — الصق في المحادثة' : 'نسخ التقرير كاملاً'"></span>
+                    <span x-text="copied ? 'تم النسخ — الصق في المحادثة' : 'نسخ تقرير التبويب الحالي'"></span>
                 </button>
                 <button type="button" class="ds-btn ds-btn-outline" @click="loadBaseline()" title="تحميل تقييم 2026-08-17 15:23">
                     تقييم المرحلة 3 (17 أغسطس)
@@ -407,25 +407,26 @@
         },
 
         buildReport() {
-            const tools = this.allTools();
+            const phaseId = Number(this.activePhase);
+            const phase = this.phases.find((p) => Number(p.id) === phaseId);
+            const tools = this.phaseTools(phaseId).map((t) => ({ ...t, phase: phaseId }));
+            const phaseTitle = phase?.title || `التبويب ${phaseId}`;
+            const phaseStatus = this.isPhaseComplete(phaseId)
+                ? 'مكتملة'
+                : (this.isPhaseUnlocked(phaseId) ? 'مفتوحة' : 'مقفلة');
+
             const lines = [
-                '# تقرير تقييم أدوات — منصة حلّل (11 تبويباً)',
+                `# تقرير تقييم — ${phaseTitle}`,
                 `التاريخ: ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`,
-                `الملخص الكلي: ${this.total} إجمالي · ${this.count('يعتمد')} يعتمد · ${this.count('يحتاج تحسين')} يحتاج تحسين · ${this.count('غير مجرّب')} غير مجرّب`,
+                `التبويب: ${phaseId} — ${phaseStatus}`,
+                `الهدف: ${phase?.goal || '—'}`,
+                `التقدم: ${this.phaseAccepted(phaseId)}/${this.phaseToolCount(phaseId)} يعتمد`,
+                `ملخص التبويب: ${this.phaseToolCount(phaseId)} إجمالي · ${this.phaseCount(phaseId, 'يعتمد')} يعتمد · ${this.phaseCount(phaseId, 'يحتاج تحسين')} يحتاج تحسين · ${this.phaseCount(phaseId, 'غير مجرّب')} غير مجرّب`,
+                '',
+                '---',
+                'الهدف: إصلاح ملاحظات هذا التبويب فقط في الكود.',
                 '',
             ];
-
-            this.phases.forEach((phase) => {
-                const done = this.isPhaseComplete(phase.id) ? 'مكتملة' : (this.isPhaseUnlocked(phase.id) ? 'مفتوحة' : 'مقفلة');
-                lines.push(`## ${phase.title} — ${done}`);
-                lines.push(`الهدف: ${phase.goal}`);
-                lines.push(`التقدم: ${this.phaseAccepted(phase.id)}/${this.phaseToolCount(phase.id)} يعتمد`);
-                lines.push('');
-            });
-
-            lines.push('---');
-            lines.push('الهدف: إصلاح الملاحظات أدناه في الكود.');
-            lines.push('');
 
             const sections = [
                 ['يحتاج تحسين', 'يحتاج تحسين'],
@@ -438,7 +439,7 @@
                 if (!rows.length) return;
                 lines.push(`## ${title} (${rows.length})`);
                 rows.forEach((t) => {
-                    lines.push(`### تبويب ${t.phase} — ${t.group} — ${t.tool}`);
+                    lines.push(`### ${t.group} — ${t.tool}`);
                     lines.push(`- المسار: \`${t.path}\``);
                     lines.push(`- ما يُتحقق منه: ${t.checks}`);
                     if (t.lifecycle) lines.push(`- دورة الحياة: ${t.lifecycle}`);
