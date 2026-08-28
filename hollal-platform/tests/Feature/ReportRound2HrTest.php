@@ -135,6 +135,8 @@ class ReportRound2HrTest extends TestCase
         Livewire::actingAs($hr)
             ->test(EvaluationsIndex::class)
             ->assertSee('دورة التقييم', false)
-            ->assertSee('تُنشأ مسودة', false);
+            ->assertSee('مسودة', false)
+            ->assertSee('اعتماد', false)
+            ->assertSee('أرشفة', false);
     }
 }

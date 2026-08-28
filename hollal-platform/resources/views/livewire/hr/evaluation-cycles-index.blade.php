@@ -44,6 +44,8 @@
                         @endif
                         @if ($cycle->status === \App\Models\EvaluationCycle::STATUS_OPEN)
                             <button type="button" class="ds-dropdown-item" wire:click="bulkOpen({{ $cycle->id }})" wire:confirm="فتح تقييمات جماعية للمؤهلين؟">فتح جماعي</button>
+                            <a class="ds-dropdown-item" href="{{ route('evaluations.index') }}">لوحة التقييمات</a>
+                            <button type="button" class="ds-dropdown-item" wire:click="closeCycle({{ $cycle->id }})" wire:confirm="إغلاق الدورة؟ غير المعتمدة تُعتمد بصفر ثم تُؤرشف الكل.">إغلاق وأرشفة</button>
                         @endif
                     </x-ds-row-menu>
                 </td>

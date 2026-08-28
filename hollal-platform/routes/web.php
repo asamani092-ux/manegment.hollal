@@ -45,6 +45,8 @@ use App\Livewire\Hr\AttendanceIndex;
 use App\Livewire\Hr\EvaluationCyclesIndex;
 use App\Livewire\Hr\EvaluationsIndex;
 use App\Livewire\Hr\EvaluationTemplatesIndex;
+use App\Livewire\Hr\MyEvaluationsIndex;
+use App\Livewire\Hr\TeamEvaluationsIndex;
 use App\Livewire\Hr\HrLifecycleIndex;
 use App\Livewire\Hr\LeavesIndex;
 use App\Livewire\Hr\PayrollRunsIndex;
@@ -303,9 +305,11 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:hr.employees.update')
         ->name('evaluation-cycles.index');
 
-    // جاهز لدفعة ٢ب: واجهات المدير/الموظف على التقييم الربعي الجديد
-    // Route::get('/my-evaluations', ...)->name('employee-evaluations.mine');
-    // Route::get('/team-evaluations', ...)->name('employee-evaluations.team');
+    Route::get('/my-evaluations', MyEvaluationsIndex::class)
+        ->name('employee-evaluations.mine');
+
+    Route::get('/team-evaluations', TeamEvaluationsIndex::class)
+        ->name('employee-evaluations.team');
 
     Route::get('/responsibilities', ResponsibilitiesIndex::class)
         ->middleware('permission:hr.employees.update')

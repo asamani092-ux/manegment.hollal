@@ -284,5 +284,13 @@ class HrRound4EvalEngineTest extends TestCase
 
         $this->assertTrue($routes->contains('evaluation-templates.index'));
         $this->assertTrue($routes->contains('evaluation-cycles.index'));
+        $this->assertTrue($routes->contains('employee-evaluations.team'));
+        $this->assertTrue($routes->contains('employee-evaluations.mine'));
+    }
+
+    public function test_period_label_arabic_format(): void
+    {
+        $cycle = new EvaluationCycle(['year' => 2026, 'quarter' => 1]);
+        $this->assertSame('الربع 1 / 2026', $cycle->periodLabel());
     }
 }

@@ -4,9 +4,10 @@ namespace Tests\Feature;
 
 use App\Livewire\Hr\EvaluationsIndex;
 use App\Livewire\Users\EmployeeProfileShow;
-use App\Models\PeriodicEvaluation;
+use App\Models\EmployeeEvaluation;
+use App\Models\EmployeeProfile;
 use App\Models\User;
-use App\Services\EvaluationService;
+use App\Services\QuarterlyEvaluationService;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,8 +15,7 @@ use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
- * Evaluation archive appears on employee profile.
- * Time: O(1) | Space: O(1)
+ * Approved/archived quarterly evaluations appear on employee profile archive.
  */
 class EvaluationArchiveTest extends TestCase
 {
@@ -29,22 +29,44 @@ class EvaluationArchiveTest extends TestCase
         $admin = User::factory()->create(['must_change_password' => false, 'is_active' => true]);
         $admin->assignRole('Super Admin');
 
-        $employee = User::factory()->create(['must_change_password' => false, 'is_active' => true]);
+        $employee = User::factory()->create([
+            'must_change_password' => false,
+            'is_active' => true,
+            'employment_status' => User::STATUS_ACTIVE,
+            'manager_id' => $admin->id,
+        ]);
+        EmployeeProfile::create([
+            'user_id' => $employee->id,
+            'hire_date' => '2025-01-01',
+            'employment_type' => 'دوام_كامل',
+        ]);
 
-        $evaluation = app(EvaluationService::class)->create($employee, '2026-Q3', $admin);
+        $service = app(QuarterlyEvaluationService::class);
+        $template = $service->createTemplate('قالب أرشيف', [
+            ['section' => 'مدير', 'question_text' => 'أ', 'weight' => 60, 'sort_order' => 1],
+            ['section' => 'موارد', 'question_text' => 'ب', 'weight' => 40, 'sort_order' => 2],
+        ]);
+        $cycle = $service->createCycle(2026, 3, $template, '2026-07-01', '2026-09-30');
+        $service->openCycle($cycle);
+        $service->bulkOpen($cycle->fresh());
+
+        $evaluation = EmployeeEvaluation::query()
+            ->where('evaluation_cycle_id', $cycle->id)
+            ->where('employee_id', $employee->id)
+            ->firstOrFail();
 
         Livewire::actingAs($admin)
             ->test(EvaluationsIndex::class)
-            ->call('archive', $evaluation->id)
+            ->call('closeCycle', $cycle->id)
             ->assertHasNoErrors();
 
-        $this->assertSame(PeriodicEvaluation::STATUS_ARCHIVED, $evaluation->fresh()->status);
+        $this->assertSame(EmployeeEvaluation::STATUS_ARCHIVED, $evaluation->fresh()->status);
 
         Livewire::actingAs($admin)
             ->test(EmployeeProfileShow::class, ['user' => $employee])
             ->set('activeTab', 'evaluations')
-            ->assertViewHas('archivedEvaluations', fn ($rows) => $rows->contains('id', $evaluation->id))
-            ->assertSee('الأرشيف', false)
-            ->assertSee('2026-Q3', false);
+            ->assertViewHas('quarterlyEvaluations', fn ($rows) => $rows->contains('id', $evaluation->id))
+            ->assertSee('الربع 3 / 2026', false)
+            ->assertSee('مؤرشف', false);
     }
 }

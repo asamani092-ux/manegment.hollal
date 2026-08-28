@@ -37,9 +37,11 @@ return [
                 ['label' => 'سلم الرواتب', 'route' => 'pay-scales.index', 'icon' => 'fa-layer-group', 'permission' => 'hr.salaries.manage'],
                 ['label' => 'مسيّرات الرواتب', 'route' => 'payroll-runs.index', 'icon' => 'fa-file-invoice-dollar', 'permission' => 'hr.salaries.view'],
                 // «الرواتب الشهرية» أُدمجت في المسيّر + الملف الوظيفي — لا تبويب ثالث.
-                ['label' => 'التقييم الدوري', 'route' => 'evaluations.index', 'icon' => 'fa-star-half-alt', 'permission' => 'hr.employees.view'],
+                ['label' => 'التقييم الربعي', 'route' => 'evaluations.index', 'icon' => 'fa-star-half-alt', 'permission' => 'hr.employees.view'],
                 ['label' => 'قوالب التقييم', 'route' => 'evaluation-templates.index', 'icon' => 'fa-clipboard-check', 'permission' => 'hr.employees.update'],
                 ['label' => 'دورات التقييم', 'route' => 'evaluation-cycles.index', 'icon' => 'fa-calendar-check', 'permission' => 'hr.employees.update'],
+                ['label' => 'تقييمات فريقي', 'route' => 'employee-evaluations.team', 'icon' => 'fa-user-group', 'permission' => 'dashboard.view'],
+                ['label' => 'أرشيف تقييماتي', 'route' => 'employee-evaluations.mine', 'icon' => 'fa-box-archive', 'permission' => 'dashboard.view'],
                 ['label' => 'المسؤوليات', 'route' => 'responsibilities.index', 'icon' => 'fa-clipboard-list', 'permission' => 'hr.employees.update'],
                 ['label' => 'الحضور', 'route' => 'attendance.index', 'icon' => 'fa-user-clock', 'permission' => 'hr.employees.view'],
                 ['label' => 'الحضور الشهري', 'route' => 'attendance.cycle', 'icon' => 'fa-calendar-week', 'permission' => 'hr.employees.update'],

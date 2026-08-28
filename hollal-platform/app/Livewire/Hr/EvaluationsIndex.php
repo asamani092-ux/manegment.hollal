@@ -2,65 +2,45 @@
 
 namespace App\Livewire\Hr;
 
-use App\Models\PeriodicEvaluation;
+use App\Models\EmployeeEvaluation;
+use App\Models\EvaluationCycle;
+use App\Models\EvaluationTemplateItem;
 use App\Models\User;
-use App\Services\EvaluationService;
+use App\Services\QuarterlyEvaluationService;
 use Illuminate\Contracts\View\View;
 use Livewire\Component;
 use Livewire\WithPagination;
 use App\Livewire\Concerns\UsesDsPagination;
 
 /**
- * Periodic evaluations index + create/publish.
- * Time: O(n) | Space: O(page).
+ * HR Round 4 batch 2ب — HR board for the current open quarterly cycle.
+ * Replaces the legacy PeriodicEvaluation screen at /evaluations.
  */
 class EvaluationsIndex extends Component
 {
     use WithPagination;
     use UsesDsPagination;
 
-    public bool $showCreate = false;
-
-    public bool $showBulkCreate = false;
-
-    public ?int $employee_id = null;
-
-    /** @var list<int> */
-    public array $bulkEmployeeIds = [];
-
-    /** Shared criteria lines for bulk evaluation (one per line). */
-    public string $bulkCriteria = '';
-
-    public string $period = '';
-
     public string $statusFilter = '';
-
-    public string $periodFilter = '';
 
     public string $search = '';
 
     public ?int $scoringId = null;
 
-    public ?int $listEmployeeId = null;
+    public string $amendReason = '';
 
     /** @var array<int, array{score: string, note: string}> */
     public array $scoreInputs = [];
 
-    public string $employeeComment = '';
+    public bool $showReports = false;
 
     /** @var array<string, array<string, string>> */
     protected $queryString = [
         'statusFilter' => ['except' => ''],
-        'periodFilter' => ['except' => ''],
         'search' => ['except' => ''],
     ];
 
     public function updatingStatusFilter(): void
-    {
-        $this->resetPage();
-    }
-
-    public function updatingPeriodFilter(): void
     {
         $this->resetPage();
     }
@@ -73,158 +53,65 @@ class EvaluationsIndex extends Component
     public function mount(): void
     {
         abort_unless(auth()->user()->can('hr.employees.view'), 403);
-        $this->period = now()->format('Y').'-Q'.ceil(now()->month / 3);
     }
 
-    public function openCreate(): void
+    public function openScoring(int $id): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
-        $this->showCreate = true;
-        $this->showBulkCreate = false;
-    }
+        $evaluation = EmployeeEvaluation::with(['employee:id,name', 'cycle.items', 'scores', 'editLogs.user:id,name'])
+            ->findOrFail($id);
 
-    public function openBulkCreate(): void
-    {
-        abort_unless(auth()->user()->can('hr.employees.update'), 403);
-        $this->showBulkCreate = true;
-        $this->showCreate = false;
-        $this->bulkEmployeeIds = [];
-        $this->bulkCriteria = "جودة العمل\nالالتزام بالمواعيد\nالتعاون مع الفريق\nالمبادرة والتطوير";
-    }
-
-    public function createEvaluation(): void
-    {
-        abort_unless(auth()->user()->can('hr.employees.update'), 403);
-
-        $this->validate([
-            'employee_id' => 'required|exists:users,id',
-            'period' => 'required|string|max:20|regex:/^\d{4}-Q[1-4]$/',
-        ], [
-            'period.regex' => 'صيغة الفترة يجب أن تكون مثل 2026-Q3.',
-        ]);
-
-        $exists = PeriodicEvaluation::query()
-            ->where('employee_id', $this->employee_id)
-            ->where('period', $this->period)
-            ->exists();
-
-        if ($exists) {
-            $this->addError('period', 'يوجد تقييم لهذا الموظف في الفترة نفسها.');
-
-            return;
+        $this->scoringId = $id;
+        $this->amendReason = '';
+        $this->showReports = false;
+        $this->scoreInputs = [];
+        foreach ($evaluation->cycle?->items ?? [] as $item) {
+            $existing = $evaluation->scores->firstWhere('evaluation_cycle_item_id', $item->id);
+            $this->scoreInputs[$item->id] = [
+                'score' => $existing?->score !== null ? (string) $existing->score : '',
+                'note' => (string) ($existing?->note ?? ''),
+            ];
         }
-
-        app(EvaluationService::class)->create(
-            User::findOrFail($this->employee_id),
-            $this->period,
-            auth()->user()
-        );
-
-        $this->showCreate = false;
-        $this->dispatch('toast', type: 'success', message: 'تم إنشاء التقييم');
     }
 
-    /**
-     * Create evaluations for many employees with shared criteria as responsibilities if missing.
-     * Time: O(e × c) | Space: O(e)
-     */
-    public function createBulkEvaluations(): void
+    public function closeScoring(): void
     {
-        abort_unless(auth()->user()->can('hr.employees.update'), 403);
-
-        $this->validate([
-            'period' => 'required|string|max:20|regex:/^\d{4}-Q[1-4]$/',
-            'bulkEmployeeIds' => 'required|array|min:1',
-            'bulkEmployeeIds.*' => 'integer|exists:users,id',
-            'bulkCriteria' => 'required|string|min:3|max:4000',
-        ], [
-            'period.regex' => 'صيغة الفترة يجب أن تكون مثل 2026-Q3.',
-            'bulkEmployeeIds.required' => 'اختر موظفاً واحداً على الأقل.',
-        ]);
-
-        $criteria = collect(preg_split('/\r\n|\r|\n/', $this->bulkCriteria) ?: [])
-            ->map(fn ($line) => trim((string) $line))
-            ->filter()
-            ->values()
-            ->all();
-
-        if ($criteria === []) {
-            $this->addError('bulkCriteria', 'أدخل بنداً واحداً على الأقل.');
-
-            return;
-        }
-
-        $created = app(EvaluationService::class)->createBulk(
-            $this->bulkEmployeeIds,
-            $this->period,
-            auth()->user(),
-            $criteria,
-        );
-
-        $this->showBulkCreate = false;
-        $this->dispatch('toast', type: 'success', message: "أُنشئ {$created} تقييماً جماعياً");
+        $this->scoringId = null;
+        $this->amendReason = '';
+        $this->showReports = false;
+        $this->scoreInputs = [];
     }
 
-    public function archive(int $id): void
+    public function saveHrScores(): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
-        $evaluation = PeriodicEvaluation::findOrFail($id);
+        $evaluation = EmployeeEvaluation::findOrFail($this->scoringId);
 
         try {
-            app(EvaluationService::class)->archive($evaluation);
-        } catch (\RuntimeException $e) {
+            if ($evaluation->isApproved()) {
+                $this->validate([
+                    'amendReason' => 'required|string|min:3|max:1000',
+                ], [
+                    'amendReason.required' => 'سبب التعديل إلزامي بعد الاعتماد.',
+                ]);
+                app(QuarterlyEvaluationService::class)->amendAfterApproval(
+                    $evaluation,
+                    $this->scoreInputs,
+                    $this->amendReason,
+                    auth()->user(),
+                );
+                $this->amendReason = '';
+                $this->dispatch('toast', type: 'success', message: 'عُدّل التقييم وسُجّل السبب');
+            } else {
+                app(QuarterlyEvaluationService::class)->recordSectionScores(
+                    $evaluation,
+                    EvaluationTemplateItem::SECTION_HR,
+                    $this->scoreInputs,
+                );
+                $this->dispatch('toast', type: 'success', message: 'حُفظت درجات قسم الموارد');
+            }
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
-
-            return;
-        }
-
-        $this->scoringId = null;
-        $this->dispatch('toast', type: 'success', message: 'أُرشف التقييم — يظهر في سجل الملف الوظيفي');
-    }
-
-    public function archiveForEmployee(int $employeeId): void
-    {
-        abort_unless(auth()->user()->can('hr.employees.update'), 403);
-
-        $evaluation = PeriodicEvaluation::query()
-            ->where('employee_id', $employeeId)
-            ->where('status', '!=', PeriodicEvaluation::STATUS_ARCHIVED)
-            ->orderByDesc('period')
-            ->orderByDesc('id')
-            ->first();
-
-        if ($evaluation === null) {
-            $this->dispatch('toast', type: 'error', message: 'لا يوجد تقييم قابل للأرشفة');
-
-            return;
-        }
-
-        $this->archive($evaluation->id);
-    }
-
-    public function openEmployeeEvaluations(int $employeeId): void
-    {
-        abort_unless(auth()->user()->can('hr.employees.view'), 403);
-        $this->listEmployeeId = $employeeId;
-        $this->scoringId = null;
-    }
-
-    public function closeEmployeeEvaluations(): void
-    {
-        $this->listEmployeeId = null;
-    }
-
-    public function openLatestScoring(int $employeeId): void
-    {
-        $evaluation = PeriodicEvaluation::query()
-            ->where('employee_id', $employeeId)
-            ->where('status', PeriodicEvaluation::STATUS_DRAFT)
-            ->orderByDesc('period')
-            ->orderByDesc('id')
-            ->first();
-
-        if ($evaluation === null) {
-            $this->dispatch('toast', type: 'error', message: 'لا يوجد تقييم مسودة — أنشئ فترة جديدة أولاً');
 
             return;
         }
@@ -232,135 +119,104 @@ class EvaluationsIndex extends Component
         $this->openScoring($evaluation->id);
     }
 
-    public function openScoring(int $id): void
+    public function approve(int $id): void
     {
-        $evaluation = PeriodicEvaluation::with('employee')->findOrFail($id);
-        abort_unless(
-            auth()->user()->can('hr.employees.view')
-            || auth()->user()->can('hr.employees.update')
-            || $evaluation->evaluator_id === auth()->id()
-            || $evaluation->employee_id === auth()->id(),
-            403
-        );
-
-        $this->scoringId = $id;
-        $this->employeeComment = (string) ($evaluation->employee_comment ?? '');
-        $responsibilities = \App\Models\Responsibility::query()
-            ->where('employee_id', $evaluation->employee_id)
-            ->active()
-            ->orderBy('order')
-            ->get();
-        $existing = $evaluation->scores()->get()->keyBy('responsibility_id');
-        $this->scoreInputs = [];
-        foreach ($responsibilities as $item) {
-            $this->scoreInputs[$item->id] = [
-                'score' => (string) ($existing[$item->id]->score ?? ''),
-                'note' => (string) ($existing[$item->id]->note ?? ''),
-            ];
-        }
-    }
-
-    public function saveScores(): void
-    {
-        abort_unless(auth()->user()->can('hr.employees.update') || PeriodicEvaluation::findOrFail($this->scoringId)->evaluator_id === auth()->id(), 403);
-
-        $evaluation = PeriodicEvaluation::findOrFail($this->scoringId);
-        $service = app(EvaluationService::class);
-
-        foreach ($this->scoreInputs as $responsibilityId => $input) {
-            if ($input['score'] === '') {
-                continue;
-            }
-            $this->validate([
-                "scoreInputs.$responsibilityId.score" => 'integer|min:1|max:5',
-                "scoreInputs.$responsibilityId.note" => 'nullable|string|max:500',
-            ]);
-            $service->recordScore(
-                $evaluation,
-                \App\Models\Responsibility::findOrFail($responsibilityId),
-                (int) $input['score'],
-                $input['note'] !== '' ? $input['note'] : null,
-            );
-        }
-
-        $this->dispatch('toast', type: 'success', message: 'حُفظت الدرجات');
-    }
-
-    public function saveComment(): void
-    {
-        $evaluation = PeriodicEvaluation::findOrFail($this->scoringId);
-        abort_unless($evaluation->employee_id === auth()->id(), 403);
-
-        $this->validate(['employeeComment' => 'required|string|max:2000']);
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
 
         try {
-            app(EvaluationService::class)->addEmployeeComment($evaluation, $this->employeeComment);
-        } catch (\RuntimeException $e) {
+            app(QuarterlyEvaluationService::class)->approve(
+                EmployeeEvaluation::findOrFail($id),
+                auth()->user(),
+            );
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
 
             return;
         }
 
-        $this->dispatch('toast', type: 'success', message: 'سُجّل تعليقك');
+        $this->dispatch('toast', type: 'success', message: 'اعتمد التقييم — يظهر للموظف فوراً');
+        if ($this->scoringId === $id) {
+            $this->openScoring($id);
+        }
+    }
+
+    public function closeCycle(int $cycleId): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        try {
+            app(QuarterlyEvaluationService::class)->closeCycle(
+                EvaluationCycle::findOrFail($cycleId),
+                auth()->user(),
+            );
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
+        $this->scoringId = null;
+        $this->dispatch('toast', type: 'success', message: 'أُغلقت الدورة وأُرشفت كل التقييمات');
+    }
+
+    public function toggleReports(): void
+    {
+        $this->showReports = ! $this->showReports;
     }
 
     public function render(): View
     {
-        $employeeQuery = User::query()
-            ->select(['id', 'name'])
-            ->where('is_active', true)
-            ->whereHas('periodicEvaluations', function ($q) {
-                $q->when($this->statusFilter, fn ($inner) => $inner->where('status', $this->statusFilter))
-                    ->when($this->periodFilter, fn ($inner) => $inner->where('period', $this->periodFilter));
-            })
-            ->when($this->search !== '', fn ($q) => $q->where('name', 'like', '%'.$this->search.'%'))
-            ->orderBy('name');
+        $service = app(QuarterlyEvaluationService::class);
+        $cycle = $service->currentOpenCycle();
 
-        $employeeRows = $employeeQuery->paginate(15);
-        $employeeIds = $employeeRows->getCollection()->pluck('id');
+        $rows = collect();
+        if ($cycle) {
+            $query = EmployeeEvaluation::query()
+                ->where('evaluation_cycle_id', $cycle->id)
+                ->with(['employee:id,name', 'evaluator:id,name', 'scores'])
+                ->when($this->statusFilter !== '', fn ($q) => $q->where('status', $this->statusFilter))
+                ->when($this->search !== '', function ($q) {
+                    $q->whereHas('employee', fn ($e) => $e->where('name', 'like', '%'.$this->search.'%'));
+                })
+                ->orderBy('id');
 
-        $latestEvaluations = PeriodicEvaluation::query()
-            ->select(['id', 'employee_id', 'period', 'status', 'evaluator_id'])
-            ->whereIn('employee_id', $employeeIds)
-            ->with('evaluator:id,name')
-            ->orderByDesc('period')
-            ->orderByDesc('id')
-            ->get()
-            ->unique('employee_id')
-            ->keyBy('employee_id');
+            $rows = $query->paginate(15);
+            $cycle->load('items');
+        }
 
-        $listEmployee = $this->listEmployeeId
-            ? User::query()->find($this->listEmployeeId, ['id', 'name'])
+        $scoringEvaluation = $this->scoringId
+            ? EmployeeEvaluation::with([
+                'employee:id,name',
+                'cycle.items',
+                'scores.cycleItem',
+                'editLogs.user:id,name',
+                'approver:id,name',
+            ])->find($this->scoringId)
             : null;
-        $employeeEvaluations = $this->listEmployeeId
-            ? PeriodicEvaluation::query()
-                ->where('employee_id', $this->listEmployeeId)
-                ->with(['evaluator:id,name'])
-                ->orderByDesc('period')
-                ->get()
-            : collect();
+
+        $reports = $scoringEvaluation
+            ? $service->referenceReports($scoringEvaluation)
+            : ['attendance' => collect(), 'tasks' => collect()];
+
+        $managerComplete = $scoringEvaluation
+            ? $service->sectionCompletionLabel($scoringEvaluation, EvaluationTemplateItem::SECTION_MANAGER)
+            : null;
+        $hrComplete = $scoringEvaluation
+            ? $service->sectionCompletionLabel($scoringEvaluation, EvaluationTemplateItem::SECTION_HR)
+            : null;
 
         return view('livewire.hr.evaluations-index', [
-            'employeeRows' => $employeeRows,
-            'latestEvaluations' => $latestEvaluations,
-            'periods' => PeriodicEvaluation::query()->distinct()->orderByDesc('period')->pluck('period'),
-            'employees' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'employeeOptions' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name'])
-                ->map(fn (User $u) => ['id' => $u->id, 'label' => $u->name])
-                ->all(),
+            'cycle' => $cycle,
+            'rows' => $rows,
             'canManage' => auth()->user()->can('hr.employees.update'),
-            'scoringEvaluation' => $this->scoringId
-                ? PeriodicEvaluation::with(['employee:id,name', 'scores'])->find($this->scoringId)
-                : null,
-            'scoringResponsibilities' => $this->scoringId
-                ? \App\Models\Responsibility::query()
-                    ->where('employee_id', PeriodicEvaluation::find($this->scoringId)?->employee_id)
-                    ->active()
-                    ->orderBy('order')
-                    ->get()
-                : collect(),
-            'listEmployee' => $listEmployee,
-            'employeeEvaluations' => $employeeEvaluations,
+            'scoringEvaluation' => $scoringEvaluation,
+            'hrItems' => $scoringEvaluation?->cycle?->items->where('section', EvaluationTemplateItem::SECTION_HR) ?? collect(),
+            'managerItems' => $scoringEvaluation?->cycle?->items->where('section', EvaluationTemplateItem::SECTION_MANAGER) ?? collect(),
+            'attendanceRows' => $reports['attendance'],
+            'taskRows' => $reports['tasks'],
+            'managerComplete' => $managerComplete,
+            'hrComplete' => $hrComplete,
+            'service' => $service,
         ]);
     }
 }

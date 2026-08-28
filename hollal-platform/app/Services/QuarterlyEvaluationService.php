@@ -2,22 +2,27 @@
 
 namespace App\Services;
 
+use App\Models\AttendanceRecord;
 use App\Models\EmployeeEvaluation;
+use App\Models\EmployeeEvaluationEditLog;
 use App\Models\EmployeeEvaluationScore;
 use App\Models\EmployeeProfile;
 use App\Models\EvaluationCycle;
 use App\Models\EvaluationCycleItem;
 use App\Models\EvaluationTemplate;
 use App\Models\EvaluationTemplateItem;
+use App\Models\Task;
 use App\Models\User;
+use App\Notifications\EvaluationApproved;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use InvalidArgumentException;
 use RuntimeException;
 
 /**
- * HR Round 4 batch 2أ — quarterly evaluation engine:
- * templates (weights = 100) · cycle snapshot · bulk open · weighted totals.
+ * HR Round 4 — quarterly evaluation engine (2أ templates/cycles + 2ب runtime).
  */
 class QuarterlyEvaluationService
 {
@@ -155,7 +160,6 @@ class QuarterlyEvaluationService
 
     /**
      * Bulk-open employee evaluations for eligible staff.
-     * Excludes: frozen, terminated, mid-quarter joiners (hire_date after cycle starts_at).
      *
      * @return int number of evaluations created
      */
@@ -197,7 +201,7 @@ class QuarterlyEvaluationService
     }
 
     /**
-     * Record a score against a frozen cycle item (not the live template).
+     * Record a score against a frozen cycle item (draft / in-progress only).
      */
     public function recordScore(
         EmployeeEvaluation $evaluation,
@@ -213,8 +217,16 @@ class QuarterlyEvaluationService
             throw new InvalidArgumentException('بند الدورة لا يتبع تقييم الموظف.');
         }
 
-        if ($evaluation->cycle?->isClosed()) {
-            throw new RuntimeException('لا يمكن تعديل درجات دورة مغلقة.');
+        if ($evaluation->cycle?->isClosed() || $evaluation->isArchived()) {
+            throw new RuntimeException('لا يمكن تعديل درجات دورة مغلقة أو تقييم مؤرشف.');
+        }
+
+        if ($evaluation->isApproved()) {
+            throw new RuntimeException('التقييم معتمد — استخدم التعديل بسبب إلزامي.');
+        }
+
+        if (! $evaluation->isEditableByScorers()) {
+            throw new RuntimeException('لا يمكن تسجيل درجات في هذه الحالة.');
         }
 
         $row = EmployeeEvaluationScore::updateOrCreate(
@@ -234,6 +246,265 @@ class QuarterlyEvaluationService
         ]);
 
         return $row;
+    }
+
+    /**
+     * Save several scores for one section (مدير|موارد).
+     *
+     * @param  array<int, array{score: int|string|null, note?: string|null}>  $inputs  keyed by cycle item id
+     */
+    public function recordSectionScores(
+        EmployeeEvaluation $evaluation,
+        string $section,
+        array $inputs,
+    ): void {
+        if (! in_array($section, EvaluationTemplateItem::SECTIONS, true)) {
+            throw new InvalidArgumentException('قسم غير صالح.');
+        }
+
+        $evaluation->loadMissing('cycle.items');
+        $items = $evaluation->cycle?->items->where('section', $section) ?? collect();
+
+        foreach ($items as $item) {
+            $input = $inputs[$item->id] ?? null;
+            if ($input === null) {
+                continue;
+            }
+            $raw = $input['score'] ?? '';
+            if ($raw === '' || $raw === null) {
+                continue;
+            }
+            $note = isset($input['note']) && trim((string) $input['note']) !== ''
+                ? trim((string) $input['note'])
+                : null;
+            $this->recordScore($evaluation->fresh(), $item, (int) $raw, $note);
+        }
+    }
+
+    public function isSectionComplete(EmployeeEvaluation $evaluation, string $section): bool
+    {
+        $evaluation->loadMissing(['cycle.items', 'scores']);
+        $items = $evaluation->cycle?->items->where('section', $section) ?? collect();
+        if ($items->isEmpty()) {
+            return true;
+        }
+
+        $scored = $evaluation->scores->keyBy('evaluation_cycle_item_id');
+        foreach ($items as $item) {
+            $row = $scored->get($item->id);
+            if ($row === null || $row->score === null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public function sectionCompletionLabel(EmployeeEvaluation $evaluation, string $section): string
+    {
+        return $this->isSectionComplete($evaluation, $section) ? 'مكتمل' : 'غير مكتمل';
+    }
+
+    /**
+     * HR approve — employee sees the evaluation immediately (no publish state).
+     */
+    public function approve(EmployeeEvaluation $evaluation, User $approver): EmployeeEvaluation
+    {
+        $evaluation->loadMissing('cycle');
+
+        if ($evaluation->cycle?->isClosed()) {
+            throw new RuntimeException('الدورة مغلقة.');
+        }
+
+        if ($evaluation->isArchived()) {
+            throw new RuntimeException('التقييم مؤرشف مسبقاً.');
+        }
+
+        if ($evaluation->isApproved()) {
+            throw new RuntimeException('التقييم معتمد مسبقاً.');
+        }
+
+        $evaluation->update([
+            'status' => EmployeeEvaluation::STATUS_APPROVED,
+            'approved_at' => now(),
+            'approved_by' => $approver->id,
+            'total_score' => $this->calculateWeightedTotal($evaluation->fresh('scores.cycleItem'))
+                ?? $evaluation->total_score,
+        ]);
+
+        $fresh = $evaluation->fresh(['employee', 'cycle']);
+        if ($fresh?->employee) {
+            Notification::send($fresh->employee, new EvaluationApproved($fresh));
+        }
+
+        return $fresh;
+    }
+
+    /**
+     * Edit scores after approval — mandatory reason + cumulative log.
+     *
+     * @param  array<int, array{score: int|string|null, note?: string|null}>  $inputs
+     */
+    public function amendAfterApproval(
+        EmployeeEvaluation $evaluation,
+        array $inputs,
+        string $reason,
+        User $actor,
+    ): EmployeeEvaluation {
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new InvalidArgumentException('سبب التعديل إلزامي بعد الاعتماد.');
+        }
+
+        $evaluation->loadMissing(['cycle.items', 'scores']);
+
+        if ($evaluation->cycle?->isClosed() || $evaluation->isArchived()) {
+            throw new RuntimeException('لا يمكن تعديل تقييم مؤرشف أو دورة مغلقة.');
+        }
+
+        if (! $evaluation->isApproved()) {
+            throw new RuntimeException('التعديل بسبب متاح بعد الاعتماد فقط.');
+        }
+
+        $before = $this->scoresSnapshot($evaluation);
+
+        return DB::transaction(function () use ($evaluation, $inputs, $reason, $actor, $before) {
+            foreach ($evaluation->cycle->items as $item) {
+                $input = $inputs[$item->id] ?? null;
+                if ($input === null) {
+                    continue;
+                }
+                $raw = $input['score'] ?? '';
+                if ($raw === '' || $raw === null) {
+                    continue;
+                }
+                $score = (int) $raw;
+                if ($score < 1 || $score > 5) {
+                    throw new InvalidArgumentException('الدرجة يجب أن تكون بين 1 و 5.');
+                }
+                $note = isset($input['note']) && trim((string) $input['note']) !== ''
+                    ? trim((string) $input['note'])
+                    : null;
+
+                EmployeeEvaluationScore::updateOrCreate(
+                    [
+                        'employee_evaluation_id' => $evaluation->id,
+                        'evaluation_cycle_item_id' => $item->id,
+                    ],
+                    [
+                        'score' => $score,
+                        'note' => $note,
+                    ],
+                );
+            }
+
+            $fresh = $evaluation->fresh('scores.cycleItem');
+            $after = $this->scoresSnapshot($fresh);
+            $total = $this->calculateWeightedTotal($fresh);
+
+            EmployeeEvaluationEditLog::create([
+                'employee_evaluation_id' => $evaluation->id,
+                'user_id' => $actor->id,
+                'reason' => $reason,
+                'before_scores' => $before,
+                'after_scores' => $after,
+            ]);
+
+            $evaluation->update(['total_score' => $total]);
+
+            return $evaluation->fresh(['scores.cycleItem', 'editLogs']);
+        });
+    }
+
+    /**
+     * Close cycle: unapproved → approve with zero total, then archive all, mark cycle closed.
+     */
+    public function closeCycle(EvaluationCycle $cycle, ?User $actor = null): EvaluationCycle
+    {
+        if (! $cycle->isOpen()) {
+            throw new RuntimeException('إغلاق الدورة متاح للدورة المفتوحة فقط.');
+        }
+
+        return DB::transaction(function () use ($cycle, $actor) {
+            $evaluations = EmployeeEvaluation::query()
+                ->where('evaluation_cycle_id', $cycle->id)
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($evaluations as $evaluation) {
+                if ($evaluation->isArchived()) {
+                    continue;
+                }
+
+                if (! $evaluation->isApproved()) {
+                    $evaluation->update([
+                        'status' => EmployeeEvaluation::STATUS_APPROVED,
+                        'approved_at' => now(),
+                        'approved_by' => $actor?->id,
+                        'total_score' => 0,
+                    ]);
+                    $evaluation = $evaluation->fresh();
+                    if ($evaluation->employee) {
+                        Notification::send($evaluation->employee, new EvaluationApproved($evaluation));
+                    }
+                }
+
+                $evaluation->update([
+                    'status' => EmployeeEvaluation::STATUS_ARCHIVED,
+                    'archived_at' => now(),
+                ]);
+            }
+
+            $cycle->update([
+                'status' => EvaluationCycle::STATUS_CLOSED,
+                'closed_at' => now(),
+            ]);
+
+            return $cycle->fresh();
+        });
+    }
+
+    /**
+     * Reference-only attendance + tasks for the cycle window (no auto scoring).
+     *
+     * @return array{attendance: Collection<int, AttendanceRecord>, tasks: Collection<int, Task>}
+     */
+    public function referenceReports(EmployeeEvaluation $evaluation): array
+    {
+        $evaluation->loadMissing('cycle');
+        $cycle = $evaluation->cycle;
+        if ($cycle === null) {
+            return ['attendance' => collect(), 'tasks' => collect()];
+        }
+
+        $from = Carbon::parse($cycle->starts_at)->startOfDay();
+        $to = Carbon::parse($cycle->ends_at)->endOfDay();
+
+        $attendance = AttendanceRecord::query()
+            ->where('employee_id', $evaluation->employee_id)
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->orderBy('date')
+            ->get();
+
+        $tasks = Task::query()
+            ->where('assigned_to', $evaluation->employee_id)
+            ->where(function ($q) use ($from, $to) {
+                $q->whereBetween('due_date', [$from, $to])
+                    ->orWhereBetween('completed_at', [$from, $to])
+                    ->orWhere(function ($inner) use ($from, $to) {
+                        $inner->whereNull('completed_at')
+                            ->where('created_at', '<=', $to)
+                            ->where(function ($status) use ($from) {
+                                $status->whereNull('due_date')
+                                    ->orWhere('due_date', '>=', $from);
+                            });
+                    });
+            })
+            ->orderByDesc('due_date')
+            ->limit(100)
+            ->get(['id', 'title', 'status', 'due_date', 'completed_at', 'final_rating']);
+
+        return ['attendance' => $attendance, 'tasks' => $tasks];
     }
 
     /**
@@ -263,8 +534,6 @@ class QuarterlyEvaluationService
     }
 
     /**
-     * Employees eligible for bulk open of a cycle.
-     *
      * @return \Illuminate\Database\Eloquent\Builder<User>
      */
     public function eligibleEmployeesQuery(EvaluationCycle $cycle)
@@ -297,6 +566,29 @@ class QuarterlyEvaluationService
         }
 
         return Carbon::parse($hireDate)->toDateString() <= Carbon::parse($cycle->starts_at)->toDateString();
+    }
+
+    public function currentOpenCycle(): ?EvaluationCycle
+    {
+        return EvaluationCycle::query()
+            ->where('status', EvaluationCycle::STATUS_OPEN)
+            ->orderByDesc('year')
+            ->orderByDesc('quarter')
+            ->first();
+    }
+
+    /**
+     * @return list<array{item_id: int, score: int|null, note: string|null}>
+     */
+    private function scoresSnapshot(EmployeeEvaluation $evaluation): array
+    {
+        $evaluation->loadMissing('scores');
+
+        return $evaluation->scores->map(fn (EmployeeEvaluationScore $row) => [
+            'item_id' => (int) $row->evaluation_cycle_item_id,
+            'score' => $row->score !== null ? (int) $row->score : null,
+            'note' => $row->note,
+        ])->values()->all();
     }
 
     /**

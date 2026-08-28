@@ -5,6 +5,7 @@ namespace App\Livewire\Users;
 use App\Models\AuditLog;
 use App\Models\Contract;
 use App\Models\EmployeeDocument;
+use App\Models\EmployeeEvaluation;
 use App\Models\EmployeeProfile;
 use App\Models\EmployeeTransfer;
 use App\Models\LeaveRequest;
@@ -676,6 +677,20 @@ class EmployeeProfileShow extends Component
                 ->orderBy('expiry_date')
                 ->get(),
             'responsibilities' => Responsibility::query()->where('employee_id', $this->userId)->active()->orderBy('order')->get(),
+            'quarterlyEvaluations' => EmployeeEvaluation::query()
+                ->where('employee_id', $this->userId)
+                ->when(
+                    (int) auth()->id() === (int) $this->userId
+                        && ! auth()->user()->can('hr.employees.update'),
+                    fn ($q) => $q->whereIn('status', [
+                        EmployeeEvaluation::STATUS_APPROVED,
+                        EmployeeEvaluation::STATUS_ARCHIVED,
+                    ])
+                )
+                ->with(['cycle.items', 'scores.cycleItem', 'evaluator:id,name'])
+                ->orderByDesc('approved_at')
+                ->orderByDesc('id')
+                ->get(),
             'evaluations' => PeriodicEvaluation::query()
                 ->where('employee_id', $this->userId)
                 ->where('status', '!=', PeriodicEvaluation::STATUS_ARCHIVED)

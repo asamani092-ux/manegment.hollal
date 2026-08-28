@@ -184,42 +184,57 @@ class ReportRound1HrTest extends TestCase
 
     public function test_evaluation_scores_and_employee_comment_on_profile(): void
     {
-        $hr = User::factory()->create(['must_change_password' => false]);
-        $hr->givePermissionTo(['hr.employees.view', 'hr.employees.update']);
-        $employee = User::factory()->create(['must_change_password' => false]);
-        $employee->givePermissionTo('hr.employees.view');
-        $responsibility = Responsibility::create(['employee_id' => $employee->id, 'body' => 'إدارة الملفات', 'order' => 1, 'is_active' => true]);
-        $evaluation = PeriodicEvaluation::create([
-            'employee_id' => $employee->id,
-            'period' => '2026-Q3',
-            'evaluator_id' => $hr->id,
-            'status' => PeriodicEvaluation::STATUS_DRAFT,
+        $hr = User::factory()->create(['must_change_password' => false, 'is_active' => true, 'employment_status' => User::STATUS_ACTIVE]);
+        $hr->givePermissionTo(['hr.employees.view', 'hr.employees.update', 'dashboard.view']);
+        $employee = User::factory()->create([
+            'must_change_password' => false,
+            'is_active' => true,
+            'employment_status' => User::STATUS_ACTIVE,
+            'manager_id' => $hr->id,
         ]);
+        $employee->givePermissionTo('dashboard.view');
+        EmployeeProfile::create([
+            'user_id' => $employee->id,
+            'hire_date' => '2025-01-01',
+            'employment_type' => 'دوام_كامل',
+        ]);
+
+        $service = app(\App\Services\QuarterlyEvaluationService::class);
+        $template = $service->createTemplate('قالب تقرير1', [
+            ['section' => 'مدير', 'question_text' => 'إدارة الملفات', 'weight' => 60, 'sort_order' => 1],
+            ['section' => 'موارد', 'question_text' => 'سياسات', 'weight' => 40, 'sort_order' => 2],
+        ]);
+        $cycle = $service->createCycle(2026, 3, $template, '2026-07-01', '2026-09-30');
+        $service->openCycle($cycle);
+        $service->bulkOpen($cycle->fresh());
+
+        $evaluation = \App\Models\EmployeeEvaluation::query()
+            ->where('employee_id', $employee->id)
+            ->firstOrFail();
+        $items = $cycle->fresh()->items()->orderBy('sort_order')->get();
 
         Livewire::actingAs($hr)
             ->test(EvaluationsIndex::class)
             ->call('openScoring', $evaluation->id)
-            ->set('scoreInputs.'.$responsibility->id.'.score', '4')
-            ->set('scoreInputs.'.$responsibility->id.'.note', 'جيد')
-            ->call('saveScores')
+            ->set('scoreInputs.'.$items[1]->id.'.score', '4')
+            ->set('scoreInputs.'.$items[1]->id.'.note', 'جيد')
+            ->call('saveHrScores')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('evaluation_scores', [
-            'periodic_evaluation_id' => $evaluation->id,
-            'responsibility_id' => $responsibility->id,
+        $this->assertDatabaseHas('employee_evaluation_scores', [
+            'employee_evaluation_id' => $evaluation->id,
+            'evaluation_cycle_item_id' => $items[1]->id,
             'score' => 4,
         ]);
 
-        app(\App\Services\EvaluationService::class)->publish($evaluation);
+        $service->recordScore($evaluation->fresh(), $items[0], 5);
+        $service->approve($evaluation->fresh(), $hr);
 
         Livewire::actingAs($employee)
             ->test(EmployeeProfileShow::class, ['user' => $employee])
             ->call('setTab', 'evaluations')
-            ->set('employeeComment', 'شكرًا')
-            ->call('saveEmployeeComment', $evaluation->id)
-            ->assertHasNoErrors();
-
-        $this->assertSame('شكرًا', $evaluation->fresh()->employee_comment);
+            ->assertSee('الربع 3 / 2026', false)
+            ->assertDontSee('تعليقك', false);
     }
 
     public function test_pay_scale_lists_employee_count(): void

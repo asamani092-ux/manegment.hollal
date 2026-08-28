@@ -123,6 +123,24 @@ class EvaluationCyclesIndex extends Component
         $this->dispatch('toast', type: 'success', message: "فُتح تقييم لـ {$created} موظفاً مؤهلاً");
     }
 
+    public function closeCycle(int $id): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+
+        try {
+            app(QuarterlyEvaluationService::class)->closeCycle(
+                EvaluationCycle::findOrFail($id),
+                auth()->user(),
+            );
+        } catch (\InvalidArgumentException|\RuntimeException $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+
+            return;
+        }
+
+        $this->dispatch('toast', type: 'success', message: 'أُغلقت الدورة وأُرشفت التقييمات');
+    }
+
     public function render(): View
     {
         $cycles = EvaluationCycle::query()

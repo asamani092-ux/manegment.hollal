@@ -63,21 +63,33 @@ class HrRound3Test extends TestCase
     public function test_evaluations_index_shows_employee_summary_without_preview_button(): void
     {
         $admin = $this->hrAdmin();
-        $employee = User::factory()->create(['is_active' => true, 'name' => 'موظف تقييم']);
-        PeriodicEvaluation::create([
-            'employee_id' => $employee->id,
-            'period' => '2026-Q2',
-            'evaluator_id' => $admin->id,
-            'status' => PeriodicEvaluation::STATUS_DRAFT,
+        $employee = User::factory()->create([
+            'is_active' => true,
+            'name' => 'موظف تقييم',
+            'employment_status' => User::STATUS_ACTIVE,
+            'manager_id' => $admin->id,
         ]);
+        EmployeeProfile::create([
+            'user_id' => $employee->id,
+            'hire_date' => '2025-01-01',
+            'employment_type' => 'دوام_كامل',
+        ]);
+
+        $service = app(\App\Services\QuarterlyEvaluationService::class);
+        $template = $service->createTemplate('قالب ر3', [
+            ['section' => 'مدير', 'question_text' => 'أ', 'weight' => 70, 'sort_order' => 1],
+            ['section' => 'موارد', 'question_text' => 'ب', 'weight' => 30, 'sort_order' => 2],
+        ]);
+        $cycle = $service->createCycle(2026, 2, $template, '2026-04-01', '2026-06-30');
+        $service->openCycle($cycle);
+        $service->bulkOpen($cycle->fresh());
 
         Livewire::actingAs($admin)
             ->test(EvaluationsIndex::class)
-            ->assertSee('موظف تقييم')
-            ->assertSee('2026-Q2')
-            ->assertDontSee('إظهار للموظف')
-            ->call('openEmployeeEvaluations', $employee->id)
-            ->assertSet('listEmployeeId', $employee->id);
+            ->assertSee('موظف تقييم', false)
+            ->assertSee('الربع 2 / 2026', false)
+            ->assertDontSee('إظهار للموظف', false)
+            ->assertSee('دورة التقييم', false);
     }
 
     public function test_archive_requires_complete_scores(): void

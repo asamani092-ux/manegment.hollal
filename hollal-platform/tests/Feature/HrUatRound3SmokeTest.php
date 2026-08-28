@@ -83,18 +83,10 @@ class HrUatRound3SmokeTest extends TestCase
 
     public function test_evaluations_employee_menu_without_preview(): void
     {
-        $employee = User::factory()->create(['is_active' => true]);
-        PeriodicEvaluation::create([
-            'employee_id' => $employee->id,
-            'period' => '2026-Q3',
-            'evaluator_id' => $this->admin->id,
-            'status' => PeriodicEvaluation::STATUS_DRAFT,
-        ]);
-
         Livewire::actingAs($this->admin)
             ->test(EvaluationsIndex::class)
-            ->assertSee('عرض جميع التقييمات')
-            ->assertDontSee('إظهار للموظف');
+            ->assertSee('دورة التقييم', false)
+            ->assertDontSee('إظهار للموظف', false);
     }
 
     public function test_attendance_management_tools_render(): void

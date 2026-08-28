@@ -286,48 +286,58 @@
                 </x-ds-table>
             @elseif ($activeTab === 'evaluations')
                 <p class="ds-text-muted ds-mb-3">
-                    سجل التقييمات من أداة «التقييم الدوري» في الموارد البشرية. الأرشيف يحفظ التاريخ دون حذفه.
+                    أرشيف التقييم الربعي بعد الاعتماد. يظهر للموظف فور اعتماد الموارد البشرية (ثم يُؤرشف عند إغلاق الدورة).
                 </p>
-                <h3 class="ds-section-title">الجاري</h3>
-                @forelse ($evaluations as $evaluation)
-                    <article class="ds-card ds-mb-3" wire:key="ev-{{ $evaluation->id }}">
-                        <h3>{{ $evaluation->period }} — {{ $evaluation->status }}</h3>
-                        <p class="ds-text-muted">المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}</p>
-                        @foreach ($evaluation->scores as $score)
-                            <p>{{ $score->responsibility?->body ?? 'بند' }}: <strong class="ds-ltr-num">{{ $score->score }}</strong>/5
-                                @if ($score->note) — {{ $score->note }} @endif
+
+                <h3 class="ds-section-title">التقييم الربعي</h3>
+                @forelse ($quarterlyEvaluations as $evaluation)
+                    <article class="ds-card ds-mb-3" wire:key="qev-{{ $evaluation->id }}">
+                        <h3>{{ $evaluation->cycle?->periodLabel() ?? '—' }} — {{ $evaluation->status }}</h3>
+                        <p class="ds-text-muted">
+                            المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}
+                            @if ($evaluation->total_score !== null)
+                                — المجموع: <span class="ds-ltr-num">{{ $evaluation->total_score }}</span>
+                            @endif
+                        </p>
+                        @foreach ($evaluation->cycle?->items ?? [] as $item)
+                            @php $score = $evaluation->scores->firstWhere('evaluation_cycle_item_id', $item->id); @endphp
+                            <p>
+                                <span class="ds-text-muted">[{{ $item->section }}]</span>
+                                {{ $item->question_text }}:
+                                <strong class="ds-ltr-num">{{ $score?->score ?? '—' }}</strong>/5
+                                @if ($score?->note) — {{ $score->note }} @endif
                             </p>
                         @endforeach
-                        @if ($evaluation->employee_comment)
-                            <p>تعليق الموظف: {{ $evaluation->employee_comment }}</p>
-                        @elseif ($evaluation->isPublished() && $evaluation->employee_id === auth()->id())
-                            <x-ds-form-group label="تعليقك" :error="$errors->first('employeeComment')">
-                                <textarea class="ds-input" wire:model="employeeComment" rows="3"></textarea>
-                            </x-ds-form-group>
-                            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveEmployeeComment({{ $evaluation->id }})">إرسال التعليق</button>
-                        @endif
                     </article>
                 @empty
-                    <p class="ds-text-muted ds-mb-3">لا توجد تقييمات جارية.</p>
+                    <p class="ds-text-muted ds-mb-3">لا تقييمات ربعية معتمدة بعد.</p>
                 @endforelse
 
-                <h3 class="ds-section-title">الأرشيف</h3>
-                @forelse ($archivedEvaluations as $evaluation)
-                    <article class="ds-card ds-mb-3" wire:key="ev-arch-{{ $evaluation->id }}">
-                        <h3>{{ $evaluation->period }} — مؤرشف</h3>
-                        <p class="ds-text-muted">المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}</p>
-                        @foreach ($evaluation->scores as $score)
-                            <p>{{ $score->responsibility?->body ?? 'بند' }}: <strong class="ds-ltr-num">{{ $score->score }}</strong>/5
-                                @if ($score->note) — {{ $score->note }} @endif
-                            </p>
-                        @endforeach
-                        @if ($evaluation->employee_comment)
-                            <p>تعليق الموظف: {{ $evaluation->employee_comment }}</p>
-                        @endif
-                    </article>
-                @empty
-                    <p class="ds-text-muted">لا يوجد أرشيف بعد.</p>
-                @endforelse
+                @if ($archivedEvaluations->isNotEmpty() || $evaluations->isNotEmpty())
+                    <h3 class="ds-section-title">أرشيف سابق (نظام قديم)</h3>
+                    @foreach ($evaluations as $evaluation)
+                        <article class="ds-card ds-mb-3" wire:key="ev-{{ $evaluation->id }}">
+                            <h3>{{ $evaluation->period }} — {{ $evaluation->status }}</h3>
+                            <p class="ds-text-muted">المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}</p>
+                            @foreach ($evaluation->scores as $score)
+                                <p>{{ $score->responsibility?->body ?? 'بند' }}: <strong class="ds-ltr-num">{{ $score->score }}</strong>/5
+                                    @if ($score->note) — {{ $score->note }} @endif
+                                </p>
+                            @endforeach
+                        </article>
+                    @endforeach
+                    @foreach ($archivedEvaluations as $evaluation)
+                        <article class="ds-card ds-mb-3" wire:key="ev-arch-{{ $evaluation->id }}">
+                            <h3>{{ $evaluation->period }} — مؤرشف</h3>
+                            <p class="ds-text-muted">المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}</p>
+                            @foreach ($evaluation->scores as $score)
+                                <p>{{ $score->responsibility?->body ?? 'بند' }}: <strong class="ds-ltr-num">{{ $score->score }}</strong>/5
+                                    @if ($score->note) — {{ $score->note }} @endif
+                                </p>
+                            @endforeach
+                        </article>
+                    @endforeach
+                @endif
             @elseif ($activeTab === 'leaves')
                 <p class="ds-text-muted ds-mb-3">الرصيد السنوي: <strong class="ds-ltr-num">{{ $user->profile?->annual_leave_balance ?? '—' }}</strong></p>
                 <x-ds-table>

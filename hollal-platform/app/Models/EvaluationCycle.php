@@ -17,7 +17,7 @@ class EvaluationCycle extends Model
     /** @var list<string> */
     protected $fillable = [
         'year', 'quarter', 'status', 'evaluation_template_id',
-        'starts_at', 'ends_at', 'opened_at',
+        'starts_at', 'ends_at', 'opened_at', 'closed_at',
     ];
 
     /** @return array<string, string> */
@@ -29,6 +29,7 @@ class EvaluationCycle extends Model
             'starts_at' => 'date',
             'ends_at' => 'date',
             'opened_at' => 'datetime',
+            'closed_at' => 'datetime',
         ];
     }
 
@@ -49,7 +50,7 @@ class EvaluationCycle extends Model
 
     public function periodLabel(): string
     {
-        return $this->year.'-Q'.$this->quarter;
+        return 'الربع '.$this->quarter.' / '.$this->year;
     }
 
     /** @return BelongsTo<EvaluationTemplate, $this> */
