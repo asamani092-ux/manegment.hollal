@@ -33,7 +33,7 @@ return [
             'label' => 'الموارد البشرية',
             'items' => [
                 ['label' => 'دليل العاملين', 'route' => 'users.index', 'icon' => 'fa-users', 'permission' => 'hr.employees.view'],
-                ['label' => 'عقود العاملين', 'route' => 'contracts.index', 'icon' => 'fa-file-signature', 'permission' => 'hr.employees.view'],
+                // عقود العاملين تُدار من الملف الوظيفي — تبويب الشريط مخفي (Round 2).
                 ['label' => 'سلم الرواتب', 'route' => 'pay-scales.index', 'icon' => 'fa-layer-group', 'permission' => 'hr.salaries.manage'],
                 ['label' => 'مسيّرات الرواتب', 'route' => 'payroll-runs.index', 'icon' => 'fa-file-invoice-dollar', 'permission' => 'hr.salaries.view'],
                 // «الرواتب الشهرية» أُدمجت في المسيّر + الملف الوظيفي — لا تبويب ثالث.

@@ -2,9 +2,9 @@
     <x-ds-page-header title="التهيئة وإنهاء العلاقة" :show-button="false" />
 
     <p class="ds-text-muted ds-mb-3">
-        <strong>إنهاء العلاقة:</strong> إنشاء مهام تسليم في إسناد ← متابعتها حتى الاكتمال ← تعطيل الحساب كآخر خطوة.
-        <strong>التجميد:</strong> تعطيل مؤقت للدخول دون إنهاء العلاقة (قابل للعكس).
-        إذا كان تاريخ العقد لم ينتهِ بعد، يجب إرفاق <strong>مخالصة</strong> من تبويب المستندات في الملف الوظيفي قبل الإغلاق.
+        <strong>التهيئة:</strong> عند إضافة موظف يُختار مسؤول واحد لكل مهام التهيئة الأربع.
+        <strong>إنهاء العلاقة:</strong> اختيار مسؤول واحد لكل مهام الإنهاء ← متابعتها (حالة/مرفق/حذف) ← تعطيل الحساب كآخر خطوة.
+        <strong>التجميد:</strong> تعطيل مؤقت للدخول دون إنهاء العلاقة.
     </p>
 
     <x-ds-table>
@@ -96,7 +96,6 @@
     </x-ds-table>
     {{ $users->links() }}
 
-    {{-- Confirm dialogs (inline overlay — reliable with Livewire morph) --}}
     @if ($confirmStartId)
         <div class="ds-modal-overlay" wire:key="confirm-start" wire:click.self="cancelConfirm" wire:keydown.escape.window="cancelConfirm">
             <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl">
@@ -105,7 +104,15 @@
                     <button type="button" class="ds-modal-close" wire:click="cancelConfirm" aria-label="إغلاق">&times;</button>
                 </div>
                 <div class="ds-modal-body">
-                    <p>سيُنشأ 4 مهام تسليم في إسناد. الحساب يبقى نشطًا حتى خطوة الإغلاق النهائية.</p>
+                    <p>سيُنشأ 4 مهام تسليم في إسناد لمسؤول واحد لكل المهام.</p>
+                    <x-ds-form-group label="مسؤول المهام الأربع" :error="$errors->first('checklistAssigneeId')">
+                        <select class="ds-input" wire:model="checklistAssigneeId">
+                            <option value="">— اختر —</option>
+                            @foreach ($assigneeOptions as $opt)
+                                <option value="{{ $opt->id }}">{{ $opt->name }}</option>
+                            @endforeach
+                        </select>
+                    </x-ds-form-group>
                     <div class="ds-toolbar-actions">
                         <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelConfirm">إلغاء</button>
                         <button type="button" class="ds-btn ds-btn-primary" wire:click="startOffboarding({{ $confirmStartId }})">تأكيد البدء</button>
@@ -187,7 +194,6 @@
         </div>
     @endif
 
-    {{-- Unified floating panel: tasks + holds --}}
     @if ($detailUserId && $detailUser)
         @php
             $statusAr = [
@@ -208,7 +214,7 @@
         >
             <div class="ds-modal ds-modal-lg" role="dialog" aria-modal="true" dir="rtl" wire:click.stop>
                 <div class="ds-modal-header">
-                    <h3>متابعة إنهاء العلاقة — {{ $detailUser->name }}</h3>
+                    <h3>متابعة التهيئة/الإنهاء — {{ $detailUser->name }}</h3>
                     <button type="button" class="ds-modal-close" wire:click="closeDetails" aria-label="إغلاق">&times;</button>
                 </div>
                 <div class="ds-modal-body">
@@ -236,13 +242,60 @@
                             @forelse ($detailTasks as $task)
                                 <li class="ds-card" style="padding:.75rem 1rem" wire:key="dtask-{{ $task->id }}">
                                     <div style="display:flex;justify-content:space-between;gap:1rem;align-items:center;flex-wrap:wrap">
-                                        <strong>{{ $task->title }}</strong>
+                                        <div>
+                                            <strong>{{ $task->title }}</strong>
+                                            <div class="ds-text-muted" style="font-size:.85rem">
+                                                {{ $task->role_label }}
+                                                @if ($task->assignee)
+                                                    — المسؤول: {{ $task->assignee->name }}
+                                                @endif
+                                            </div>
+                                        </div>
                                         <x-ds-status-badge :status="$statusAr[$task->status] ?? $task->status" />
                                     </div>
-                                    <a class="ds-link" href="{{ route('tasks.index', ['open' => $task->id]) }}">فتح في إسناد</a>
+
+                                    @if ($taskStatusId === $task->id)
+                                        <div class="ds-mt-3">
+                                            <x-ds-form-group label="الحالة">
+                                                <select class="ds-input" wire:model="taskStatus">
+                                                    <option value="new">جديدة</option>
+                                                    <option value="in_progress">قيد التنفيذ</option>
+                                                    <option value="pending_review">بانتظار المراجعة</option>
+                                                    <option value="completed">مكتملة</option>
+                                                    <option value="cancelled">ملغاة</option>
+                                                </select>
+                                            </x-ds-form-group>
+                                            <div class="ds-toolbar-actions">
+                                                <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="saveTaskStatus">حفظ الحالة</button>
+                                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="$set('taskStatusId', null)">إلغاء</button>
+                                            </div>
+                                        </div>
+                                    @elseif ($taskAttachId === $task->id)
+                                        <div class="ds-mt-3">
+                                            <x-ds-form-group label="مرفق" :error="$errors->first('taskAttachment')">
+                                                <input type="file" class="ds-input" wire:model="taskAttachment" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                                            </x-ds-form-group>
+                                            <div class="ds-toolbar-actions">
+                                                <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="saveTaskAttachment">رفع</button>
+                                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="$set('taskAttachId', null)">إلغاء</button>
+                                            </div>
+                                        </div>
+                                    @else
+                                        <div class="ds-toolbar-actions ds-mt-3" style="flex-wrap:wrap">
+                                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="beginTaskStatus({{ $task->id }})">تغيير الحالة</button>
+                                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="beginTaskAttach({{ $task->id }})">مرفق</button>
+                                            @if ($task->attachment_path)
+                                                <a class="ds-link" href="{{ route('tasks.files.download', ['task' => $task->id, 'type' => 'attachment']) }}">تنزيل المرفق</a>
+                                            @endif
+                                            @if ($task->status !== 'completed')
+                                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="deleteLifecycleTask({{ $task->id }})" wire:confirm="حذف هذه المهمة؟">حذف</button>
+                                            @endif
+                                            <a class="ds-link" href="{{ route('tasks.index', ['open' => $task->id]) }}">فتح في إسناد</a>
+                                        </div>
+                                    @endif
                                 </li>
                             @empty
-                                <li class="ds-text-muted">لا مهام إنهاء لهذا الموظف</li>
+                                <li class="ds-text-muted">لا مهام تهيئة/إنهاء لهذا الموظف</li>
                             @endforelse
                         </ul>
                     @else

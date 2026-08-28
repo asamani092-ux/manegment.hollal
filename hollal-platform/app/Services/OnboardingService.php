@@ -7,11 +7,13 @@ use App\Models\User;
 
 /**
  * 01-B5 — auto-generate onboarding (إسناد) tasks when an employee is added.
- * Tasks are assigned to the creator (HR/manager) to complete for the new hire.
+ * One assignee covers all four checklist tasks (not one assignee per task).
  */
 class OnboardingService
 {
-    private const CHECKLIST = [
+    public const ROLE_LABEL = 'تهيئة';
+
+    public const CHECKLIST = [
         'استكمال ملف الموظف والوثائق الرسمية',
         'تجهيز حساب النظام والصلاحيات',
         'تعريف الموظف بالمهام والمسؤوليات',
@@ -21,8 +23,9 @@ class OnboardingService
     /**
      * @return list<Task>
      */
-    public function generateTasks(User $employee, User $creator): array
+    public function generateTasks(User $employee, User $creator, ?User $assignee = null): array
     {
+        $assignee ??= $creator;
         $tasks = [];
 
         foreach (self::CHECKLIST as $index => $title) {
@@ -30,7 +33,9 @@ class OnboardingService
                 'title' => $title.' — '.$employee->name,
                 'type' => 'single',
                 'assigned_by' => $creator->id,
-                'assigned_to' => $creator->id,
+                'assigned_to' => $assignee->id,
+                'related_user_id' => $employee->id,
+                'role_label' => self::ROLE_LABEL,
                 'priority' => 'medium',
                 'status' => 'new',
                 'due_date' => now()->addDays(($index + 1) * 2),

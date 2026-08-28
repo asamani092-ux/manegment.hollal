@@ -4,8 +4,10 @@ namespace App\Livewire\Users;
 
 use App\Models\Department;
 use App\Models\EmployeeProfile;
+use App\Models\OrgUnit;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\OrgJobCatalog;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Support\Facades\Hash;
@@ -43,9 +45,14 @@ class UsersIndex extends Component
 
     public string $job_title = '';
 
+    public ?int $job_org_unit_id = null;
+
     public string $employment_type = '';
 
     public string $hire_date = '';
+
+    /** One assignee for all onboarding checklist tasks (create only). */
+    public ?int $onboarding_assignee_id = null;
 
     // 01-B1 — directory search / filters / view toggle.
     public string $search = '';
@@ -107,8 +114,26 @@ class UsersIndex extends Component
         $this->is_active = (bool) $user->is_active;
         $this->roleName = $user->roles->first()?->name ?? '';
         $this->job_title = (string) ($user->profile?->job_title ?? '');
+        $this->job_org_unit_id = $user->org_unit_id;
         $this->employment_type = (string) ($user->profile?->employment_type ?? '');
         $this->hire_date = $user->profile?->hire_date?->format('Y-m-d') ?? '';
+        $this->onboarding_assignee_id = null;
+    }
+
+    public function updatedDepartmentId($value): void
+    {
+        $this->department_id = $value !== null && $value !== '' ? (int) $value : null;
+        $this->job_org_unit_id = null;
+        $this->job_title = '';
+    }
+
+    public function updatedJobOrgUnitId($value): void
+    {
+        $this->job_org_unit_id = $value !== null && $value !== '' ? (int) $value : null;
+        $title = OrgJobCatalog::resolveTitle($this->job_org_unit_id);
+        if ($title !== null) {
+            $this->job_title = $title;
+        }
     }
 
     public function save(): void
@@ -132,9 +157,27 @@ class UsersIndex extends Component
             'manager_id' => 'nullable|exists:users,id',
             'is_active' => 'boolean',
             'roleName' => 'required|string|exists:roles,name',
+            'job_org_unit_id' => [
+                'nullable',
+                'integer',
+                function (string $attribute, mixed $value, \Closure $fail): void {
+                    if ($value === null || $value === '') {
+                        return;
+                    }
+                    $ok = OrgUnit::query()
+                        ->whereKey((int) $value)
+                        ->where('level', OrgUnit::LEVEL_JOB)
+                        ->when($this->department_id, fn ($q) => $q->where('department_id', $this->department_id))
+                        ->exists();
+                    if (! $ok) {
+                        $fail('المسمى الوظيفي غير مرتبط بالقسم المختار.');
+                    }
+                },
+            ],
             'job_title' => 'nullable|string|max:255',
             'employment_type' => 'nullable|in:دوام_كامل,دوام_جزئي,متعاون,متطوع',
             'hire_date' => 'nullable|date',
+            'onboarding_assignee_id' => $this->userId ? 'nullable' : 'required|exists:users,id',
         ];
 
         if (! $this->userId) {
@@ -143,7 +186,17 @@ class UsersIndex extends Component
             $rules['password'] = 'nullable|string|min:8';
         }
 
-        $this->validate($rules);
+        $this->validate($rules, [], [
+            'onboarding_assignee_id' => 'مسؤول مهام التهيئة',
+            'job_org_unit_id' => 'المسمى الوظيفي',
+        ]);
+
+        if ($this->job_org_unit_id) {
+            $resolved = OrgJobCatalog::resolveTitle($this->job_org_unit_id);
+            if ($resolved !== null) {
+                $this->job_title = $resolved;
+            }
+        }
 
         $data = [
             'name' => $this->name,
@@ -152,6 +205,7 @@ class UsersIndex extends Component
             'department_id' => $this->department_id,
             'manager_id' => $this->manager_id,
             'is_active' => $this->is_active,
+            'org_unit_id' => $this->job_org_unit_id,
         ];
 
         if ($this->password !== '') {
@@ -173,7 +227,8 @@ class UsersIndex extends Component
 
         // 01-B5 — auto-generate onboarding tasks for a newly added employee.
         if ($user->wasRecentlyCreated) {
-            app(\App\Services\OnboardingService::class)->generateTasks($user, auth()->user());
+            $assignee = User::findOrFail($this->onboarding_assignee_id);
+            app(\App\Services\OnboardingService::class)->generateTasks($user, auth()->user(), $assignee);
         }
 
         $this->showModal = false;
@@ -207,8 +262,10 @@ class UsersIndex extends Component
         $this->is_active = true;
         $this->roleName = '';
         $this->job_title = '';
+        $this->job_org_unit_id = null;
         $this->employment_type = '';
         $this->hire_date = '';
+        $this->onboarding_assignee_id = auth()->id();
         $this->viewOnly = false;
         $this->resetValidation();
     }
@@ -237,6 +294,8 @@ class UsersIndex extends Component
             'departments' => Department::orderBy('name')->get(['id', 'name']),
             'managers' => User::orderBy('name')->get(['id', 'name']),
             'roles' => Role::orderBy('name')->get(['id', 'name']),
+            'roleLabels' => hollal_role_labels(),
+            'jobOptions' => OrgJobCatalog::optionsForDepartment($this->department_id),
         ])->layout('layouts.app', ['title' => 'الفريق']);
     }
 }

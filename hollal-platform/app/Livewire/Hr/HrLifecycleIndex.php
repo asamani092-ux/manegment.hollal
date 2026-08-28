@@ -2,20 +2,27 @@
 
 namespace App\Livewire\Hr;
 
+use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\Task;
 use App\Models\User;
 use App\Services\OffboardingService;
+use App\Services\OnboardingService;
 use App\Services\TaskLifecycleService;
 use Illuminate\Contracts\View\View;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Component;
+use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
- * Onboarding/offboarding lifecycle + freeze. Disable account is last step.
+ * Onboarding/offboarding lifecycle + freeze. One assignee covers all checklist tasks.
  * Time: O(n) | Space: O(page).
  */
 class HrLifecycleIndex extends Component
 {
+    use UsesDsPagination;
+    use WithFileUploads;
     use WithPagination;
 
     public ?int $confirmStartId = null;
@@ -28,11 +35,22 @@ class HrLifecycleIndex extends Component
 
     public ?int $confirmUnfreezeId = null;
 
+    /** One assignee for all four offboarding checklist tasks. */
+    public ?int $checklistAssigneeId = null;
+
     /** Unified floating panel for tasks + holds. */
     public ?int $detailUserId = null;
 
     /** tasks|holds */
     public string $detailTab = 'holds';
+
+    public ?int $taskStatusId = null;
+
+    public string $taskStatus = 'new';
+
+    public ?int $taskAttachId = null;
+
+    public $taskAttachment = null;
 
     /** Deep link support: /hr-lifecycle?open=<userId> opens the holds panel directly. */
     public ?int $open = null;
@@ -41,9 +59,16 @@ class HrLifecycleIndex extends Component
         'open' => ['except' => null],
     ];
 
+    /** @return list<string> */
+    private function lifecycleRoleLabels(): array
+    {
+        return [OffboardingService::ROLE_LABEL, OnboardingService::ROLE_LABEL];
+    }
+
     public function mount(): void
     {
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        $this->checklistAssigneeId = auth()->id();
 
         if ($this->open) {
             $this->openDetails($this->open);
@@ -56,6 +81,7 @@ class HrLifecycleIndex extends Component
         abort_if($userId === auth()->id(), 403);
         $this->closeDetails();
         $this->confirmStartId = $userId;
+        $this->checklistAssigneeId = auth()->id();
         $this->confirmCompleteId = null;
         $this->confirmFreezeId = null;
         $this->confirmCancelOffboardingId = null;
@@ -106,14 +132,14 @@ class HrLifecycleIndex extends Component
         $this->confirmStartId = null;
     }
 
-    /**
-     * Open unified floating panel. O(1).
-     */
     public function openDetails(int $userId, string $tab = 'holds'): void
     {
         $this->cancelConfirm();
         $this->detailUserId = $userId;
         $this->detailTab = in_array($tab, ['tasks', 'holds'], true) ? $tab : 'holds';
+        $this->taskStatusId = null;
+        $this->taskAttachId = null;
+        $this->taskAttachment = null;
     }
 
     public function setDetailTab(string $tab): void
@@ -128,6 +154,9 @@ class HrLifecycleIndex extends Component
     {
         $this->detailUserId = null;
         $this->detailTab = 'holds';
+        $this->taskStatusId = null;
+        $this->taskAttachId = null;
+        $this->taskAttachment = null;
     }
 
     public function cancelConfirm(): void
@@ -144,10 +173,21 @@ class HrLifecycleIndex extends Component
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
         abort_if($userId === auth()->id(), 403);
 
+        $this->validate([
+            'checklistAssigneeId' => 'required|exists:users,id',
+        ], [], [
+            'checklistAssigneeId' => 'مسؤول المهام',
+        ]);
+
         try {
-            app(OffboardingService::class)->offboard(User::findOrFail($userId), auth()->user());
+            $assignee = User::findOrFail($this->checklistAssigneeId);
+            app(OffboardingService::class)->offboard(
+                User::findOrFail($userId),
+                auth()->user(),
+                $assignee,
+            );
             $this->confirmStartId = null;
-            $this->dispatch('toast', type: 'success', message: 'أُنشئت مهام إنهاء العلاقة في إسناد — الحساب يبقى نشطًا حتى إكمالها');
+            $this->dispatch('toast', type: 'success', message: 'أُنشئت مهام إنهاء العلاقة لمسؤول واحد — الحساب يبقى نشطًا حتى إكمالها');
         } catch (\Throwable $e) {
             $this->dispatch('toast', type: 'error', message: $e->getMessage());
         }
@@ -214,9 +254,94 @@ class HrLifecycleIndex extends Component
         $this->dispatch('toast', type: 'success', message: 'أُلغي التجميد — الحساب نشط');
     }
 
+    public function beginTaskStatus(int $taskId): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        $task = $this->lifecycleTaskOrFail($taskId);
+        $this->taskStatusId = $task->id;
+        $this->taskStatus = $task->status;
+        $this->taskAttachId = null;
+    }
+
+    public function saveTaskStatus(): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        $this->validate([
+            'taskStatusId' => 'required|integer',
+            'taskStatus' => 'required|in:new,in_progress,pending_review,completed,cancelled',
+        ]);
+
+        $task = $this->lifecycleTaskOrFail((int) $this->taskStatusId);
+        $task->forceFill(['status' => $this->taskStatus])->save();
+        if ($this->taskStatus === TaskLifecycleService::STATUS_COMPLETED) {
+            $task->forceFill(['completed_at' => now()])->save();
+        }
+        $this->taskStatusId = null;
+        $this->dispatch('toast', type: 'success', message: 'حُدّثت حالة المهمة');
+    }
+
+    public function beginTaskAttach(int $taskId): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        $this->lifecycleTaskOrFail($taskId);
+        $this->taskAttachId = $taskId;
+        $this->taskAttachment = null;
+        $this->taskStatusId = null;
+    }
+
+    public function saveTaskAttachment(): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        $this->validate([
+            'taskAttachId' => 'required|integer',
+            'taskAttachment' => 'required|file|max:5120|mimes:pdf,jpg,jpeg,png,doc,docx',
+        ], [], [
+            'taskAttachment' => 'المرفق',
+        ]);
+
+        $task = $this->lifecycleTaskOrFail((int) $this->taskAttachId);
+        /** @var TemporaryUploadedFile $file */
+        $file = $this->taskAttachment;
+        if ($task->attachment_path) {
+            Storage::disk('local')->delete($task->attachment_path);
+        }
+        $task->forceFill([
+            'attachment_path' => $file->store('tasks', 'local'),
+        ])->save();
+        $this->taskAttachId = null;
+        $this->taskAttachment = null;
+        $this->dispatch('toast', type: 'success', message: 'أُرفق الملف بالمهمة');
+    }
+
+    public function deleteLifecycleTask(int $taskId): void
+    {
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        $task = $this->lifecycleTaskOrFail($taskId);
+        if ($task->status === TaskLifecycleService::STATUS_COMPLETED) {
+            $this->dispatch('toast', type: 'error', message: 'لا يمكن حذف مهمة مكتملة');
+
+            return;
+        }
+        if ($task->attachment_path) {
+            Storage::disk('local')->delete($task->attachment_path);
+        }
+        $task->delete();
+        $this->dispatch('toast', type: 'success', message: 'حُذفت المهمة');
+    }
+
+    private function lifecycleTaskOrFail(int $taskId): Task
+    {
+        return Task::query()
+            ->whereKey($taskId)
+            ->whereIn('role_label', $this->lifecycleRoleLabels())
+            ->when($this->detailUserId, fn ($q) => $q->where('related_user_id', $this->detailUserId))
+            ->firstOrFail();
+    }
+
     public function render(): View
     {
         $service = app(OffboardingService::class);
+        $labels = $this->lifecycleRoleLabels();
 
         $users = User::query()
             ->select(['id', 'name', 'phone', 'is_active', 'employment_status', 'offboarding_started_at'])
@@ -234,16 +359,17 @@ class HrLifecycleIndex extends Component
 
         $taskCounts = Task::query()
             ->whereIn('related_user_id', $ids)
-            ->where('role_label', 'إنهاء_علاقة')
+            ->whereIn('role_label', $labels)
             ->selectRaw('related_user_id, COUNT(*) as total, SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as done', [TaskLifecycleService::STATUS_COMPLETED])
             ->groupBy('related_user_id')
             ->get()
             ->keyBy(fn ($row) => (int) $row->related_user_id);
 
-        $offboardingTasks = Task::query()
-            ->select(['id', 'title', 'status', 'related_user_id'])
+        $lifecycleTasks = Task::query()
+            ->select(['id', 'title', 'status', 'related_user_id', 'role_label', 'attachment_path', 'assigned_to'])
+            ->with(['assignee:id,name'])
             ->whereIn('related_user_id', $ids)
-            ->where('role_label', 'إنهاء_علاقة')
+            ->whereIn('role_label', $labels)
             ->orderBy('id')
             ->get()
             ->groupBy(fn (Task $t) => (int) $t->related_user_id);
@@ -257,17 +383,22 @@ class HrLifecycleIndex extends Component
             : [];
 
         $detailTasks = $this->detailUserId
-            ? ($offboardingTasks->get((int) $this->detailUserId) ?? collect())
+            ? ($lifecycleTasks->get((int) $this->detailUserId) ?? collect())
             : collect();
 
         return view('livewire.hr.hr-lifecycle-index', [
             'users' => $users,
             'holds' => $holds,
             'taskCounts' => $taskCounts,
-            'offboardingTasks' => $offboardingTasks,
+            'lifecycleTasks' => $lifecycleTasks,
             'detailUser' => $detailUser,
             'detailHolds' => $detailHolds,
             'detailTasks' => $detailTasks,
-        ]);
+            'assigneeOptions' => User::query()
+                ->where('is_active', true)
+                ->where('employment_status', '!=', User::STATUS_TERMINATED)
+                ->orderBy('name')
+                ->get(['id', 'name']),
+        ])->layout('layouts.app', ['title' => 'التهيئة وإنهاء العلاقة']);
     }
 }

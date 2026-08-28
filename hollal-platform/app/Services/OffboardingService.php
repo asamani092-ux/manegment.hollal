@@ -18,6 +18,8 @@ use Illuminate\Support\Facades\Schema;
  */
 class OffboardingService
 {
+    public const ROLE_LABEL = 'إنهاء_علاقة';
+
     public const CHECKLIST = [
         'تسليم الأعمال الجارية',
         'استلام العهد المالية والأصول',
@@ -206,9 +208,10 @@ class OffboardingService
 
     /**
      * Starts the offboarding checklist in إسناد. Does not disable the account.
-     * Public signature of offboard() is unchanged; disable moved to complete().
+     * One assignee covers all four checklist tasks (not one assignee per task).
+     * Optional $assignee keeps call sites that only pass ($employee, $actor) working.
      */
-    public function offboard(User $employee, User $actor): void
+    public function offboard(User $employee, User $actor, ?User $assignee = null): void
     {
         if ($employee->employment_status === User::STATUS_TERMINATED) {
             throw new \RuntimeException('علاقة الموظف منتهية بالفعل.');
@@ -218,7 +221,9 @@ class OffboardingService
             throw new \RuntimeException('بدأ إنهاء العلاقة بالفعل — أكمل المهام ثم عطّل الحساب.');
         }
 
-        DB::transaction(function () use ($employee, $actor) {
+        $assignee ??= $actor;
+
+        DB::transaction(function () use ($employee, $actor, $assignee) {
             $employee->forceFill(['offboarding_started_at' => now()])->save();
 
             foreach (self::CHECKLIST as $index => $title) {
@@ -226,9 +231,9 @@ class OffboardingService
                     'title' => $title.' — '.$employee->name,
                     'type' => 'single',
                     'assigned_by' => $actor->id,
-                    'assigned_to' => $actor->id,
+                    'assigned_to' => $assignee->id,
                     'related_user_id' => $employee->id,
-                    'role_label' => 'إنهاء_علاقة',
+                    'role_label' => self::ROLE_LABEL,
                     'priority' => 'high',
                     'status' => 'new',
                     'due_date' => now()->addDays(($index + 1) * 2),

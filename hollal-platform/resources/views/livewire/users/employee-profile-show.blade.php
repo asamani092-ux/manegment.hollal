@@ -59,13 +59,12 @@
 
         <div class="ds-tab-panel">
             @if ($activeTab === 'data')
-                <article class="ds-card ds-mb-3">
-                    <div class="ds-card-head">
-                        <h3 class="ds-section-title">بطاقة البيانات</h3>
+                <x-ds-collapsible-card title="بطاقة البيانات" :open="false">
+                    <x-slot:actions>
                         @if ($canUpdate)
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEdit">تعديل</button>
                         @endif
-                    </div>
+                    </x-slot:actions>
                     <dl class="ds-detail-grid">
                         <div><dt>الاسم</dt><dd>{{ $user->name }}</dd></div>
                         <div><dt>البريد</dt><dd dir="ltr">{{ $user->email }}</dd></div>
@@ -74,15 +73,14 @@
                         <div><dt>المدير المباشر</dt><dd>{{ $user->manager?->name ?? '—' }}</dd></div>
                         <div><dt>الدور</dt><dd><x-ds-role-label :name="$user->roles->first()?->name ?? ''" /></dd></div>
                     </dl>
-                </article>
+                </x-ds-collapsible-card>
             @elseif ($activeTab === 'job')
-                <article class="ds-card ds-mb-3">
-                    <div class="ds-card-head">
-                        <h3 class="ds-section-title">بطاقة الوظيفة</h3>
+                <x-ds-collapsible-card title="بطاقة الوظيفة" :open="true">
+                    <x-slot:actions>
                         @if ($canUpdate)
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEdit">تعديل</button>
                         @endif
-                    </div>
+                    </x-slot:actions>
                     <dl class="ds-detail-grid">
                         <div><dt>المسمى الوظيفي</dt><dd>{{ $user->profile?->job_title ?? '—' }}</dd></div>
                         <div><dt>نوع التوظيف</dt><dd>{{ $typeLabels[$user->profile?->employment_type] ?? ($user->profile?->employment_type ?? '—') }}</dd></div>
@@ -91,20 +89,18 @@
                         <div><dt>الساعات الأساسية أسبوعيًا</dt><dd class="ds-ltr-num">{{ $user->profile?->weekly_hours ?? '—' }}</dd></div>
                         <div><dt>برنامج الحضور</dt><dd>{{ $user->attendance_enabled ? 'مفعّل لهذا الموظف فقط' : 'متوقّف — التقييم على المهام' }}</dd></div>
                     </dl>
-                </article>
+                </x-ds-collapsible-card>
 
-                <article class="ds-card ds-mb-3">
-                    <h3 class="ds-section-title">المسؤوليات الوظيفية</h3>
+                <x-ds-collapsible-card title="المسؤوليات الوظيفية">
                     @forelse ($responsibilities as $item)
                         <p class="ds-mb-sm">{{ $item->order }}. {{ $item->body }}</p>
                     @empty
                         <p class="ds-text-muted">لا توجد بنود مسؤولية.</p>
                     @endforelse
-                </article>
+                </x-ds-collapsible-card>
 
                 @can('hr.employees.update')
-                    <article class="ds-card ds-mb-3">
-                        <h3 class="ds-section-title">إعدادات الحضور</h3>
+                    <x-ds-collapsible-card title="إعدادات الحضور">
                         <p class="ds-text-muted">يُفعَّل برنامج الحضور لكل موظف على حدة من هنا. من لم يُفعَّل له يبقى تقييمه على المهام.</p>
                         <label class="ds-checkbox">
                             <input type="checkbox" wire:model="attendanceEnabled">
@@ -114,13 +110,15 @@
                             <input type="number" class="ds-input ds-ltr-num" wire:model="weeklyHours" min="1" max="80">
                         </x-ds-form-group>
                         <button type="button" class="ds-btn ds-btn-primary" wire:click="saveAttendanceSettings">حفظ</button>
-                    </article>
+                    </x-ds-collapsible-card>
                 @endcan
             @elseif ($activeTab === 'salary')
-                <article class="ds-card ds-mb-3">
-                    <div class="ds-card-head">
-                        <h3 class="ds-section-title">بطاقة الراتب</h3>
-                    </div>
+                <x-ds-collapsible-card title="بيانات الراتب" :open="false">
+                    <x-slot:actions>
+                        @if ($canUpdate)
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEdit">تعديل الملف</button>
+                        @endif
+                    </x-slot:actions>
                 <dl class="ds-detail-grid">
                     <div><dt>السلم</dt><dd>{{ $user->profile?->payScale?->name_ar ?? '—' }}</dd></div>
                     <div><dt>الدرجة</dt><dd>{{ $user->profile?->grade_label ?? '—' }}</dd></div>
@@ -131,8 +129,9 @@
                     <div><dt>الساعات الإضافية</dt><dd>{{ $user->profile?->overtime_unlocked ? 'مفتوح' : 'مقفل' }}</dd></div>
                     <div><dt>قيمة ساعة الإضافي</dt><dd class="ds-ltr-num">{{ $user->profile?->overtime_hour_value ?? '0' }}</dd></div>
                 </dl>
-                </article>
+                </x-ds-collapsible-card>
 
+                <x-ds-collapsible-card title="مكوّنات الراتب">
                 <x-ds-table>
                     <x-slot:head>
                         <tr>
@@ -242,7 +241,9 @@
                         <button type="button" class="ds-btn ds-btn-primary" wire:click="saveOvertimeGate">حفظ</button>
                     </section>
                 @endif
+                </x-ds-collapsible-card>
             @elseif ($activeTab === 'contracts')
+                <x-ds-collapsible-card title="عقود التوظيف" :open="true">
                 <x-ds-table>
                     <x-slot:head>
                         <tr>
@@ -261,6 +262,8 @@
                         <tr><td colspan="3" class="ds-text-muted">لا توجد عقود</td></tr>
                     @endforelse
                 </x-ds-table>
+                <p class="ds-text-muted ds-mt-3">تُدار العقود والمستندات الرسمية من هذا الملف — تبويب «عقود العاملين» في الشريط مخفي.</p>
+                </x-ds-collapsible-card>
             @elseif ($activeTab === 'tasks')
                 <x-ds-table>
                     <x-slot:head>
@@ -347,13 +350,12 @@
                     @endforelse
                 </x-ds-table>
             @elseif ($activeTab === 'documents')
-                <article class="ds-card ds-mb-3">
-                    <div class="ds-card-head">
-                        <h3 class="ds-section-title">الوثائق الرسمية</h3>
+                <x-ds-collapsible-card title="الوثائق الرسمية" :open="true">
+                    <x-slot:actions>
                         @if ($canUpdate)
                             <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openDocumentModal">إضافة وثيقة</button>
                         @endif
-                    </div>
+                    </x-slot:actions>
                     <p class="ds-text-muted ds-mb-3">هوية · إقامة · جواز · عقد عمل · أخرى — مع رقم الوثيقة وتاريخ الانتهاء للتنبيه قبل التجديد.</p>
                     <x-ds-table>
                         <x-slot:head>
@@ -404,7 +406,7 @@
                             <tr><td colspan="{{ $canUpdate ? 7 : 6 }}" class="ds-text-muted">لا توجد وثائق رسمية</td></tr>
                         @endforelse
                     </x-ds-table>
-                </article>
+                </x-ds-collapsible-card>
             @elseif ($activeTab === 'log')
                 <p class="ds-text-muted">سجل التغييرات الوظيفية يُحفظ في سجل النشاط.</p>
             @endif
@@ -459,8 +461,21 @@
                 <span>الحساب نشط (إلغاء التفعيل يمنع تسجيل الدخول)</span>
             </label>
         </div>
-        <x-ds-form-group label="المسمى الوظيفي" :error="$errors->first('editJobTitle')">
-            <input type="text" class="ds-input" wire:model="editJobTitle">
+        <x-ds-form-group label="القسم">
+            <select class="ds-input" wire:model.live="editDepartmentId">
+                <option value="">—</option>
+                @foreach ($departments as $dept)
+                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+        <x-ds-form-group label="المسمى الوظيفي" :error="$errors->first('editJobOrgUnitId')">
+            <select class="ds-input" wire:model.live="editJobOrgUnitId" @disabled(! $editDepartmentId)>
+                <option value="">{{ $editDepartmentId ? '— اختر من وظائف القسم —' : '— اختر القسم أولاً —' }}</option>
+                @foreach ($jobOptions as $job)
+                    <option value="{{ $job['id'] }}">{{ $job['label'] }}</option>
+                @endforeach
+            </select>
         </x-ds-form-group>
         <x-ds-form-group label="نوع التوظيف" :error="$errors->first('editEmploymentType')">
             <select class="ds-input" wire:model="editEmploymentType">
@@ -482,14 +497,6 @@
                 <option value="">— اختر دور —</option>
                 @foreach ($roles as $role)
                     <option value="{{ $role->name }}">{{ hollal_role_label($role->name) }}</option>
-                @endforeach
-            </select>
-        </x-ds-form-group>
-        <x-ds-form-group label="القسم">
-            <select class="ds-input" wire:model="editDepartmentId">
-                <option value="">—</option>
-                @foreach ($departments as $dept)
-                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
                 @endforeach
             </select>
         </x-ds-form-group>

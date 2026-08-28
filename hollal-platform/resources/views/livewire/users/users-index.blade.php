@@ -142,7 +142,7 @@
                         </x-ds-form-group>
                     @endif
                     <x-ds-form-group label="القسم">
-                        <select class="ds-input" wire:model="department_id" @disabled($viewOnly)>
+                        <select class="ds-input" wire:model.live="department_id" @disabled($viewOnly)>
                             <option value="">— بدون قسم —</option>
                             @foreach ($departments as $dept)
                                 <option value="{{ $dept->id }}">{{ $dept->name }}</option>
@@ -167,8 +167,16 @@
                             @endforeach
                         </select>
                     </x-ds-form-group>
-                    <x-ds-form-group label="المسمى الوظيفي" :error="$errors->first('job_title')">
-                        <input type="text" class="ds-input" wire:model="job_title" @disabled($viewOnly)>
+                    <x-ds-form-group label="المسمى الوظيفي" :error="$errors->first('job_org_unit_id')">
+                        <select class="ds-input" wire:model.live="job_org_unit_id" @disabled($viewOnly || ! $department_id)>
+                            <option value="">{{ $department_id ? '— اختر من وظائف القسم —' : '— اختر القسم أولاً —' }}</option>
+                            @foreach ($jobOptions as $job)
+                                <option value="{{ $job['id'] }}">{{ $job['label'] }}</option>
+                            @endforeach
+                        </select>
+                        @if ($department_id && count($jobOptions) === 0)
+                            <p class="ds-text-muted ds-mt-sm">لا توجد بطاقات وظيفة مرتبطة بهذا القسم في الهيكل.</p>
+                        @endif
                     </x-ds-form-group>
                     <x-ds-form-group label="نوع التوظيف" :error="$errors->first('employment_type')">
                         <select class="ds-input" wire:model="employment_type" @disabled($viewOnly)>
@@ -182,6 +190,16 @@
                     <x-ds-form-group label="تاريخ المباشرة" :error="$errors->first('hire_date')">
                         <input type="date" class="ds-input ds-ltr-num" wire:model="hire_date" @disabled($viewOnly)>
                     </x-ds-form-group>
+                    @if (! $userId && ! $viewOnly)
+                        <x-ds-form-group label="مسؤول مهام التهيئة" :error="$errors->first('onboarding_assignee_id')">
+                            <select class="ds-input" wire:model="onboarding_assignee_id">
+                                <option value="">— اختر مسؤولاً واحداً لكل المهام —</option>
+                                @foreach ($managers as $mgr)
+                                    <option value="{{ $mgr->id }}">{{ $mgr->name }}</option>
+                                @endforeach
+                            </select>
+                        </x-ds-form-group>
+                    @endif
                     <div class="ds-form-group">
                         <label class="ds-checkbox-label">
                             <input type="checkbox" wire:model="is_active" @disabled($viewOnly)>
