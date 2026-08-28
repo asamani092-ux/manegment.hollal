@@ -113,6 +113,7 @@ class AttendanceService
                 ($record->check_out_at->getTimestamp() - $record->check_in_at->getTimestamp()) / 3600,
                 2
             );
+            // earlyLeaveMinutes is computed on read for display; no auto-deduction.
             $record->forceFill(['work_hours' => $hours])->save();
         }
 
@@ -218,7 +219,7 @@ class AttendanceService
     /**
      * Expected start HH:MM and grace minutes for lateness (shift or org default).
      *
-     * @return array{start: string, grace: int, shift: ?\App\Models\WorkShift}
+     * @return array{start: string, end: ?string, grace: int, shift: ?\App\Models\WorkShift}
      */
     public function expectedStartFor(User $employee): array
     {
@@ -226,6 +227,7 @@ class AttendanceService
         if ($shift) {
             return [
                 'start' => $shift->startHm(),
+                'end' => $shift->endHm(),
                 'grace' => max(0, (int) $shift->grace_minutes),
                 'shift' => $shift,
             ];
@@ -233,17 +235,20 @@ class AttendanceService
 
         return [
             'start' => $this->officeStartTime(),
+            'end' => null,
             'grace' => 0,
             'shift' => null,
         ];
     }
 
     /**
-     * Minutes late vs shift start after grace (flexibility). 0 if on time /
-     * remote / field / missing punch.
+     * Minutes late vs employee's shift start after grace (flexibility).
+     * When a shift is assigned, its start+grace always win over org office_start.
+     * Falls back to office start (or $fallbackStart) only when no shift.
+     * 0 if on time / remote / field / missing punch.
      * Time: O(1) | Space: O(1)
      */
-    public function latenessMinutes(AttendanceRecord $record, ?string $officeStart = null): int
+    public function latenessMinutes(AttendanceRecord $record, ?string $fallbackStart = null): int
     {
         if (! $record->check_in_at) {
             return 0;
@@ -258,12 +263,18 @@ class AttendanceService
             ? $record->employee
             : User::query()->with('profile.workShift')->find($record->employee_id);
 
-        $expected = $employee
-            ? $this->expectedStartFor($employee)
-            : ['start' => $officeStart ?? $this->officeStartTime(), 'grace' => 0, 'shift' => null];
-
-        $start = $officeStart ?? $expected['start'];
-        $grace = (int) $expected['grace'];
+        if ($employee) {
+            $employee->loadMissing('profile.workShift');
+            $expected = $this->expectedStartFor($employee);
+            // Shift start always takes precedence — never override with org office_start.
+            $start = $expected['shift']
+                ? $expected['start']
+                : ($fallbackStart ?? $expected['start']);
+            $grace = (int) $expected['grace'];
+        } else {
+            $start = $fallbackStart ?? $this->officeStartTime();
+            $grace = 0;
+        }
 
         [$h, $m] = array_map('intval', explode(':', $start));
         $expectedAt = $record->check_in_at->copy()->setTime($h, $m, 0);
@@ -277,11 +288,47 @@ class AttendanceService
     }
 
     /**
-     * Monthly attendance rows with lateness for print/report.
-     * Includes path-2 punches/declarations; rejected rows stay listed with status.
+     * Early leave minutes vs shift end_time. Display-only (no payroll deduction).
+     * 0 when no shift, no check-out, or remote/field day.
+     * Time: O(1) | Space: O(1)
+     */
+    public function earlyLeaveMinutes(AttendanceRecord $record): int
+    {
+        if (! $record->check_out_at) {
+            return 0;
+        }
+
+        $type = (string) ($record->type ?? '');
+        if (in_array($type, [self::TYPE_REMOTE, self::TYPE_FIELD, 'تكليف خارجي', 'انقطاع'], true)) {
+            return 0;
+        }
+
+        $employee = $record->relationLoaded('employee')
+            ? $record->employee
+            : User::query()->with('profile.workShift')->find($record->employee_id);
+
+        if (! $employee) {
+            return 0;
+        }
+
+        $expected = $this->expectedStartFor($employee);
+        if (! $expected['end']) {
+            return 0;
+        }
+
+        [$h, $m] = array_map('intval', explode(':', $expected['end']));
+        $expectedEnd = $record->check_out_at->copy()->setTime($h, $m, 0);
+        $diff = $record->check_out_at->diffInMinutes($expectedEnd, false);
+
+        return $diff > 0 ? (int) $diff : 0;
+    }
+
+    /**
+     * Monthly attendance rows with lateness from each employee's shift
+     * (start + grace). Early leave is display-only vs shift end.
      * Time: O(n) records | Space: O(n)
      *
-     * @return array{month: string, office_start: string, rows: list<array{date: string, employee: string, type: string, check_in: ?string, check_out: ?string, late_minutes: int, source: string, approval_status: ?string}>}
+     * @return array{month: string, office_start: string, rows: list<array{date: string, employee: string, type: string, check_in: ?string, check_out: ?string, late_minutes: int, early_leave_minutes: int, source: string, approval_status: ?string, shift_start: ?string}>}
      */
     public function monthlyReport(string $month, ?int $employeeId = null): array
     {
@@ -300,15 +347,22 @@ class AttendanceService
 
         $rows = [];
         foreach ($records as $record) {
+            $shiftMeta = $record->employee
+                ? $this->expectedStartFor($record->employee)
+                : ['start' => $officeStart, 'end' => null, 'grace' => 0, 'shift' => null];
+
             $rows[] = [
                 'date' => $record->date?->format('Y-m-d') ?? '',
                 'employee' => $record->employee?->name ?? '—',
                 'type' => (string) ($record->type ?? ''),
                 'check_in' => hollal_time($record->check_in_at),
                 'check_out' => hollal_time($record->check_out_at),
-                'late_minutes' => $this->latenessMinutes($record, $officeStart),
+                // Always from employee shift when assigned — do not force org office_start.
+                'late_minutes' => $this->latenessMinutes($record),
+                'early_leave_minutes' => $this->earlyLeaveMinutes($record),
                 'source' => (string) ($record->source ?? ''),
                 'approval_status' => $record->approval_status,
+                'shift_start' => $shiftMeta['shift'] ? $shiftMeta['start'] : null,
             ];
         }
 

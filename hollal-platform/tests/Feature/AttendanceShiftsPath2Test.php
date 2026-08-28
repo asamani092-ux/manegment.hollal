@@ -215,6 +215,82 @@ class AttendanceShiftsPath2Test extends TestCase
         Carbon::setTestNow();
     }
 
+    public function test_monthly_report_lateness_uses_employee_shift_not_office_start(): void
+    {
+        $this->seed(PlatformSettingsSeeder::class);
+        \App\Support\Setting::set('attendance.office_start_time', '08:00');
+
+        // Shift starts later than org office — report must use 10:00 + grace 10.
+        $shift = WorkShift::create([
+            'name' => 'متأخرة',
+            'start_time' => '10:00',
+            'end_time' => '18:00',
+            'grace_minutes' => 10,
+            'weekdays' => [0, 1, 2, 3, 4, 5, 6],
+            'is_active' => true,
+        ]);
+
+        $employee = User::factory()->create([
+            'attendance_enabled' => true,
+            'name' => 'موظف وردية متأخرة',
+        ]);
+        EmployeeProfile::create([
+            'user_id' => $employee->id,
+            'work_shift_id' => $shift->id,
+        ]);
+
+        AttendanceRecord::create([
+            'employee_id' => $employee->id,
+            'date' => '2026-08-24',
+            'type' => 'حضور',
+            'source' => 'يدوي',
+            'check_in_at' => Carbon::parse('2026-08-24 10:25:00'),
+            'declared_by' => $employee->id,
+        ]);
+
+        $report = app(AttendanceService::class)->monthlyReport('2026-08', $employee->id);
+
+        $this->assertSame('08:00', $report['office_start']); // org default still reported
+        $this->assertSame('10:00', $report['rows'][0]['shift_start']);
+        // vs shift 10:00: 25 − grace 10 = 15. If wrongly using office 08:00 → 145.
+        $this->assertSame(15, $report['rows'][0]['late_minutes']);
+        $this->assertNotSame(145, $report['rows'][0]['late_minutes']);
+    }
+
+    public function test_early_leave_minutes_from_shift_end_display_only(): void
+    {
+        $shift = WorkShift::create([
+            'name' => 'صباحية',
+            'start_time' => '08:00',
+            'end_time' => '16:00',
+            'grace_minutes' => 0,
+            'weekdays' => [0, 1, 2, 3, 4, 5, 6],
+            'is_active' => true,
+        ]);
+
+        $employee = User::factory()->create(['attendance_enabled' => true, 'name' => 'منصرف مبكراً']);
+        EmployeeProfile::create([
+            'user_id' => $employee->id,
+            'work_shift_id' => $shift->id,
+        ]);
+
+        AttendanceRecord::create([
+            'employee_id' => $employee->id,
+            'date' => '2026-08-24',
+            'type' => 'حضور',
+            'source' => 'يدوي',
+            'check_in_at' => Carbon::parse('2026-08-24 08:00:00'),
+            'check_out_at' => Carbon::parse('2026-08-24 15:30:00'),
+            'declared_by' => $employee->id,
+        ]);
+
+        $svc = app(AttendanceService::class);
+        $report = $svc->monthlyReport('2026-08', $employee->id);
+
+        $this->assertSame(30, $report['rows'][0]['early_leave_minutes']);
+        $this->assertSame(0, $report['rows'][0]['late_minutes']);
+    }
+
     public function test_platform_punch_cannot_overwrite_imported_fingerprint(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-24 10:00:00'));

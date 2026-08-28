@@ -333,8 +333,10 @@ class AttendanceIndex extends Component
 
         $records = $query->paginate(20);
         $lateById = [];
+        $earlyById = [];
         foreach ($records as $record) {
             $lateById[$record->id] = $service->latenessMinutes($record);
+            $earlyById[$record->id] = $service->earlyLeaveMinutes($record);
         }
 
         $printReport = null;
@@ -389,6 +391,7 @@ class AttendanceIndex extends Component
         return view('livewire.hr.attendance-index', [
             'records' => $records,
             'lateById' => $lateById,
+            'earlyById' => $earlyById,
             'attendanceEnabled' => (bool) ($user->attendance_enabled ?? false),
             'canViewAll' => $canViewAll,
             'canManage' => $canManage,

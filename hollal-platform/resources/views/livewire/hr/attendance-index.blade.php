@@ -212,6 +212,7 @@
                     <th scope="col">حضور</th>
                     <th scope="col">انصراف</th>
                     <th scope="col">تأخر (د)</th>
+                    <th scope="col">انصراف مبكر (د)</th>
                 </tr>
             </x-slot:head>
             @forelse ($records as $record)
@@ -226,9 +227,13 @@
                         @php $late = (int) ($lateById[$record->id] ?? 0); @endphp
                         {{ $late > 0 ? $late : '—' }}
                     </td>
+                    <td class="ds-ltr-num">
+                        @php $early = (int) ($earlyById[$record->id] ?? 0); @endphp
+                        {{ $early > 0 ? $early : '—' }}
+                    </td>
                 </tr>
             @empty
-                <tr><td colspan="7"><x-ds-empty-state message="لا توجد سجلات حضور" icon="fa-clock" /></td></tr>
+                <tr><td colspan="8"><x-ds-empty-state message="لا توجد سجلات حضور" icon="fa-clock" /></td></tr>
             @endforelse
         </x-ds-table>
         <div>{{ $records->links() }}</div>
