@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AttendanceCycleApproval;
+use App\Models\AttendanceManualIndicator;
 use App\Models\AttendanceRecord;
 use App\Models\PayrollRun;
 use App\Models\User;
@@ -11,6 +12,8 @@ use Illuminate\Support\Carbon;
 
 /**
  * ATT-2/ATT-4 — attendance cycle window and payroll deduction formulas.
+ * Manual late-hours / absence indicators (no file) feed the same formulas;
+ * final SAR amounts are never entered by hand.
  * Time: O(employees × days) | Space: O(employees)
  */
 class AttendanceDeductionService
@@ -81,10 +84,80 @@ class AttendanceDeductionService
     }
 
     /**
-     * @return array{employee_id: int, name: string, present_days: int, absence_days: int, late_minutes: int, chargeable_late_minutes: int, overtime_hours: float, late_deduction: float, absence_deduction: float, total_deduction: float}
+     * Deduction from late hours using settings formulas (no manual SAR entry).
+     */
+    public function lateDeductionFromHours(float $lateHours, float $salary): float
+    {
+        return round(max(0, $lateHours) * $this->hourValue($salary), 2);
+    }
+
+    /**
+     * Deduction from absence days using settings multiplier.
+     */
+    public function absenceDeductionFromDays(int $absenceDays, float $salary): float
+    {
+        return round(max(0, $absenceDays) * $this->absenceMultiplier() * $this->dayValue($salary), 2);
+    }
+
+    /**
+     * Upsert HR manual indicators for an employee in a cycle (hours/days only).
+     */
+    public function saveManualIndicator(
+        User $employee,
+        Carbon $from,
+        Carbon $to,
+        float $lateHours,
+        int $absenceDays,
+        User $actor,
+        ?string $notes = null,
+    ): AttendanceManualIndicator {
+        return AttendanceManualIndicator::updateOrCreate(
+            [
+                'employee_id' => $employee->id,
+                'cycle_from' => $from->toDateString(),
+                'cycle_to' => $to->toDateString(),
+            ],
+            [
+                'late_hours' => max(0, $lateHours),
+                'absence_days' => max(0, $absenceDays),
+                'notes' => $notes,
+                'entered_by' => $actor->id,
+            ],
+        );
+    }
+
+    /**
+     * @return array{employee_id: int, name: string, present_days: int, absence_days: int, late_minutes: int, chargeable_late_minutes: int, overtime_hours: float, late_deduction: float, absence_deduction: float, total_deduction: float, source: string}
      */
     public function employeeCycleSummary(User $employee, Carbon $from, Carbon $to, float $salary): array
     {
+        $manual = AttendanceManualIndicator::query()
+            ->where('employee_id', $employee->id)
+            ->whereDate('cycle_from', $from->toDateString())
+            ->whereDate('cycle_to', $to->toDateString())
+            ->first();
+
+        if ($manual) {
+            $lateHours = (float) $manual->late_hours;
+            $absenceDays = (int) $manual->absence_days;
+            $lateDeduction = $this->lateDeductionFromHours($lateHours, $salary);
+            $absenceDeduction = $this->absenceDeductionFromDays($absenceDays, $salary);
+
+            return [
+                'employee_id' => $employee->id,
+                'name' => $employee->name,
+                'present_days' => 0,
+                'absence_days' => $absenceDays,
+                'late_minutes' => (int) round($lateHours * 60),
+                'chargeable_late_minutes' => (int) round($lateHours * 60),
+                'overtime_hours' => 0.0,
+                'late_deduction' => $lateDeduction,
+                'absence_deduction' => $absenceDeduction,
+                'total_deduction' => round($lateDeduction + $absenceDeduction, 2),
+                'source' => 'يدوي',
+            ];
+        }
+
         $records = AttendanceRecord::query()
             ->where('employee_id', $employee->id)
             ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
@@ -110,11 +183,9 @@ class AttendanceDeductionService
 
         $workingDays = $this->workingDaysInRange($from, $to);
         $absenceDays = max(0, $workingDays - $presentDays);
-        $hourVal = $this->hourValue($salary);
-        $dayVal = $this->dayValue($salary);
         $lateHours = $lateMinutes / 60;
-        $lateDeduction = round($lateHours * $hourVal, 2);
-        $absenceDeduction = round($absenceDays * $this->absenceMultiplier() * $dayVal, 2);
+        $lateDeduction = $this->lateDeductionFromHours($lateHours, $salary);
+        $absenceDeduction = $this->absenceDeductionFromDays($absenceDays, $salary);
 
         return [
             'employee_id' => $employee->id,
@@ -127,6 +198,7 @@ class AttendanceDeductionService
             'late_deduction' => $lateDeduction,
             'absence_deduction' => $absenceDeduction,
             'total_deduction' => round($lateDeduction + $absenceDeduction, 2),
+            'source' => 'سجلات',
         ];
     }
 
@@ -162,12 +234,58 @@ class AttendanceDeductionService
         return AttendanceCycleApproval::updateOrCreate(
             ['cycle_from' => $from->toDateString(), 'cycle_to' => $to->toDateString()],
             [
-                'status' => 'معتمد',
+                'status' => AttendanceCycleApproval::STATUS_APPROVED,
                 'approved_by' => $approver->id,
                 'approved_at' => now(),
                 'snapshot' => $snapshot,
             ],
         );
+    }
+
+    /**
+     * After approval: request correction with a required reason (HR).
+     */
+    public function requestCorrection(AttendanceCycleApproval $approval, string $reason, User $actor): AttendanceCycleApproval
+    {
+        if ($approval->status !== AttendanceCycleApproval::STATUS_APPROVED) {
+            throw new \InvalidArgumentException('التصحيح متاح بعد اعتماد الدورة فقط');
+        }
+        $reason = trim($reason);
+        if (mb_strlen($reason) < 3) {
+            throw new \InvalidArgumentException('سبب التصحيح إلزامي');
+        }
+
+        $approval->forceFill([
+            'status' => AttendanceCycleApproval::STATUS_CORRECTION_PENDING,
+            'correction_reason' => $reason,
+            'correction_requested_by' => $actor->id,
+            'correction_requested_at' => now(),
+            'correction_approved_by' => null,
+            'correction_approved_at' => null,
+        ])->save();
+
+        return $approval->fresh();
+    }
+
+    /**
+     * Approve correction request → reopen cycle as draft for re-approval.
+     * Requires hr.employees.update (enforced by caller).
+     */
+    public function approveCorrection(AttendanceCycleApproval $approval, User $approver): AttendanceCycleApproval
+    {
+        if ($approval->status !== AttendanceCycleApproval::STATUS_CORRECTION_PENDING) {
+            throw new \InvalidArgumentException('لا يوجد طلب تصحيح معلّق');
+        }
+
+        $approval->forceFill([
+            'status' => AttendanceCycleApproval::STATUS_DRAFT,
+            'approved_by' => null,
+            'approved_at' => null,
+            'correction_approved_by' => $approver->id,
+            'correction_approved_at' => now(),
+        ])->save();
+
+        return $approval->fresh();
     }
 
     /**
@@ -178,6 +296,9 @@ class AttendanceDeductionService
     {
         if (! $run->isEditable()) {
             throw new \InvalidArgumentException('يُطبَّق خصم الحضور على مسودة المسير فقط.');
+        }
+        if ($approval->status !== AttendanceCycleApproval::STATUS_APPROVED) {
+            throw new \InvalidArgumentException('يُطبَّق الخصم من تقرير معتمد فقط');
         }
 
         $rows = $approval->snapshot ?? [];

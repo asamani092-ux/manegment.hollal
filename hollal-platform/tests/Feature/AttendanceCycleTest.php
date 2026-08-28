@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\AttendanceColumnMap;
+use App\Models\AttendanceCycleApproval;
+use App\Models\AttendanceImport;
 use App\Models\AttendanceRecord;
 use App\Models\EmployeeProfile;
 use App\Models\PayrollRun;
@@ -55,7 +58,6 @@ class AttendanceCycleTest extends TestCase
             'is_active' => true,
         ]);
 
-        // One late day only → many absences in cycle window around mid-month
         Carbon::setTestNow(Carbon::parse('2026-08-10 09:00:00'));
         AttendanceRecord::create([
             'employee_id' => $employee->id,
@@ -186,7 +188,7 @@ class AttendanceCycleTest extends TestCase
         $imported = app(AttendanceService::class)->importFile($path, $hr);
         $this->assertSame(1, $imported['rows']);
         $this->assertTrue(
-            \App\Models\AttendanceRecord::query()
+            AttendanceRecord::query()
                 ->where('employee_id', $employee->id)
                 ->whereDate('date', '2026-08-10')
                 ->where('source', 'بصمة')
@@ -218,7 +220,8 @@ class AttendanceCycleTest extends TestCase
         $hr = User::factory()->create(['must_change_password' => false]);
         $hr->givePermissionTo('hr.employees.update');
         $this->actingAs($hr)->get(route('attendance.cycle'))->assertOk()
-            ->assertSee('رفع ملف الحضور', false)
-            ->assertSee('تقرير الخصومات والمبالغ', false);
+            ->assertSee('رفع حركات الشهر', false)
+            ->assertSee('تقرير الخصومات', false)
+            ->assertSee('مؤشرات يدوية', false);
     }
 }
