@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
+use App\Models\OrgUnit;
 use App\Models\User;
 use App\Services\AccountingCloseService;
 use App\Services\JournalService;
@@ -24,7 +24,7 @@ class AccountingCloseServiceTest extends TestCase
 
     public function test_sync_opening_reconcile_and_close(): void
     {
-        Department::create(['name' => 'إدارة تجريبية']);
+        OrgUnit::create(['name' => 'إدارة تجريبية', 'level' => OrgUnit::LEVEL_ADMINISTRATION]);
         $user = User::factory()->create(['must_change_password' => false]);
         $service = app(AccountingCloseService::class);
 

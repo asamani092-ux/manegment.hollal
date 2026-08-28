@@ -186,7 +186,7 @@ class OperationalRolesTest extends TestCase
 
         $this->actingAs($user)->get(route('structure.org-tree'))->assertOk();
         $this->actingAs($user)->get(route('settings.grants'))->assertOk();
-        $this->actingAs($user)->get(route('departments.index'))->assertOk();
+        $this->actingAs($user)->get('/departments')->assertNotFound();
     }
 
     public function test_employee_cannot_open_finance_or_audit_log(): void

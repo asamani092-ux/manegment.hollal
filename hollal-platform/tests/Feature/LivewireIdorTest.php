@@ -2,15 +2,14 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\Departments\DepartmentsIndex;
 use App\Livewire\Documents\DocumentsIndex;
 use App\Livewire\Expenses\ExpensesIndex;
 use App\Livewire\Meetings\MeetingMinutes;
 use App\Livewire\Meetings\MeetingsIndex;
 use App\Livewire\Payroll\PayrollIndex;
 use App\Livewire\Settings\GrantsIndex;
+use App\Livewire\Structure\OrgTreeIndex;
 use App\Livewire\Users\UsersIndex;
-use App\Models\Department;
 use App\Models\Document;
 use App\Models\ExpenseRequest;
 use App\Models\Meeting;
@@ -38,7 +37,7 @@ class LivewireIdorTest extends TestCase
         $this->employee = User::factory()->create(['phone' => '0501000001', 'must_change_password' => false]);
         $this->employee->givePermissionTo([
             'esnad.tasks.view', 'finance.expenses.create', 'meetings.view', 'hr.employees.view',
-            'structure.departments.view', 'roles.view', 'hr.salaries.view', 'documents.view',
+            'structure.view', 'roles.view', 'hr.salaries.view', 'documents.view',
         ]);
 
         $this->otherUser = User::factory()->create(['phone' => '0501000002', 'must_change_password' => false]);
@@ -105,13 +104,11 @@ class LivewireIdorTest extends TestCase
             ->assertForbidden();
     }
 
-    public function test_employee_cannot_update_department_without_permission(): void
+    public function test_employee_cannot_mutate_org_tree_without_manage_permission(): void
     {
-        $department = Department::create(['name' => 'قسم اختبار']);
-
         Livewire::actingAs($this->employee)
-            ->test(DepartmentsIndex::class)
-            ->call('openEdit', $department->id)
+            ->test(OrgTreeIndex::class)
+            ->call('openUnitModal')
             ->assertForbidden();
     }
 

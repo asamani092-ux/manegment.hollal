@@ -2,12 +2,11 @@
 
 namespace Tests\Feature;
 
-use App\Livewire\Departments\DepartmentsIndex;
 use App\Livewire\Settings\GrantsIndex;
 use App\Livewire\Settings\MailSettingsIndex;
 use App\Livewire\Structure\OrgTreeIndex;
-use App\Models\Department;
 use App\Models\MailSetting;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -27,34 +26,40 @@ class ReportRound1StructSetTest extends TestCase
         $this->seed(PermissionSeeder::class);
     }
 
-    public function test_department_saves_owner(): void
+    public function test_org_administration_can_be_created_with_manager(): void
     {
         $admin = User::factory()->create(['must_change_password' => false, 'is_active' => true]);
         $admin->givePermissionTo([
-            'structure.departments.view',
-            'structure.departments.create',
-            'structure.departments.update',
+            'structure.view',
+            'structure.manage',
         ]);
-        $owner = User::factory()->create(['is_active' => true, 'name' => 'مسؤول القسم']);
+        $manager = User::factory()->create(['is_active' => true, 'name' => 'مسؤول القسم']);
 
         Livewire::actingAs($admin)
-            ->test(DepartmentsIndex::class)
-            ->call('openCreate')
-            ->set('name', 'إدارة التشغيل')
-            ->set('ownerUserId', $owner->id)
-            ->call('save')
+            ->test(OrgTreeIndex::class)
+            ->call('openUnitModal')
+            ->set('unitName', 'إدارة التشغيل')
+            ->set('unitLevel', OrgUnit::LEVEL_ADMINISTRATION)
+            ->call('saveUnit')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('departments', [
+        $unit = OrgUnit::query()->where('name', 'إدارة التشغيل')->first();
+        $this->assertNotNull($unit);
+        $this->assertSame(OrgUnit::LEVEL_ADMINISTRATION, $unit->level);
+
+        $unit->update(['manager_id' => $manager->id]);
+
+        $this->assertDatabaseHas('org_units', [
             'name' => 'إدارة التشغيل',
-            'owner_user_id' => $owner->id,
+            'level' => 'إدارة',
+            'manager_id' => $manager->id,
         ]);
     }
 
     public function test_org_tree_has_jobs_and_committees_tabs(): void
     {
         $user = User::factory()->create(['must_change_password' => false]);
-        $user->givePermissionTo(['structure.departments.view']);
+        $user->givePermissionTo(['structure.view']);
 
         Livewire::actingAs($user)
             ->test(OrgTreeIndex::class)

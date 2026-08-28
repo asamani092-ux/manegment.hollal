@@ -21,7 +21,7 @@ class ProtectedRouteTest extends TestCase
             'tasks' => ['/tasks'],
             'meetings' => ['/meetings'],
             'meetings open decisions' => ['/meetings/open-decisions'],
-            'departments' => ['/departments'],
+            'structure org-tree' => ['/structure/org-tree'],
             'users' => ['/users'],
             'settings roles' => ['/settings/roles'],
         ];

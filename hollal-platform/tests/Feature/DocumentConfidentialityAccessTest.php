@@ -2,8 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
 use App\Models\Document;
+use App\Models\OrgUnit;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -14,9 +14,9 @@ class DocumentConfidentialityAccessTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected Department $departmentA;
+    protected OrgUnit $unitA;
 
-    protected Department $departmentB;
+    protected OrgUnit $unitB;
 
     protected User $uploader;
 
@@ -33,25 +33,35 @@ class DocumentConfidentialityAccessTest extends TestCase
         $this->seed(PermissionSeeder::class);
         Storage::fake('local');
 
-        $this->departmentA = Department::create(['name' => 'قسم أ']);
-        $this->departmentB = Department::create(['name' => 'قسم ب']);
+        $adminA = OrgUnit::create(['name' => 'إدارة أ', 'level' => OrgUnit::LEVEL_ADMINISTRATION]);
+        $adminB = OrgUnit::create(['name' => 'إدارة ب', 'level' => OrgUnit::LEVEL_ADMINISTRATION]);
+        $this->unitA = OrgUnit::create([
+            'name' => 'قسم أ',
+            'level' => OrgUnit::LEVEL_UNIT,
+            'parent_id' => $adminA->id,
+        ]);
+        $this->unitB = OrgUnit::create([
+            'name' => 'قسم ب',
+            'level' => OrgUnit::LEVEL_UNIT,
+            'parent_id' => $adminB->id,
+        ]);
 
         $this->uploader = User::factory()->create([
             'phone' => '0501111111',
-            'department_id' => $this->departmentA->id,
+            'org_unit_id' => $this->unitA->id,
             'must_change_password' => false,
         ]);
 
         $this->sameDepartmentUser = User::factory()->create([
             'phone' => '0502222222',
-            'department_id' => $this->departmentA->id,
+            'org_unit_id' => $this->unitA->id,
             'must_change_password' => false,
         ]);
         $this->sameDepartmentUser->givePermissionTo('documents.view');
 
         $this->otherDepartmentUser = User::factory()->create([
             'phone' => '0503333333',
-            'department_id' => $this->departmentB->id,
+            'org_unit_id' => $this->unitB->id,
             'must_change_password' => false,
         ]);
         $this->otherDepartmentUser->givePermissionTo('documents.view');

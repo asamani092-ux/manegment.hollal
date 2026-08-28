@@ -29,7 +29,8 @@ class HierarchicalPermissionTest extends TestCase
         foreach ([
             'hr.employees.view',
             'hr.salaries.manage',
-            'structure.departments.view',
+            'structure.view',
+            'structure.manage',
             'esnad.tasks.view',
             'finance.expenses.approve',
             'partnerships.contracts.manage',
@@ -44,6 +45,7 @@ class HierarchicalPermissionTest extends TestCase
             'users.view',
             'contracts.manage',
             'departments.view',
+            'structure.departments.view',
         ] as $old) {
             $this->assertDatabaseMissing('permissions', ['name' => $old, 'guard_name' => 'web']);
         }
