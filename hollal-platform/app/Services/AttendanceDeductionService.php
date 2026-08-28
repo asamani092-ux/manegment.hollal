@@ -171,10 +171,20 @@ class AttendanceDeductionService
             if (in_array($record->approval_status, ['مرفوض'], true)) {
                 continue;
             }
+            // Remote/field stay non-present until approved (or legacy انقطاع).
             if ($record->type === 'انقطاع') {
                 continue;
             }
-            if ($record->check_in_at || in_array($record->type, ['عن بعد', 'تكليف خارجي'], true) || $record->source === 'عن_بعد') {
+            $pendingRemoteOrField = in_array($record->type, ['عن بعد', 'ميداني', 'تكليف خارجي'], true)
+                && ($record->approval_status === null || $record->approval_status === 'بانتظار');
+            if ($pendingRemoteOrField) {
+                continue;
+            }
+            if (
+                $record->check_in_at
+                || in_array($record->type, ['عن بعد', 'ميداني', 'تكليف خارجي'], true)
+                || $record->source === 'عن_بعد'
+            ) {
                 $presentDays++;
             }
             $raw = (int) ($record->late_minutes ?: $attendance->latenessMinutes($record));

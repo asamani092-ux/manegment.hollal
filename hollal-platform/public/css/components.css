@@ -1944,7 +1944,16 @@
   margin-bottom: 1.25rem;
 }
 .ds-attendance-grid-card {
-  min-height: 8rem;
+  min-height: 12rem;
+  aspect-ratio: 1 / 1;
+  max-height: 22rem;
+  overflow: auto;
+}
+@media (max-width: 40rem) {
+  .ds-attendance-grid-card {
+    aspect-ratio: auto;
+    max-height: none;
+  }
 }
 .ds-punch-panel-status {
   display: grid;

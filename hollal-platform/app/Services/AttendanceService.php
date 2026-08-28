@@ -16,16 +16,42 @@ use Illuminate\Support\Facades\DB;
  * 01-B4 — check-in/out for attendance-enabled employees. A day has a single
  * record; check-out updates the same row.
  *
- * Lateness uses org office start (attendance.office_start_time). Multi-shift
- * assignment is Phase B (see docs/plans/ATTENDANCE-BARCODE-DESIGN.md).
+ * Path-2 (shifts): lateness uses the employee's assigned WorkShift (start +
+ * grace_minutes). Falls back to org office start when no shift is assigned.
+ *
+ * Day types (path-2): حضور · عن بعد · ميداني. Remote/field stay pending until
+ * the direct manager (or HR with hr.employees.update) approves/rejects.
  *
  * Path-1 import (monthly file): a single upload *replaces* fingerprint
- * movements for that calendar month (not a cumulative merge). When an
- * imported fingerprint row conflicts with a platform punch (يدوي/باركود/…)
- * for the same employee+date, the imported fingerprint currently wins.
+ * movements for that calendar month. When an imported fingerprint row
+ * conflicts with a platform punch for the same employee+date, the imported
+ * fingerprint wins. Platform punches never overwrite an existing بصمة row.
  */
 class AttendanceService
 {
+    public const TYPE_PRESENT = 'حضور';
+
+    public const TYPE_REMOTE = 'عن بعد';
+
+    public const TYPE_FIELD = 'ميداني';
+
+    /** @var list<string> */
+    public const DAY_TYPES = [self::TYPE_PRESENT, self::TYPE_REMOTE, self::TYPE_FIELD];
+
+    public const APPROVAL_PENDING = 'بانتظار';
+
+    public const APPROVAL_APPROVED = 'معتمد';
+
+    public const APPROVAL_REJECTED = 'مرفوض';
+
+    public const SOURCE_MANUAL = 'يدوي';
+
+    public const SOURCE_FINGERPRINT = 'بصمة';
+
+    public const SOURCE_BARCODE = 'باركود';
+
+    public const SOURCE_REMOTE = 'عن_بعد';
+
     /** Logical roles shown in Arabic mapping UI (internal keys only). */
     public const MAP_FINGERPRINT = 'fingerprint';
 
@@ -49,32 +75,126 @@ class AttendanceService
     public function checkIn(User $employee, ?User $declaredBy = null): AttendanceRecord
     {
         $this->assertEnabled($employee);
+        $this->assertNotFingerprintLocked($employee, today()->toDateString());
+        $this->assertShiftAllowsToday($employee);
 
-        return AttendanceRecord::updateOrCreate(
+        $record = AttendanceRecord::updateOrCreate(
             ['employee_id' => $employee->id, 'date' => today()],
             [
                 'check_in_at' => now(),
-                'type' => 'حضور',
+                'type' => self::TYPE_PRESENT,
+                'source' => self::SOURCE_MANUAL,
+                'approval_status' => null,
                 'declared_by' => ($declaredBy ?? $employee)->id,
             ],
         );
+
+        $late = $this->latenessMinutes($record);
+        $record->forceFill(['late_minutes' => $late])->save();
+
+        return $record->fresh();
     }
 
     public function checkOut(User $employee, ?User $declaredBy = null): AttendanceRecord
     {
         $this->assertEnabled($employee);
+        $this->assertNotFingerprintLocked($employee, today()->toDateString());
 
-        return AttendanceRecord::updateOrCreate(
+        $record = AttendanceRecord::updateOrCreate(
             ['employee_id' => $employee->id, 'date' => today()],
             [
                 'check_out_at' => now(),
                 'declared_by' => ($declaredBy ?? $employee)->id,
             ],
         );
+
+        if ($record->check_in_at && $record->check_out_at) {
+            $hours = round(
+                ($record->check_out_at->getTimestamp() - $record->check_in_at->getTimestamp()) / 3600,
+                2
+            );
+            $record->forceFill(['work_hours' => $hours])->save();
+        }
+
+        return $record->fresh();
     }
 
     /**
-     * Office start HH:MM from settings (default 08:00).
+     * Declare day type. Remote/field stay pending manager (or HR) approval.
+     */
+    public function declareDayType(User $employee, string $type, ?string $notes = null, ?User $declaredBy = null): AttendanceRecord
+    {
+        $this->assertEnabled($employee);
+        if (! in_array($type, self::DAY_TYPES, true)) {
+            throw new \InvalidArgumentException('نوع اليوم غير صالح');
+        }
+        $this->assertNotFingerprintLocked($employee, today()->toDateString());
+
+        $needsApproval = in_array($type, [self::TYPE_REMOTE, self::TYPE_FIELD], true);
+
+        $payload = [
+            'type' => $type,
+            'notes' => $notes,
+            'source' => $needsApproval ? self::SOURCE_REMOTE : self::SOURCE_MANUAL,
+            'approval_status' => $needsApproval ? self::APPROVAL_PENDING : null,
+            'declared_by' => ($declaredBy ?? $employee)->id,
+        ];
+        if ($needsApproval) {
+            $payload['late_minutes'] = 0;
+        }
+
+        return AttendanceRecord::updateOrCreate(
+            ['employee_id' => $employee->id, 'date' => today()],
+            $payload,
+        );
+    }
+
+    /**
+     * Approve pending remote/field declaration. Actor must be direct manager or HR.
+     */
+    public function approveDayType(AttendanceRecord $record, User $actor): AttendanceRecord
+    {
+        $this->assertCanDecideDayType($record, $actor);
+        if ($record->approval_status !== self::APPROVAL_PENDING) {
+            throw new \InvalidArgumentException('السجل ليس بانتظار الاعتماد');
+        }
+
+        $record->forceFill(['approval_status' => self::APPROVAL_APPROVED])->save();
+
+        return $record->fresh();
+    }
+
+    /**
+     * Reject pending remote/field declaration.
+     */
+    public function rejectDayType(AttendanceRecord $record, User $actor): AttendanceRecord
+    {
+        $this->assertCanDecideDayType($record, $actor);
+        if ($record->approval_status !== self::APPROVAL_PENDING) {
+            throw new \InvalidArgumentException('السجل ليس بانتظار الاعتماد');
+        }
+
+        $record->forceFill(['approval_status' => self::APPROVAL_REJECTED])->save();
+
+        return $record->fresh();
+    }
+
+    /** Whether actor may approve/reject this employee's remote/field day. */
+    public function canDecideDayType(AttendanceRecord $record, User $actor): bool
+    {
+        if ($actor->can('hr.employees.update')) {
+            return true;
+        }
+
+        $employee = $record->relationLoaded('employee')
+            ? $record->employee
+            : $record->employee()->first();
+
+        return $employee && (int) $employee->manager_id === (int) $actor->id;
+    }
+
+    /**
+     * Office start HH:MM from settings (default 08:00). Used when no shift.
      * Time: O(1) | Space: O(1)
      */
     public function officeStartTime(): string
@@ -85,7 +205,42 @@ class AttendanceService
     }
 
     /**
-     * Minutes late vs office start for a check-in. 0 if on time / remote / missing.
+     * Resolve active shift for an employee (from profile).
+     */
+    public function shiftFor(User $employee): ?\App\Models\WorkShift
+    {
+        $employee->loadMissing('profile.workShift');
+        $shift = $employee->profile?->workShift;
+
+        return ($shift && $shift->is_active) ? $shift : null;
+    }
+
+    /**
+     * Expected start HH:MM and grace minutes for lateness (shift or org default).
+     *
+     * @return array{start: string, grace: int, shift: ?\App\Models\WorkShift}
+     */
+    public function expectedStartFor(User $employee): array
+    {
+        $shift = $this->shiftFor($employee);
+        if ($shift) {
+            return [
+                'start' => $shift->startHm(),
+                'grace' => max(0, (int) $shift->grace_minutes),
+                'shift' => $shift,
+            ];
+        }
+
+        return [
+            'start' => $this->officeStartTime(),
+            'grace' => 0,
+            'shift' => null,
+        ];
+    }
+
+    /**
+     * Minutes late vs shift start after grace (flexibility). 0 if on time /
+     * remote / field / missing punch.
      * Time: O(1) | Space: O(1)
      */
     public function latenessMinutes(AttendanceRecord $record, ?string $officeStart = null): int
@@ -95,23 +250,38 @@ class AttendanceService
         }
 
         $type = (string) ($record->type ?? '');
-        if (in_array($type, ['عن بعد', 'تكليف خارجي', 'انقطاع'], true)) {
+        if (in_array($type, [self::TYPE_REMOTE, self::TYPE_FIELD, 'تكليف خارجي', 'انقطاع'], true)) {
             return 0;
         }
 
-        $start = $officeStart ?? $this->officeStartTime();
-        [$h, $m] = array_map('intval', explode(':', $start));
-        $expected = $record->check_in_at->copy()->setTime($h, $m, 0);
-        $diff = $expected->diffInMinutes($record->check_in_at, false);
+        $employee = $record->relationLoaded('employee')
+            ? $record->employee
+            : User::query()->with('profile.workShift')->find($record->employee_id);
 
-        return $diff > 0 ? (int) $diff : 0;
+        $expected = $employee
+            ? $this->expectedStartFor($employee)
+            : ['start' => $officeStart ?? $this->officeStartTime(), 'grace' => 0, 'shift' => null];
+
+        $start = $officeStart ?? $expected['start'];
+        $grace = (int) $expected['grace'];
+
+        [$h, $m] = array_map('intval', explode(':', $start));
+        $expectedAt = $record->check_in_at->copy()->setTime($h, $m, 0);
+        $diff = $expectedAt->diffInMinutes($record->check_in_at, false);
+        if ($diff <= 0) {
+            return 0;
+        }
+
+        // Flexibility absorbs the first N minutes — only excess counts as late.
+        return max(0, (int) $diff - $grace);
     }
 
     /**
      * Monthly attendance rows with lateness for print/report.
+     * Includes path-2 punches/declarations; rejected rows stay listed with status.
      * Time: O(n) records | Space: O(n)
      *
-     * @return array{month: string, office_start: string, rows: list<array{date: string, employee: string, type: string, check_in: ?string, check_out: ?string, late_minutes: int, source: string}>}
+     * @return array{month: string, office_start: string, rows: list<array{date: string, employee: string, type: string, check_in: ?string, check_out: ?string, late_minutes: int, source: string, approval_status: ?string}>}
      */
     public function monthlyReport(string $month, ?int $employeeId = null): array
     {
@@ -120,8 +290,8 @@ class AttendanceService
         $officeStart = $this->officeStartTime();
 
         $records = AttendanceRecord::query()
-            ->select(['id', 'employee_id', 'date', 'check_in_at', 'check_out_at', 'type', 'source'])
-            ->with('employee:id,name')
+            ->select(['id', 'employee_id', 'date', 'check_in_at', 'check_out_at', 'type', 'source', 'approval_status', 'late_minutes'])
+            ->with(['employee:id,name', 'employee.profile.workShift'])
             ->whereBetween('date', [$start->toDateString(), $end->toDateString()])
             ->when($employeeId, fn ($q) => $q->where('employee_id', $employeeId))
             ->orderBy('date')
@@ -138,6 +308,7 @@ class AttendanceService
                 'check_out' => hollal_time($record->check_out_at),
                 'late_minutes' => $this->latenessMinutes($record, $officeStart),
                 'source' => (string) ($record->source ?? ''),
+                'approval_status' => $record->approval_status,
             ];
         }
 
@@ -183,6 +354,38 @@ class AttendanceService
         }
     }
 
+    /** Imported fingerprint wins — platform punches must not overwrite it. */
+    private function assertNotFingerprintLocked(User $employee, string $date): void
+    {
+        $exists = AttendanceRecord::query()
+            ->where('employee_id', $employee->id)
+            ->whereDate('date', $date)
+            ->where('source', self::SOURCE_FINGERPRINT)
+            ->exists();
+
+        if ($exists) {
+            throw new \InvalidArgumentException('يوجد سجل بصمة مستورد لهذا اليوم — لا يمكن تعديله من المنصة.');
+        }
+    }
+
+    private function assertShiftAllowsToday(User $employee): void
+    {
+        $shift = $this->shiftFor($employee);
+        if (! $shift) {
+            return;
+        }
+        if (! $shift->coversWeekday((int) now()->dayOfWeek)) {
+            throw new \InvalidArgumentException('اليوم ليس ضمن أيام وردية الموظف.');
+        }
+    }
+
+    private function assertCanDecideDayType(AttendanceRecord $record, User $actor): void
+    {
+        if (! $this->canDecideDayType($record, $actor)) {
+            throw new \InvalidArgumentException('غير مصرح باعتماد هذا السجل');
+        }
+    }
+
     /** ATT-3 — scan site barcode. Time: O(1) */
     public function checkInViaBarcode(User $employee, string $token): AttendanceRecord
     {
@@ -191,9 +394,11 @@ class AttendanceService
             throw new \InvalidArgumentException('باركود المقر غير صالح');
         }
 
+        $this->assertNotFingerprintLocked($employee, today()->toDateString());
+
         $record = $this->checkIn($employee);
         $record->forceFill([
-            'source' => 'باركود',
+            'source' => self::SOURCE_BARCODE,
             'late_minutes' => $this->latenessMinutes($record),
         ])->save();
 
@@ -204,6 +409,7 @@ class AttendanceService
     public function startFieldWork(User $employee, string $location, ?string $proofPath = null): AttendanceRecord
     {
         $this->assertEnabled($employee);
+        $this->assertNotFingerprintLocked($employee, today()->toDateString());
         if (! $employee->profile?->is_field_worker) {
             throw new \InvalidArgumentException('الموظف غير مُعلَّم كميداني');
         }
@@ -212,21 +418,20 @@ class AttendanceService
             ['employee_id' => $employee->id, 'date' => today()],
             [
                 'check_in_at' => now(),
-                'type' => 'تكليف خارجي',
-                'source' => 'عن_بعد',
+                'type' => self::TYPE_FIELD,
+                'source' => self::SOURCE_REMOTE,
                 'field_location' => $location,
                 'field_proof_path' => $proofPath,
-                'approval_status' => 'بانتظار',
+                'approval_status' => self::APPROVAL_PENDING,
                 'declared_by' => $employee->id,
+                'late_minutes' => 0,
             ],
         );
     }
 
     public function approveFieldWork(AttendanceRecord $record, User $manager): AttendanceRecord
     {
-        $record->forceFill(['approval_status' => 'معتمد'])->save();
-
-        return $record;
+        return $this->approveDayType($record, $manager);
     }
 
     /**

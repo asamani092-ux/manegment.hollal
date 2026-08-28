@@ -125,13 +125,17 @@ class AttendanceCycleTest extends TestCase
         ]);
         $employee->load('profile');
 
+        $manager = User::factory()->create(['must_change_password' => false]);
+        $employee->forceFill(['manager_id' => $manager->id])->save();
+
         $att = app(AttendanceService::class);
         $rec = $att->checkInViaBarcode($employee, 'hollal-site-demo');
         $this->assertSame('باركود', $rec->source);
 
         $field = $att->startFieldWork($employee, 'موقع تجريبي');
         $this->assertSame('بانتظار', $field->approval_status);
-        $att->approveFieldWork($field, $employee);
+        $this->assertSame('ميداني', $field->type);
+        $att->approveFieldWork($field, $manager);
         $this->assertSame('معتمد', $field->fresh()->approval_status);
 
         $csv = "fingerprint_id,date,check_in,check_out\nFP-100,2026-08-01,08:05,16:00\n";

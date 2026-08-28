@@ -13,14 +13,27 @@
         <x-ds-modal :show="$showPanel" title="تسجيل الحضور والانصراف" close-action="closePanel" size="lg">
             <div class="ds-punch-panel-status">
                 <p><strong>اليوم:</strong> <span class="ds-ltr-num">{{ now()->format('Y-m-d') }}</span></p>
-                <p><strong>بداية الدوام:</strong> <span class="ds-ltr-num">{{ $officeStart }}</span></p>
+                <p>
+                    <strong>بداية الوردية:</strong>
+                    <span class="ds-ltr-num">{{ $officeStart }}</span>
+                    @if ($userShift)
+                        ({{ $userShift->name }})
+                        · مرونة <span class="ds-ltr-num">{{ $shiftGrace }}</span> د
+                    @endif
+                </p>
                 <p>
                     <strong>حضور:</strong>
                     <span class="ds-ltr-num">{{ $todayRecord?->check_in_at ? hollal_time($todayRecord->check_in_at) : '—' }}</span>
                     ·
                     <strong>انصراف:</strong>
                     <span class="ds-ltr-num">{{ $todayRecord?->check_out_at ? hollal_time($todayRecord->check_out_at) : '—' }}</span>
+                    @if ($todayLate > 0)
+                        · <strong>تأخر:</strong> <span class="ds-ltr-num">{{ $todayLate }}</span> د
+                    @endif
                 </p>
+                @if ($todayRecord?->approval_status)
+                    <p><strong>حالة الاعتماد:</strong> {{ $todayRecord->approval_status }}</p>
+                @endif
             </div>
 
             <div class="ds-toolbar-actions ds-mb-3">
@@ -34,8 +47,7 @@
                     <select class="ds-input" wire:model="declareType">
                         <option value="حضور">حضور</option>
                         <option value="عن بعد">عن بعد</option>
-                        <option value="تكليف خارجي">تكليف خارجي</option>
-                        <option value="انقطاع">انقطاع</option>
+                        <option value="ميداني">ميداني</option>
                     </select>
                 </x-ds-form-group>
                 <x-ds-form-group label="ملاحظة" :error="$errors->first('declareNotes')">
@@ -51,6 +63,7 @@
                         <tr>
                             <th>التاريخ</th>
                             <th>النوع</th>
+                            <th>الحالة</th>
                             <th>حضور</th>
                             <th>انصراف</th>
                         </tr>
@@ -59,11 +72,12 @@
                         <tr wire:key="punch-rec-{{ $record->id }}">
                             <td class="ds-ltr-num">{{ $record->date?->format('Y-m-d') }}</td>
                             <td>{{ $record->type }}</td>
+                            <td>{{ $record->approval_status ?: '—' }}</td>
                             <td class="ds-ltr-num">{{ hollal_time($record->check_in_at) }}</td>
                             <td class="ds-ltr-num">{{ hollal_time($record->check_out_at) }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="ds-text-muted">لا سجلات بعد</td></tr>
+                        <tr><td colspan="5" class="ds-text-muted">لا سجلات بعد</td></tr>
                     @endforelse
                 </x-ds-table>
             </section>

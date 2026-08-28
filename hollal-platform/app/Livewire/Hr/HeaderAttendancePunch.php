@@ -8,14 +8,14 @@ use Illuminate\Contracts\View\View;
 use Livewire\Component;
 
 /**
- * Navbar attendance punch — single entry opens integrated panel.
+ * Navbar attendance punch — respects shift lateness and day-type approval.
  * Time: O(1) punch · O(7) recent | Space: O(7)
  */
 class HeaderAttendancePunch extends Component
 {
     public bool $showPanel = false;
 
-    public string $declareType = 'حضور';
+    public string $declareType = AttendanceService::TYPE_PRESENT;
 
     public string $declareNotes = '';
 
@@ -29,7 +29,10 @@ class HeaderAttendancePunch extends Component
             ->whereDate('date', today())
             ->first();
 
-        $this->declareType = (string) ($today?->type ?? 'حضور');
+        $this->declareType = (string) ($today?->type ?? AttendanceService::TYPE_PRESENT);
+        if (! in_array($this->declareType, AttendanceService::DAY_TYPES, true)) {
+            $this->declareType = AttendanceService::TYPE_PRESENT;
+        }
         $this->declareNotes = (string) ($today?->notes ?? '');
         $this->showPanel = true;
     }
@@ -68,23 +71,29 @@ class HeaderAttendancePunch extends Component
     public function saveDeclaration(): void
     {
         $this->validate([
-            'declareType' => 'required|string|in:حضور,عن بعد,تكليف خارجي,انقطاع',
+            'declareType' => 'required|string|in:حضور,عن بعد,ميداني',
             'declareNotes' => 'nullable|string|max:500',
         ]);
 
         $user = auth()->user();
         abort_unless($user && ($user->attendance_enabled ?? false), 403);
 
-        AttendanceRecord::updateOrCreate(
-            ['employee_id' => $user->id, 'date' => today()],
-            [
-                'type' => $this->declareType,
-                'notes' => $this->declareNotes !== '' ? $this->declareNotes : null,
-                'declared_by' => $user->id,
-            ]
-        );
+        try {
+            app(AttendanceService::class)->declareDayType(
+                $user,
+                $this->declareType,
+                $this->declareNotes !== '' ? $this->declareNotes : null,
+            );
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
 
-        $this->dispatch('toast', type: 'success', message: 'تم تسجيل الإقرار');
+            return;
+        }
+
+        $msg = in_array($this->declareType, [AttendanceService::TYPE_REMOTE, AttendanceService::TYPE_FIELD], true)
+            ? 'تم تسجيل الإقرار — بانتظار اعتماد المدير'
+            : 'تم تسجيل الإقرار';
+        $this->dispatch('toast', type: 'success', message: $msg);
     }
 
     public function render(): View
@@ -92,27 +101,35 @@ class HeaderAttendancePunch extends Component
         $user = auth()->user();
         $enabled = (bool) ($user?->attendance_enabled ?? false);
         $service = app(AttendanceService::class);
-        $officeStart = $service->officeStartTime();
+        $expected = $user ? $service->expectedStartFor($user) : ['start' => $service->officeStartTime(), 'grace' => 0, 'shift' => null];
 
         $todayRecord = null;
         $recentRecords = collect();
+        $todayLate = 0;
         if ($enabled && $user) {
             $todayRecord = AttendanceRecord::query()
                 ->where('employee_id', $user->id)
                 ->whereDate('date', today())
                 ->first();
 
+            if ($todayRecord) {
+                $todayLate = $service->latenessMinutes($todayRecord);
+            }
+
             $recentRecords = AttendanceRecord::query()
                 ->where('employee_id', $user->id)
                 ->orderByDesc('date')
                 ->limit(7)
-                ->get(['id', 'date', 'type', 'check_in_at', 'check_out_at']);
+                ->get(['id', 'date', 'type', 'check_in_at', 'check_out_at', 'approval_status', 'late_minutes']);
         }
 
         return view('livewire.hr.header-attendance-punch', [
             'enabled' => $enabled,
-            'officeStart' => $officeStart,
+            'officeStart' => $expected['start'],
+            'shiftGrace' => $expected['grace'],
+            'userShift' => $expected['shift'],
             'todayRecord' => $todayRecord,
+            'todayLate' => $todayLate,
             'recentRecords' => $recentRecords,
             'canManageAttendance' => (bool) $user?->can('hr.employees.update'),
         ]);

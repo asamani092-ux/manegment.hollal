@@ -6,6 +6,7 @@
                 <th>التاريخ</th>
                 <th>الموظف</th>
                 <th>النوع</th>
+                <th>الحالة</th>
                 <th>حضور</th>
                 <th>انصراف</th>
                 <th>تأخر (دقيقة)</th>
@@ -17,12 +18,13 @@
                     <td class="ds-ltr-num">{{ $row['date'] }}</td>
                     <td>{{ $row['employee'] }}</td>
                     <td>{{ $row['type'] }}</td>
+                    <td>{{ $row['approval_status'] ?? '—' }}</td>
                     <td class="ds-ltr-num">{{ $row['check_in'] ?? '—' }}</td>
                     <td class="ds-ltr-num">{{ $row['check_out'] ?? '—' }}</td>
                     <td class="ds-ltr-num">{{ $row['late_minutes'] > 0 ? $row['late_minutes'] : '—' }}</td>
                 </tr>
             @empty
-                <tr><td colspan="6">لا توجد سجلات لهذا الشهر</td></tr>
+                <tr><td colspan="7">لا توجد سجلات لهذا الشهر</td></tr>
             @endforelse
         </tbody>
     </table>
