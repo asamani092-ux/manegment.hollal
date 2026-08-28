@@ -2,9 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\AttendanceColumnMap;
-use App\Models\AttendanceCycleApproval;
-use App\Models\AttendanceImport;
 use App\Models\AttendanceRecord;
 use App\Models\EmployeeProfile;
 use App\Models\PayrollRun;
