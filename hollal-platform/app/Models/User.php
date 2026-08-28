@@ -115,6 +115,12 @@ class User extends Authenticatable
         return $this->hasMany(PeriodicEvaluation::class, 'employee_id');
     }
 
+    /** @return HasMany<EmployeeEvaluation, $this> */
+    public function employeeEvaluations(): HasMany
+    {
+        return $this->hasMany(EmployeeEvaluation::class, 'employee_id');
+    }
+
     /** @return HasMany<Task, $this> */
     public function delegatedTasks(): HasMany
     {
