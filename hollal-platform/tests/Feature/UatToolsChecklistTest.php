@@ -53,8 +53,15 @@ class UatToolsChecklistTest extends TestCase
             ->assertSee('التبويب 9 — المالية', false)
             ->assertSee('التبويب 11 — المشاريع', false)
             ->assertSee('دليل العاملين', false)
-            ->assertSee('الحضور الشهري', false)
+            ->assertSee('قوالب التقييم', false)
+            ->assertSee('دورات التقييم', false)
+            ->assertSee('التقييم الربعي (لوحة الموارد)', false)
+            ->assertSee('تقييمات فريقي', false)
+            ->assertSee('أرشيف تقييماتي', false)
+            ->assertSee('الحضور (برنامج التحضير)', false)
+            ->assertSee('الحضور الشهري (استيراد)', false)
             ->assertSee('دليل الحسابات', false)
+            ->assertSee('التبويب 6 — الهيكلة', false)
             ->assertSee('أسئلة التشخيص', false)
             ->assertSee('دورة الحياة', false)
             ->assertSee('الملاحظة', false)
@@ -188,6 +195,27 @@ class UatToolsChecklistTest extends TestCase
         $this->assertSame('2026-08-14 20:27', $round4['date']);
         $this->assertSame('يحتاج تحسين', $round4['verdicts']['evaluations']);
         $this->assertStringContainsString('أرشفة', $round4['notes']['evaluations']);
+    }
+
+    public function test_hr_catalog_covers_round4_tools(): void
+    {
+        $hr = collect(config('uat_tools.groups'))->firstWhere('id', 'hr');
+        $this->assertNotNull($hr);
+        $ids = collect($hr['items'])->pluck('id')->all();
+
+        foreach ([
+            'users', 'eval-templates', 'eval-cycles', 'evaluations',
+            'team-evaluations', 'my-evaluations', 'attendance', 'attendance-cycle',
+        ] as $id) {
+            $this->assertContains($id, $ids);
+        }
+
+        $byId = collect($hr['items'])->keyBy('id');
+        $this->assertStringContainsString('أوزان = 100', $byId['eval-templates']['checks']);
+        $this->assertStringContainsString('لقطة ثابتة', $byId['eval-cycles']['checks']);
+        $this->assertStringContainsString('بلا مجموع', $byId['team-evaluations']['checks']);
+        $this->assertStringContainsString('مطابقة أعمدة', $byId['attendance-cycle']['checks']);
+        $this->assertStringContainsString('ورديات', $byId['attendance']['checks']);
     }
 
     public function test_baseline_round3_remains_available(): void
