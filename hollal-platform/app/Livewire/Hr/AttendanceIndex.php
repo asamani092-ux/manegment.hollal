@@ -465,9 +465,14 @@ class AttendanceIndex extends Component
         $records = $query->paginate(20);
         $lateById = [];
         $earlyById = [];
+        $extraById = [];
+        $extraLabelById = [];
         foreach ($records as $record) {
             $lateById[$record->id] = $service->latenessMinutes($record);
             $earlyById[$record->id] = $service->earlyLeaveMinutes($record);
+            $extraMins = $service->extraWorkMinutes($record);
+            $extraById[$record->id] = $extraMins;
+            $extraLabelById[$record->id] = $service->formatExtraWorkLabel($extraMins);
         }
 
         $printReport = null;
@@ -526,6 +531,8 @@ class AttendanceIndex extends Component
             'records' => $records,
             'lateById' => $lateById,
             'earlyById' => $earlyById,
+            'extraById' => $extraById,
+            'extraLabelById' => $extraLabelById,
             'attendanceEnabled' => (bool) ($user->attendance_enabled ?? false),
             'canViewAll' => $canViewAll,
             'canManage' => $canManage,

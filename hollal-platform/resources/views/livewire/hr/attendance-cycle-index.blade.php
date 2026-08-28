@@ -21,6 +21,7 @@
                 </div>
                 <x-ds-form-group label="ملف الحركات">
                     <input type="file" class="ds-input" wire:model="uploadFile" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                    <p class="ds-text-muted ds-mt-sm">الصيغ المدعومة: جداول إكسل أو ملف مفصول بفواصل.</p>
                 </x-ds-form-group>
                 <div wire:loading wire:target="uploadFile" class="ds-text-muted">جاري قراءة العناوين…</div>
             @endif
@@ -140,7 +141,11 @@
             <input type="checkbox" wire:model.live="showMonthlyReport"> عرض التقرير
         </label>
         @if ($monthlyReport)
-            <p class="ds-text-muted">بداية الدوام: <span class="ds-ltr-num">{{ $monthlyReport['office_start'] }}</span> · السجلات: <span class="ds-ltr-num">{{ count($monthlyReport['rows']) }}</span></p>
+            <p class="ds-text-muted">
+                بداية الدوام: <span class="ds-ltr-num">{{ $monthlyReport['office_start'] }}</span>
+                · السجلات: <span class="ds-ltr-num">{{ count($monthlyReport['rows']) }}</span>
+                · العمل بعد نهاية الوردية للعرض فقط (لا يُضاف للمسير أو المكافأة تلقائياً)
+            </p>
             <div class="ds-table-wrap">
                 <x-ds-table>
                     <x-slot:head>
@@ -152,6 +157,8 @@
                             <th>حضور</th>
                             <th>انصراف</th>
                             <th>تأخير (د)</th>
+                            <th>انصراف مبكر (د)</th>
+                            <th>عمل إضافي</th>
                         </tr>
                     </x-slot:head>
                     @forelse ($monthlyReport['rows'] as $row)
@@ -162,10 +169,12 @@
                             <td>{{ $row['source'] ?? '—' }}</td>
                             <td class="ds-ltr-num">{{ $row['check_in'] ?? '—' }}</td>
                             <td class="ds-ltr-num">{{ $row['check_out'] ?? '—' }}</td>
-                            <td class="ds-ltr-num">{{ $row['late_minutes'] }}</td>
+                            <td class="ds-ltr-num">{{ $row['late_minutes'] > 0 ? $row['late_minutes'] : '—' }}</td>
+                            <td class="ds-ltr-num">{{ ($row['early_leave_minutes'] ?? 0) > 0 ? $row['early_leave_minutes'] : '—' }}</td>
+                            <td class="ds-ltr-num">{{ ($row['extra_work_minutes'] ?? 0) > 0 ? ($row['extra_work_label'] ?? $row['extra_work_minutes']) : '—' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="ds-table-empty">لا سجلات لهذا الشهر</td></tr>
+                        <tr><td colspan="9" class="ds-table-empty">لا سجلات لهذا الشهر</td></tr>
                     @endforelse
                 </x-ds-table>
             </div>

@@ -1,5 +1,10 @@
 <div class="ds-attendance-print-block">
-    <p>بداية الدوام الافتراضية: <span class="ds-ltr-num">{{ $printReport['office_start'] }}</span> · عدد السجلات: <span class="ds-ltr-num">{{ count($printReport['rows']) }}</span> · التأخر يُحسب من وردية كل موظف عند وجودها</p>
+    <p>
+        بداية الدوام الافتراضية: <span class="ds-ltr-num">{{ $printReport['office_start'] }}</span>
+        · عدد السجلات: <span class="ds-ltr-num">{{ count($printReport['rows']) }}</span>
+        · التأخر يُحسب من وردية كل موظف عند وجودها
+        · العمل بعد نهاية الوردية للعرض فقط (لا يُضاف للمسير تلقائياً)
+    </p>
     <table class="ds-table">
         <thead>
             <tr>
@@ -11,6 +16,7 @@
                 <th>انصراف</th>
                 <th>تأخر (د)</th>
                 <th>انصراف مبكر (د)</th>
+                <th>عمل إضافي</th>
             </tr>
         </thead>
         <tbody>
@@ -24,9 +30,10 @@
                     <td class="ds-ltr-num">{{ $row['check_out'] ?? '—' }}</td>
                     <td class="ds-ltr-num">{{ $row['late_minutes'] > 0 ? $row['late_minutes'] : '—' }}</td>
                     <td class="ds-ltr-num">{{ ($row['early_leave_minutes'] ?? 0) > 0 ? $row['early_leave_minutes'] : '—' }}</td>
+                    <td class="ds-ltr-num">{{ ($row['extra_work_minutes'] ?? 0) > 0 ? ($row['extra_work_label'] ?? $row['extra_work_minutes']) : '—' }}</td>
                 </tr>
             @empty
-                <tr><td colspan="8">لا توجد سجلات لهذا الشهر</td></tr>
+                <tr><td colspan="9">لا توجد سجلات لهذا الشهر</td></tr>
             @endforelse
         </tbody>
     </table>

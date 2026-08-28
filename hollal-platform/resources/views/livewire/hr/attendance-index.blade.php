@@ -6,12 +6,12 @@
         (1) تفعيل البرنامج ←
         (2) تعريف الوردية وإسنادها ←
         (3) باركود المقر ومواقع السياج الجغرافي ←
-        (4) تسجيل يومي (يدوي / باركود / موقع) من زر الشريط العلوي ←
-        (5) إقرار نوع اليوم (حضور / عن بعد / ميداني) ←
-        (6) اعتماد المدير للعن بعد والميداني ←
-        (7) طباعة شهرية ←
-        (8) <a href="{{ route('attendance.cycle') }}">الحضور الشهري</a> (استيراد بصمة وخصم).
+        (4) اعتماد معلّق (عن بعد / ميداني) ←
+        (5) سجل الحضور ←
+        (6) طباعة شهرية ←
+        (7) <a href="{{ route('attendance.cycle') }}">الحضور الشهري</a> (استيراد بصمة وخصم).
         يُعتمد أول تسجيل حضور في اليوم؛ لا يُستبدل إلا ببصمة مستوردة.
+        العمل بعد نهاية الوردية يُعرض للموارد فقط ولا يُضاف تلقائياً للمسير أو المكافأة.
     </p>
 
     @if (! $attendanceEnabled)
@@ -70,8 +70,8 @@
                 </x-ds-table>
             </x-ds-collapsible-card>
 
-            <x-ds-collapsible-card title="2) الورديات" class="ds-attendance-grid-card" :open="false">
-                <p class="ds-text-muted">بداية · نهاية · مرونة التأخير · أيام الأسبوع.</p>
+            <x-ds-collapsible-card title="2) الورديات والإسناد" class="ds-attendance-grid-card" :open="false">
+                <p class="ds-text-muted">بداية · نهاية · مرونة التأخير · أيام الأسبوع · إسناد لموظف.</p>
                 <div class="ds-toolbar-actions ds-mb-3">
                     <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openShiftForm">وردية جديدة</button>
                 </div>
@@ -102,10 +102,7 @@
                         <tr><td colspan="6" class="ds-text-muted">لا توجد ورديات بعد</td></tr>
                     @endforelse
                 </x-ds-table>
-            </x-ds-collapsible-card>
-
-            <x-ds-collapsible-card title="3) إسناد وردية لموظف" class="ds-attendance-grid-card" :open="false">
-                <div class="ds-filters-row">
+                <div class="ds-filters-row ds-mt-3">
                     <div class="ds-filter-field">
                         <label class="ds-label" for="att-assign-emp">الموظف</label>
                         <select id="att-assign-emp" class="ds-input" wire:model="assignEmployeeId">
@@ -131,19 +128,15 @@
                 </div>
             </x-ds-collapsible-card>
 
-            <x-ds-collapsible-card title="3ب) باركود المقر الثابت" class="ds-attendance-grid-card" :open="false">
-                <p class="ds-text-muted">رمز واحد للمقر يمسحه أو يدخله الموظف بعد تفعيل برنامج الحضور. يظهر أيضاً في إعدادات المنصة.</p>
-                <x-ds-form-group label="رمز الباركود" :error="$errors->first('siteBarcodeToken')">
+            <x-ds-collapsible-card title="3) باركود المقر ومواقع الحضور" class="ds-attendance-grid-card" :open="false">
+                <p class="ds-text-muted">رمز المقر للمسح أو الإدخال، ومواقع السياج الجغرافي (إحداثيات + نصف قطر بالمتر).</p>
+                <x-ds-form-group label="رمز باركود المقر" :error="$errors->first('siteBarcodeToken')">
                     <input type="text" class="ds-input ds-ltr-num" wire:model="siteBarcodeToken" autocomplete="off">
                 </x-ds-form-group>
-                <div class="ds-toolbar-actions">
+                <div class="ds-toolbar-actions ds-mb-3">
                     <button type="button" class="ds-btn ds-btn-primary" wire:click="saveSiteBarcode">حفظ الرمز</button>
                     <button type="button" class="ds-btn ds-btn-outline" wire:click="rotateSiteBarcode" wire:confirm="توليد رمز جديد وإبطال الحالي؟">توليد رمز جديد</button>
                 </div>
-            </x-ds-collapsible-card>
-
-            <x-ds-collapsible-card title="3ج) مواقع الحضور (سياج جغرافي)" class="ds-attendance-grid-card" :open="false">
-                <p class="ds-text-muted">إحداثيات + نصف قطر بالمتر. يسجّل الموظف من موقع مسموح فقط.</p>
                 <div class="ds-toolbar-actions ds-mb-3">
                     <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openLocationForm">موقع جديد</button>
                 </div>
@@ -187,7 +180,7 @@
         @endif
 
         @if ($pendingApprovals->isNotEmpty() || $canManage)
-            <x-ds-collapsible-card title="4) اعتماد عن بعد / ميداني" class="ds-attendance-grid-card" :open="false">
+            <x-ds-collapsible-card title="4) اعتماد معلّق (عن بعد / ميداني)" class="ds-attendance-grid-card" :open="false">
                 <p class="ds-text-muted">يبقى معلّقاً حتى يعتمد المدير المباشر أو الموارد البشرية.</p>
                 <x-ds-table>
                     <x-slot:head>
@@ -215,7 +208,76 @@
             </x-ds-collapsible-card>
         @endif
 
-        <x-ds-collapsible-card title="5) طباعة السجل الشهري" class="ds-attendance-grid-card" :open="false">
+        <x-ds-collapsible-card title="5) سجل الحضور والانصراف" class="ds-attendance-grid-card" :open="false">
+            <p class="ds-text-muted">العمل الإضافي بعد نهاية الوردية للعرض فقط — لا يُضاف للمسير تلقائياً.</p>
+            <div class="ds-filters-row">
+                <div class="ds-filter-field">
+                    <label class="ds-label" for="att-type">النوع</label>
+                    <select id="att-type" class="ds-input" wire:model.live="typeFilter">
+                        <option value="">— الكل —</option>
+                        <option value="حضور">حضور</option>
+                        <option value="عن بعد">عن بعد</option>
+                        <option value="ميداني">ميداني</option>
+                    </select>
+                </div>
+                <div class="ds-filter-field">
+                    <label class="ds-label" for="att-from">من تاريخ</label>
+                    <input id="att-from" type="date" class="ds-input" wire:model.live="dateFrom">
+                </div>
+                <div class="ds-filter-field">
+                    <label class="ds-label" for="att-to">إلى تاريخ</label>
+                    <input id="att-to" type="date" class="ds-input" wire:model.live="dateTo">
+                </div>
+                @if ($canViewAll)
+                    <div class="ds-filter-field">
+                        <label class="ds-label" for="att-search">الموظف</label>
+                        <input id="att-search" type="search" class="ds-input" wire:model.live.debounce.400ms="search" placeholder="ابحث بالاسم…">
+                    </div>
+                @endif
+            </div>
+
+            <x-ds-table>
+                <x-slot:head>
+                    <tr>
+                        <th scope="col">الموظف</th>
+                        <th scope="col">التاريخ</th>
+                        <th scope="col">النوع</th>
+                        <th scope="col">الحالة</th>
+                        <th scope="col">حضور</th>
+                        <th scope="col">انصراف</th>
+                        <th scope="col">تأخر (د)</th>
+                        <th scope="col">انصراف مبكر (د)</th>
+                        <th scope="col">عمل إضافي</th>
+                    </tr>
+                </x-slot:head>
+                @forelse ($records as $record)
+                    <tr wire:key="att-{{ $record->id }}">
+                        <td>{{ $record->employee?->name ?? '—' }}</td>
+                        <td class="ds-ltr-num">{{ $record->date?->format('Y-m-d') }}</td>
+                        <td>{{ $record->type }}</td>
+                        <td>{{ $record->approval_status ?: '—' }}</td>
+                        <td class="ds-ltr-num">{{ hollal_time($record->check_in_at) }}</td>
+                        <td class="ds-ltr-num">{{ hollal_time($record->check_out_at) }}</td>
+                        <td class="ds-ltr-num">
+                            @php $late = (int) ($lateById[$record->id] ?? 0); @endphp
+                            {{ $late > 0 ? $late : '—' }}
+                        </td>
+                        <td class="ds-ltr-num">
+                            @php $early = (int) ($earlyById[$record->id] ?? 0); @endphp
+                            {{ $early > 0 ? $early : '—' }}
+                        </td>
+                        <td class="ds-ltr-num">
+                            {{ ($extraById[$record->id] ?? 0) > 0 ? ($extraLabelById[$record->id] ?? '—') : '—' }}
+                        </td>
+                    </tr>
+                @empty
+                    <tr><td colspan="9"><x-ds-empty-state message="لا توجد سجلات حضور" icon="fa-clock" /></td></tr>
+                @endforelse
+            </x-ds-table>
+            <div>{{ $records->links() }}</div>
+        </x-ds-collapsible-card>
+
+        <x-ds-collapsible-card title="6) طباعة السجل الشهري" class="ds-attendance-grid-card" :open="false">
             <p class="ds-text-muted">أيام الدوام: <span class="ds-ltr-num">{{ $monthlyWorkingDays }}</span> · بداية مرجعية: <span class="ds-ltr-num">{{ $officeStart }}</span></p>
             <div class="ds-filters-row">
                 <div class="ds-filter-field">
@@ -230,70 +292,6 @@
             </div>
         </x-ds-collapsible-card>
     </div>
-
-    <x-ds-collapsible-card title="6) سجل الحضور والانصراف" class="ds-no-print" :open="false">
-        <div class="ds-filters-row">
-            <div class="ds-filter-field">
-                <label class="ds-label" for="att-type">النوع</label>
-                <select id="att-type" class="ds-input" wire:model.live="typeFilter">
-                    <option value="">— الكل —</option>
-                    <option value="حضور">حضور</option>
-                    <option value="عن بعد">عن بعد</option>
-                    <option value="ميداني">ميداني</option>
-                </select>
-            </div>
-            <div class="ds-filter-field">
-                <label class="ds-label" for="att-from">من تاريخ</label>
-                <input id="att-from" type="date" class="ds-input" wire:model.live="dateFrom">
-            </div>
-            <div class="ds-filter-field">
-                <label class="ds-label" for="att-to">إلى تاريخ</label>
-                <input id="att-to" type="date" class="ds-input" wire:model.live="dateTo">
-            </div>
-            @if ($canViewAll)
-                <div class="ds-filter-field">
-                    <label class="ds-label" for="att-search">الموظف</label>
-                    <input id="att-search" type="search" class="ds-input" wire:model.live.debounce.400ms="search" placeholder="ابحث بالاسم…">
-                </div>
-            @endif
-        </div>
-
-        <x-ds-table>
-            <x-slot:head>
-                <tr>
-                    <th scope="col">الموظف</th>
-                    <th scope="col">التاريخ</th>
-                    <th scope="col">النوع</th>
-                    <th scope="col">الحالة</th>
-                    <th scope="col">حضور</th>
-                    <th scope="col">انصراف</th>
-                    <th scope="col">تأخر (د)</th>
-                    <th scope="col">انصراف مبكر (د)</th>
-                </tr>
-            </x-slot:head>
-            @forelse ($records as $record)
-                <tr wire:key="att-{{ $record->id }}">
-                    <td>{{ $record->employee?->name ?? '—' }}</td>
-                    <td class="ds-ltr-num">{{ $record->date?->format('Y-m-d') }}</td>
-                    <td>{{ $record->type }}</td>
-                    <td>{{ $record->approval_status ?: '—' }}</td>
-                    <td class="ds-ltr-num">{{ hollal_time($record->check_in_at) }}</td>
-                    <td class="ds-ltr-num">{{ hollal_time($record->check_out_at) }}</td>
-                    <td class="ds-ltr-num">
-                        @php $late = (int) ($lateById[$record->id] ?? 0); @endphp
-                        {{ $late > 0 ? $late : '—' }}
-                    </td>
-                    <td class="ds-ltr-num">
-                        @php $early = (int) ($earlyById[$record->id] ?? 0); @endphp
-                        {{ $early > 0 ? $early : '—' }}
-                    </td>
-                </tr>
-            @empty
-                <tr><td colspan="8"><x-ds-empty-state message="لا توجد سجلات حضور" icon="fa-clock" /></td></tr>
-            @endforelse
-        </x-ds-table>
-        <div>{{ $records->links() }}</div>
-    </x-ds-collapsible-card>
 
     @if ($showShiftForm && $canManage)
         <x-ds-modal :show="true" title="{{ $editingShiftId ? 'تعديل وردية' : 'وردية جديدة' }}" close-action="closeShiftForm" size="md">

@@ -327,11 +327,71 @@ class AttendanceService
     }
 
     /**
+     * Minutes worked after shift end_time. Display-only for HR —
+     * never auto-applied to payroll, bonuses, or cycle deductions.
+     * 0 when no shift, no check-out, or remote/field day.
+     * Time: O(1) | Space: O(1)
+     */
+    public function extraWorkMinutes(AttendanceRecord $record): int
+    {
+        if (! $record->check_out_at) {
+            return 0;
+        }
+
+        $type = (string) ($record->type ?? '');
+        if (in_array($type, [self::TYPE_REMOTE, self::TYPE_FIELD, 'تكليف خارجي', 'انقطاع'], true)) {
+            return 0;
+        }
+
+        $employee = $record->relationLoaded('employee')
+            ? $record->employee
+            : User::query()->with('profile.workShift')->find($record->employee_id);
+
+        if (! $employee) {
+            return 0;
+        }
+
+        $expected = $this->expectedStartFor($employee);
+        if (! $expected['end']) {
+            return 0;
+        }
+
+        [$h, $m] = array_map('intval', explode(':', $expected['end']));
+        $expectedEnd = $record->check_out_at->copy()->setTime($h, $m, 0);
+        // Positive when check-out is after shift end.
+        $diff = $expectedEnd->diffInMinutes($record->check_out_at, false);
+
+        return $diff > 0 ? (int) $diff : 0;
+    }
+
+    /**
+     * Format display-only extra-work minutes as Arabic hours/minutes label.
+     * Time: O(1) | Space: O(1)
+     */
+    public function formatExtraWorkLabel(int $minutes): string
+    {
+        if ($minutes <= 0) {
+            return '—';
+        }
+
+        $hours = intdiv($minutes, 60);
+        $rem = $minutes % 60;
+        if ($hours > 0 && $rem > 0) {
+            return $hours.' س و '.$rem.' د';
+        }
+        if ($hours > 0) {
+            return $hours.' س';
+        }
+
+        return $rem.' د';
+    }
+
+    /**
      * Monthly attendance rows with lateness from each employee's shift
-     * (start + grace). Early leave is display-only vs shift end.
+     * (start + grace). Early leave and post-shift extra work are display-only.
      * Time: O(n) records | Space: O(n)
      *
-     * @return array{month: string, office_start: string, rows: list<array{date: string, employee: string, type: string, check_in: ?string, check_out: ?string, late_minutes: int, early_leave_minutes: int, source: string, approval_status: ?string, shift_start: ?string}>}
+     * @return array{month: string, office_start: string, rows: list<array{date: string, employee: string, type: string, check_in: ?string, check_out: ?string, late_minutes: int, early_leave_minutes: int, extra_work_minutes: int, extra_work_label: string, source: string, approval_status: ?string, shift_start: ?string}>}
      */
     public function monthlyReport(string $month, ?int $employeeId = null): array
     {
@@ -354,6 +414,8 @@ class AttendanceService
                 ? $this->expectedStartFor($record->employee)
                 : ['start' => $officeStart, 'end' => null, 'grace' => 0, 'shift' => null];
 
+            $extraMins = $this->extraWorkMinutes($record);
+
             $rows[] = [
                 'date' => $record->date?->format('Y-m-d') ?? '',
                 'employee' => $record->employee?->name ?? '—',
@@ -363,6 +425,8 @@ class AttendanceService
                 // Always from employee shift when assigned — do not force org office_start.
                 'late_minutes' => $this->latenessMinutes($record),
                 'early_leave_minutes' => $this->earlyLeaveMinutes($record),
+                'extra_work_minutes' => $extraMins,
+                'extra_work_label' => $this->formatExtraWorkLabel($extraMins),
                 'source' => (string) ($record->source ?? ''),
                 'approval_status' => $record->approval_status,
                 'shift_start' => $shiftMeta['shift'] ? $shiftMeta['start'] : null,
