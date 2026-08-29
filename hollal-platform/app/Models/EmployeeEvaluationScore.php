@@ -9,7 +9,7 @@ class EmployeeEvaluationScore extends Model
 {
     /** @var list<string> */
     protected $fillable = [
-        'employee_evaluation_id', 'evaluation_cycle_item_id', 'score', 'note',
+        'employee_evaluation_id', 'evaluation_cycle_item_id', 'score', 'note', 'scored_by',
     ];
 
     /** @return array<string, string> */
@@ -28,5 +28,11 @@ class EmployeeEvaluationScore extends Model
     public function cycleItem(): BelongsTo
     {
         return $this->belongsTo(EvaluationCycleItem::class, 'evaluation_cycle_item_id');
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function scorer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'scored_by');
     }
 }

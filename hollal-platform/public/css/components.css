@@ -582,6 +582,11 @@
   border: 1px solid var(--ds-border);
 }
 
+/* Row-action menus must not be clipped by table scroll containers. */
+.ds-table-wrap.ds-has-row-menus {
+  overflow: visible;
+}
+
 .ds-table-scroll {
   width: 100%;
 }

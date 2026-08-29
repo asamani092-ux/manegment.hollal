@@ -85,7 +85,7 @@ class HrUatRound3SmokeTest extends TestCase
     {
         Livewire::actingAs($this->admin)
             ->test(EvaluationsIndex::class)
-            ->assertSee('دورة التقييم', false)
+            ->assertSee('اعتماد جماعي', false)
             ->assertDontSee('إظهار للموظف', false);
     }
 

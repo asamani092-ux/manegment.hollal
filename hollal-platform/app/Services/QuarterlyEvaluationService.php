@@ -208,6 +208,7 @@ class QuarterlyEvaluationService
         EvaluationCycleItem $cycleItem,
         int $score,
         ?string $note = null,
+        ?User $scoredBy = null,
     ): EmployeeEvaluationScore {
         if ($score < 1 || $score > 5) {
             throw new InvalidArgumentException('الدرجة يجب أن تكون بين 1 و 5.');
@@ -229,15 +230,20 @@ class QuarterlyEvaluationService
             throw new RuntimeException('لا يمكن تسجيل درجات في هذه الحالة.');
         }
 
+        $payload = [
+            'score' => $score,
+            'note' => $note,
+        ];
+        if ($scoredBy !== null) {
+            $payload['scored_by'] = $scoredBy->id;
+        }
+
         $row = EmployeeEvaluationScore::updateOrCreate(
             [
                 'employee_evaluation_id' => $evaluation->id,
                 'evaluation_cycle_item_id' => $cycleItem->id,
             ],
-            [
-                'score' => $score,
-                'note' => $note,
-            ],
+            $payload,
         );
 
         $evaluation->update([
@@ -250,6 +256,7 @@ class QuarterlyEvaluationService
 
     /**
      * Save several scores for one section (مدير|موارد).
+     * Pass $scoredBy when HR fills on behalf of the manager (or any actor tracking).
      *
      * @param  array<int, array{score: int|string|null, note?: string|null}>  $inputs  keyed by cycle item id
      */
@@ -257,6 +264,7 @@ class QuarterlyEvaluationService
         EmployeeEvaluation $evaluation,
         string $section,
         array $inputs,
+        ?User $scoredBy = null,
     ): void {
         if (! in_array($section, EvaluationTemplateItem::SECTIONS, true)) {
             throw new InvalidArgumentException('قسم غير صالح.');
@@ -277,8 +285,76 @@ class QuarterlyEvaluationService
             $note = isset($input['note']) && trim((string) $input['note']) !== ''
                 ? trim((string) $input['note'])
                 : null;
-            $this->recordScore($evaluation->fresh(), $item, (int) $raw, $note);
+            $this->recordScore($evaluation->fresh(), $item, (int) $raw, $note, $scoredBy);
         }
+    }
+
+    /** True when every cycle item has a non-null score. */
+    public function isEvaluationFullyScored(EmployeeEvaluation $evaluation): bool
+    {
+        $evaluation->loadMissing(['cycle.items', 'scores']);
+        $items = $evaluation->cycle?->items ?? collect();
+        if ($items->isEmpty()) {
+            return false;
+        }
+
+        $scored = $evaluation->scores->keyBy('evaluation_cycle_item_id');
+        foreach ($items as $item) {
+            $row = $scored->get($item->id);
+            if ($row === null || $row->score === null) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Bulk-approve every evaluation in an open cycle — only when all employees
+     * have scores for every cycle item. Individual approve is not the happy path.
+     *
+     * @return int number of newly approved evaluations
+     */
+    public function approveAll(EvaluationCycle $cycle, User $approver): int
+    {
+        if (! $cycle->isOpen()) {
+            throw new RuntimeException('الاعتماد الجماعي متاح للدورة المفتوحة فقط.');
+        }
+
+        $evaluations = EmployeeEvaluation::query()
+            ->where('evaluation_cycle_id', $cycle->id)
+            ->with(['cycle.items', 'scores', 'employee'])
+            ->get();
+
+        if ($evaluations->isEmpty()) {
+            throw new RuntimeException('لا توجد تقييمات للاعتماد — نفّذ الفتح الجماعي أولاً.');
+        }
+
+        $incomplete = $evaluations->filter(
+            fn (EmployeeEvaluation $evaluation) => ! $evaluation->isApproved()
+                && ! $evaluation->isArchived()
+                && ! $this->isEvaluationFullyScored($evaluation)
+        );
+
+        if ($incomplete->isNotEmpty()) {
+            throw new RuntimeException(
+                'لا يمكن الاعتماد الجماعي — لم تكتمل درجات كل الموظفين لكل البنود.'
+            );
+        }
+
+        $approved = 0;
+
+        DB::transaction(function () use ($evaluations, $approver, &$approved) {
+            foreach ($evaluations as $evaluation) {
+                if ($evaluation->isArchived() || $evaluation->isApproved()) {
+                    continue;
+                }
+                $this->approve($evaluation, $approver);
+                $approved++;
+            }
+        });
+
+        return $approved;
     }
 
     public function isSectionComplete(EmployeeEvaluation $evaluation, string $section): bool
@@ -394,6 +470,7 @@ class QuarterlyEvaluationService
                     [
                         'score' => $score,
                         'note' => $note,
+                        'scored_by' => $actor->id,
                     ],
                 );
             }

@@ -272,20 +272,23 @@ class HrRound4EvalEngineTest extends TestCase
             ->call('bulkOpen', $cycle->id)
             ->assertHasNoErrors();
 
-        $this->actingAs($admin)->get(route('evaluation-templates.index'))->assertOk();
-        $this->actingAs($admin)->get(route('evaluation-cycles.index'))->assertOk();
+        $this->actingAs($admin)->get(route('evaluation-templates.index'))
+            ->assertRedirect(route('evaluations.index', ['step' => 'template']));
+        $this->actingAs($admin)->get(route('evaluation-cycles.index'))
+            ->assertRedirect(route('evaluations.index', ['step' => 'cycle']));
     }
 
-    public function test_navigation_includes_new_eval_routes(): void
+    public function test_navigation_hides_legacy_eval_routes(): void
     {
         $routes = collect(config('navigation.groups'))
             ->flatMap(fn ($g) => $g['items'] ?? [])
             ->pluck('route');
 
-        $this->assertTrue($routes->contains('evaluation-templates.index'));
-        $this->assertTrue($routes->contains('evaluation-cycles.index'));
-        $this->assertTrue($routes->contains('employee-evaluations.team'));
-        $this->assertTrue($routes->contains('employee-evaluations.mine'));
+        $this->assertTrue($routes->contains('evaluations.index'));
+        $this->assertFalse($routes->contains('evaluation-templates.index'));
+        $this->assertFalse($routes->contains('evaluation-cycles.index'));
+        $this->assertFalse($routes->contains('employee-evaluations.team'));
+        $this->assertFalse($routes->contains('employee-evaluations.mine'));
     }
 
     public function test_period_label_arabic_format(): void

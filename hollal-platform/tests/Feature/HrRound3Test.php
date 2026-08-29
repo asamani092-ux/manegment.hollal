@@ -89,7 +89,7 @@ class HrRound3Test extends TestCase
             ->assertSee('موظف تقييم', false)
             ->assertSee('الربع 2 / 2026', false)
             ->assertDontSee('إظهار للموظف', false)
-            ->assertSee('دورة التقييم', false);
+            ->assertSee('اعتماد جماعي', false);
     }
 
     public function test_archive_requires_complete_scores(): void

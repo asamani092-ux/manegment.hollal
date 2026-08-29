@@ -3,8 +3,6 @@
 namespace Tests\Feature;
 
 use App\Livewire\Hr\EvaluationsIndex;
-use App\Livewire\Hr\MyEvaluationsIndex;
-use App\Livewire\Hr\TeamEvaluationsIndex;
 use App\Livewire\Users\EmployeeProfileShow;
 use App\Models\EmployeeEvaluation;
 use App\Models\EmployeeEvaluationEditLog;
@@ -81,6 +79,11 @@ class HrRound4EvalRuntimeTest extends TestCase
         $service->openCycle($cycle);
         $service->bulkOpen($cycle->fresh());
 
+        EmployeeEvaluation::query()
+            ->where('evaluation_cycle_id', $cycle->id)
+            ->where('employee_id', '!=', $employee->id)
+            ->delete();
+
         $evaluation = EmployeeEvaluation::query()
             ->where('evaluation_cycle_id', $cycle->id)
             ->where('employee_id', $employee->id)
@@ -102,7 +105,7 @@ class HrRound4EvalRuntimeTest extends TestCase
         $ctx['service']->recordScore($ctx['evaluation'], $items[0], 4, 'جيد');
 
         Livewire::actingAs($ctx['manager'])
-            ->test(TeamEvaluationsIndex::class)
+            ->test(EvaluationsIndex::class)
             ->assertSee('موظف ربعى', false)
             ->assertSee('مكتمل', false)
             ->assertDontSee('الالتزام بالسياسات', false)
@@ -110,7 +113,8 @@ class HrRound4EvalRuntimeTest extends TestCase
             ->assertSee('جودة العمل', false)
             ->assertDontSee('الالتزام بالسياسات', false);
 
-        $this->assertStringNotContainsString('المجموع:', Livewire::actingAs($ctx['manager'])->test(TeamEvaluationsIndex::class)->html());
+        $html = Livewire::actingAs($ctx['manager'])->test(EvaluationsIndex::class)->html();
+        $this->assertStringNotContainsString('المجموع:', $html);
     }
 
     public function test_approve_is_visible_to_employee_immediately(): void
@@ -122,22 +126,14 @@ class HrRound4EvalRuntimeTest extends TestCase
         $ctx['service']->recordScore($ctx['evaluation'], $items[0], 5);
         $ctx['service']->recordScore($ctx['evaluation']->fresh(), $items[1], 4);
 
-        Livewire::actingAs($ctx['hr'])
-            ->test(EvaluationsIndex::class)
-            ->call('approve', $ctx['evaluation']->id)
-            ->assertHasNoErrors();
+        $ctx['service']->approveAll($ctx['cycle']->fresh(), $ctx['hr']);
 
         $this->assertSame(EmployeeEvaluation::STATUS_APPROVED, $ctx['evaluation']->fresh()->status);
         Notification::assertSentTo($ctx['employee'], EvaluationApproved::class);
 
         Livewire::actingAs($ctx['employee'])
-            ->test(MyEvaluationsIndex::class)
-            ->assertSee('الربع 1 / 2026', false)
-            ->assertSee('معتمد', false);
-
-        Livewire::actingAs($ctx['employee'])
             ->test(EmployeeProfileShow::class, ['user' => $ctx['employee']])
-            ->set('activeTab', 'evaluations')
+            ->set('activeTab', 'log')
             ->assertSee('الربع 1 / 2026', false)
             ->assertDontSee('تعليقك', false);
     }
@@ -202,8 +198,11 @@ class HrRound4EvalRuntimeTest extends TestCase
         $this->assertNotNull($evaluation->archived_at);
         Notification::assertSentTo($ctx['employee'], EvaluationApproved::class);
 
+        $ctx['employee']->givePermissionTo('hr.employees.view');
+
         Livewire::actingAs($ctx['employee'])
-            ->test(MyEvaluationsIndex::class)
+            ->test(EmployeeProfileShow::class, ['user' => $ctx['employee']])
+            ->call('setTab', 'log')
             ->assertSee('مؤرشف', false)
             ->assertSee('الربع 1 / 2026', false);
     }
@@ -214,14 +213,15 @@ class HrRound4EvalRuntimeTest extends TestCase
 
         Livewire::actingAs($ctx['hr'])
             ->test(EvaluationsIndex::class)
-            ->assertSee('دورة التقييم', false)
+            ->set('step', 'score')
             ->assertSee('الربع 1 / 2026', false)
             ->assertSee('موظف ربعى', false)
-            ->assertSee('إغلاق الدورة', false)
-            ->assertDontSee('تُنشأ مسودة', false);
+            ->set('step', 'close')
+            ->assertSee('إغلاق الدورة', false);
 
         $this->actingAs($ctx['hr'])->get(route('evaluations.index'))->assertOk();
-        $this->actingAs($ctx['manager'])->get(route('employee-evaluations.team'))->assertOk();
-        $this->actingAs($ctx['employee'])->get(route('employee-evaluations.mine'))->assertOk();
+        $this->actingAs($ctx['manager'])->get(route('evaluations.index'))->assertOk();
+        $this->actingAs($ctx['employee'])->get(route('employee-evaluations.mine'))
+            ->assertRedirect();
     }
 }

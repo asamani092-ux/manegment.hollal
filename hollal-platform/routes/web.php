@@ -42,11 +42,7 @@ use App\Livewire\Finance\FinancialReportsIndex;
 use App\Livewire\Finance\RevenuesIndex;
 use App\Livewire\Finance\TaxInvoicesIndex;
 use App\Livewire\Hr\AttendanceIndex;
-use App\Livewire\Hr\EvaluationCyclesIndex;
 use App\Livewire\Hr\EvaluationsIndex;
-use App\Livewire\Hr\EvaluationTemplatesIndex;
-use App\Livewire\Hr\MyEvaluationsIndex;
-use App\Livewire\Hr\TeamEvaluationsIndex;
 use App\Livewire\Hr\HrLifecycleIndex;
 use App\Livewire\Hr\LeavesIndex;
 use App\Livewire\Hr\PayrollRunsIndex;
@@ -294,21 +290,22 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('leaves.index');
 
     Route::get('/evaluations', EvaluationsIndex::class)
-        ->middleware('permission:hr.employees.view')
         ->name('evaluations.index');
 
-    Route::get('/evaluation-templates', EvaluationTemplatesIndex::class)
+    // Round 5ب — legacy eval screens redirect into the unified wizard.
+    Route::get('/evaluation-templates', fn () => redirect()->route('evaluations.index', ['step' => 'template']))
         ->middleware('permission:hr.employees.update')
         ->name('evaluation-templates.index');
 
-    Route::get('/evaluation-cycles', EvaluationCyclesIndex::class)
+    Route::get('/evaluation-cycles', fn () => redirect()->route('evaluations.index', ['step' => 'cycle']))
         ->middleware('permission:hr.employees.update')
         ->name('evaluation-cycles.index');
 
-    Route::get('/my-evaluations', MyEvaluationsIndex::class)
-        ->name('employee-evaluations.mine');
+    Route::get('/my-evaluations', function () {
+        return redirect()->to(route('users.profile', auth()->id()).'?tab=log');
+    })->name('employee-evaluations.mine');
 
-    Route::get('/team-evaluations', TeamEvaluationsIndex::class)
+    Route::get('/team-evaluations', fn () => redirect()->route('evaluations.index', ['step' => 'score']))
         ->name('employee-evaluations.team');
 
     Route::get('/responsibilities', ResponsibilitiesIndex::class)

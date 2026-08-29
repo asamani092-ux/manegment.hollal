@@ -64,7 +64,7 @@ class EvaluationArchiveTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(EmployeeProfileShow::class, ['user' => $employee])
-            ->set('activeTab', 'evaluations')
+            ->set('activeTab', 'log')
             ->assertViewHas('quarterlyEvaluations', fn ($rows) => $rows->contains('id', $evaluation->id))
             ->assertSee('الربع 3 / 2026', false)
             ->assertSee('مؤرشف', false);
