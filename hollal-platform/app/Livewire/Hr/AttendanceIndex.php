@@ -40,6 +40,9 @@ class AttendanceIndex extends Component
 
     public bool $showPrint = false;
 
+    /** In-page tabs (profile-style): enablement|shifts|barcode|pending|log|print */
+    public string $activeTab = 'log';
+
     public string $rosterSearch = '';
 
     /** Shift form */
@@ -89,6 +92,7 @@ class AttendanceIndex extends Component
         'dateTo' => ['except' => ''],
         'search' => ['except' => ''],
         'printMonth' => ['except' => ''],
+        'activeTab' => ['except' => 'log', 'as' => 'tab'],
     ];
 
     public function updatingTypeFilter(): void
@@ -117,6 +121,42 @@ class AttendanceIndex extends Component
             $this->printMonth = now()->format('Y-m');
         }
         $this->siteBarcodeToken = app(AttendanceService::class)->siteBarcodeToken();
+
+        $tab = request()->query('tab');
+        if (is_string($tab) && $tab !== '') {
+            $this->setTab($tab);
+        } elseif (auth()->user()?->can('hr.employees.update')) {
+            $this->activeTab = 'enablement';
+        }
+    }
+
+    /**
+     * Switch in-page attendance tab (profile-style).
+     * Time: O(1) | Space: O(1)
+     */
+    public function setTab(string $tab): void
+    {
+        if (! array_key_exists($tab, $this->tabCatalog())) {
+            return;
+        }
+        $this->activeTab = $tab;
+    }
+
+    /**
+     * Full tab key → Arabic label map.
+     *
+     * @return array<string, string>
+     */
+    public function tabCatalog(): array
+    {
+        return [
+            'enablement' => 'تفعيل',
+            'shifts' => 'ورديات وإسناد',
+            'barcode' => 'باركود ومواقع',
+            'pending' => 'اعتماد معلّق',
+            'log' => 'سجل',
+            'print' => 'طباعة',
+        ];
     }
 
     public function saveSiteBarcode(): void
@@ -527,6 +567,11 @@ class AttendanceIndex extends Component
         $pendingApprovals = $pendingQuery->limit(40)->get()
             ->filter(fn ($r) => $service->canDecideDayType($r, $user));
 
+        $tabs = $this->visibleTabs($canManage, $pendingApprovals->isNotEmpty());
+        if (! array_key_exists($this->activeTab, $tabs)) {
+            $this->activeTab = array_key_first($tabs) ?: 'log';
+        }
+
         return view('livewire.hr.attendance-index', [
             'records' => $records,
             'lateById' => $lateById,
@@ -547,6 +592,34 @@ class AttendanceIndex extends Component
             'pendingApprovals' => $pendingApprovals,
             'locations' => $locations,
             'weekdayLabels' => WorkShift::WEEKDAY_LABELS,
+            'tabs' => $tabs,
         ]);
+    }
+
+    /**
+     * Tabs visible for the current viewer.
+     * Time: O(1) | Space: O(1)
+     *
+     * @return array<string, string>
+     */
+    protected function visibleTabs(bool $canManage, bool $hasPending): array
+    {
+        $all = $this->tabCatalog();
+        $keys = [];
+        if ($canManage) {
+            $keys = ['enablement', 'shifts', 'barcode', 'pending', 'log', 'print'];
+        } else {
+            if ($hasPending) {
+                $keys[] = 'pending';
+            }
+            $keys = array_merge($keys, ['log', 'print']);
+        }
+
+        $out = [];
+        foreach ($keys as $key) {
+            $out[$key] = $all[$key];
+        }
+
+        return $out;
     }
 }
