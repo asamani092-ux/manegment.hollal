@@ -95,6 +95,7 @@ class MeetingTest extends TestCase
         Livewire::actingAs($this->admin)
             ->test(MeetingsIndex::class)
             ->call('openCreate')
+            ->assertSet('chairId', $this->admin->id)
             ->set('title', 'اجتماع التخطيط')
             ->set('scheduled_at', now()->addDay()->format('Y-m-d\TH:i'))
             ->set('agenda', 'مناقشة الخطة الربعية')
@@ -104,7 +105,45 @@ class MeetingTest extends TestCase
 
         $this->assertDatabaseHas('meetings', [
             'title' => 'اجتماع التخطيط',
+            'chair_id' => $this->admin->id,
         ]);
+    }
+
+    public function test_chair_can_be_chosen_on_create_and_changed_on_edit(): void
+    {
+        $chair = User::factory()->create([
+            'name' => 'رئيس الاجتماع',
+            'is_active' => true,
+            'must_change_password' => false,
+        ]);
+        $other = User::factory()->create([
+            'name' => 'رئيس بديل',
+            'is_active' => true,
+            'must_change_password' => false,
+        ]);
+
+        Livewire::actingAs($this->admin)
+            ->test(MeetingsIndex::class)
+            ->call('openCreate')
+            ->set('title', 'اجتماع باختيار رئيس')
+            ->set('scheduled_at', now()->addDays(2)->format('Y-m-d\TH:i'))
+            ->set('chairId', $chair->id)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $meeting = Meeting::query()->where('title', 'اجتماع باختيار رئيس')->first();
+        $this->assertNotNull($meeting);
+        $this->assertSame($chair->id, $meeting->chair_id);
+
+        Livewire::actingAs($this->admin)
+            ->test(MeetingsIndex::class)
+            ->call('openEdit', $meeting->id)
+            ->assertSet('chairId', $chair->id)
+            ->set('chairId', $other->id)
+            ->call('save')
+            ->assertHasNoErrors();
+
+        $this->assertSame($other->id, $meeting->fresh()->chair_id);
     }
 
     public function test_decision_can_be_converted_to_task(): void
