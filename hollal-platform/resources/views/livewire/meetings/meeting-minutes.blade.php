@@ -6,6 +6,7 @@
       || in_array($myId, [$meeting->chair_id, $meeting->secretary_id], true);
     $myConfirmedAtRaw = optional($meeting->attendees->firstWhere('id', $myId))->pivot->confirmed_at ?? null;
     $myConfirmedAt = $myConfirmedAtRaw ? \Illuminate\Support\Carbon::parse($myConfirmedAtRaw) : null;
+    $agendaLines = collect(preg_split('/\r\n|\r|\n/', (string) $meeting->agenda))->map(fn ($l) => trim($l))->filter()->values();
   @endphp
 
   <div class="ds-page-toolbar ds-no-print">
@@ -31,50 +32,42 @@
             <button type="button" class="ds-btn ds-btn-outline" wire:click="confirmMyAttendance">اطّلعت على المحضر وأؤكّد</button>
           @endif
         @endif
+        @can('update', $meeting)
+          <button type="button" class="ds-btn ds-btn-primary" wire:click="openItemCreate">
+            <i class="fas fa-plus" aria-hidden="true"></i> بند جديد
+          </button>
+        @endcan
       @endif
       @can('downloadPdf', $meeting)
-        <button type="button" class="ds-btn ds-btn-outline" onclick="window.print()">
-          <i class="fas fa-print" aria-hidden="true"></i> طباعة القالب
-        </button>
         <a class="ds-btn ds-btn-outline" href="{{ route('meetings.minutes.pdf', ['meeting' => $meeting, 'print' => 1]) }}" target="_blank" rel="noopener">
-          <i class="fas fa-file-pdf" aria-hidden="true"></i> معاينة PDF
+          <i class="fas fa-file-pdf" aria-hidden="true"></i> PDF / طباعة
         </a>
-        <a class="ds-btn ds-btn-outline" href="{{ route('meetings.minutes.pdf', $meeting) }}">
-          <i class="fas fa-download" aria-hidden="true"></i> تنزيل PDF
-        </a>
-        @if ($meeting->signed_document_id)
-          <a class="ds-btn ds-btn-outline" href="{{ route('meetings.minutes.signed', ['meeting' => $meeting, 'inline' => 1]) }}" target="_blank" rel="noopener">
-            <i class="fas fa-eye" aria-hidden="true"></i> معاينة الموقعة
-          </a>
-          <a class="ds-btn ds-btn-outline" href="{{ route('meetings.minutes.signed', $meeting) }}">
-            <i class="fas fa-file-signature" aria-hidden="true"></i> تنزيل الموقعة
-          </a>
-        @endif
-      @endcan
-      @can('view', $meeting)
-        <button type="button" class="ds-btn ds-btn-outline" wire:click="sendMinutesByEmail">
-          <i class="fas fa-envelope" aria-hidden="true"></i> إرسال بالبريد
-        </button>
       @endcan
       @can('update', $meeting)
         <button type="button" class="ds-btn ds-btn-outline" wire:click="openSignedUploadModal">
           <i class="fas fa-upload" aria-hidden="true"></i> رفع نسخة موقعة
         </button>
-        @if (! $meeting->isApproved())
-          <button type="button" class="ds-btn ds-btn-primary" wire:click="openItemCreate">
-            <i class="fas fa-plus" aria-hidden="true"></i> بند جديد
-          </button>
-        @endif
       @endcan
+      <x-ds-row-menu label="المزيد" align="end">
+        @can('downloadPdf', $meeting)
+          <a class="ds-dropdown-item" href="{{ route('meetings.minutes.pdf', $meeting) }}">تنزيل PDF</a>
+          @if ($meeting->signed_document_id)
+            <a class="ds-dropdown-item" href="{{ route('meetings.minutes.signed', ['meeting' => $meeting, 'inline' => 1]) }}" target="_blank" rel="noopener">معاينة الموقعة</a>
+            <a class="ds-dropdown-item" href="{{ route('meetings.minutes.signed', $meeting) }}">تنزيل الموقعة</a>
+          @endif
+        @endcan
+        @can('view', $meeting)
+          <button type="button" class="ds-dropdown-item" wire:click="sendMinutesByEmail">إرسال بالبريد</button>
+        @endcan
+      </x-ds-row-menu>
     </div>
   </div>
 
-  {{-- Printable 5-zone template (screen + print) --}}
   <div class="ds-minutes-print-template">
     <section class="ds-minutes-zone">
       <div class="ds-filters-row">
         <strong>منصة حلّل</strong>
-        <span class="ds-text-muted ds-ltr-num">اجتماع: {{ $meeting->scheduled_at?->format('Y-m-d') }} · طباعة: {{ hollal_dt(now()) }}</span>
+        <span class="ds-text-muted ds-ltr-num">اجتماع: {{ $meeting->scheduled_at?->format('Y-m-d') }}</span>
       </div>
       <h2 class="ds-section-heading">محضر: {{ $meeting->title }}</h2>
     </section>
@@ -94,12 +87,35 @@
     <section class="ds-minutes-zone">
       <h3 class="ds-section-heading">جدول الأعمال</h3>
       <x-ds-table>
-        <x-slot:head><tr><th>#</th><th>البند</th></tr></x-slot:head>
-        @php $agendaLines = collect(preg_split('/\r\n|\r|\n/', (string) $meeting->agenda))->map(fn ($l) => trim($l))->filter()->values(); @endphp
+        <x-slot:head>
+          <tr>
+            <th>#</th>
+            <th>البند</th>
+            @if (! $meeting->isApproved())
+              <th class="ds-no-print">إجراء</th>
+            @endif
+          </tr>
+        </x-slot:head>
         @forelse ($agendaLines as $i => $line)
-          <tr><td>{{ $i + 1 }}</td><td>{{ $line }}</td></tr>
+          <tr wire:key="agenda-{{ $i }}">
+            <td>{{ $i + 1 }}</td>
+            <td>{{ $line }}</td>
+            @if (! $meeting->isApproved())
+              <td class="ds-no-print">
+                @can('update', $meeting)
+                  <button
+                    type="button"
+                    class="ds-btn ds-btn-outline ds-btn-sm"
+                    wire:click="openDecisionFromAgenda({{ \Illuminate\Support\Js::from($line) }})"
+                  >
+                    قرار وتوصية
+                  </button>
+                @endcan
+              </td>
+            @endif
+          </tr>
         @empty
-          <tr><td colspan="2">—</td></tr>
+          <tr><td colspan="{{ $meeting->isApproved() ? 2 : 3 }}">—</td></tr>
         @endforelse
       </x-ds-table>
     </section>
@@ -224,7 +240,7 @@
     <div class="ds-modal-overlay ds-no-print" wire:click.self="closeItemModal">
       <div class="ds-modal ds-modal-lg" role="dialog" dir="rtl">
         <div class="ds-modal-header">
-          <h3>{{ $itemViewOnly ? 'عرض بند' : ($itemId ? 'تعديل بند' : 'بند جديد') }}</h3>
+          <h3>{{ $itemViewOnly ? 'عرض بند' : ($itemId ? 'تعديل بند' : 'قرار / بند') }}</h3>
           <button type="button" class="ds-modal-close" wire:click="closeItemModal">&times;</button>
         </div>
         <div class="ds-modal-body">
@@ -234,7 +250,7 @@
           <x-ds-form-group label="ملخص النقاش" :error="$errors->first('discussion_summary')">
             <textarea class="ds-input" rows="3" wire:model="discussion_summary" @disabled($itemViewOnly)></textarea>
           </x-ds-form-group>
-          <x-ds-form-group label="القرار" :error="$errors->first('decision')">
+          <x-ds-form-group label="القرار أو التوصية" :error="$errors->first('decision')">
             <textarea class="ds-input" rows="2" wire:model="decision" @disabled($itemViewOnly)></textarea>
           </x-ds-form-group>
           <div class="ds-grid-2">
@@ -276,7 +292,7 @@
           <div wire:loading wire:target="signatureFile" class="ds-text-muted">جارٍ التحميل…</div>
         </div>
         <div class="ds-modal-footer">
-          <button type="button" class="ds-btn ds-btn-primary" wire:click="saveSignatureAndConfirm">حفظ التوقيع والتأكيد</button>
+          <button type="button" class="ds-btn ds-btn-primary" wire:click="saveSignatureAndConfirm" wire:loading.attr="disabled" wire:target="signatureFile,saveSignatureAndConfirm">حفظ التوقيع والتأكيد</button>
           <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('showSignatureModal', false)">إلغاء</button>
         </div>
       </div>
@@ -295,10 +311,24 @@
           <x-ds-form-group label="ملف PDF" :error="$errors->first('signedPdfFile')">
             <input type="file" class="ds-input" wire:model="signedPdfFile" accept="application/pdf">
           </x-ds-form-group>
-          <div wire:loading wire:target="signedPdfFile" class="ds-text-muted">جارٍ التحميل…</div>
+          <div wire:loading wire:target="signedPdfFile" class="ds-text-muted">جارٍ رفع الملف… انتظر ثم اضغط رفع وربط</div>
+          <div wire:loading.remove wire:target="signedPdfFile">
+            @if ($signedPdfFile)
+              <p class="ds-text-muted">الملف جاهز للربط.</p>
+            @endif
+          </div>
         </div>
         <div class="ds-modal-footer">
-          <button type="button" class="ds-btn ds-btn-primary" wire:click="uploadSignedMinutes">رفع وربط بالأرشيف</button>
+          <button
+            type="button"
+            class="ds-btn ds-btn-primary"
+            wire:click="uploadSignedMinutes"
+            wire:loading.attr="disabled"
+            wire:target="signedPdfFile,uploadSignedMinutes"
+            @disabled(! $signedPdfFile)
+          >
+            رفع وربط بالأرشيف
+          </button>
           <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('showSignedUploadModal', false)">إلغاء</button>
         </div>
       </div>
