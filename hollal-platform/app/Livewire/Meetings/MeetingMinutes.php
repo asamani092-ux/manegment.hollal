@@ -61,6 +61,9 @@ class MeetingMinutes extends Component
         $this->meeting = $meeting->load(['chair:id,name', 'secretary:id,name', 'attendees:id,name,electronic_signature', 'guests']);
         $this->authorize('view', $this->meeting);
 
+        $this->meeting->syncRuntimeStatus();
+        $this->meeting->refresh();
+
         app(MeetingService::class)->notifyMinutesReadyIfDue($this->meeting);
     }
 
@@ -68,6 +71,31 @@ class MeetingMinutes extends Component
     {
         $this->authorize('update', $this->meeting);
         $this->resetItemForm();
+        $this->showItemModal = true;
+    }
+
+    /**
+     * Open item form prefilled from an agenda line (قرار وتوصية).
+     * Time: O(1) | Space: O(1)
+     */
+    public function openDecisionFromAgenda(string $topic): void
+    {
+        $this->authorize('update', $this->meeting);
+        if ($this->meeting->isApproved()) {
+            $this->dispatch('toast', type: 'error', message: 'المحضر معتمد — التعديل عبر مسار التعديل فقط');
+
+            return;
+        }
+
+        $topic = trim($topic);
+        if ($topic === '') {
+            $this->dispatch('toast', type: 'error', message: 'سطر جدول الأعمال فارغ');
+
+            return;
+        }
+
+        $this->resetItemForm();
+        $this->topic = \Illuminate\Support\Str::limit($topic, 255, '');
         $this->showItemModal = true;
     }
 

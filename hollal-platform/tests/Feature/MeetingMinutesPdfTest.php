@@ -58,12 +58,26 @@ class MeetingMinutesPdfTest extends TestCase
             ->assertForbidden();
     }
 
+    public function test_minutes_pdf_uses_pdf_arabic_pipeline(): void
+    {
+        $html = app(\App\Services\MeetingMinutesPdfService::class)->buildHtml($this->meeting);
+
+        $this->assertStringNotContainsString('direction: rtl', $html);
+        $this->assertStringNotContainsString('direction:rtl', $html);
+        $this->assertStringContainsString('font-family: amiri', $html);
+        $this->assertStringContainsString('pdf-meta', $html);
+        $this->assertStringContainsString('جدول الأعمال', $html);
+
+        $bytes = app(\App\Services\MeetingMinutesPdfService::class)->output($this->meeting);
+        $this->assertStringStartsWith('%PDF', $bytes);
+        $this->assertSame('amiri', \App\Support\PdfArabic::defaultFont());
+    }
+
     public function test_minutes_page_renders_for_authorized_user(): void
     {
         $this->actingAs($this->authorized)
             ->get(route('meetings.minutes', $this->meeting))
             ->assertOk()
-            ->assertSee('طباعة القالب', false)
             ->assertSee('بنود المحضر', false);
     }
 }

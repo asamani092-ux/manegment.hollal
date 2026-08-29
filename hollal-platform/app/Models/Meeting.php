@@ -113,6 +113,21 @@ class Meeting extends Model
         return $this->scheduled_at !== null && $this->scheduled_at->isPast();
     }
 
+    /**
+     * Advance runtime status from scheduled → completed after the meeting time.
+     * Does not override cancelled. Time: O(1) | Space: O(1)
+     */
+    public function syncRuntimeStatus(): void
+    {
+        if ($this->status === self::STATUS_CANCELLED) {
+            return;
+        }
+
+        if ($this->hasEnded() && $this->status !== self::STATUS_COMPLETED) {
+            $this->forceFill(['status' => self::STATUS_COMPLETED])->saveQuietly();
+        }
+    }
+
     /** @return BelongsTo<Project, $this> */
     public function project(): BelongsTo
     {

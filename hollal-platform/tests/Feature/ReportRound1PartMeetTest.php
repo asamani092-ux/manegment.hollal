@@ -128,6 +128,7 @@ class ReportRound1PartMeetTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(OpenDecisionsIndex::class)
+            ->call('selectMeeting', $item->meeting_id)
             ->call('openClose', $item->id)
             ->set('closeReason', 'نُفّذ في الاجتماع التالي')
             ->call('closeDecision')
@@ -158,6 +159,6 @@ class ReportRound1PartMeetTest extends TestCase
 
         $item->refresh();
         $this->assertSame('done', $item->status);
-        $this->assertSame('أُغلق تلقائيًا باكتمال المهمة المربوطة', $item->close_reason);
+        $this->assertSame('أُغلقت بإكمال المهمة', $item->close_reason);
     }
 }

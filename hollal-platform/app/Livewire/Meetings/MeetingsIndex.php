@@ -333,6 +333,11 @@ class MeetingsIndex extends Component
 
     public function render(): View
     {
+        Meeting::query()
+            ->where('scheduled_at', '<', now())
+            ->whereNotIn('status', [Meeting::STATUS_COMPLETED, Meeting::STATUS_CANCELLED])
+            ->update(['status' => Meeting::STATUS_COMPLETED]);
+
         $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name']);
 
         return view('livewire.meetings.meetings-index', [

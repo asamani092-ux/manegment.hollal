@@ -155,8 +155,8 @@ return [
             'title' => 'الاجتماعات',
             'items' => [
                 ['id' => 'meetings', 'tool' => 'الاجتماعات', 'path' => '/meetings', 'checks' => 'إنشاء · جدول أعمال · حضور · بطاقة 12 ساعة', 'lifecycle' => 'جدولة → انعقاد → محضر → اعتماد'],
-                ['id' => 'minutes', 'tool' => 'محضر الاجتماع', 'path' => '/meetings/{id}/minutes', 'checks' => 'قرارات · اعتماد · PDF عربي', 'lifecycle' => 'تدوين → قرارات → اعتماد → PDF'],
-                ['id' => 'open-decisions', 'tool' => 'القرارات المفتوحة', 'path' => '/meetings/open-decisions', 'checks' => 'قرارات متأخرة · تحويل لمهمة', 'lifecycle' => 'متابعة → تحويل مهمة → إغلاق'],
+                ['id' => 'minutes', 'tool' => 'محضر الاجتماع', 'path' => '/meetings/{id}/minutes', 'checks' => 'قرار من جدول الأعمال · اعتماد · PDF عربي PdfArabic · رفع موقعة', 'lifecycle' => 'تدوين → قرارات → اعتماد → PDF'],
+                ['id' => 'open-decisions', 'tool' => 'القرارات المفتوحة', 'path' => '/meetings/open-decisions', 'checks' => 'تجميع حسب اجتماع · إغلاق · مزامنة اكتمال المهمة', 'lifecycle' => 'اجتماع → قراراته → إغلاق/مهمة'],
             ],
         ],
         [
