@@ -5,133 +5,131 @@
         أداة مستقلة عن برنامج التحضير اليومي: رفع ملف حركات يستبدل الشهر، أو إدخال مؤشرات تأخير/غياب يدوياً ثم احتساب الخصم من معادلات الإعدادات واعتماده من الموارد البشرية.
     </p>
 
-    <div class="ds-attendance-grid">
-        <x-ds-collapsible-card title="1) رفع حركات الشهر (استبدال)" class="ds-attendance-grid-card" :open="$wizardStep !== 'done'">
-            @if ($wizardStep === 'upload')
-                <p class="ds-text-muted">ارفع ملفاً واحداً يستبدل حركات البصمة لذلك الشهر بالكامل (وليس دمجاً تراكمياً). عند التعارض مع حضور المنصة تغلب البصمة المستوردة حالياً.</p>
-                <div class="ds-filters-row">
-                    <div class="ds-filter-field">
-                        <label class="ds-label" for="att-source">المصدر / الجهة</label>
-                        <input id="att-source" type="text" class="ds-input" wire:model="sourceLabel" placeholder="مثال: جهاز المقر الرئيسي">
-                    </div>
-                    <div class="ds-filter-field">
-                        <label class="ds-label" for="att-import-month">شهر الاستبدال</label>
-                        <input id="att-import-month" type="month" class="ds-input ds-ltr-num" wire:model="importMonth">
-                    </div>
+    <x-ds-collapsible-card title="1) رفع حركات الشهر (استبدال)" class="ds-mt-3" :open="$wizardStep !== 'done'">
+        @if ($wizardStep === 'upload')
+            <p class="ds-text-muted">ارفع ملفاً واحداً يستبدل حركات البصمة لذلك الشهر بالكامل (وليس دمجاً تراكمياً). عند التعارض مع حضور المنصة تغلب البصمة المستوردة حالياً.</p>
+            <div class="ds-filters-row">
+                <div class="ds-filter-field">
+                    <label class="ds-label" for="att-source">المصدر / الجهة</label>
+                    <input id="att-source" type="text" class="ds-input" wire:model="sourceLabel" placeholder="مثال: جهاز المقر الرئيسي">
                 </div>
-                <x-ds-form-group label="ملف الحركات">
-                    <input type="file" class="ds-input" wire:model="uploadFile" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
-                    <p class="ds-text-muted ds-mt-sm">الصيغ المدعومة: جداول إكسل أو ملف مفصول بفواصل.</p>
+                <div class="ds-filter-field">
+                    <label class="ds-label" for="att-import-month">شهر الاستبدال</label>
+                    <input id="att-import-month" type="month" class="ds-input ds-ltr-num" wire:model="importMonth">
+                </div>
+            </div>
+            <x-ds-form-group label="ملف الحركات">
+                <input type="file" class="ds-input" wire:model="uploadFile" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+                <p class="ds-text-muted ds-mt-sm">الصيغ المدعومة: جداول إكسل أو ملف مفصول بفواصل.</p>
+            </x-ds-form-group>
+            <div wire:loading wire:target="uploadFile" class="ds-text-muted">جاري قراءة العناوين…</div>
+        @endif
+
+        @if ($wizardStep === 'map')
+            <p class="ds-text-muted">اختر أي عمود من الصف الأول يمثّل كل حقل. تُحفظ المطابقة الناجحة لهذا المصدر تلقائياً للمرات القادمة.</p>
+            <div class="ds-filters-row">
+                <div class="ds-filter-field">
+                    <label class="ds-label" for="att-import-month-map">شهر الاستبدال</label>
+                    <input id="att-import-month-map" type="month" class="ds-input ds-ltr-num" wire:model="importMonth">
+                </div>
+            </div>
+            @foreach ($roleLabels as $role => $label)
+                <x-ds-form-group :label="$label">
+                    <select class="ds-input" wire:model="columnMap.{{ $role }}">
+                        <option value="">— اختر العمود —</option>
+                        @foreach ($fileHeaders as $idx => $header)
+                            <option value="{{ $idx }}">{{ $header !== '' ? $header : ('عمود '.($idx + 1)) }}</option>
+                        @endforeach
+                    </select>
                 </x-ds-form-group>
-                <div wire:loading wire:target="uploadFile" class="ds-text-muted">جاري قراءة العناوين…</div>
-            @endif
+            @endforeach
+            <div class="ds-btn-group ds-mt-3">
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="confirmColumnMap">متابعة</button>
+                <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelImportWizard">إلغاء</button>
+            </div>
+        @endif
 
-            @if ($wizardStep === 'map')
-                <p class="ds-text-muted">اختر أي عمود من الصف الأول يمثّل كل حقل. تُحفظ المطابقة الناجحة لهذا المصدر تلقائياً للمرات القادمة.</p>
-                <div class="ds-filters-row">
-                    <div class="ds-filter-field">
-                        <label class="ds-label" for="att-import-month-map">شهر الاستبدال</label>
-                        <input id="att-import-month-map" type="month" class="ds-input ds-ltr-num" wire:model="importMonth">
-                    </div>
-                </div>
-                @foreach ($roleLabels as $role => $label)
-                    <x-ds-form-group :label="$label">
-                        <select class="ds-input" wire:model="columnMap.{{ $role }}">
-                            <option value="">— اختر العمود —</option>
-                            @foreach ($fileHeaders as $idx => $header)
-                                <option value="{{ $idx }}">{{ $header !== '' ? $header : ('عمود '.($idx + 1)) }}</option>
-                            @endforeach
-                        </select>
-                    </x-ds-form-group>
+        @if ($wizardStep === 'match' && $pendingImport)
+            <p class="ds-text-muted">صفوف بلا بصمة معروفة في ملفات الموظفين — طابق كل صف بموظف قبل الاعتماد النهائي.</p>
+            <x-ds-table>
+                <x-slot:head>
+                    <tr>
+                        <th>معرّف البصمة</th>
+                        <th>التاريخ</th>
+                        <th>الحضور</th>
+                        <th>الموظف</th>
+                    </tr>
+                </x-slot:head>
+                @foreach ($pendingImport->unmatched_rows ?? [] as $idx => $urow)
+                    <tr wire:key="unmatched-{{ $idx }}">
+                        <td class="ds-ltr-num">{{ $urow['fingerprint'] ?? '—' }}</td>
+                        <td class="ds-ltr-num">{{ $urow['date'] ?? '—' }}</td>
+                        <td class="ds-ltr-num">{{ $urow['check_in'] ?? '—' }}</td>
+                        <td>
+                            <select class="ds-input" wire:model="manualMatches.{{ $idx }}">
+                                <option value="">— اختر موظفاً —</option>
+                                @foreach ($attendees as $emp)
+                                    <option value="{{ $emp->id }}">{{ $emp->name }}</option>
+                                @endforeach
+                            </select>
+                        </td>
+                    </tr>
                 @endforeach
-                <div class="ds-btn-group ds-mt-3">
-                    <button type="button" class="ds-btn ds-btn-primary" wire:click="confirmColumnMap">متابعة</button>
-                    <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelImportWizard">إلغاء</button>
-                </div>
-            @endif
+            </x-ds-table>
+            <div class="ds-btn-group ds-mt-3">
+                <button type="button" class="ds-btn ds-btn-primary" wire:click="confirmManualMatches">اعتماد الاستيراد والاستبدال</button>
+                <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelImportWizard">إلغاء</button>
+            </div>
+        @endif
+    </x-ds-collapsible-card>
 
-            @if ($wizardStep === 'match' && $pendingImport)
-                <p class="ds-text-muted">صفوف بلا بصمة معروفة في ملفات الموظفين — طابق كل صف بموظف قبل الاعتماد النهائي.</p>
+    <x-ds-collapsible-card title="2) مؤشرات يدوية (بدون ملف)" class="ds-mt-3" :open="false">
+        <p class="ds-text-muted">أدخل ساعات التأخير وأيام الغياب فقط. النظام يحسب مبلغ الخصم من معادلات الإعدادات — لا يُدخل المبلغ النهائي يدوياً.</p>
+        <p class="ds-text-muted ds-ltr-num">{{ $hourValueHint }}</p>
+        <x-ds-form-group label="الموظف">
+            <select class="ds-input" wire:model="manualEmployeeId">
+                <option value="">—</option>
+                @foreach ($attendees as $emp)
+                    <option value="{{ $emp->id }}">{{ $emp->name }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+        <div class="ds-filters-row">
+            <div class="ds-filter-field">
+                <label class="ds-label" for="manual-late">ساعات التأخير</label>
+                <input id="manual-late" type="number" step="0.25" min="0" class="ds-input ds-ltr-num" wire:model="manualLateHours">
+            </div>
+            <div class="ds-filter-field">
+                <label class="ds-label" for="manual-abs">أيام الغياب</label>
+                <input id="manual-abs" type="number" min="0" class="ds-input ds-ltr-num" wire:model="manualAbsenceDays">
+            </div>
+        </div>
+        <x-ds-form-group label="ملاحظة">
+            <input type="text" class="ds-input" wire:model="manualNotes">
+        </x-ds-form-group>
+        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveManualIndicator">حفظ المؤشرات</button>
+
+        @if ($manualRows->isNotEmpty())
+            <div class="ds-table-wrap ds-mt-3">
                 <x-ds-table>
                     <x-slot:head>
                         <tr>
-                            <th>معرّف البصمة</th>
-                            <th>التاريخ</th>
-                            <th>الحضور</th>
                             <th>الموظف</th>
+                            <th>ساعات تأخير</th>
+                            <th>أيام غياب</th>
                         </tr>
                     </x-slot:head>
-                    @foreach ($pendingImport->unmatched_rows ?? [] as $idx => $urow)
-                        <tr wire:key="unmatched-{{ $idx }}">
-                            <td class="ds-ltr-num">{{ $urow['fingerprint'] ?? '—' }}</td>
-                            <td class="ds-ltr-num">{{ $urow['date'] ?? '—' }}</td>
-                            <td class="ds-ltr-num">{{ $urow['check_in'] ?? '—' }}</td>
-                            <td>
-                                <select class="ds-input" wire:model="manualMatches.{{ $idx }}">
-                                    <option value="">— اختر موظفاً —</option>
-                                    @foreach ($attendees as $emp)
-                                        <option value="{{ $emp->id }}">{{ $emp->name }}</option>
-                                    @endforeach
-                                </select>
-                            </td>
+                    @foreach ($manualRows as $ind)
+                        <tr>
+                            <td>{{ $ind->employee?->name }}</td>
+                            <td class="ds-ltr-num">{{ $ind->late_hours }}</td>
+                            <td class="ds-ltr-num">{{ $ind->absence_days }}</td>
                         </tr>
                     @endforeach
                 </x-ds-table>
-                <div class="ds-btn-group ds-mt-3">
-                    <button type="button" class="ds-btn ds-btn-primary" wire:click="confirmManualMatches">اعتماد الاستيراد والاستبدال</button>
-                    <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelImportWizard">إلغاء</button>
-                </div>
-            @endif
-        </x-ds-collapsible-card>
-
-        <x-ds-collapsible-card title="2) مؤشرات يدوية (بدون ملف)" class="ds-attendance-grid-card" :open="false">
-            <p class="ds-text-muted">أدخل ساعات التأخير وأيام الغياب فقط. النظام يحسب مبلغ الخصم من معادلات الإعدادات — لا يُدخل المبلغ النهائي يدوياً.</p>
-            <p class="ds-text-muted ds-ltr-num">{{ $hourValueHint }}</p>
-            <x-ds-form-group label="الموظف">
-                <select class="ds-input" wire:model="manualEmployeeId">
-                    <option value="">—</option>
-                    @foreach ($attendees as $emp)
-                        <option value="{{ $emp->id }}">{{ $emp->name }}</option>
-                    @endforeach
-                </select>
-            </x-ds-form-group>
-            <div class="ds-filters-row">
-                <div class="ds-filter-field">
-                    <label class="ds-label" for="manual-late">ساعات التأخير</label>
-                    <input id="manual-late" type="number" step="0.25" min="0" class="ds-input ds-ltr-num" wire:model="manualLateHours">
-                </div>
-                <div class="ds-filter-field">
-                    <label class="ds-label" for="manual-abs">أيام الغياب</label>
-                    <input id="manual-abs" type="number" min="0" class="ds-input ds-ltr-num" wire:model="manualAbsenceDays">
-                </div>
             </div>
-            <x-ds-form-group label="ملاحظة">
-                <input type="text" class="ds-input" wire:model="manualNotes">
-            </x-ds-form-group>
-            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveManualIndicator">حفظ المؤشرات</button>
-
-            @if ($manualRows->isNotEmpty())
-                <div class="ds-table-wrap ds-mt-3">
-                    <x-ds-table>
-                        <x-slot:head>
-                            <tr>
-                                <th>الموظف</th>
-                                <th>ساعات تأخير</th>
-                                <th>أيام غياب</th>
-                            </tr>
-                        </x-slot:head>
-                        @foreach ($manualRows as $ind)
-                            <tr>
-                                <td>{{ $ind->employee?->name }}</td>
-                                <td class="ds-ltr-num">{{ $ind->late_hours }}</td>
-                                <td class="ds-ltr-num">{{ $ind->absence_days }}</td>
-                            </tr>
-                        @endforeach
-                    </x-ds-table>
-                </div>
-            @endif
-        </x-ds-collapsible-card>
-    </div>
+        @endif
+    </x-ds-collapsible-card>
 
     <x-ds-collapsible-card title="3) تقرير الشهر" class="ds-mt-3" :open="$showMonthlyReport">
         <x-ds-form-group label="الشهر">

@@ -1942,24 +1942,6 @@
   background: transparent;
   cursor: pointer;
 }
-.ds-attendance-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-.ds-attendance-grid-card {
-  min-height: 12rem;
-  aspect-ratio: 1 / 1;
-  max-height: 22rem;
-  overflow: auto;
-}
-@media (max-width: 40rem) {
-  .ds-attendance-grid-card {
-    aspect-ratio: auto;
-    max-height: none;
-  }
-}
 .ds-punch-panel-status {
   display: grid;
   gap: 0.75rem;
