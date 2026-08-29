@@ -11,9 +11,9 @@ use App\Notifications\MeetingMinutesReady;
 use Illuminate\Support\Facades\Storage;
 
 /**
- * 03-B1 — meeting minutes approval cycle and amendments. Once approved, minutes
- * are frozen; changes go through a versioned amendment that preserves the
- * original.
+ * 03-B1 — meeting minutes approval cycle and amendments.
+ * After approval, minutes are frozen. Amendment path:
+ * request → approve (unlock edit) → edit items → finalize (labeled DocumentVersion).
  */
 class MeetingService
 {
@@ -198,14 +198,20 @@ class MeetingService
         return $amendment;
     }
 
+    /**
+     * Step 1 — submit amendment request. Time: O(1) | Space: O(1)
+     */
     public function requestAmendment(Meeting $meeting, User $requester, string $note): MeetingAmendment
     {
         if (! $meeting->isApproved()) {
             throw new \RuntimeException('لا يمكن تعديل محضر غير معتمد؛ عدّله مباشرة.');
         }
 
-        if ($meeting->amendments()->where('status', MeetingAmendment::STATUS_PENDING)->exists()) {
-            throw new \RuntimeException('يوجد طلب تعديل معلّق على هذا المحضر.');
+        if ($meeting->amendments()->whereIn('status', [
+            MeetingAmendment::STATUS_PENDING,
+            MeetingAmendment::STATUS_EDITING,
+        ])->exists()) {
+            throw new \RuntimeException('يوجد طلب تعديل معلّق أو جارٍ على هذا المحضر.');
         }
 
         return MeetingAmendment::create([
@@ -218,47 +224,64 @@ class MeetingService
         ]);
     }
 
+    /**
+     * Step 2 — approve request and unlock minutes for item edits (no new PDF yet).
+     * Time: O(1) + archive ensure | Space: O(1)
+     */
     public function approveAmendment(MeetingAmendment $amendment, User $approver): MeetingAmendment
     {
         if ($amendment->status !== MeetingAmendment::STATUS_PENDING) {
             throw new \RuntimeException('لا يمكن اعتماد طلب غير معلّق.');
         }
 
+        if ($amendment->requested_by !== null && (int) $amendment->requested_by === (int) $approver->id) {
+            throw new \RuntimeException('لا يمكن لمقدّم الطلب الموافقة على طلبه.');
+        }
+
         $meeting = $amendment->meeting()->firstOrFail();
-        $newVersion = $meeting->version + 1;
+        $this->ensureOriginalMinutesVersionFrozen($meeting, $approver);
 
         $amendment->forceFill([
-            'status' => MeetingAmendment::STATUS_APPROVED,
+            'status' => MeetingAmendment::STATUS_EDITING,
             'approved_by' => $approver->id,
-            'version' => $newVersion,
         ])->save();
-
-        $meeting->update(['version' => $newVersion]);
-
-        $this->storeAmendedMinutesVersion($meeting, $approver, (string) $amendment->note);
 
         return $amendment->fresh();
     }
 
     /**
-     * Persist amended minutes as a new DocumentVersion (original kept).
+     * Step 4 — finalize after item edits: bump version + labeled DocumentVersion.
      * Time: O(pdf) | Space: O(pdf)
      */
-    private function storeAmendedMinutesVersion(Meeting $meeting, User $approver, string $note): void
+    public function finalizeAmendment(MeetingAmendment $amendment, User $finalizer): MeetingAmendment
+    {
+        if ($amendment->status !== MeetingAmendment::STATUS_EDITING) {
+            throw new \RuntimeException('لا يمكن اعتماد تغيير بلا مرحلة تعديل مفتوحة.');
+        }
+
+        $meeting = $amendment->meeting()->firstOrFail();
+        $newVersion = (int) $meeting->version + 1;
+
+        $amendment->forceFill([
+            'status' => MeetingAmendment::STATUS_APPROVED,
+            'version' => $newVersion,
+        ])->save();
+
+        $meeting->update(['version' => $newVersion]);
+
+        $this->storeAmendedMinutesVersion($meeting, $finalizer, (string) $amendment->note);
+
+        return $amendment->fresh();
+    }
+
+    /**
+     * Ensure archived PDF exists as DocumentVersion v1 before any edits.
+     * Time: O(1) or O(pdf) if missing archive | Space: O(1)
+     */
+    private function ensureOriginalMinutesVersionFrozen(Meeting $meeting, User $actor): void
     {
         $meeting->refresh();
-        $document = null;
-        if ($meeting->archived_document_id) {
-            $document = Document::query()->find($meeting->archived_document_id);
-        }
-        if ($document === null && $meeting->signed_document_id) {
-            $document = Document::query()->find($meeting->signed_document_id);
-        }
-        if ($document === null) {
-            $this->archiveMinutes($meeting, $approver);
-            $meeting->refresh();
-            $document = Document::query()->find($meeting->archived_document_id);
-        }
+        $document = $this->resolveMinutesDocument($meeting, $actor);
         if ($document === null) {
             return;
         }
@@ -275,6 +298,22 @@ class MeetingService
                 $document->forceFill(['current_version' => 1])->save();
             }
         }
+    }
+
+    /**
+     * Persist amended minutes as a new DocumentVersion (original kept).
+     * Time: O(pdf) | Space: O(pdf)
+     */
+    private function storeAmendedMinutesVersion(Meeting $meeting, User $approver, string $note): void
+    {
+        $meeting->refresh();
+        $document = $this->resolveMinutesDocument($meeting, $approver);
+        if ($document === null) {
+            return;
+        }
+
+        $this->ensureOriginalMinutesVersionFrozen($meeting, $approver);
+        $document->refresh();
 
         $pdf = app(MeetingMinutesPdfService::class)->output($meeting);
         $path = 'meetings/'.now()->format('Y/m').'/'.$meeting->id.'-minutes-v'.($meeting->version).'.pdf';
@@ -286,5 +325,23 @@ class MeetingService
         }
 
         app(DocumentLibraryService::class)->addVersion($document, $path, $label, $approver);
+    }
+
+    private function resolveMinutesDocument(Meeting $meeting, User $actor): ?Document
+    {
+        $document = null;
+        if ($meeting->archived_document_id) {
+            $document = Document::query()->find($meeting->archived_document_id);
+        }
+        if ($document === null && $meeting->signed_document_id) {
+            $document = Document::query()->find($meeting->signed_document_id);
+        }
+        if ($document === null) {
+            $this->archiveMinutes($meeting, $actor);
+            $meeting->refresh();
+            $document = Document::query()->find($meeting->archived_document_id);
+        }
+
+        return $document;
     }
 }

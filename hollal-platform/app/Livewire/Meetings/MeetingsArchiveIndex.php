@@ -66,7 +66,13 @@ class MeetingsArchiveIndex extends Component
             ->where('approval_status', Meeting::APPROVAL_APPROVED)
             ->findOrFail($this->amendingMeetingId);
 
-        app(MeetingService::class)->requestAmendment($meeting, auth()->user(), $this->amendNote);
+        try {
+            app(MeetingService::class)->requestAmendment($meeting, auth()->user(), $this->amendNote);
+        } catch (\Throwable $e) {
+            $this->dispatch('ds-toast', message: $e->getMessage());
+
+            return;
+        }
 
         $this->showAmendModal = false;
         $this->amendingMeetingId = null;
@@ -74,12 +80,32 @@ class MeetingsArchiveIndex extends Component
         $this->dispatch('ds-toast', message: 'أُرسل طلب التعديل بانتظار الموافقة');
     }
 
+    /** Step 2 — unlock minutes for item edits. */
     public function approveAmendment(int $amendmentId): void
     {
         abort_unless(auth()->user()->can('meetings.update'), 403);
         $amendment = MeetingAmendment::query()->findOrFail($amendmentId);
-        app(MeetingService::class)->approveAmendment($amendment, auth()->user());
-        $this->dispatch('ds-toast', message: 'اعتُمد التعديل ونُشرت نسخة موسومة');
+
+        try {
+            app(MeetingService::class)->approveAmendment($amendment, auth()->user());
+            $this->dispatch('ds-toast', message: 'فُتح المحضر للتعديل — عدّل البنود ثم اعتمد التغيير');
+        } catch (\Throwable $e) {
+            $this->dispatch('ds-toast', message: $e->getMessage());
+        }
+    }
+
+    /** Step 4 — publish labeled DocumentVersion after edits. */
+    public function finalizeAmendment(int $amendmentId): void
+    {
+        abort_unless(auth()->user()->can('meetings.update'), 403);
+        $amendment = MeetingAmendment::query()->findOrFail($amendmentId);
+
+        try {
+            app(MeetingService::class)->finalizeAmendment($amendment, auth()->user());
+            $this->dispatch('ds-toast', message: 'اعتُمد التغيير ونُشرت نسخة موسومة (الأصل محفوظ)');
+        } catch (\Throwable $e) {
+            $this->dispatch('ds-toast', message: $e->getMessage());
+        }
     }
 
     public function render(): View

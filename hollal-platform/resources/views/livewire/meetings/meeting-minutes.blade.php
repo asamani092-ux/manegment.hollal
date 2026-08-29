@@ -17,9 +17,21 @@
       @if ($meeting->isApproved())
         <span class="ds-badge ds-badge-success">محضر معتمد — {{ $meeting->approved_at?->format('Y-m-d') }}</span>
       @endif
+      @if ($editingAmendment)
+        <span class="ds-badge">تعديل مفتوح — عدّل البنود ثم اعتمد التغيير</span>
+      @endif
     </div>
     <div class="ds-toolbar-actions">
-      @if (! $meeting->isApproved())
+      @if ($editingAmendment)
+        @can('update', $meeting)
+          <button type="button" class="ds-btn ds-btn-primary" wire:click="openItemCreate">
+            <i class="fas fa-plus" aria-hidden="true"></i> بند جديد
+          </button>
+          <button type="button" class="ds-btn ds-btn-teal" wire:click="finalizeAmendment" wire:confirm="اعتماد التغيير ونشر نسخة موسومة؟">
+            <i class="fas fa-check-circle" aria-hidden="true"></i> اعتماد التغيير
+          </button>
+        @endcan
+      @elseif (! $meeting->isApproved())
         @can('update', $meeting)
           <button type="button" class="ds-btn ds-btn-teal" wire:click="openApproveModal">
             <i class="fas fa-check-circle" aria-hidden="true"></i> اعتماد المحضر
@@ -91,7 +103,7 @@
           <tr>
             <th>#</th>
             <th>البند</th>
-            @if (! $meeting->isApproved())
+            @if ($canEditItems && ! $meeting->isApproved())
               <th class="ds-no-print">إجراء</th>
             @endif
           </tr>
@@ -100,7 +112,7 @@
           <tr wire:key="agenda-{{ $i }}">
             <td>{{ $i + 1 }}</td>
             <td>{{ $line }}</td>
-            @if (! $meeting->isApproved())
+            @if ($canEditItems && ! $meeting->isApproved())
               <td class="ds-no-print">
                 @can('update', $meeting)
                   <button
@@ -115,7 +127,7 @@
             @endif
           </tr>
         @empty
-          <tr><td colspan="{{ $meeting->isApproved() ? 2 : 3 }}">—</td></tr>
+          <tr><td colspan="{{ ($canEditItems && ! $meeting->isApproved()) ? 3 : 2 }}">—</td></tr>
         @endforelse
       </x-ds-table>
     </section>
@@ -191,13 +203,13 @@
           <span>الحالة: {{ $itemStatusLabels[$item->status] ?? $item->status }}</span>
         </div>
         <div class="ds-task-card-actions">
-          @if ($item->decision && ! $item->task_id && $meeting->isApproved() && auth()->user()->can('update', $meeting) && auth()->user()->can('esnad.tasks.create'))
+          @if ($item->decision && ! $item->task_id && $meeting->isApproved() && ! $editingAmendment && auth()->user()->can('update', $meeting) && auth()->user()->can('esnad.tasks.create'))
             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="convertToTask({{ $item->id }})">تحويل إلى مهمة</button>
           @endif
           <x-ds-action-icons
             :show-view="true"
-            :show-edit="! $meeting->isApproved() && auth()->user()->can('update', $meeting)"
-            :show-delete="! $meeting->isApproved() && auth()->user()->can('update', $meeting)"
+            :show-edit="$canEditItems && auth()->user()->can('update', $meeting)"
+            :show-delete="$canEditItems && auth()->user()->can('update', $meeting)"
             :view-action="'openItemView('.$item->id.')'"
             :edit-action="'openItemEdit('.$item->id.')'"
             :delete-action="'deleteItem('.$item->id.')'"

@@ -105,6 +105,33 @@ class Meeting extends Model
     }
 
     /**
+     * Approved minutes stay frozen unless an amendment is in editing.
+     * Time: O(1) query | Space: O(1)
+     */
+    public function allowsItemEdit(): bool
+    {
+        if (! $this->isApproved()) {
+            return true;
+        }
+
+        return $this->amendments()
+            ->where('status', MeetingAmendment::STATUS_EDITING)
+            ->exists();
+    }
+
+    /**
+     * Active amendment unlocked for content edits (step 3).
+     * Time: O(1) | Space: O(1)
+     */
+    public function editingAmendment(): ?MeetingAmendment
+    {
+        return $this->amendments()
+            ->where('status', MeetingAmendment::STATUS_EDITING)
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
      * P2 wave C — gates the pre/post-meeting confirm-minutes UX and the
      * minutes-ready notification. Time: O(1) | Space: O(1)
      */

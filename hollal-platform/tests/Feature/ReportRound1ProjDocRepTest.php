@@ -92,19 +92,22 @@ class ReportRound1ProjDocRepTest extends TestCase
 
     public function test_minutes_amendment_request_then_approval_tags_version(): void
     {
-        $chair = User::factory()->create(['must_change_password' => false]);
-        $chair->givePermissionTo(['meetings.view', 'meetings.update', 'documents.view']);
+        $requester = User::factory()->create(['must_change_password' => false]);
+        $approver = User::factory()->create(['must_change_password' => false]);
+        $requester->givePermissionTo(['meetings.view', 'meetings.update', 'documents.view']);
+        $approver->givePermissionTo(['meetings.view', 'meetings.update', 'documents.view']);
+
         $meeting = Meeting::factory()->create([
-            'chair_id' => $chair->id,
+            'chair_id' => $approver->id,
             'approval_status' => 'مسودة',
             'version' => 1,
         ]);
         $service = app(MeetingService::class);
-        $service->approveMinutes($meeting, $chair);
+        $service->approveMinutes($meeting, $approver);
 
-        Livewire::actingAs($chair)
+        Livewire::actingAs($requester)
             ->test(MeetingsArchiveIndex::class)
-            ->assertSee('طلب ← موافقة ← نسخة جديدة', false)
+            ->assertSee('طلب ← موافقة ← تعديل البنود ← اعتماد التغيير', false)
             ->call('openAmendRequest', $meeting->id)
             ->set('amendNote', 'تصحيح تاريخ')
             ->call('submitAmendRequest')
@@ -114,9 +117,16 @@ class ReportRound1ProjDocRepTest extends TestCase
         $amendment = MeetingAmendment::query()->where('meeting_id', $meeting->id)->where('status', 'معلق')->first();
         $this->assertNotNull($amendment);
 
-        Livewire::actingAs($chair)
+        Livewire::actingAs($approver)
             ->test(MeetingsArchiveIndex::class)
             ->call('approveAmendment', $amendment->id);
+
+        $this->assertSame(1, $meeting->fresh()->version);
+        $this->assertSame(MeetingAmendment::STATUS_EDITING, $amendment->fresh()->status);
+
+        Livewire::actingAs($approver)
+            ->test(MeetingsArchiveIndex::class)
+            ->call('finalizeAmendment', $amendment->id);
 
         $this->assertSame(2, $meeting->fresh()->version);
         $this->assertSame(MeetingAmendment::STATUS_APPROVED, $amendment->fresh()->status);

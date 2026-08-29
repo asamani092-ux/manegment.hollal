@@ -2,7 +2,7 @@
     <x-ds-page-header title="أرشيف المحاضر" :show-button="false" />
 
     <p class="ds-text-muted ds-mb-3">
-        مسار تعديل المحضر المعتمد: طلب ← موافقة ← نسخة جديدة في إدارة النسخ موسومة بوضوح (الأصل محفوظ).
+        مسار تعديل المحضر المعتمد: طلب ← موافقة ← تعديل البنود ← اعتماد التغيير (نسخة موسومة؛ الأصل محفوظ وقابل للمعاينة والتنزيل).
     </p>
 
     <div class="ds-filters-row">
@@ -44,15 +44,35 @@
                         @endif
                     @endcan
                     @can('meetings.update')
-                        <button type="button" class="ds-btn ds-btn-sm" wire:click="openAmendRequest({{ $meeting->id }})">طلب تعديل</button>
+                        @php
+                            $hasOpenAmend = $meeting->amendments->contains(
+                                fn ($a) => in_array($a->status, [
+                                    \App\Models\MeetingAmendment::STATUS_PENDING,
+                                    \App\Models\MeetingAmendment::STATUS_EDITING,
+                                ], true)
+                            );
+                        @endphp
+                        @unless ($hasOpenAmend)
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="openAmendRequest({{ $meeting->id }})">طلب تعديل</button>
+                        @endunless
                     @endcan
                     @foreach ($meeting->amendments as $amendment)
                         <p class="ds-text-muted" wire:key="amd-{{ $amendment->id }}">
-                            نسخة {{ $amendment->version }} — {{ $amendment->status }}
+                            {{ $amendment->status }}
+                            @if ($amendment->note)
+                                — {{ \Illuminate\Support\Str::limit($amendment->note, 60) }}
+                            @endif
                             @if ($amendment->status === \App\Models\MeetingAmendment::STATUS_PENDING)
                                 @can('meetings.update')
                                     <button type="button" class="ds-btn ds-btn-sm" wire:click="approveAmendment({{ $amendment->id }})">موافقة</button>
                                 @endcan
+                            @elseif ($amendment->status === \App\Models\MeetingAmendment::STATUS_EDITING)
+                                <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes', $meeting) }}">تعديل البنود</a>
+                                @can('meetings.update')
+                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="finalizeAmendment({{ $amendment->id }})">اعتماد التغيير</button>
+                                @endcan
+                            @elseif ($amendment->status === \App\Models\MeetingAmendment::STATUS_APPROVED)
+                                — نسخة {{ $amendment->version }}
                             @endif
                         </p>
                     @endforeach
@@ -66,7 +86,7 @@
 
     <x-ds-modal :show="$showAmendModal">
         <x-slot:header><h2>طلب تعديل المحضر</h2></x-slot:header>
-        <p class="ds-text-muted">الطلب ينتظر الموافقة ثم تُوسم نسخة جديدة.</p>
+        <p class="ds-text-muted">بعد الموافقة يُفتح المحضر لتعديل البنود، ثم يُعتمد التغيير بنسخة موسومة.</p>
         <x-ds-form-group label="سبب التعديل" :error="$errors->first('amendNote')">
             <textarea class="ds-input" wire:model="amendNote" rows="3"></textarea>
         </x-ds-form-group>

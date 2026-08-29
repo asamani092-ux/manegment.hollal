@@ -70,6 +70,11 @@ class MeetingMinutes extends Component
     public function openItemCreate(): void
     {
         $this->authorize('update', $this->meeting);
+        if (! $this->meeting->allowsItemEdit()) {
+            $this->dispatch('toast', type: 'error', message: 'المحضر معتمد — التعديل عبر مسار التعديل فقط');
+
+            return;
+        }
         $this->resetItemForm();
         $this->showItemModal = true;
     }
@@ -81,7 +86,7 @@ class MeetingMinutes extends Component
     public function openDecisionFromAgenda(string $topic): void
     {
         $this->authorize('update', $this->meeting);
-        if ($this->meeting->isApproved()) {
+        if (! $this->meeting->allowsItemEdit()) {
             $this->dispatch('toast', type: 'error', message: 'المحضر معتمد — التعديل عبر مسار التعديل فقط');
 
             return;
@@ -102,7 +107,7 @@ class MeetingMinutes extends Component
     public function openItemEdit(int $id): void
     {
         $this->authorize('update', $this->meeting);
-        if ($this->meeting->isApproved()) {
+        if (! $this->meeting->allowsItemEdit()) {
             $this->dispatch('toast', type: 'error', message: 'المحضر معتمد — التعديل عبر مسار التعديل فقط');
 
             return;
@@ -243,7 +248,7 @@ class MeetingMinutes extends Component
 
         $this->authorize('update', $this->meeting);
 
-        if ($this->meeting->isApproved()) {
+        if (! $this->meeting->allowsItemEdit()) {
             $this->dispatch('toast', type: 'error', message: 'المحضر معتمد ولا يمكن تعديله (استخدم مسار التعديل)');
 
             return;
@@ -281,13 +286,36 @@ class MeetingMinutes extends Component
     public function deleteItem(int $id): void
     {
         $this->authorize('update', $this->meeting);
-        if ($this->meeting->isApproved()) {
+        if (! $this->meeting->allowsItemEdit()) {
             $this->dispatch('toast', type: 'error', message: 'المحضر معتمد ولا يمكن حذف البنود');
 
             return;
         }
         MeetingItem::where('meeting_id', $this->meeting->id)->findOrFail($id)->delete();
         $this->dispatch('toast', type: 'success', message: 'تم حذف البند');
+    }
+
+    /**
+     * Step 4 — finalize open amendment after item edits.
+     * Time: O(pdf) | Space: O(pdf)
+     */
+    public function finalizeAmendment(): void
+    {
+        $this->authorize('update', $this->meeting);
+        $amendment = $this->meeting->editingAmendment();
+        if ($amendment === null) {
+            $this->dispatch('toast', type: 'error', message: 'لا يوجد تعديل مفتوح للاعتماد');
+
+            return;
+        }
+
+        try {
+            app(MeetingService::class)->finalizeAmendment($amendment, auth()->user());
+            $this->meeting->refresh();
+            $this->dispatch('toast', type: 'success', message: 'اعتُمد التغيير ونُشرت نسخة موسومة');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
     }
 
     public function convertToTask(int $itemId): void
@@ -404,10 +432,15 @@ class MeetingMinutes extends Component
             ->orderBy('id')
             ->get();
 
+        $canEditItems = $this->meeting->allowsItemEdit();
+        $editingAmendment = $this->meeting->isApproved() ? $this->meeting->editingAmendment() : null;
+
         return view('livewire.meetings.meeting-minutes', [
             'items' => $items,
             'users' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'unsignedCount' => $this->meeting->attendees->filter(fn ($u) => blank($u->pivot->confirmed_at ?? null))->count(),
+            'canEditItems' => $canEditItems,
+            'editingAmendment' => $editingAmendment,
         ])->layout('layouts.app', ['title' => 'محضر — '.$this->meeting->title]);
     }
 }
