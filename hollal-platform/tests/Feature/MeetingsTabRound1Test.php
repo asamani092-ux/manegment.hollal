@@ -90,13 +90,13 @@ class MeetingsTabRound1Test extends TestCase
             ->assertSee('قرار داخل الاجتماع', false);
     }
 
-    public function test_minutes_pdf_pipeline_has_amiri_and_no_rtl_direction(): void
+    public function test_minutes_pdf_pipeline_has_ibmplex_and_rtl_direction(): void
     {
         $meeting = Meeting::factory()->create(['title' => 'محضر عربي']);
         $html = app(MeetingMinutesPdfService::class)->buildHtml($meeting);
 
-        $this->assertStringNotContainsString('direction: rtl', $html);
-        $this->assertSame('amiri', PdfArabic::defaultFont());
+        $this->assertStringContainsString('direction: rtl', $html);
+        $this->assertSame('ibmplex', PdfArabic::defaultFont());
         $bytes = app(MeetingMinutesPdfService::class)->output($meeting);
         $this->assertStringStartsWith('%PDF', $bytes);
     }

@@ -62,15 +62,14 @@ class MeetingMinutesPdfTest extends TestCase
     {
         $html = app(\App\Services\MeetingMinutesPdfService::class)->buildHtml($this->meeting);
 
-        $this->assertStringNotContainsString('direction: rtl', $html);
-        $this->assertStringNotContainsString('direction:rtl', $html);
-        $this->assertStringContainsString('font-family: amiri', $html);
+        $this->assertStringContainsString('direction: rtl', $html);
+        $this->assertStringContainsString('font-family: ibmplex', $html);
         $this->assertStringContainsString('pdf-meta', $html);
         $this->assertStringContainsString('جدول الأعمال', $html);
 
         $bytes = app(\App\Services\MeetingMinutesPdfService::class)->output($this->meeting);
         $this->assertStringStartsWith('%PDF', $bytes);
-        $this->assertSame('amiri', \App\Support\PdfArabic::defaultFont());
+        $this->assertSame('ibmplex', \App\Support\PdfArabic::defaultFont());
     }
 
     public function test_minutes_page_renders_for_authorized_user(): void

@@ -1,4 +1,6 @@
 *
 !private/
 !public/
+!mpdf-temp/
+!mpdf-temp/.gitignore
 !.gitignore

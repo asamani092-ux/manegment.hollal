@@ -168,16 +168,15 @@ class AssetService
         $rows = $this->registryRows($statusTab, $search, $condition);
         $tr = '';
         foreach ($rows as $asset) {
-            // LTR Dompdf: first cell left — put العهدة…الرمز so الاسم/الرمز sit on the right.
             $tr .= '<tr>'
-                .'<td>'.e($asset->currentHolder?->name ?? '—').'</td>'
-                .'<td>'.e($asset->condition).'</td>'
-                .'<td class="num">'.($asset->bookValue() !== null ? number_format($asset->bookValue(), 2) : '—').'</td>'
-                .'<td class="num">'.($asset->purchase_amount !== null ? number_format((float) $asset->purchase_amount, 2) : '—').'</td>'
-                .'<td>'.e($asset->location ?? '—').'</td>'
-                .'<td>'.e($asset->category?->name_ar ?? '—').'</td>'
-                .'<td>'.e($asset->name_ar).'</td>'
                 .'<td class="num">'.e($asset->code).'</td>'
+                .'<td>'.e($asset->name_ar).'</td>'
+                .'<td>'.e($asset->category?->name_ar ?? '—').'</td>'
+                .'<td>'.e($asset->location ?? '—').'</td>'
+                .'<td class="num">'.($asset->purchase_amount !== null ? number_format((float) $asset->purchase_amount, 2) : '—').'</td>'
+                .'<td class="num">'.($asset->bookValue() !== null ? number_format($asset->bookValue(), 2) : '—').'</td>'
+                .'<td>'.e($asset->condition).'</td>'
+                .'<td>'.e($asset->currentHolder?->name ?? '—').'</td>'
                 .'</tr>';
         }
         if ($tr === '') {
@@ -187,8 +186,8 @@ class AssetService
         $label = $statusTab === 'active' ? 'الأصول النشطة' : 'كل الأصول';
         $body = '<p>تاريخ التصدير: '.e(hollal_dt(now())).'</p>'
             .'<table><thead><tr>'
-            .'<th>العهدة</th><th>الحالة</th><th class="num">دفترية</th><th class="num">الشراء</th>'
-            .'<th>الموقع</th><th>الفئة</th><th>الاسم</th><th class="num">الرمز</th>'
+            .'<th class="num">الرمز</th><th>الاسم</th><th>الفئة</th><th>الموقع</th>'
+            .'<th class="num">الشراء</th><th class="num">دفترية</th><th>الحالة</th><th>العهدة</th>'
             .'</tr></thead><tbody>'.$tr.'</tbody></table>';
 
         return PdfArabic::render($label, $body);

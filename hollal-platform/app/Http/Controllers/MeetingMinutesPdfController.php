@@ -23,7 +23,7 @@ class MeetingMinutesPdfController extends Controller
         $disposition = ($request->boolean('print') || $request->boolean('inline')) ? 'inline' : 'attachment';
 
         return response(
-            $pdfService->generate($meeting)->output(),
+            $pdfService->output($meeting),
             200,
             DownloadHeaders::pdf($filename, $disposition)
         );
