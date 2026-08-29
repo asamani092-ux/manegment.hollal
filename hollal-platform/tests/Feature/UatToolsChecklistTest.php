@@ -55,7 +55,7 @@ class UatToolsChecklistTest extends TestCase
             ->assertSee('دليل العاملين', false)
             ->assertSee('قوالب التقييم', false)
             ->assertSee('دورات التقييم', false)
-            ->assertSee('التقييم الربعي (لوحة الموارد)', false)
+            ->assertSee('التقييم الربعي', false)
             ->assertSee('تقييمات فريقي', false)
             ->assertSee('أرشيف تقييماتي', false)
             ->assertSee('الحضور (برنامج التحضير)', false)
@@ -197,7 +197,7 @@ class UatToolsChecklistTest extends TestCase
         $this->assertStringContainsString('أرشفة', $round4['notes']['evaluations']);
     }
 
-    public function test_hr_catalog_covers_round4_tools(): void
+    public function test_hr_catalog_covers_round5_tools(): void
     {
         $hr = collect(config('uat_tools.groups'))->firstWhere('id', 'hr');
         $this->assertNotNull($hr);
@@ -211,11 +211,21 @@ class UatToolsChecklistTest extends TestCase
         }
 
         $byId = collect($hr['items'])->keyBy('id');
-        $this->assertStringContainsString('أوزان = 100', $byId['eval-templates']['checks']);
-        $this->assertStringContainsString('لقطة ثابتة', $byId['eval-cycles']['checks']);
-        $this->assertStringContainsString('بلا مجموع', $byId['team-evaluations']['checks']);
-        $this->assertStringContainsString('مطابقة أعمدة', $byId['attendance-cycle']['checks']);
-        $this->assertStringContainsString('ورديات', $byId['attendance']['checks']);
+        $this->assertStringContainsString('شاشة واحدة بخطوات', $byId['evaluations']['checks']);
+        $this->assertStringContainsString('اعتماد جماعي', $byId['evaluations']['checks']);
+        $this->assertStringContainsString('نيابة موارد', $byId['evaluations']['checks']);
+        $this->assertStringContainsString('مدمج في /evaluations', $byId['eval-templates']['checks']);
+        $this->assertStringContainsString('مدمج في /evaluations', $byId['eval-cycles']['checks']);
+        $this->assertStringContainsString('مدمج في /evaluations', $byId['team-evaluations']['checks']);
+        $this->assertStringContainsString('مدمج في /evaluations', $byId['my-evaluations']['checks']);
+        $this->assertStringContainsString('تبويبات داخل الصفحة', $byId['attendance']['checks']);
+        $this->assertStringContainsString('أقسام موحّدة', $byId['attendance-cycle']['checks']);
+
+        $structure = collect(config('uat_tools.groups'))->firstWhere('id', 'structure');
+        $profile = collect($structure['items'])->firstWhere('id', 'profile');
+        $this->assertStringContainsString('عقود+مستندات', $profile['checks']);
+        $this->assertStringContainsString('راتب في الوظيفة', $profile['checks']);
+        $this->assertStringContainsString('تقييمات في السجل', $profile['checks']);
     }
 
     public function test_baseline_round3_remains_available(): void
