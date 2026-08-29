@@ -112,7 +112,7 @@ class HrRound5AttendanceTabsTest extends TestCase
             ->call('assignShift')
             ->assertHasNoErrors();
 
-        $this->assertDatabaseHas('employee_profiles', [
+        $this->assertDatabaseHas('employees_profile', [
             'user_id' => $employee->id,
             'work_shift_id' => $shift->id,
         ]);
