@@ -8,6 +8,7 @@ use App\Models\Task;
 use App\Models\TaskNote;
 use App\Models\User;
 use App\Notifications\TaskAssigned;
+use App\Services\TaskLifecycleService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Livewire\Component;
@@ -17,6 +18,7 @@ use Livewire\WithPagination;
 
 /**
  * Tasks (Esnad) — full CRUD, attachments, status updates, pagination.
+ * Time: O(n) | Space: O(n) for page-sized result sets.
  */
 class TasksIndex extends Component
 {
@@ -31,6 +33,17 @@ class TasksIndex extends Component
 
     /** my | delegated | all */
     public string $listScope = 'my';
+
+    /** cards | table */
+    public string $viewMode = 'cards';
+
+    /** @var array<int, string> */
+    public array $approveRating = [];
+
+    /** @var array<int, string> */
+    public array $approveNote = [];
+
+    public bool $showCompleted = false;
 
     public bool $showTaskModal = false;
 
@@ -69,6 +82,7 @@ class TasksIndex extends Component
         'statusFilter' => ['except' => ''],
         'taskSearch' => ['except' => ''],
         'listScope' => ['except' => 'my'],
+        'viewMode' => ['except' => 'cards'],
         'open' => ['except' => null],
     ];
 
@@ -87,30 +101,83 @@ class TasksIndex extends Component
             $this->listScope = 'my';
         }
 
+        if (! in_array($this->viewMode, ['cards', 'table'], true)) {
+            $this->viewMode = 'cards';
+        }
+
         if ($this->open) {
             $this->openTaskView($this->open);
         }
     }
 
+    public function setViewMode(string $mode): void
+    {
+        if (in_array($mode, ['cards', 'table'], true)) {
+            $this->viewMode = $mode;
+        }
+    }
+
     public function updatingStatusFilter(): void
     {
-        $this->resetPage('myTasksPage');
-        $this->resetPage('delegatedPage');
-        $this->resetPage('allTasksPage');
+        $this->resetTaskPages();
     }
 
     public function updatingTaskSearch(): void
     {
-        $this->resetPage('myTasksPage');
-        $this->resetPage('delegatedPage');
-        $this->resetPage('allTasksPage');
+        $this->resetTaskPages();
     }
 
     public function updatingListScope(): void
     {
+        $this->resetTaskPages();
+    }
+
+    private function resetTaskPages(): void
+    {
         $this->resetPage('myTasksPage');
         $this->resetPage('delegatedPage');
         $this->resetPage('allTasksPage');
+        $this->resetPage('myCompletedPage');
+        $this->resetPage('delegatedCompletedPage');
+        $this->resetPage('allCompletedPage');
+    }
+
+    public function approveFromForm(int $taskId): void
+    {
+        $this->approve($taskId, $this->approveRating[$taskId] ?? '', $this->approveNote[$taskId] ?? null);
+    }
+
+    public function returnFromForm(int $taskId): void
+    {
+        $this->returnTask($taskId, $this->approveNote[$taskId] ?? 'يرجى التعديل');
+    }
+
+    public function approve(int $taskId, string $rating, ?string $notes = null): void
+    {
+        $task = Task::findOrFail($taskId);
+        $this->authorize('addRating', $task);
+
+        try {
+            app(TaskLifecycleService::class)->recordFinalRating($task, auth()->user(), $rating, $notes);
+            unset($this->approveRating[$taskId], $this->approveNote[$taskId]);
+            $this->dispatch('toast', type: 'success', message: 'تم اعتماد المهمة');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
+    public function returnTask(int $taskId, string $note): void
+    {
+        $task = Task::findOrFail($taskId);
+        $this->authorize('addRating', $task);
+
+        try {
+            app(TaskLifecycleService::class)->requestRevision($task, auth()->user(), $note);
+            unset($this->approveRating[$taskId], $this->approveNote[$taskId]);
+            $this->dispatch('toast', type: 'success', message: 'أُعيدت المهمة للتعديل');
+        } catch (\Throwable $e) {
+            $this->dispatch('toast', type: 'error', message: $e->getMessage());
+        }
     }
 
     public function openTaskCreate(): void
@@ -309,13 +376,23 @@ class TasksIndex extends Component
         $this->resetValidation();
     }
 
-    protected function taskQuery(int $userId, string $scope)
+    /**
+     * @param  'active'|'completed'|'any'  $completion
+     */
+    protected function taskQuery(int $userId, string $scope, string $completion = 'active')
     {
         $query = Task::query()
-            ->select(['id', 'title', 'description', 'status', 'priority', 'due_date', 'project_id', 'assigned_by', 'assigned_to', 'attachment_path', 'submitted_file'])
-            ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
+            ->select(['id', 'title', 'description', 'status', 'priority', 'due_date', 'project_id', 'assigned_by', 'assigned_to', 'attachment_path', 'submitted_file', 'self_rating'])
             ->when($this->taskSearch, fn ($q) => $q->where('title', 'like', '%'.$this->taskSearch.'%'))
             ->with(['project:id,name', 'assigner:id,name', 'assignee:id,name']);
+
+        if ($this->statusFilter !== '') {
+            $query->where('status', $this->statusFilter);
+        } elseif ($completion === 'active') {
+            $query->where('status', '!=', 'completed');
+        } elseif ($completion === 'completed') {
+            $query->where('status', 'completed');
+        }
 
         if ($scope === 'my') {
             $query->where('assigned_to', $userId);
@@ -332,13 +409,39 @@ class TasksIndex extends Component
     {
         $userId = auth()->id();
         $canSeeAll = auth()->user()->can('esnad.tasks.all.view');
+        $filterIsCompleted = $this->statusFilter === 'completed';
+        $filterIsActiveOnly = $this->statusFilter !== '' && $this->statusFilter !== 'completed';
+
+        $showActiveLists = ! $filterIsCompleted;
+        $showCompletedLists = $filterIsCompleted || ($this->statusFilter === '' && $this->showCompleted);
 
         return view('livewire.tasks.tasks-index', [
-            'myTasks' => $this->taskQuery($userId, 'my')->paginate(6, pageName: 'myTasksPage'),
-            'assignedByMe' => $this->taskQuery($userId, 'delegated')->paginate(6, pageName: 'delegatedPage'),
-            'allTasks' => $canSeeAll && $this->listScope === 'all'
-                ? $this->taskQuery($userId, 'all')->paginate(12, pageName: 'allTasksPage')
+            'myTasks' => $showActiveLists
+                ? $this->taskQuery($userId, 'my', $filterIsActiveOnly ? 'any' : 'active')->paginate(6, pageName: 'myTasksPage')
                 : null,
+            'assignedByMe' => $showActiveLists
+                ? $this->taskQuery($userId, 'delegated', $filterIsActiveOnly ? 'any' : 'active')->paginate(6, pageName: 'delegatedPage')
+                : null,
+            'allTasks' => $canSeeAll && $this->listScope === 'all' && $showActiveLists
+                ? $this->taskQuery($userId, 'all', $filterIsActiveOnly ? 'any' : 'active')->paginate(12, pageName: 'allTasksPage')
+                : null,
+            'myCompleted' => ($this->listScope !== 'all' && ($filterIsCompleted || $this->showCompleted))
+                ? $this->taskQuery($userId, 'my', 'completed')->paginate(6, pageName: 'myCompletedPage')
+                : null,
+            'delegatedCompleted' => ($this->listScope !== 'all' && ($filterIsCompleted || $this->showCompleted))
+                ? $this->taskQuery($userId, 'delegated', 'completed')->paginate(6, pageName: 'delegatedCompletedPage')
+                : null,
+            'allCompleted' => $canSeeAll && $this->listScope === 'all' && ($filterIsCompleted || $this->showCompleted)
+                ? $this->taskQuery($userId, 'all', 'completed')->paginate(12, pageName: 'allCompletedPage')
+                : null,
+            'approvalQueue' => Task::query()
+                ->pendingApprovalFor(auth()->user())
+                ->with(['assignee:id,name', 'project:id,name'])
+                ->latest()
+                ->get(),
+            'ratings' => Task::RATINGS,
+            'showActiveLists' => $showActiveLists,
+            'showCompletedLists' => $showCompletedLists || $filterIsCompleted,
             'canSeeAll' => $canSeeAll,
             'users' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'projects' => Project::orderBy('name')->get(['id', 'name']),

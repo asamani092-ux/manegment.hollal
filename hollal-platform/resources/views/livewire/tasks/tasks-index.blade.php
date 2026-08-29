@@ -26,7 +26,7 @@
         <div class="ds-filter-field">
             <label class="ds-label">الحالة</label>
             <select class="ds-input" wire:model.live="statusFilter">
-                <option value="">— الكل —</option>
+                <option value="">— الكل (نشطة) —</option>
                 @foreach ($statusOptions as $opt)
                     <option value="{{ $opt }}">{{ $statusLabels[$opt] ?? $opt }}</option>
                 @endforeach
@@ -41,66 +41,147 @@
                 </select>
             </div>
         @endif
+        <div class="ds-filter-field">
+            <label class="ds-label">العرض</label>
+            <div class="ds-view-toggle" style="margin-bottom:0">
+                <button type="button" class="ds-btn ds-btn-sm {{ $viewMode === 'cards' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setViewMode('cards')">بطاقات</button>
+                <button type="button" class="ds-btn ds-btn-sm {{ $viewMode === 'table' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setViewMode('table')">جدول</button>
+            </div>
+        </div>
     </div>
 
-    @if ($listScope === 'all' && $allTasks)
+    @if ($approvalQueue->isNotEmpty())
         <section class="ds-section-spaced">
-            <h2 class="ds-section-heading">كل المهام</h2>
-            <div class="ds-task-cards">
-                @forelse ($allTasks as $task)
-                    @include('livewire.tasks.partials.task-card', [
-                        'task' => $task,
-                        'statusLabels' => $statusLabels,
-                        'priorityLabels' => $priorityLabels,
-                        'keyPrefix' => 'all',
-                        'showAssignee' => true,
-                        'showAssigner' => true,
-                    ])
-                @empty
-                    <x-ds-empty-state message="لا توجد مهام" icon="fa-tasks" />
-                @endforelse
-            </div>
-            {{ $allTasks->links() }}
+            <h2 class="ds-section-heading">بانتظار اعتمادي ({{ $approvalQueue->count() }})</h2>
+            @foreach ($approvalQueue as $task)
+                <div class="ds-stat-card" wire:key="approve-{{ $task->id }}">
+                    <strong>{{ $task->title }}</strong>
+                    <div class="ds-text-muted">
+                        المكلَّف: {{ $task->assignee?->name ?? '—' }}
+                        @if ($task->project) — {{ $task->project->name }} @endif
+                        — تقييمه الذاتي: {{ $task->self_rating ?? '—' }}
+                    </div>
+                    <div class="ds-filter-bar">
+                        <select class="ds-input" wire:model="approveRating.{{ $task->id }}">
+                            <option value="">اختر التقييم النهائي</option>
+                            @foreach ($ratings as $rating)
+                                <option value="{{ $rating }}">{{ $rating }}</option>
+                            @endforeach
+                        </select>
+                        <input type="text" class="ds-input" placeholder="ملاحظة (اختياري)" wire:model="approveNote.{{ $task->id }}">
+                        <button type="button" class="ds-btn ds-btn-primary" wire:click="approveFromForm({{ $task->id }})">اعتماد</button>
+                        <button type="button" class="ds-btn ds-btn-outline" wire:click="returnFromForm({{ $task->id }})">إرجاع للتعديل</button>
+                        <button type="button" class="ds-btn ds-btn-outline" wire:click="openTaskView({{ $task->id }})">تفاصيل</button>
+                    </div>
+                </div>
+            @endforeach
         </section>
-    @else
-        <section class="ds-section-spaced">
-            <h2 class="ds-section-heading">مهامي</h2>
-            <div class="ds-task-cards">
-                @forelse ($myTasks as $task)
-                    @include('livewire.tasks.partials.task-card', [
-                        'task' => $task,
-                        'statusLabels' => $statusLabels,
-                        'priorityLabels' => $priorityLabels,
-                        'keyPrefix' => 'my',
-                        'showAssignee' => false,
-                        'showAssigner' => true,
-                    ])
-                @empty
-                    <x-ds-empty-state message="لا توجد مهام" icon="fa-tasks" />
-                @endforelse
-            </div>
-            {{ $myTasks->links() }}
-        </section>
+    @endif
 
-        <section class="ds-section-spaced">
-            <h2 class="ds-section-heading">مهام أسندتها</h2>
-            <div class="ds-task-cards">
-                @forelse ($assignedByMe as $task)
-                    @include('livewire.tasks.partials.task-card', [
-                        'task' => $task,
-                        'statusLabels' => $statusLabels,
-                        'priorityLabels' => $priorityLabels,
-                        'keyPrefix' => 'delegated',
-                        'showAssignee' => true,
-                        'showAssigner' => false,
-                        'allowDelete' => true,
-                    ])
-                @empty
-                    <x-ds-empty-state message="لا توجد مهام مسندة" icon="fa-tasks" />
-                @endforelse
-            </div>
-            {{ $assignedByMe->links() }}
-        </section>
+    @if ($listScope === 'all' && $canSeeAll)
+        @if ($showActiveLists && $allTasks)
+            <section class="ds-section-spaced">
+                <h2 class="ds-section-heading">كل المهام (نشطة)</h2>
+                @include('livewire.tasks.partials.task-list', [
+                    'tasks' => $allTasks,
+                    'keyPrefix' => 'all',
+                    'showAssignee' => true,
+                    'showAssigner' => true,
+                    'viewMode' => $viewMode,
+                    'statusLabels' => $statusLabels,
+                    'priorityLabels' => $priorityLabels,
+                ])
+                {{ $allTasks->links() }}
+            </section>
+        @endif
+        @if ($statusFilter === '' && ! $showCompleted)
+            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="$set('showCompleted', true)">عرض المكتملة</button>
+        @endif
+        @if ($allCompleted)
+            <section class="ds-section-spaced">
+                <h2 class="ds-section-heading">كل المهام (مكتملة)</h2>
+                @include('livewire.tasks.partials.task-list', [
+                    'tasks' => $allCompleted,
+                    'keyPrefix' => 'all-done',
+                    'showAssignee' => true,
+                    'showAssigner' => true,
+                    'viewMode' => $viewMode,
+                    'statusLabels' => $statusLabels,
+                    'priorityLabels' => $priorityLabels,
+                ])
+                {{ $allCompleted->links() }}
+            </section>
+        @endif
+    @else
+        @if ($showActiveLists && $myTasks)
+            <section class="ds-section-spaced">
+                <h2 class="ds-section-heading">مهامي</h2>
+                @include('livewire.tasks.partials.task-list', [
+                    'tasks' => $myTasks,
+                    'keyPrefix' => 'my',
+                    'showAssignee' => false,
+                    'showAssigner' => true,
+                    'viewMode' => $viewMode,
+                    'statusLabels' => $statusLabels,
+                    'priorityLabels' => $priorityLabels,
+                ])
+                {{ $myTasks->links() }}
+            </section>
+        @endif
+
+        @if ($showActiveLists && $assignedByMe)
+            <section class="ds-section-spaced">
+                <h2 class="ds-section-heading">مهام أسندتها</h2>
+                @include('livewire.tasks.partials.task-list', [
+                    'tasks' => $assignedByMe,
+                    'keyPrefix' => 'delegated',
+                    'showAssignee' => true,
+                    'showAssigner' => false,
+                    'allowDelete' => true,
+                    'viewMode' => $viewMode,
+                    'statusLabels' => $statusLabels,
+                    'priorityLabels' => $priorityLabels,
+                ])
+                {{ $assignedByMe->links() }}
+            </section>
+        @endif
+
+        @if ($statusFilter === '' && ! $showCompleted)
+            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="$set('showCompleted', true)">عرض المكتملة</button>
+        @endif
+
+        @if ($myCompleted)
+            <section class="ds-section-spaced">
+                <h2 class="ds-section-heading">مهامي المكتملة</h2>
+                @include('livewire.tasks.partials.task-list', [
+                    'tasks' => $myCompleted,
+                    'keyPrefix' => 'my-done',
+                    'showAssignee' => false,
+                    'showAssigner' => true,
+                    'viewMode' => $viewMode,
+                    'statusLabels' => $statusLabels,
+                    'priorityLabels' => $priorityLabels,
+                ])
+                {{ $myCompleted->links() }}
+            </section>
+        @endif
+
+        @if ($delegatedCompleted)
+            <section class="ds-section-spaced">
+                <h2 class="ds-section-heading">مكتملة أسندتها</h2>
+                @include('livewire.tasks.partials.task-list', [
+                    'tasks' => $delegatedCompleted,
+                    'keyPrefix' => 'delegated-done',
+                    'showAssignee' => true,
+                    'showAssigner' => false,
+                    'allowDelete' => true,
+                    'viewMode' => $viewMode,
+                    'statusLabels' => $statusLabels,
+                    'priorityLabels' => $priorityLabels,
+                ])
+                {{ $delegatedCompleted->links() }}
+            </section>
+        @endif
     @endif
 
     @if ($showTaskModal)
