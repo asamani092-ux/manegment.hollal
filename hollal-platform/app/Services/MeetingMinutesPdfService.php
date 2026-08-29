@@ -3,17 +3,32 @@
 namespace App\Services;
 
 use App\Models\Meeting;
-use App\Models\MeetingItem;
 use App\Support\PdfArabic;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 /**
- * Arabic RTL meeting minutes PDF.
- * Time: O(n) items | Space: O(n).
+ * Arabic meeting minutes PDF via PdfArabic (Amiri + shaping + LTR/right-align).
+ * Time: O(n) items | Space: O(n)
  */
 class MeetingMinutesPdfService
 {
     public function generate(Meeting $meeting): \Barryvdh\DomPDF\PDF
+    {
+        $pdf = Pdf::loadHTML(PdfArabic::shapeHtml($this->buildHtml($meeting)))->setPaper('a4');
+
+        return PdfArabic::applyOptions($pdf);
+    }
+
+    public function output(Meeting $meeting): string
+    {
+        return PdfArabic::outputFromHtml($this->buildHtml($meeting));
+    }
+
+    /**
+     * Full HTML document for Dompdf — same chrome as tax invoices.
+     * Extracted for testability.
+     */
+    public function buildHtml(Meeting $meeting): string
     {
         $meeting->load([
             'chair:id,name',
@@ -23,28 +38,10 @@ class MeetingMinutesPdfService
             'items' => fn ($q) => $q->with(['responsible:id,name'])->orderBy('id'),
         ]);
 
-        $openDecisions = MeetingItem::query()
-            ->whereNotNull('decision')
-            ->where('decision', '!=', '')
-            ->where('status', '!=', 'done')
-            ->with(['meeting:id,title', 'responsible:id,name'])
-            ->latest()
-            ->limit(20)
-            ->get();
-
-        $html = PdfArabic::shapeHtml(view('pdf.meeting-minutes', [
+        return view('pdf.meeting-minutes', [
             'meeting' => $meeting,
-            'openDecisions' => $openDecisions,
-        ])->render());
-
-        $pdf = Pdf::loadHTML($html)->setPaper('a4');
-
-        return PdfArabic::applyOptions($pdf)
-            ->setOption('isRemoteEnabled', false);
-    }
-
-    public function output(Meeting $meeting): string
-    {
-        return $this->generate($meeting)->output();
+            'fontFaceCss' => PdfArabic::fontFace(),
+            'defaultFont' => PdfArabic::defaultFont(),
+        ])->render();
     }
 }
