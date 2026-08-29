@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Livewire\Tasks\TasksCalendar;
 use App\Livewire\Tasks\TasksIndex;
 use App\Livewire\Tasks\TeamTasksIndex;
+use App\Models\MeetingItem;
 use App\Models\Task;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
@@ -54,6 +55,33 @@ class EsnadTabRound1Test extends TestCase
 
         $this->assertSame('completed', $task->fresh()->status);
         $this->assertSame('متميز', $task->fresh()->final_rating);
+    }
+
+    public function test_tasks_index_status_completed_closes_linked_decision(): void
+    {
+        $user = User::factory()->create(['must_change_password' => false]);
+        $user->givePermissionTo(['esnad.tasks.view', 'esnad.tasks.update']);
+        $task = Task::factory()->create([
+            'assigned_by' => $user->id,
+            'assigned_to' => $user->id,
+            'status' => 'in_progress',
+        ]);
+        $item = MeetingItem::factory()->create([
+            'decision' => 'قرار من المهام',
+            'status' => 'in_progress',
+            'task_id' => $task->id,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(TasksIndex::class)
+            ->call('updateTaskStatus', $task->id, 'completed')
+            ->assertHasNoErrors();
+
+        $this->assertSame('completed', $task->fresh()->status);
+        $item->refresh();
+        $this->assertSame('done', $item->status);
+        $this->assertSame('أُغلقت بإكمال المهمة', $item->close_reason);
+        $this->assertNotNull($item->closed_at);
     }
 
     public function test_manager_sees_loads_tab_on_team_followup(): void

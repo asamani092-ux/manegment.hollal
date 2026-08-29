@@ -121,6 +121,23 @@ class TaskLifecycleService
         return $task->fresh();
     }
 
+    /**
+     * After any path marks a task completed (including /tasks direct status),
+     * close linked open meeting decisions. Time: O(1) | Space: O(1)
+     */
+    public function syncLinkedDecisionsOnComplete(Task $task): void
+    {
+        if ($task->status !== self::STATUS_COMPLETED) {
+            return;
+        }
+
+        if ($task->completed_at === null) {
+            $task->forceFill(['completed_at' => now()])->save();
+        }
+
+        $this->closeLinkedMeetingItems($task);
+    }
+
     /** Close open meeting decisions linked to a completed task. Time: O(1) */
     private function closeLinkedMeetingItems(Task $task): void
     {
