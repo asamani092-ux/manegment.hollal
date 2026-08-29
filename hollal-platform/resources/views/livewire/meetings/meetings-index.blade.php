@@ -125,6 +125,14 @@
                     <x-ds-form-group label="التاريخ والوقت" :error="$errors->first('scheduled_at')">
                         <input type="datetime-local" class="ds-input" wire:model="scheduled_at" @disabled($viewOnly)>
                     </x-ds-form-group>
+                    <x-ds-form-group label="رئيس الاجتماع" :error="$errors->first('chairId')">
+                        <select class="ds-input" wire:model="chairId" @disabled($viewOnly)>
+                            <option value="">اختر رئيس الاجتماع…</option>
+                            @foreach ($users as $user)
+                                <option value="{{ $user->id }}">{{ $user->name }}</option>
+                            @endforeach
+                        </select>
+                    </x-ds-form-group>
                     <x-ds-form-group label="جدول الأعمال" :error="$errors->first('agenda')">
                         <textarea class="ds-input" rows="3" wire:model="agenda" @disabled($viewOnly) placeholder="نقاط جدول الأعمال..."></textarea>
                     </x-ds-form-group>

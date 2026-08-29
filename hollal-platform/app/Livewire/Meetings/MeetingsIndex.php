@@ -41,6 +41,9 @@ class MeetingsIndex extends Component
     /** Maps to meetings.link (remote meeting URL). */
     public string $remote_link = '';
 
+    /** Meeting chair (selectable on create and edit). */
+    public ?int $chairId = null;
+
     /** @var array<int> */
     public array $attendeeIds = [];
 
@@ -83,6 +86,7 @@ class MeetingsIndex extends Component
     {
         $this->authorize('meetings.create');
         $this->resetForm();
+        $this->chairId = auth()->id();
         $this->showModal = true;
     }
 
@@ -183,6 +187,7 @@ class MeetingsIndex extends Component
         $this->validate([
             'title' => 'required|string|max:255',
             'scheduled_at' => 'required|date',
+            'chairId' => 'required|integer|exists:users,id',
             'agenda' => 'nullable|string',
             'location' => 'nullable|string|max:255',
             'remote_link' => 'nullable|string|max:500',
@@ -193,6 +198,8 @@ class MeetingsIndex extends Component
         ], [
             'title.required' => 'عنوان الاجتماع مطلوب',
             'scheduled_at.required' => 'تاريخ ووقت الاجتماع مطلوب',
+            'chairId.required' => 'رئيس الاجتماع مطلوب',
+            'chairId.exists' => 'رئيس الاجتماع غير موجود',
             'guestRows.*.name.required_with' => 'اسم الضيف مطلوب عند إدخال البريد',
             'guestRows.*.email.required_with' => 'بريد الضيف مطلوب عند إدخال الاسم',
         ]);
@@ -203,6 +210,7 @@ class MeetingsIndex extends Component
             'agenda' => $this->agenda ?: null,
             'location' => $this->location ?: null,
             'link' => $this->remote_link ?: null,
+            'chair_id' => $this->chairId,
         ];
 
         $previousAttendeeIds = [];
@@ -216,7 +224,6 @@ class MeetingsIndex extends Component
             $this->authorize('meetings.create');
             $meeting = Meeting::create($payload + [
                 'status' => 'scheduled',
-                'chair_id' => auth()->id(),
             ]);
         }
 
@@ -297,6 +304,7 @@ class MeetingsIndex extends Component
         $this->agenda = $meeting->agenda ?? '';
         $this->location = $meeting->location ?? '';
         $this->remote_link = $meeting->link ?? '';
+        $this->chairId = $meeting->chair_id;
         $this->attendeeIds = $meeting->attendees->pluck('id')->all();
         $this->guestRows = [];
         $this->pickEmployeeId = null;
@@ -312,6 +320,7 @@ class MeetingsIndex extends Component
         $this->agenda = '';
         $this->location = '';
         $this->remote_link = '';
+        $this->chairId = null;
         $this->attendeeIds = [];
         $this->guestRows = [];
         $this->pickEmployeeId = null;
