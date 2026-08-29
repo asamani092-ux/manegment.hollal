@@ -266,15 +266,26 @@ class TasksIndex extends Component
         if ($isEdit) {
             $task = Task::findOrFail($this->taskId);
             $previousAssignee = $task->assigned_to;
+            if ($this->status === TaskLifecycleService::STATUS_COMPLETED && $task->completed_at === null) {
+                $data['completed_at'] = now();
+            }
             $task->update($data);
             $task->refresh();
 
             if ($previousAssignee !== $task->assigned_to && $task->assigned_to) {
                 User::find($task->assigned_to)?->notify(new TaskAssigned($task));
             }
+
+            if ($task->status === TaskLifecycleService::STATUS_COMPLETED) {
+                app(TaskLifecycleService::class)->syncLinkedDecisionsOnComplete($task);
+            }
         } else {
             $task = Task::create($data);
             User::find($task->assigned_to)?->notify(new TaskAssigned($task));
+
+            if ($task->status === TaskLifecycleService::STATUS_COMPLETED) {
+                app(TaskLifecycleService::class)->syncLinkedDecisionsOnComplete($task);
+            }
 
             // 02-B3 — non-blocking overload warning shown to the assigner.
             if (app(\App\Services\WorkloadService::class)->isOverloaded((int) $task->assigned_to)) {
@@ -297,7 +308,18 @@ class TasksIndex extends Component
             return;
         }
 
-        Task::findOrFail($taskId)->update(['status' => $newStatus]);
+        $payload = ['status' => $newStatus];
+        if ($newStatus === TaskLifecycleService::STATUS_COMPLETED) {
+            $payload['completed_at'] = now();
+        }
+
+        $task->update($payload);
+        $task->refresh();
+
+        if ($newStatus === TaskLifecycleService::STATUS_COMPLETED) {
+            app(TaskLifecycleService::class)->syncLinkedDecisionsOnComplete($task);
+        }
+
         $this->dispatch('toast', type: 'success', message: 'تم تحديث حالة المهمة');
     }
 
