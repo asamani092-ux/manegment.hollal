@@ -74,14 +74,7 @@ class TaskLifecycleService
             app(RecurringTaskService::class)->onInstanceCompleted($task);
         }
 
-        MeetingItem::query()
-            ->where('task_id', $task->id)
-            ->where('status', '!=', 'done')
-            ->update([
-                'status' => 'done',
-                'close_reason' => 'أُغلق تلقائيًا باكتمال المهمة المربوطة',
-                'closed_at' => now(),
-            ]);
+        $this->closeLinkedMeetingItems($task);
 
         return $task;
     }
@@ -122,9 +115,23 @@ class TaskLifecycleService
             if ($task->recurring_template_id !== null) {
                 app(RecurringTaskService::class)->onInstanceCompleted($task);
             }
+            $this->closeLinkedMeetingItems($task);
         }
 
         return $task->fresh();
+    }
+
+    /** Close open meeting decisions linked to a completed task. Time: O(1) */
+    private function closeLinkedMeetingItems(Task $task): void
+    {
+        MeetingItem::query()
+            ->where('task_id', $task->id)
+            ->where('status', '!=', 'done')
+            ->update([
+                'status' => 'done',
+                'close_reason' => 'أُغلقت بإكمال المهمة',
+                'closed_at' => now(),
+            ]);
     }
 
     private function transition(Task $task, string $to, User $changedBy, ?string $note): void

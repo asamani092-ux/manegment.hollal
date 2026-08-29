@@ -61,6 +61,9 @@ class MeetingMinutes extends Component
         $this->meeting = $meeting->load(['chair:id,name', 'secretary:id,name', 'attendees:id,name,electronic_signature', 'guests']);
         $this->authorize('view', $this->meeting);
 
+        $this->meeting->syncRuntimeStatus();
+        $this->meeting->refresh();
+
         app(MeetingService::class)->notifyMinutesReadyIfDue($this->meeting);
     }
 
