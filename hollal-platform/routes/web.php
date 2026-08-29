@@ -82,6 +82,8 @@ use App\Livewire\Tasks\TasksCalendar;
 use App\Livewire\Tasks\TasksIndex;
 use App\Livewire\Tasks\TeamTasksIndex;
 use App\Livewire\Uat\ToolsChecklist;
+use App\Livewire\Signing\SignaturePortal;
+use App\Http\Controllers\SignaturePortalPdfController;
 use App\Livewire\Users\EmployeeProfileShow;
 use App\Livewire\Users\UsersIndex;
 use Illuminate\Support\Facades\Route;
@@ -109,6 +111,10 @@ Route::middleware('throttle:portal')->group(function () {
     // P2 wave C — external meeting guest (no employee account): view + confirm/sign.
     Route::get('/meetings/guest/{token}', MeetingGuestPortal::class)
         ->name('meetings.guest.portal');
+
+    // Platform-wide signature portal (foundation; full UAT deferred).
+    Route::get('/sign/{token}', SignaturePortal::class)->name('sign.portal');
+    Route::get('/sign/{token}/pdf', SignaturePortalPdfController::class)->name('sign.portal.pdf');
 });
 
 Route::middleware('guest')->group(function () {

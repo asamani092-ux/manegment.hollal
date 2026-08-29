@@ -154,7 +154,7 @@ class ReportRound2FinTest extends TestCase
             ->assertHeader('Content-Disposition', \App\Support\DownloadHeaders::contentDisposition('test.pdf', 'attachment'));
     }
 
-    public function test_tax_invoice_pdf_contains_amiri_and_seller_vat(): void
+    public function test_tax_invoice_pdf_contains_ibmplex_and_seller_vat(): void
     {
         CompanyProfile::current()->update([
             'name' => 'مؤسسة حلّل للاختبار',
@@ -170,9 +170,9 @@ class ReportRound2FinTest extends TestCase
 
         $pdf = app(TaxInvoicePdfService::class)->render($invoice);
         $this->assertStringStartsWith('%PDF', $pdf);
-        $this->assertSame('amiri', PdfArabic::defaultFont());
+        $this->assertSame('ibmplex', PdfArabic::defaultFont());
         $this->assertSame('300000000000003', $invoice->seller_vat_number);
-        $this->assertTrue(is_file(resource_path('fonts/Amiri-Regular.ttf')));
+        $this->assertTrue(is_file(resource_path('fonts/IBMPlexSansArabic-Regular.ttf')));
         $this->assertNotEmpty($invoice->qr_payload);
         $this->assertSame('مؤسسة حلّل للاختبار', $invoice->seller_name);
     }

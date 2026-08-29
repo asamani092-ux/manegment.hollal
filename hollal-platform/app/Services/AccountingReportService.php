@@ -189,16 +189,16 @@ class AccountingReportService
         $tb = $this->trialBalance($from, $to);
         $rows = '';
         foreach ($tb['rows'] as $row) {
-            $rows .= '<tr><td class="ltr">'.e($row['code']).'</td><td>'.e($row['name_ar']).'</td>'
-                .'<td class="ltr">'.number_format($row['debit'], 2).'</td>'
-                .'<td class="ltr">'.number_format($row['credit'], 2).'</td></tr>';
+            $rows .= '<tr><td class="num">'.e($row['code']).'</td><td>'.e($row['name_ar']).'</td>'
+                .'<td class="num">'.number_format($row['debit'], 2).'</td>'
+                .'<td class="num">'.number_format($row['credit'], 2).'</td></tr>';
         }
         $body = '<h3>ميزان المراجعة</h3>'
             .'<p>من '.e((string) $from).' إلى '.e((string) $to).'</p>'
             .'<table border="1" cellpadding="4" width="100%"><thead><tr><th>الرقم</th><th>الحساب</th><th>مدين</th><th>دائن</th></tr></thead>'
             .'<tbody>'.$rows.'</tbody>'
-            .'<tfoot><tr><th colspan="2">المجموع</th><th class="ltr">'.number_format($tb['total_debit'], 2).'</th>'
-            .'<th class="ltr">'.number_format($tb['total_credit'], 2).'</th></tr></tfoot></table>';
+            .'<tfoot><tr><th colspan="2">المجموع</th><th class="num">'.number_format($tb['total_debit'], 2).'</th>'
+            .'<th class="num">'.number_format($tb['total_credit'], 2).'</th></tr></tfoot></table>';
 
         return PdfArabic::render('ميزان المراجعة', $body, includeCr: true);
     }

@@ -33,13 +33,12 @@ class TaxInvoicePdfService
 
         $rows = '';
         foreach ($invoice->items as $item) {
-            // LTR Dompdf: first cell = left. Put totals on the left so الوصف sits on the right (Arabic invoice).
             $rows .= '<tr>'
-                .'<td class="num">'.number_format((float) $item->line_total, 2).'</td>'
-                .'<td class="num">'.number_format((float) $item->vat_rate * 100, 2).'%</td>'
-                .'<td class="num">'.number_format((float) $item->unit_price, 2).'</td>'
-                .'<td class="num">'.number_format((float) $item->quantity, 2).'</td>'
                 .'<td>'.e($item->description).'</td>'
+                .'<td class="num">'.number_format((float) $item->quantity, 2).'</td>'
+                .'<td class="num">'.number_format((float) $item->unit_price, 2).'</td>'
+                .'<td class="num">'.number_format((float) $item->vat_rate * 100, 2).'%</td>'
+                .'<td class="num">'.number_format((float) $item->line_total, 2).'</td>'
                 .'</tr>';
         }
 
@@ -52,10 +51,9 @@ class TaxInvoicePdfService
 
         $letterhead = $this->letterheadBackground($template);
 
-        // value | label  → label appears on the right in LTR layout
         $metaRow = static fn (string $label, string $value, bool $numeric = false): string => '<tr>'
-            .'<td'.($numeric ? ' class="num"' : '').'>'.$value.'</td>'
             .'<td class="pdf-label">'.e($label).'</td>'
+            .'<td'.($numeric ? ' class="num"' : '').'>'.$value.'</td>'
             .'</tr>';
 
         $meta = '<table class="pdf-meta">'
@@ -74,18 +72,18 @@ class TaxInvoicePdfService
         $html = $letterhead
             .'<div class="tax-invoice-content">'
             .'<table style="width:100%; border:none; margin-bottom:8px;"><tr>'
+            .'<td style="border:none; width:70%; vertical-align:top;">'
+            .PdfArabic::header($typeLabel, includeCr: false)
+            .'</td>'
             .'<td style="border:none; width:30%; vertical-align:top; text-align:left;">'
             .\App\Support\ZatcaQrImage::imgTag($qr, 110)
-            .'</td>'
-            .'<td style="border:none; width:70%; vertical-align:top; text-align:right;">'
-            .PdfArabic::header($typeLabel, includeCr: false)
             .'</td>'
             .'</tr></table>'
             .$meta
             .'<h3 style="margin-top:16px; text-align:right;">بنود الفاتورة</h3>'
             .'<table><thead><tr>'
-            .'<th class="num">الإجمالي</th><th class="num">الضريبة</th><th class="num">سعر الوحدة</th>'
-            .'<th class="num">الكمية</th><th>الوصف</th>'
+            .'<th>الوصف</th><th class="num">الكمية</th><th class="num">سعر الوحدة</th>'
+            .'<th class="num">الضريبة</th><th class="num">الإجمالي</th>'
             .'</tr></thead><tbody>'.$rows.'</tbody></table>'
             .'<table class="pdf-meta" style="margin-top:12px;">'
             .$metaRow('المجموع قبل الضريبة', number_format((float) $invoice->subtotal, 2), true)
@@ -102,9 +100,8 @@ class TaxInvoicePdfService
     }
 
     /**
-     * Full-page fixed background image behind the invoice content — the
-     * standard DomPDF trick for a repeating letterhead. Empty when the
-     * template has no uploaded letterhead.
+     * Full-page background image behind the invoice content.
+     * Empty when the template has no uploaded letterhead.
      */
     private function letterheadBackground(?TaxInvoiceTemplate $template): string
     {
