@@ -32,8 +32,11 @@ use Livewire\Features\SupportFileUploads\TemporaryUploadedFile;
 use Livewire\WithFileUploads;
 
 /**
- * 01-B1 + HR-1/2/4 — employee job profile with tabs. The salary tab is gated on
- * hr.salaries.view and every access is recorded in profile_access_logs.
+ * 01-B1 + HR-1/2/4/5 — employee job profile with tabs.
+ * Salary lives under job (gated on hr.salaries.view); contracts+documents merged;
+ * approved/archived evaluations roll into the cumulative log tab.
+ * Legacy tab query keys redirect: contracts|documents→contracts_documents,
+ * salary→job, evaluations→log.
  */
 class EmployeeProfileShow extends Component
 {
@@ -152,12 +155,33 @@ class EmployeeProfileShow extends Component
 
     public function setTab(string $tab): void
     {
-        if ($tab === 'salary') {
-            $this->authorize('hr.salaries.view');
+        if ($tab === 'salary' && $this->canViewSalary()) {
             $this->logSalaryAccess();
         }
 
-        $this->activeTab = $tab;
+        $this->activeTab = $this->normalizeTab($tab);
+    }
+
+    public function updatedActiveTab(string $value): void
+    {
+        $normalized = $this->normalizeTab($value);
+        if ($normalized !== $value) {
+            $this->activeTab = $normalized;
+        }
+    }
+
+    /**
+     * Map retired tab keys onto the Round-5 consolidated tabs.
+     * Time: O(1) | Space: O(1)
+     */
+    public function normalizeTab(string $tab): string
+    {
+        return match ($tab) {
+            'contracts', 'documents' => 'contracts_documents',
+            'salary' => 'job',
+            'evaluations' => 'log',
+            default => $tab,
+        };
     }
 
     public function canViewSalary(): bool

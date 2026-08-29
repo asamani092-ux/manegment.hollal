@@ -8,12 +8,9 @@
         $tabs = [
             'data' => 'البيانات',
             'job' => 'الوظيفة',
-            'contracts' => 'العقود',
-            'salary' => 'الراتب',
+            'contracts_documents' => 'العقود والمستندات',
             'tasks' => 'المهام',
-            'evaluations' => 'التقييمات',
             'leaves' => 'الإجازات',
-            'documents' => 'المستندات',
             'log' => 'السجل',
         ];
         $typeLabels = [
@@ -46,9 +43,6 @@
 
         <nav class="ds-tabs" role="tablist">
             @foreach ($tabs as $key => $label)
-                @if ($key === 'salary' && ! $canViewSalary)
-                    @continue
-                @endif
                 <button type="button" role="tab"
                         class="ds-tab {{ $activeTab === $key ? 'ds-tab-active' : '' }}"
                         wire:click="setTab('{{ $key }}')">
@@ -112,138 +106,140 @@
                         <button type="button" class="ds-btn ds-btn-primary" wire:click="saveAttendanceSettings">حفظ</button>
                     </x-ds-collapsible-card>
                 @endcan
-            @elseif ($activeTab === 'salary')
-                <x-ds-collapsible-card title="بيانات الراتب" :open="false">
-                    <x-slot:actions>
-                        @if ($canUpdate)
-                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEdit">تعديل الملف</button>
-                        @endif
-                    </x-slot:actions>
-                <dl class="ds-detail-grid">
-                    <div><dt>السلم</dt><dd>{{ $user->profile?->payScale?->name_ar ?? '—' }}</dd></div>
-                    <div><dt>الدرجة</dt><dd>{{ $user->profile?->grade_label ?? '—' }}</dd></div>
-                    <div><dt>الأساسي</dt><dd class="ds-ltr-num">{{ number_format($salaryTotals['base'] ?? 0, 2) }}</dd></div>
-                    <div><dt>البدلات</dt><dd class="ds-ltr-num">{{ number_format($salaryTotals['allowances'] ?? 0, 2) }}</dd></div>
-                    <div><dt>الخصم الثابت</dt><dd class="ds-ltr-num">{{ number_format($salaryTotals['deductions'] ?? 0, 2) }}</dd></div>
-                    <div><dt>الراتب الشهري المشتق</dt><dd class="ds-ltr-num"><strong>{{ number_format($salaryTotals['monthly'] ?? 0, 2) }}</strong></dd></div>
-                    <div><dt>الساعات الإضافية</dt><dd>{{ $user->profile?->overtime_unlocked ? 'مفتوح' : 'مقفل' }}</dd></div>
-                    <div><dt>قيمة ساعة الإضافي</dt><dd class="ds-ltr-num">{{ $user->profile?->overtime_hour_value ?? '0' }}</dd></div>
-                </dl>
-                </x-ds-collapsible-card>
 
-                <x-ds-collapsible-card title="مكوّنات الراتب">
-                <x-ds-table>
-                    <x-slot:head>
-                        <tr>
-                            <th>النوع</th>
-                            <th>البند</th>
-                            <th>المبلغ</th>
-                            @if ($canManageOvertime)<th>إجراءات</th>@endif
-                        </tr>
-                    </x-slot:head>
-                    @forelse ($salaryComponents as $component)
-                        <tr wire:key="comp-{{ $component->id }}">
-                            <td>{{ $component->type }}</td>
-                            <td>
-                                @if ($editingComponentId === $component->id)
-                                    <input type="text" class="ds-input" wire:model="editComponentLabel">
-                                @else
-                                    {{ $component->label_ar }}
-                                @endif
-                            </td>
-                            <td class="ds-ltr-num">
-                                @if ($editingComponentId === $component->id)
-                                    <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="editComponentAmount">
-                                @else
-                                    {{ number_format((float) $component->amount, 2) }}
-                                @endif
-                            </td>
-                            @if ($canManageOvertime)
+                @if ($canViewSalary)
+                    <x-ds-collapsible-card title="بيانات الراتب" :open="false">
+                        <x-slot:actions>
+                            @if ($canUpdate)
+                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEdit">تعديل الملف</button>
+                            @endif
+                        </x-slot:actions>
+                    <dl class="ds-detail-grid">
+                        <div><dt>السلم</dt><dd>{{ $user->profile?->payScale?->name_ar ?? '—' }}</dd></div>
+                        <div><dt>الدرجة</dt><dd>{{ $user->profile?->grade_label ?? '—' }}</dd></div>
+                        <div><dt>الأساسي</dt><dd class="ds-ltr-num">{{ number_format($salaryTotals['base'] ?? 0, 2) }}</dd></div>
+                        <div><dt>البدلات</dt><dd class="ds-ltr-num">{{ number_format($salaryTotals['allowances'] ?? 0, 2) }}</dd></div>
+                        <div><dt>الخصم الثابت</dt><dd class="ds-ltr-num">{{ number_format($salaryTotals['deductions'] ?? 0, 2) }}</dd></div>
+                        <div><dt>الراتب الشهري المشتق</dt><dd class="ds-ltr-num"><strong>{{ number_format($salaryTotals['monthly'] ?? 0, 2) }}</strong></dd></div>
+                        <div><dt>الساعات الإضافية</dt><dd>{{ $user->profile?->overtime_unlocked ? 'مفتوح' : 'مقفل' }}</dd></div>
+                        <div><dt>قيمة ساعة الإضافي</dt><dd class="ds-ltr-num">{{ $user->profile?->overtime_hour_value ?? '0' }}</dd></div>
+                    </dl>
+                    </x-ds-collapsible-card>
+
+                    <x-ds-collapsible-card title="مكوّنات الراتب">
+                    <x-ds-table>
+                        <x-slot:head>
+                            <tr>
+                                <th>النوع</th>
+                                <th>البند</th>
+                                <th>المبلغ</th>
+                                @if ($canManageOvertime)<th>إجراءات</th>@endif
+                            </tr>
+                        </x-slot:head>
+                        @forelse ($salaryComponents as $component)
+                            <tr wire:key="comp-{{ $component->id }}">
+                                <td>{{ $component->type }}</td>
                                 <td>
                                     @if ($editingComponentId === $component->id)
-                                        <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="saveEditComponent">حفظ</button>
-                                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="$set('editingComponentId', null)">إلغاء</button>
+                                        <input type="text" class="ds-input" wire:model="editComponentLabel">
                                     @else
-                                        <button type="button" class="ds-link" wire:click="openEditComponent({{ $component->id }})">تعديل</button>
-                                        <button type="button" class="ds-link" wire:click="closeSalaryComponent({{ $component->id }})" wire:confirm="إيقاف سريان هذا المكوّن؟">إيقاف</button>
+                                        {{ $component->label_ar }}
                                     @endif
                                 </td>
-                            @endif
-                        </tr>
-                    @empty
-                        <tr><td colspan="{{ $canManageOvertime ? 4 : 3 }}" class="ds-text-muted">لا توجد مكوّنات سارية</td></tr>
-                    @endforelse
-                </x-ds-table>
+                                <td class="ds-ltr-num">
+                                    @if ($editingComponentId === $component->id)
+                                        <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="editComponentAmount">
+                                    @else
+                                        {{ number_format((float) $component->amount, 2) }}
+                                    @endif
+                                </td>
+                                @if ($canManageOvertime)
+                                    <td>
+                                        @if ($editingComponentId === $component->id)
+                                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="saveEditComponent">حفظ</button>
+                                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="$set('editingComponentId', null)">إلغاء</button>
+                                        @else
+                                            <button type="button" class="ds-link" wire:click="openEditComponent({{ $component->id }})">تعديل</button>
+                                            <button type="button" class="ds-link" wire:click="closeSalaryComponent({{ $component->id }})" wire:confirm="إيقاف سريان هذا المكوّن؟">إيقاف</button>
+                                        @endif
+                                    </td>
+                                @endif
+                            </tr>
+                        @empty
+                            <tr><td colspan="{{ $canManageOvertime ? 4 : 3 }}" class="ds-text-muted">لا توجد مكوّنات سارية</td></tr>
+                        @endforelse
+                    </x-ds-table>
 
-                @if ($canManageOvertime)
-                    <section class="ds-section">
-                        <h3 class="ds-section-title">الراتب الأساسي (تعديل مباشر)</h3>
-                        <p class="ds-text-muted">يُغلق المبلغ السابق ويُفتح مبلغ جديد من اليوم — المسيّرات السابقة لا تتأثر؛ المسيّر التالي يلتقط القيمة الجديدة.</p>
-                        <x-ds-form-group label="الأساسي (ر.س)" :error="$errors->first('baseAmount')">
-                            <input type="number" step="0.01" min="0" class="ds-input ds-ltr-num" wire:model="baseAmount">
-                        </x-ds-form-group>
-                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveBaseAmount">حفظ الأساسي</button>
-                    </section>
+                    @if ($canManageOvertime)
+                        <section class="ds-section">
+                            <h3 class="ds-section-title">الراتب الأساسي (تعديل مباشر)</h3>
+                            <p class="ds-text-muted">يُغلق المبلغ السابق ويُفتح مبلغ جديد من اليوم — المسيّرات السابقة لا تتأثر؛ المسيّر التالي يلتقط القيمة الجديدة.</p>
+                            <x-ds-form-group label="الأساسي (ر.س)" :error="$errors->first('baseAmount')">
+                                <input type="number" step="0.01" min="0" class="ds-input ds-ltr-num" wire:model="baseAmount">
+                            </x-ds-form-group>
+                            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveBaseAmount">حفظ الأساسي</button>
+                        </section>
 
-                    <section class="ds-section">
-                        <h3 class="ds-section-title">ربط السلم والدرجة</h3>
-                        <x-ds-form-group label="سلم الرواتب" :error="$errors->first('payScaleId')">
-                            <select class="ds-input" wire:model.live="payScaleId">
-                                <option value="">—</option>
-                                @foreach ($payScales as $scale)
-                                    <option value="{{ $scale->id }}">{{ $scale->name_ar }}</option>
-                                @endforeach
-                            </select>
-                        </x-ds-form-group>
-                        <x-ds-form-group label="الدرجة" :error="$errors->first('gradeLabel')">
-                            <select class="ds-input" wire:model="gradeLabel">
-                                <option value="">—</option>
-                                @php
-                                    $selectedScale = $payScales->firstWhere('id', (int) $payScaleId);
-                                @endphp
-                                @foreach ($selectedScale?->grades ?? [] as $grade)
-                                    <option value="{{ $grade['label'] }}">{{ $grade['label'] }} ({{ $grade['base_amount'] }})</option>
-                                @endforeach
-                            </select>
-                        </x-ds-form-group>
-                        <button type="button" class="ds-btn ds-btn-primary" wire:click="assignPayGrade">حفظ الربط</button>
-                    </section>
+                        <section class="ds-section">
+                            <h3 class="ds-section-title">ربط السلم والدرجة</h3>
+                            <x-ds-form-group label="سلم الرواتب" :error="$errors->first('payScaleId')">
+                                <select class="ds-input" wire:model.live="payScaleId">
+                                    <option value="">—</option>
+                                    @foreach ($payScales as $scale)
+                                        <option value="{{ $scale->id }}">{{ $scale->name_ar }}</option>
+                                    @endforeach
+                                </select>
+                            </x-ds-form-group>
+                            <x-ds-form-group label="الدرجة" :error="$errors->first('gradeLabel')">
+                                <select class="ds-input" wire:model="gradeLabel">
+                                    <option value="">—</option>
+                                    @php
+                                        $selectedScale = $payScales->firstWhere('id', (int) $payScaleId);
+                                    @endphp
+                                    @foreach ($selectedScale?->grades ?? [] as $grade)
+                                        <option value="{{ $grade['label'] }}">{{ $grade['label'] }} ({{ $grade['base_amount'] }})</option>
+                                    @endforeach
+                                </select>
+                            </x-ds-form-group>
+                            <button type="button" class="ds-btn ds-btn-primary" wire:click="assignPayGrade">حفظ الربط</button>
+                        </section>
 
-                    <section class="ds-section">
-                        <h3 class="ds-section-title">إضافة بدل أو خصم ثابت</h3>
-                        <p class="ds-text-muted">الخصم الثابت للنظامي (دوام كامل) فقط. خصم الأداء/الغياب المتغير يُضاف من المسير الشهري بسبب إلزامي.</p>
-                        <x-ds-form-group label="النوع" :error="$errors->first('newComponentType')">
-                            <select class="ds-input" wire:model="newComponentType">
-                                <option value="{{ \App\Models\SalaryComponent::TYPE_ALLOWANCE }}">بدل</option>
-                                <option value="{{ \App\Models\SalaryComponent::TYPE_DEDUCTION }}">خصم ثابت</option>
-                            </select>
-                        </x-ds-form-group>
-                        <x-ds-form-group label="البيان" :error="$errors->first('newComponentLabel')">
-                            <input type="text" class="ds-input" wire:model="newComponentLabel">
-                        </x-ds-form-group>
-                        <x-ds-form-group label="المبلغ" :error="$errors->first('newComponentAmount')">
-                            <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="newComponentAmount">
-                        </x-ds-form-group>
-                        <button type="button" class="ds-btn ds-btn-primary" wire:click="addSalaryComponent">إضافة</button>
-                    </section>
+                        <section class="ds-section">
+                            <h3 class="ds-section-title">إضافة بدل أو خصم ثابت</h3>
+                            <p class="ds-text-muted">الخصم الثابت للنظامي (دوام كامل) فقط. خصم الأداء/الغياب المتغير يُضاف من المسير الشهري بسبب إلزامي.</p>
+                            <x-ds-form-group label="النوع" :error="$errors->first('newComponentType')">
+                                <select class="ds-input" wire:model="newComponentType">
+                                    <option value="{{ \App\Models\SalaryComponent::TYPE_ALLOWANCE }}">بدل</option>
+                                    <option value="{{ \App\Models\SalaryComponent::TYPE_DEDUCTION }}">خصم ثابت</option>
+                                </select>
+                            </x-ds-form-group>
+                            <x-ds-form-group label="البيان" :error="$errors->first('newComponentLabel')">
+                                <input type="text" class="ds-input" wire:model="newComponentLabel">
+                            </x-ds-form-group>
+                            <x-ds-form-group label="المبلغ" :error="$errors->first('newComponentAmount')">
+                                <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="newComponentAmount">
+                            </x-ds-form-group>
+                            <button type="button" class="ds-btn ds-btn-primary" wire:click="addSalaryComponent">إضافة</button>
+                        </section>
 
-                    <section class="ds-section">
-                        <h3 class="ds-section-title">فتح الساعات الإضافية</h3>
-                        <x-ds-form-group label="حالة الإضافي" :error="$errors->first('overtimeGate')">
-                            <select class="ds-input" wire:model="overtimeGate">
-                                <option value="مقفل">مقفل</option>
-                                <option value="مفتوح">مفتوح</option>
-                            </select>
-                        </x-ds-form-group>
-                        <x-ds-form-group label="قيمة ساعة الإضافي" :error="$errors->first('overtimeHourValue')">
-                            <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="overtimeHourValue">
-                        </x-ds-form-group>
-                        <button type="button" class="ds-btn ds-btn-primary" wire:click="saveOvertimeGate">حفظ</button>
-                    </section>
+                        <section class="ds-section">
+                            <h3 class="ds-section-title">فتح الساعات الإضافية</h3>
+                            <x-ds-form-group label="حالة الإضافي" :error="$errors->first('overtimeGate')">
+                                <select class="ds-input" wire:model="overtimeGate">
+                                    <option value="مقفل">مقفل</option>
+                                    <option value="مفتوح">مفتوح</option>
+                                </select>
+                            </x-ds-form-group>
+                            <x-ds-form-group label="قيمة ساعة الإضافي" :error="$errors->first('overtimeHourValue')">
+                                <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="overtimeHourValue">
+                            </x-ds-form-group>
+                            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveOvertimeGate">حفظ</button>
+                        </section>
+                    @endif
+                    </x-ds-collapsible-card>
                 @endif
-                </x-ds-collapsible-card>
-            @elseif ($activeTab === 'contracts')
-                <p class="ds-text-muted ds-mb-3">فترات التوظيف الرسمية (قراءة فقط): البداية والنهاية وحالة العقد. لرفع مرفقات أو وثائق هوية استخدم تبويب «المستندات».</p>
+            @elseif ($activeTab === 'contracts_documents')
+                <p class="ds-text-muted ds-mb-3">فترات التوظيف الرسمية (قراءة فقط) والوثائق الرسمية (هوية · إقامة · جواز · عقد عمل · أخرى).</p>
                 <x-ds-collapsible-card title="عقود التوظيف" :open="true">
                 <x-ds-table>
                     <x-slot:head>
@@ -263,104 +259,8 @@
                         <tr><td colspan="3" class="ds-text-muted">لا توجد عقود</td></tr>
                     @endforelse
                 </x-ds-table>
-                <p class="ds-text-muted ds-mt-3">تُدار العقود والمستندات الرسمية من هذا الملف — تبويب «عقود العاملين» في الشريط مخفي.</p>
                 </x-ds-collapsible-card>
-            @elseif ($activeTab === 'tasks')
-                <x-ds-table>
-                    <x-slot:head>
-                        <tr>
-                            <th>المهمة</th>
-                            <th>الحالة</th>
-                            <th>الاستحقاق</th>
-                        </tr>
-                    </x-slot:head>
-                    @forelse ($tasks as $task)
-                        <tr wire:key="t-{{ $task->id }}">
-                            <td>{{ $task->title }}</td>
-                            <td>{{ $task->status }}</td>
-                            <td class="ds-ltr-num">{{ $task->due_date?->format('Y-m-d') ?? '—' }}</td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="3" class="ds-text-muted">لا توجد مهام</td></tr>
-                    @endforelse
-                </x-ds-table>
-            @elseif ($activeTab === 'evaluations')
-                <p class="ds-text-muted ds-mb-3">
-                    أرشيف التقييم الربعي بعد الاعتماد. يظهر للموظف فور اعتماد الموارد البشرية (ثم يُؤرشف عند إغلاق الدورة).
-                </p>
 
-                <h3 class="ds-section-title">التقييم الربعي</h3>
-                @forelse ($quarterlyEvaluations as $evaluation)
-                    <article class="ds-card ds-mb-3" wire:key="qev-{{ $evaluation->id }}">
-                        <h3>{{ $evaluation->cycle?->periodLabel() ?? '—' }} — {{ $evaluation->status }}</h3>
-                        <p class="ds-text-muted">
-                            المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}
-                            @if ($evaluation->total_score !== null)
-                                — المجموع: <span class="ds-ltr-num">{{ $evaluation->total_score }}</span>
-                            @endif
-                        </p>
-                        @foreach ($evaluation->cycle?->items ?? [] as $item)
-                            @php $score = $evaluation->scores->firstWhere('evaluation_cycle_item_id', $item->id); @endphp
-                            <p>
-                                <span class="ds-text-muted">[{{ $item->section }}]</span>
-                                {{ $item->question_text }}:
-                                <strong class="ds-ltr-num">{{ $score?->score ?? '—' }}</strong>/5
-                                @if ($score?->note) — {{ $score->note }} @endif
-                            </p>
-                        @endforeach
-                    </article>
-                @empty
-                    <p class="ds-text-muted ds-mb-3">لا تقييمات ربعية معتمدة بعد.</p>
-                @endforelse
-
-                @if ($archivedEvaluations->isNotEmpty() || $evaluations->isNotEmpty())
-                    <h3 class="ds-section-title">أرشيف سابق (نظام قديم)</h3>
-                    @foreach ($evaluations as $evaluation)
-                        <article class="ds-card ds-mb-3" wire:key="ev-{{ $evaluation->id }}">
-                            <h3>{{ $evaluation->period }} — {{ $evaluation->status }}</h3>
-                            <p class="ds-text-muted">المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}</p>
-                            @foreach ($evaluation->scores as $score)
-                                <p>{{ $score->responsibility?->body ?? 'بند' }}: <strong class="ds-ltr-num">{{ $score->score }}</strong>/5
-                                    @if ($score->note) — {{ $score->note }} @endif
-                                </p>
-                            @endforeach
-                        </article>
-                    @endforeach
-                    @foreach ($archivedEvaluations as $evaluation)
-                        <article class="ds-card ds-mb-3" wire:key="ev-arch-{{ $evaluation->id }}">
-                            <h3>{{ $evaluation->period }} — مؤرشف</h3>
-                            <p class="ds-text-muted">المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}</p>
-                            @foreach ($evaluation->scores as $score)
-                                <p>{{ $score->responsibility?->body ?? 'بند' }}: <strong class="ds-ltr-num">{{ $score->score }}</strong>/5
-                                    @if ($score->note) — {{ $score->note }} @endif
-                                </p>
-                            @endforeach
-                        </article>
-                    @endforeach
-                @endif
-            @elseif ($activeTab === 'leaves')
-                <p class="ds-text-muted ds-mb-3">الرصيد السنوي: <strong class="ds-ltr-num">{{ $user->profile?->annual_leave_balance ?? '—' }}</strong></p>
-                <x-ds-table>
-                    <x-slot:head>
-                        <tr>
-                            <th>النوع</th>
-                            <th>من</th>
-                            <th>إلى</th>
-                            <th>الحالة</th>
-                        </tr>
-                    </x-slot:head>
-                    @forelse ($leaves as $leave)
-                        <tr wire:key="lv-{{ $leave->id }}">
-                            <td>{{ $leave->type }}</td>
-                            <td class="ds-ltr-num">{{ $leave->from_date?->format('Y-m-d') }}</td>
-                            <td class="ds-ltr-num">{{ $leave->to_date?->format('Y-m-d') }}</td>
-                            <td><x-ds-status-badge :status="$leave->status" /></td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="4" class="ds-text-muted">لا توجد إجازات</td></tr>
-                    @endforelse
-                </x-ds-table>
-            @elseif ($activeTab === 'documents')
                 <x-ds-collapsible-card title="الوثائق الرسمية" :open="true">
                     <x-slot:actions>
                         @if ($canUpdate)
@@ -418,8 +318,49 @@
                         @endforelse
                     </x-ds-table>
                 </x-ds-collapsible-card>
+            @elseif ($activeTab === 'tasks')
+                <x-ds-table>
+                    <x-slot:head>
+                        <tr>
+                            <th>المهمة</th>
+                            <th>الحالة</th>
+                            <th>الاستحقاق</th>
+                        </tr>
+                    </x-slot:head>
+                    @forelse ($tasks as $task)
+                        <tr wire:key="t-{{ $task->id }}">
+                            <td>{{ $task->title }}</td>
+                            <td>{{ $task->status }}</td>
+                            <td class="ds-ltr-num">{{ $task->due_date?->format('Y-m-d') ?? '—' }}</td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="3" class="ds-text-muted">لا توجد مهام</td></tr>
+                    @endforelse
+                </x-ds-table>
+            @elseif ($activeTab === 'leaves')
+                <p class="ds-text-muted ds-mb-3">الرصيد السنوي: <strong class="ds-ltr-num">{{ $user->profile?->annual_leave_balance ?? '—' }}</strong></p>
+                <x-ds-table>
+                    <x-slot:head>
+                        <tr>
+                            <th>النوع</th>
+                            <th>من</th>
+                            <th>إلى</th>
+                            <th>الحالة</th>
+                        </tr>
+                    </x-slot:head>
+                    @forelse ($leaves as $leave)
+                        <tr wire:key="lv-{{ $leave->id }}">
+                            <td>{{ $leave->type }}</td>
+                            <td class="ds-ltr-num">{{ $leave->from_date?->format('Y-m-d') }}</td>
+                            <td class="ds-ltr-num">{{ $leave->to_date?->format('Y-m-d') }}</td>
+                            <td><x-ds-status-badge :status="$leave->status" /></td>
+                        </tr>
+                    @empty
+                        <tr><td colspan="4" class="ds-text-muted">لا توجد إجازات</td></tr>
+                    @endforelse
+                </x-ds-table>
             @elseif ($activeTab === 'log')
-                <p class="ds-text-muted ds-mb-3">سجل تراكمي: وصولات حساسة · نقلات الهيكل · أحداث النشاط المرتبطة بالموظف.</p>
+                <p class="ds-text-muted ds-mb-3">سجل تراكمي: وصولات حساسة · نقلات الهيكل · أحداث النشاط · التقييمات المعتمدة/المؤرشفة.</p>
                 <x-ds-table>
                     <x-slot:head>
                         <tr>
@@ -440,6 +381,59 @@
                         <tr><td colspan="4" class="ds-text-muted">لا توجد أحداث مسجّلة بعد</td></tr>
                     @endforelse
                 </x-ds-table>
+
+                <h3 class="ds-section-title ds-mt-4">التقييم الربعي</h3>
+                <p class="ds-text-muted ds-mb-3">
+                    أرشيف التقييم الربعي بعد الاعتماد. يظهر للموظف فور اعتماد الموارد البشرية (ثم يُؤرشف عند إغلاق الدورة).
+                </p>
+                @forelse ($quarterlyEvaluations as $evaluation)
+                    <article class="ds-card ds-mb-3" wire:key="qev-{{ $evaluation->id }}">
+                        <h3>{{ $evaluation->cycle?->periodLabel() ?? '—' }} — {{ $evaluation->status }}</h3>
+                        <p class="ds-text-muted">
+                            المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}
+                            @if ($evaluation->total_score !== null)
+                                — المجموع: <span class="ds-ltr-num">{{ $evaluation->total_score }}</span>
+                            @endif
+                        </p>
+                        @foreach ($evaluation->cycle?->items ?? [] as $item)
+                            @php $score = $evaluation->scores->firstWhere('evaluation_cycle_item_id', $item->id); @endphp
+                            <p>
+                                <span class="ds-text-muted">[{{ $item->section }}]</span>
+                                {{ $item->question_text }}:
+                                <strong class="ds-ltr-num">{{ $score?->score ?? '—' }}</strong>/5
+                                @if ($score?->note) — {{ $score->note }} @endif
+                            </p>
+                        @endforeach
+                    </article>
+                @empty
+                    <p class="ds-text-muted ds-mb-3">لا تقييمات ربعية معتمدة بعد.</p>
+                @endforelse
+
+                @if ($archivedEvaluations->isNotEmpty() || $evaluations->isNotEmpty())
+                    <h3 class="ds-section-title">أرشيف سابق (نظام قديم)</h3>
+                    @foreach ($evaluations as $evaluation)
+                        <article class="ds-card ds-mb-3" wire:key="ev-{{ $evaluation->id }}">
+                            <h3>{{ $evaluation->period }} — {{ $evaluation->status }}</h3>
+                            <p class="ds-text-muted">المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}</p>
+                            @foreach ($evaluation->scores as $score)
+                                <p>{{ $score->responsibility?->body ?? 'بند' }}: <strong class="ds-ltr-num">{{ $score->score }}</strong>/5
+                                    @if ($score->note) — {{ $score->note }} @endif
+                                </p>
+                            @endforeach
+                        </article>
+                    @endforeach
+                    @foreach ($archivedEvaluations as $evaluation)
+                        <article class="ds-card ds-mb-3" wire:key="ev-arch-{{ $evaluation->id }}">
+                            <h3>{{ $evaluation->period }} — مؤرشف</h3>
+                            <p class="ds-text-muted">المقيّم: {{ $evaluation->evaluator?->name ?? '—' }}</p>
+                            @foreach ($evaluation->scores as $score)
+                                <p>{{ $score->responsibility?->body ?? 'بند' }}: <strong class="ds-ltr-num">{{ $score->score }}</strong>/5
+                                    @if ($score->note) — {{ $score->note }} @endif
+                                </p>
+                            @endforeach
+                        </article>
+                    @endforeach
+                @endif
             @endif
         </div>
     </section>
