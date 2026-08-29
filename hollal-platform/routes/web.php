@@ -81,7 +81,6 @@ use App\Livewire\Structure\OrgTreeIndex;
 use App\Livewire\Tasks\TasksCalendar;
 use App\Livewire\Tasks\TasksIndex;
 use App\Livewire\Tasks\TeamTasksIndex;
-use App\Livewire\Tasks\WorkloadBoard;
 use App\Livewire\Uat\ToolsChecklist;
 use App\Livewire\Users\EmployeeProfileShow;
 use App\Livewire\Users\UsersIndex;
@@ -187,19 +186,24 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('tasks.index');
 
     Route::get('/team-tasks', TeamTasksIndex::class)
-        ->middleware('permission:esnad.tasks.view')
+        ->middleware('permission:esnad.tasks.team.view')
         ->name('team-tasks.index');
 
     Route::get('/tasks-calendar', TasksCalendar::class)
         ->middleware('permission:esnad.tasks.view')
         ->name('tasks-calendar.index');
 
-    Route::get('/recurring-tasks', fn () => redirect()->route('workload-board.index', ['tab' => 'recurring']))
-        ->middleware('permission:esnad.tasks.create|esnad.tasks.team.view')
+    Route::get('/recurring-tasks', fn () => redirect()->route('team-tasks.index', ['tab' => 'recurring']))
+        ->middleware('permission:esnad.tasks.team.view')
         ->name('recurring-tasks.index');
 
-    Route::get('/workload-board', WorkloadBoard::class)
-        ->middleware('permission:esnad.tasks.team.view|esnad.tasks.create')
+    Route::get('/workload-board', fn () => redirect()->route(
+        'team-tasks.index',
+        ['tab' => in_array(request()->query('tab'), ['loads', 'recurring', 'reminders'], true)
+            ? request()->query('tab')
+            : 'loads']
+    ))
+        ->middleware('permission:esnad.tasks.team.view')
         ->name('workload-board.index');
 
     Route::get('/expenses', ExpensesIndex::class)

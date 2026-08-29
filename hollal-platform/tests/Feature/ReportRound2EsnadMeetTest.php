@@ -7,7 +7,6 @@ use App\Livewire\Meetings\OpenDecisionsIndex;
 use App\Livewire\Tasks\TasksCalendar;
 use App\Livewire\Tasks\TasksIndex;
 use App\Livewire\Tasks\TeamTasksIndex;
-use App\Livewire\Tasks\WorkloadBoard;
 use App\Models\Meeting;
 use App\Models\MeetingItem;
 use App\Models\RecurringTaskTemplate;
@@ -46,6 +45,7 @@ class ReportRound2EsnadMeetTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(TasksIndex::class)
+            ->set('showCompleted', true)
             ->assertSee('is-completed', false)
             ->assertSee('مهمة مكتملة خضراء', false);
     }
@@ -92,7 +92,12 @@ class ReportRound2EsnadMeetTest extends TestCase
     public function test_recurring_generated_instances_listed_with_status_links(): void
     {
         $user = User::factory()->create(['must_change_password' => false]);
-        $user->givePermissionTo(['esnad.tasks.create', 'esnad.tasks.update', 'esnad.tasks.view']);
+        $user->givePermissionTo([
+            'esnad.tasks.create',
+            'esnad.tasks.update',
+            'esnad.tasks.view',
+            'esnad.tasks.team.view',
+        ]);
 
         $template = RecurringTaskTemplate::create([
             'title' => 'قالب تقرير',
@@ -112,10 +117,10 @@ class ReportRound2EsnadMeetTest extends TestCase
         ]);
 
         Livewire::actingAs($user)
-            ->test(WorkloadBoard::class, ['tab' => 'recurring'])
+            ->test(TeamTasksIndex::class, ['tab' => 'recurring'])
             ->assertSee('قوالب متكررة', false)
             ->assertSee($template->title, false)
-            ->set('tab', 'reminders')
+            ->set('recurringPanel', 'reminders')
             ->set('followUpUserId', $user->id)
             ->assertSee('نسخة مولّدة من القالب', false)
             ->assertSee('قيد التنفيذ', false);

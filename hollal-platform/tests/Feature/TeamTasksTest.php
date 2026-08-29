@@ -56,7 +56,7 @@ class TeamTasksTest extends TestCase
     public function test_assigner_can_approve_from_queue(): void
     {
         $assigner = User::factory()->create();
-        $assigner->givePermissionTo('esnad.tasks.view');
+        $assigner->givePermissionTo(['esnad.tasks.view', 'esnad.tasks.team.view']);
         $assignee = User::factory()->create();
         $task = Task::factory()->create([
             'assigned_by' => $assigner->id,
@@ -76,7 +76,7 @@ class TeamTasksTest extends TestCase
     public function test_assigner_can_return_from_queue(): void
     {
         $assigner = User::factory()->create();
-        $assigner->givePermissionTo('esnad.tasks.view');
+        $assigner->givePermissionTo(['esnad.tasks.view', 'esnad.tasks.team.view']);
         $task = Task::factory()->create([
             'assigned_by' => $assigner->id,
             'status' => 'pending_review',
@@ -89,14 +89,13 @@ class TeamTasksTest extends TestCase
         $this->assertSame('in_progress', $task->fresh()->status);
     }
 
-    public function test_team_tab_requires_team_permission(): void
+    public function test_team_page_requires_team_permission(): void
     {
         $user = User::factory()->create();
         $user->givePermissionTo('esnad.tasks.view');
 
-        Livewire::actingAs($user)
-            ->test(TeamTasksIndex::class)
-            ->assertOk()
-            ->assertViewHas('teamTasks', fn ($tasks) => $tasks->isEmpty());
+        $this->actingAs($user)
+            ->get(route('team-tasks.index'))
+            ->assertForbidden();
     }
 }

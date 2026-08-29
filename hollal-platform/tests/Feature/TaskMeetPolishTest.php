@@ -3,7 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Meetings\MeetingMinutes;
-use App\Livewire\Tasks\WorkloadBoard;
+use App\Livewire\Tasks\TeamTasksIndex;
 use App\Models\Meeting;
 use App\Models\MeetingItem;
 use App\Models\Task;
@@ -37,7 +37,7 @@ class TaskMeetPolishTest extends TestCase
         Task::factory()->create(['assigned_to' => $emp->id, 'status' => 'in_progress']);
 
         Livewire::actingAs($manager)
-            ->test(WorkloadBoard::class)
+            ->test(TeamTasksIndex::class)
             ->call('sendTeamReminder');
 
         Notification::assertSentTo($emp, TaskReminder::class);

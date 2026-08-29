@@ -54,9 +54,8 @@ return [
             'label' => 'إسناد',
             'items' => [
                 ['label' => 'المهام', 'route' => 'tasks.index', 'icon' => 'fa-tasks', 'permission' => 'esnad.tasks.view'],
-                ['label' => 'مهام الفريق', 'route' => 'team-tasks.index', 'icon' => 'fa-people-carry', 'permission' => 'esnad.tasks.team.view'],
+                ['label' => 'متابعة الفريق', 'route' => 'team-tasks.index', 'icon' => 'fa-people-carry', 'permission' => 'esnad.tasks.team.view'],
                 ['label' => 'تقويم المهام', 'route' => 'tasks-calendar.index', 'icon' => 'fa-calendar', 'permission' => 'esnad.tasks.view'],
-                ['label' => 'لوحة الأحمال', 'route' => 'workload-board.index', 'icon' => 'fa-chart-area', 'permission' => 'esnad.tasks.team.view|esnad.tasks.create'],
             ],
         ],
         [

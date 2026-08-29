@@ -7,7 +7,7 @@ use App\Livewire\Documents\DocumentTemplatesIndex;
 use App\Livewire\Documents\DocumentVersionsIndex;
 use App\Livewire\Finance\FinancialDocumentsIndex;
 use App\Livewire\Settings\ExpenseSettingsIndex;
-use App\Livewire\Tasks\WorkloadBoard;
+use App\Livewire\Tasks\TeamTasksIndex;
 use App\Models\Document;
 use App\Models\DocumentTemplate;
 use App\Models\ExpenseSetting;
@@ -41,7 +41,7 @@ class ReportRound1ToolsSmokeTest extends TestCase
         $admin->assignRole('Super Admin');
 
         foreach ([
-            'workload-board.index',
+            'team-tasks.index',
             'financial-documents.index',
             'documents.templates',
             'documents.versions',
@@ -52,6 +52,10 @@ class ReportRound1ToolsSmokeTest extends TestCase
                 ->get(route($route))
                 ->assertOk();
         }
+
+        $this->actingAs($admin)
+            ->get(route('workload-board.index'))
+            ->assertRedirect(route('team-tasks.index', ['tab' => 'loads']));
     }
 
     public function test_recurring_task_template_create_smoke(): void
@@ -61,7 +65,7 @@ class ReportRound1ToolsSmokeTest extends TestCase
         $assignee = User::factory()->create(['is_active' => true]);
 
         Livewire::actingAs($admin)
-            ->test(WorkloadBoard::class, ['tab' => 'recurring'])
+            ->test(TeamTasksIndex::class, ['tab' => 'recurring'])
             ->call('openCreate')
             ->set('title', 'تقرير أسبوعي تجريبي')
             ->set('assigned_to_id', $assignee->id)
