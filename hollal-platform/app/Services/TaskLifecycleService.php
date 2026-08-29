@@ -138,6 +138,23 @@ class TaskLifecycleService
         $this->closeLinkedMeetingItems($task);
     }
 
+    /**
+     * Heal historical open decisions whose linked task is already completed.
+     * Time: O(n) matching rows | Space: O(1)
+     */
+    public function healOpenDecisionsForCompletedTasks(): int
+    {
+        return MeetingItem::query()
+            ->where('status', '!=', 'done')
+            ->whereNotNull('task_id')
+            ->whereHas('task', fn ($q) => $q->where('status', self::STATUS_COMPLETED))
+            ->update([
+                'status' => 'done',
+                'close_reason' => 'أُغلقت بإكمال المهمة',
+                'closed_at' => now(),
+            ]);
+    }
+
     /** Close open meeting decisions linked to a completed task. Time: O(1) */
     private function closeLinkedMeetingItems(Task $task): void
     {

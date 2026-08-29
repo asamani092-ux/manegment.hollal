@@ -84,6 +84,31 @@ class EsnadTabRound1Test extends TestCase
         $this->assertNotNull($item->closed_at);
     }
 
+    public function test_open_decisions_page_heals_stale_open_items_for_completed_tasks(): void
+    {
+        $user = User::factory()->create(['must_change_password' => false]);
+        $user->givePermissionTo(['meetings.view', 'esnad.tasks.view']);
+        $task = Task::factory()->create([
+            'assigned_by' => $user->id,
+            'assigned_to' => $user->id,
+            'status' => 'completed',
+            'completed_at' => now(),
+        ]);
+        $item = MeetingItem::factory()->create([
+            'decision' => 'قرار قديم معلّق',
+            'status' => 'in_progress',
+            'task_id' => $task->id,
+        ]);
+
+        Livewire::actingAs($user)
+            ->test(\App\Livewire\Meetings\OpenDecisionsIndex::class)
+            ->assertOk();
+
+        $item->refresh();
+        $this->assertSame('done', $item->status);
+        $this->assertSame('أُغلقت بإكمال المهمة', $item->close_reason);
+    }
+
     public function test_manager_sees_loads_tab_on_team_followup(): void
     {
         $manager = User::factory()->create(['must_change_password' => false]);

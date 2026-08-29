@@ -5,6 +5,7 @@ namespace App\Livewire\Meetings;
 use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\Meeting;
 use App\Models\MeetingItem;
+use App\Services\TaskLifecycleService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -45,6 +46,9 @@ class OpenDecisionsIndex extends Component
         if (! in_array($this->tab, ['open', 'archived'], true)) {
             $this->tab = 'open';
         }
+
+        // Close leftover open decisions whose task was completed before the sync fix.
+        app(TaskLifecycleService::class)->healOpenDecisionsForCompletedTasks();
     }
 
     public function updatingSearch(): void
