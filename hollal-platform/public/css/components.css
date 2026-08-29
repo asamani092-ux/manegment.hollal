@@ -1785,6 +1785,12 @@
   background: #5b4b8a;
 }
 
+.ds-cal-chip-more {
+  background: var(--ds-border);
+  color: var(--ds-text);
+  font-weight: 600;
+}
+
 .ds-journey-steps {
   display: flex;
   flex-wrap: wrap;
