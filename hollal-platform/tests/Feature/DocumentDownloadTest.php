@@ -68,5 +68,17 @@ class DocumentDownloadTest extends TestCase
         $disposition = strtolower((string) $response->headers->get('Content-Disposition'));
         $this->assertStringContainsString("filename*=utf-8''".strtolower(rawurlencode('عقد الشراكة.pdf')), $disposition);
         $this->assertStringNotContainsString('sample.pdf', $disposition);
+        $this->assertStringContainsString('attachment', $disposition);
+    }
+
+    public function test_uploader_can_preview_document_inline(): void
+    {
+        $response = $this->actingAs($this->uploader)
+            ->get(route('documents.files.download', ['document' => $this->document, 'inline' => 1]));
+
+        $response->assertOk();
+        $disposition = strtolower((string) $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('inline', $disposition);
+        $this->assertStringContainsString("filename*=utf-8''".strtolower(rawurlencode('عقد الشراكة.pdf')), $disposition);
     }
 }

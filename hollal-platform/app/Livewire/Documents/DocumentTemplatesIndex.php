@@ -13,7 +13,7 @@ use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 
 /**
- * Spec-07 — مكتبة النماذج الجاهزة (تنزيل فقط للمستخدمين؛ إدارة بالصلاحية).
+ * Spec-07 — مكتبة النماذج الجاهزة (تنزيل للمستخدمين؛ إدارة بالصلاحية).
  * Time: O(n) per page | Space: O(n)
  */
 class DocumentTemplatesIndex extends Component
@@ -28,6 +28,8 @@ class DocumentTemplatesIndex extends Component
     public string $category = '';
 
     public string $description = '';
+
+    public string $visibility = DocumentTemplate::VISIBILITY_ALL;
 
     public ?TemporaryUploadedFile $uploadFile = null;
 
@@ -47,6 +49,7 @@ class DocumentTemplatesIndex extends Component
             'title' => 'required|string|max:255',
             'category' => 'nullable|string|max:100',
             'description' => 'nullable|string|max:2000',
+            'visibility' => 'required|in:all,department',
             'uploadFile' => 'required|file|max:10240|mimes:pdf,doc,docx,xls,xlsx',
         ]);
 
@@ -58,9 +61,11 @@ class DocumentTemplatesIndex extends Component
             $this->category !== '' ? $this->category : null,
             $this->description !== '' ? $this->description : null,
             auth()->user(),
+            $this->visibility,
         );
 
         $this->reset(['title', 'category', 'description', 'uploadFile']);
+        $this->visibility = DocumentTemplate::VISIBILITY_ALL;
         $this->dispatch('ds-toast', message: 'تم رفع النموذج المعتمد');
     }
 
@@ -76,9 +81,14 @@ class DocumentTemplatesIndex extends Component
 
     public function render(): View
     {
+        $user = auth()->user();
+
         return view('livewire.documents.document-templates-index', [
-            'templates' => DocumentTemplate::query()->orderByDesc('id')->paginate(20),
-            'canManage' => auth()->user()->can('documents.templates.manage'),
+            'templates' => DocumentTemplate::query()
+                ->visibleTo($user)
+                ->orderByDesc('id')
+                ->paginate(20),
+            'canManage' => $user->can('documents.templates.manage'),
         ])->layout('layouts.app', ['title' => 'مكتبة النماذج']);
     }
 }

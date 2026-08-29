@@ -63,5 +63,17 @@ class DocumentVersionsUiTest extends TestCase
         $this->assertDatabaseHas('document_versions', ['document_id' => $document->id, 'version' => 1, 'change_note' => 'أولى']);
         $this->assertDatabaseHas('document_versions', ['document_id' => $document->id, 'version' => 2, 'change_note' => 'ثانية']);
         $this->assertSame(2, (int) $document->fresh()->current_version);
+
+        Storage::disk('local')->put('documents/old.pdf', 'v1-bytes');
+        $v1 = DocumentVersion::where('document_id', $document->id)->where('version', 1)->firstOrFail();
+        $v2 = DocumentVersion::where('document_id', $document->id)->where('version', 2)->firstOrFail();
+
+        $this->actingAs($admin)
+            ->get(route('documents.versions.download', $v1))
+            ->assertOk();
+        $this->actingAs($admin)
+            ->get(route('documents.files.download', $document->fresh()))
+            ->assertOk();
+        $this->assertSame($v2->path, $document->fresh()->path);
     }
 }

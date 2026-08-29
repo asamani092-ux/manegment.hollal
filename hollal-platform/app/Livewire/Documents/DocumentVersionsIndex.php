@@ -111,8 +111,8 @@ class DocumentVersionsIndex extends Component
 
         return view('livewire.documents.document-versions-index', [
             'versions' => DocumentVersion::query()
-                ->select(['id', 'document_id', 'version', 'change_note', 'uploaded_by', 'created_at'])
-                ->with(['document:id,title'])
+                ->select(['id', 'document_id', 'version', 'path', 'change_note', 'uploaded_by', 'created_at'])
+                ->with(['document:id,title,current_version,path'])
                 ->whereHas('document', fn ($q) => $q->visibleTo($user))
                 ->when($this->documentFilter, fn ($q) => $q->where('document_id', $this->documentFilter))
                 ->when($this->search, fn ($q) => $q->whereHas(
@@ -125,7 +125,7 @@ class DocumentVersionsIndex extends Component
                 ->visibleTo($user)
                 ->orderBy('title')
                 ->limit(200)
-                ->get(['id', 'title']),
+                ->get(['id', 'title', 'current_version']),
             'canUpload' => $user->can('documents.manage-versions')
                 || $user->can('documents.create'),
         ]);

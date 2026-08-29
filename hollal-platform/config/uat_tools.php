@@ -164,11 +164,11 @@ return [
             'phase' => 4,
             'title' => 'المستندات',
             'items' => [
-                ['id' => 'docs', 'tool' => 'المستودع', 'path' => '/documents', 'checks' => 'رفع · مستوى السرية · تنزيل · روابط الأقسام', 'lifecycle' => 'رفع → تصنيف → مشاركة → تنزيل'],
-                ['id' => 'doc-templates', 'tool' => 'مكتبة القوالب', 'path' => '/documents/templates', 'checks' => 'قوالب معتمدة · تنزيل', 'lifecycle' => 'رفع قالب → اعتماد → استخدام'],
-                ['id' => 'versions', 'tool' => 'إدارة النسخ', 'path' => '/documents/versions', 'checks' => 'رفع نسخة · بقاء القديمة · صلاحيات', 'lifecycle' => 'نسخة جديدة → مقارنة → أرشفة قديمة'],
-                ['id' => 'policies', 'tool' => 'السياسات', 'path' => '/documents/policies', 'checks' => 'سياسات · تاريخ المراجعة', 'lifecycle' => 'نشر → مراجعة دورية → تحديث'],
-                ['id' => 'minutes-arch', 'tool' => 'أرشيف المحاضر', 'path' => '/meetings/archive', 'checks' => 'المعتمدة فقط · بحث وشهر · صلاحية', 'lifecycle' => 'أرشفة → بحث → تنزيل'],
+                ['id' => 'docs', 'tool' => 'المستودع', 'path' => '/documents', 'checks' => 'رفع · سرية · معاينة · تنزيل عربي', 'lifecycle' => 'رفع → تصنيف → مشاركة → تنزيل'],
+                ['id' => 'doc-templates', 'tool' => 'مكتبة القوالب', 'path' => '/documents/templates', 'checks' => 'رفع · ظهور · معاينة · تنزيل', 'lifecycle' => 'رفع قالب → اعتماد → استخدام'],
+                ['id' => 'versions', 'tool' => 'إدارة النسخ', 'path' => '/documents/versions', 'checks' => 'رفع نسخة · شارة الحالية · تنزيل قديمة', 'lifecycle' => 'نسخة جديدة → مقارنة → أرشفة قديمة'],
+                ['id' => 'policies', 'tool' => 'السياسات', 'path' => '/documents/policies', 'checks' => 'سياسات · تنزيل · ملف مهام واحد للمنصة', 'lifecycle' => 'نشر → مراجعة دورية → تحديث'],
+                ['id' => 'minutes-arch', 'tool' => 'أرشيف المحاضر', 'path' => '/meetings/archive', 'checks' => 'المعتمدة · تعديل بنسخة موسومة · معاينة', 'lifecycle' => 'أرشفة → بحث → تنزيل'],
             ],
         ],
         [

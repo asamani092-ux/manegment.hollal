@@ -3,8 +3,8 @@
 namespace App\Policies;
 
 use App\Models\Document;
-use App\Models\OrgUnit;
 use App\Models\User;
+use App\Support\OrgAdministration;
 
 /**
  * Document — confidentiality-scoped view/download; create via documents.create.
@@ -113,27 +113,7 @@ class DocumentPolicy
             return false;
         }
 
-        return $this->sameAdministration($user->org_unit_id, $uploader->org_unit_id);
-    }
-
-    /**
-     * Same إدارة root via org tree walk. Time: O(depth) | Space: O(1)
-     */
-    protected function sameAdministration(int $aUnitId, int $bUnitId): bool
-    {
-        $rootOf = function (int $id): ?int {
-            $current = OrgUnit::query()->find($id, ['id', 'parent_id', 'level']);
-            while ($current && $current->parent_id) {
-                $current = OrgUnit::query()->find($current->parent_id, ['id', 'parent_id', 'level']);
-            }
-
-            return $current?->id;
-        };
-
-        $a = $rootOf($aUnitId);
-        $b = $rootOf($bUnitId);
-
-        return $a !== null && $a === $b;
+        return OrgAdministration::sameRoot($user->org_unit_id, $uploader->org_unit_id);
     }
 
     protected function isManager(User $user): bool

@@ -1,7 +1,9 @@
 <x-ds-page>
     <x-ds-page-header title="أرشيف المحاضر" :show-button="false" />
 
-    <p class="ds-text-muted ds-mb-3">مسار تعديل المحضر المعتمد: طلب ← موافقة ← نسخة موسومة (رقم الإصدار).</p>
+    <p class="ds-text-muted ds-mb-3">
+        مسار تعديل المحضر المعتمد: طلب ← موافقة ← نسخة جديدة في إدارة النسخ موسومة بوضوح (الأصل محفوظ).
+    </p>
 
     <div class="ds-filters-row">
         <div class="ds-filter-field">
@@ -33,8 +35,11 @@
                 <td>
                     @can('meetings.view')
                         <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes', $meeting) }}">المحضر</a>
+                        @if ($meeting->archived_document_id)
+                            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.files.download', ['document' => $meeting->archived_document_id, 'inline' => 1]) }}" target="_blank" rel="noopener">معاينة المؤرشف</a>
+                        @endif
                         @if ($meeting->signed_document_id)
-                            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes.signed', ['meeting' => $meeting, 'inline' => 1]) }}" target="_blank" rel="noopener">معاينة</a>
+                            <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes.signed', ['meeting' => $meeting, 'inline' => 1]) }}" target="_blank" rel="noopener">معاينة الموقعة</a>
                             <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('meetings.minutes.signed', $meeting) }}">تنزيل الموقعة</a>
                         @endif
                     @endcan

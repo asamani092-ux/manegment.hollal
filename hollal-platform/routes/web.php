@@ -8,6 +8,8 @@ use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\ContractFileDownloadController;
 use App\Http\Controllers\DocumentDownloadController;
+use App\Http\Controllers\DocumentTemplateDownloadController;
+use App\Http\Controllers\DocumentVersionDownloadController;
 use App\Http\Controllers\DutiesFileDownloadController;
 use App\Http\Controllers\EmployeeDocumentDownloadController;
 use App\Http\Controllers\ExpenseFileDownloadController;
@@ -161,6 +163,12 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
 
         Route::get('/files/documents/{document}', DocumentDownloadController::class)
             ->name('documents.files.download');
+
+        Route::get('/files/document-templates/{template}', DocumentTemplateDownloadController::class)
+            ->name('documents.templates.download');
+
+        Route::get('/files/document-versions/{version}', DocumentVersionDownloadController::class)
+            ->name('documents.versions.download');
     });
 
     Route::get('/dashboard', DashboardIndex::class)

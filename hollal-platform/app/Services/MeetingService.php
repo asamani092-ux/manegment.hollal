@@ -141,6 +141,15 @@ class MeetingService
             'confidentiality' => 'department',
             'uploader_id' => $chair->id,
             'path' => $path,
+            'current_version' => 1,
+        ]);
+
+        \App\Models\DocumentVersion::create([
+            'document_id' => $document->id,
+            'version' => 1,
+            'path' => $path,
+            'change_note' => 'النسخة الأصلية المعتمدة',
+            'uploaded_by' => $chair->id,
         ]);
 
         $meeting->update(['archived_document_id' => $document->id]);
@@ -215,7 +224,7 @@ class MeetingService
             throw new \RuntimeException('لا يمكن اعتماد طلب غير معلّق.');
         }
 
-        $meeting = $amendment->meeting;
+        $meeting = $amendment->meeting()->firstOrFail();
         $newVersion = $meeting->version + 1;
 
         $amendment->forceFill([
@@ -226,6 +235,56 @@ class MeetingService
 
         $meeting->update(['version' => $newVersion]);
 
-        return $amendment;
+        $this->storeAmendedMinutesVersion($meeting, $approver, (string) $amendment->note);
+
+        return $amendment->fresh();
+    }
+
+    /**
+     * Persist amended minutes as a new DocumentVersion (original kept).
+     * Time: O(pdf) | Space: O(pdf)
+     */
+    private function storeAmendedMinutesVersion(Meeting $meeting, User $approver, string $note): void
+    {
+        $meeting->refresh();
+        $document = null;
+        if ($meeting->archived_document_id) {
+            $document = Document::query()->find($meeting->archived_document_id);
+        }
+        if ($document === null && $meeting->signed_document_id) {
+            $document = Document::query()->find($meeting->signed_document_id);
+        }
+        if ($document === null) {
+            $this->archiveMinutes($meeting, $approver);
+            $meeting->refresh();
+            $document = Document::query()->find($meeting->archived_document_id);
+        }
+        if ($document === null) {
+            return;
+        }
+
+        if ($document->versions()->count() === 0 && $document->path) {
+            \App\Models\DocumentVersion::create([
+                'document_id' => $document->id,
+                'version' => max(1, (int) $document->current_version),
+                'path' => $document->path,
+                'change_note' => 'النسخة الأصلية المعتمدة',
+                'uploaded_by' => $document->uploader_id,
+            ]);
+            if (! $document->current_version) {
+                $document->forceFill(['current_version' => 1])->save();
+            }
+        }
+
+        $pdf = app(MeetingMinutesPdfService::class)->output($meeting);
+        $path = 'meetings/'.now()->format('Y/m').'/'.$meeting->id.'-minutes-v'.($meeting->version).'.pdf';
+        Storage::disk('local')->put($path, $pdf);
+
+        $label = 'معدَّل بتاريخ '.now()->format('Y-m-d').' بموافقة '.$approver->name;
+        if (trim($note) !== '') {
+            $label .= ' — '.$note;
+        }
+
+        app(DocumentLibraryService::class)->addVersion($document, $path, $label, $approver);
     }
 }

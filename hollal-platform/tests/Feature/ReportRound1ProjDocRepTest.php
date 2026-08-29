@@ -104,7 +104,7 @@ class ReportRound1ProjDocRepTest extends TestCase
 
         Livewire::actingAs($chair)
             ->test(MeetingsArchiveIndex::class)
-            ->assertSee('طلب ← موافقة ← نسخة موسومة')
+            ->assertSee('طلب ← موافقة ← نسخة جديدة', false)
             ->call('openAmendRequest', $meeting->id)
             ->set('amendNote', 'تصحيح تاريخ')
             ->call('submitAmendRequest')

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\OfficialDutiesDocument;
+use App\Support\DownloadHeaders;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -20,12 +21,12 @@ class DutiesFileDownloadController extends Controller
             abort(404);
         }
 
-        $filename = 'official-duties-v'.$document->version.'.pdf';
+        $filename = 'ملف-المهام-الرسمي-إصدار-'.$document->version.'.pdf';
 
         return response()->streamDownload(
             fn () => print(Storage::disk('local')->get($document->file_path)),
             $filename,
-            ['Content-Disposition' => \App\Support\DownloadHeaders::contentDisposition($filename)],
+            ['Content-Disposition' => DownloadHeaders::contentDisposition($filename)],
         );
     }
 }

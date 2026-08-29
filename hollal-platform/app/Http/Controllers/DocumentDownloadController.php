@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\LogsFileDownloads;
 use App\Models\Document;
+use App\Support\DownloadHeaders;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Secure download for documents stored on the local disk.
+ * Secure download/preview for documents stored on the local disk.
  */
 class DocumentDownloadController extends Controller
 {
@@ -30,10 +31,10 @@ class DocumentDownloadController extends Controller
             ? $document->title.($extension ? '.'.$extension : '')
             : basename($document->path);
 
-        return response()->streamDownload(
-            fn () => print(Storage::disk('local')->get($document->path)),
-            $filename,
-            ['Content-Disposition' => \App\Support\DownloadHeaders::contentDisposition($filename)]
-        );
+        $disposition = ($request->boolean('inline') || $request->boolean('print')) ? 'inline' : 'attachment';
+
+        return Storage::disk('local')->download($document->path, $filename, [
+            'Content-Disposition' => DownloadHeaders::contentDisposition($filename, $disposition),
+        ], $disposition);
     }
 }

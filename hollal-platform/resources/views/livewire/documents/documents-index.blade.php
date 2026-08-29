@@ -11,12 +11,6 @@
         wire:click="openUpload"
     />
 
-    <p class="ds-mb-3">
-        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.versions') }}">إدارة النسخ</a>
-        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.templates') }}">مكتبة القوالب</a>
-        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.policies') }}">السياسات</a>
-        <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('reports.center') }}">مركز التقارير</a>
-    </p>
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label">بحث</label>
@@ -57,6 +51,9 @@
                     <td>
                         <div class="ds-action-icons">
                             @can('download', $document)
+                                <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.files.download', ['document' => $document, 'inline' => 1]) }}" target="_blank" rel="noopener" title="معاينة" aria-label="معاينة المستند">
+                                    <i class="fas fa-eye" aria-hidden="true"></i>
+                                </a>
                                 <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('documents.files.download', $document) }}" title="تحميل" aria-label="تحميل المستند">
                                     <i class="fas fa-download" aria-hidden="true"></i>
                                 </a>

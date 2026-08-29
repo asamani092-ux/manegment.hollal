@@ -98,12 +98,17 @@ class DocumentLibraryService
         ?string $category = null,
         ?string $description = null,
         ?User $uploader = null,
+        string $visibility = DocumentTemplate::VISIBILITY_ALL,
     ): DocumentTemplate {
         return DocumentTemplate::create([
             'title' => $title,
             'category' => $category,
             'path' => $path,
             'description' => $description,
+            'visibility' => in_array($visibility, [
+                DocumentTemplate::VISIBILITY_ALL,
+                DocumentTemplate::VISIBILITY_DEPARTMENT,
+            ], true) ? $visibility : DocumentTemplate::VISIBILITY_ALL,
             'uploaded_by' => $uploader?->id,
         ]);
     }
