@@ -128,6 +128,7 @@ class ReportRound1PartMeetTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(OpenDecisionsIndex::class)
+            ->call('selectMeeting', $item->meeting_id)
             ->call('openClose', $item->id)
             ->set('closeReason', 'نُفّذ في الاجتماع التالي')
             ->call('closeDecision')

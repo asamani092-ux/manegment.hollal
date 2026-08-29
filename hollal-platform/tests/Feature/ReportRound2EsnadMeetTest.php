@@ -176,8 +176,13 @@ class ReportRound2EsnadMeetTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(OpenDecisionsIndex::class)
-            ->assertSee('تُنشأ القرارات من بنود المحضر', false)
+            ->assertSee('اختر اجتماعاً', false)
+            ->assertSee($meeting->title, false)
+            ->call('selectMeeting', $meeting->id)
+            ->assertSee('قرار ما زال مفتوحًا', false)
+            ->assertDontSee('قرار مؤرشف', false)
             ->set('tab', 'archived')
+            ->call('selectMeeting', $meeting->id)
             ->assertSee('قرار مؤرشف', false)
             ->assertSee('نُفّذ خارج المنصة', false)
             ->assertDontSee('قرار ما زال مفتوحًا', false);
