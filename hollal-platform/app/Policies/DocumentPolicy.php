@@ -51,6 +51,11 @@ class DocumentPolicy
             return $user->can('documents.policies.manage');
         }
 
+        // لا حذف دون صلاحية الاطلاع على المحتوى (يمنع حذف مستند قسم/مدراء بلا تنزيل).
+        if (! $this->canAccess($user, $document)) {
+            return false;
+        }
+
         return $user->id === $document->uploader_id || $user->can('documents.create');
     }
 

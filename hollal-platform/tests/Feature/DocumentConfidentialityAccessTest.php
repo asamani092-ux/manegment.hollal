@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Documents\DocumentsIndex;
 use App\Models\Document;
 use App\Models\OrgUnit;
 use App\Models\User;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class DocumentConfidentialityAccessTest extends TestCase
@@ -90,5 +93,31 @@ class DocumentConfidentialityAccessTest extends TestCase
         );
 
         $response->assertOk();
+    }
+
+    public function test_index_shows_preview_when_uploader_eager_load_includes_org_unit(): void
+    {
+        $this->sameDepartmentUser->givePermissionTo('documents.create');
+
+        Livewire::actingAs($this->sameDepartmentUser)
+            ->test(DocumentsIndex::class)
+            ->assertSee($this->document->title)
+            ->assertSeeHtml('aria-label="معاينة المستند"')
+            ->assertSeeHtml('aria-label="تحميل المستند"');
+
+        $listed = Document::query()
+            ->with(['uploader:id,name,org_unit_id'])
+            ->findOrFail($this->document->id);
+
+        $this->assertTrue(Gate::forUser($this->sameDepartmentUser)->allows('download', $listed));
+        $this->assertNotNull($listed->uploader?->org_unit_id);
+    }
+
+    public function test_delete_denied_without_view_access_even_with_create_permission(): void
+    {
+        $this->otherDepartmentUser->givePermissionTo('documents.create');
+
+        $this->assertFalse(Gate::forUser($this->otherDepartmentUser)->allows('view', $this->document));
+        $this->assertFalse(Gate::forUser($this->otherDepartmentUser)->allows('delete', $this->document));
     }
 }

@@ -127,7 +127,8 @@ class DocumentsIndex extends Component
         return view('livewire.documents.documents-index', [
             'documents' => Document::query()
                 ->select(['id', 'title', 'category', 'project_id', 'confidentiality', 'uploader_id', 'path', 'created_at'])
-                ->with(['project:id,name', 'uploader:id,name'])
+                // org_unit_id مطلوب لسياسة سرية «القسم»؛ بدونه تختفي معاينة/تنزيل في الواجهة.
+                ->with(['project:id,name', 'uploader:id,name,org_unit_id'])
                 ->visibleTo($user)
                 ->when($this->open, fn ($q) => $q->where('id', $this->open))
                 ->when($this->search && ! $this->open, fn ($q) => $q->where('title', 'like', '%'.$this->search.'%'))
