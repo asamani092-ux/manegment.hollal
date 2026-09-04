@@ -55,8 +55,12 @@ class DemoPartnershipsProjectsSeeder extends Seeder
 
         $organizations = $this->seedOrganizations();
         $programs = $this->seedPrograms($manager);
-        $this->seedPartnerships($organizations, $manager, $executive);
-        // Quotes/contracts/projects are left empty — UAT starts at diagnosis readiness.
+        $partnerships = $this->seedPartnerships($organizations, $manager, $executive);
+        $quotes = $this->seedQuotes($partnerships, $programs, $executive);
+        $this->seedContractsAndPayments($partnerships, $quotes, $admin);
+        $projects = $this->seedProjects($partnerships, $programs, $projectManager, $executive);
+        $this->seedVisits($projects, $projectManager, $executive);
+        $this->seedMeasurement($programs, $projects);
     }
 
     /** @return array<string, Organization> */
@@ -537,7 +541,7 @@ class DemoPartnershipsProjectsSeeder extends Seeder
         $definitions = [
             'itqan' => [
                 'attributes' => [
-                    'name' => 'مشروع إتقان — حلقات جمعية الخرج',
+                    'name' => 'تطبيق أصول الإسلام — جمعية الرحمة',
                     'partnership_id' => $partnerships['khraj']->id,
                     'program_id' => $programs['itqan']->id,
                     'kind' => 'شراكة',
@@ -560,7 +564,7 @@ class DemoPartnershipsProjectsSeeder extends Seeder
             ],
             'leaders' => [
                 'attributes' => [
-                    'name' => 'مشروع القادة الصغار — مدارس الرياض',
+                    'name' => 'برنامج القيم — مدارس الرياض',
                     'partnership_id' => $partnerships['education']->id,
                     'program_id' => $programs['leaders']->id,
                     'kind' => 'شراكة',
@@ -582,7 +586,7 @@ class DemoPartnershipsProjectsSeeder extends Seeder
             ],
             'teacher' => [
                 'attributes' => [
-                    'name' => 'مشروع المعلم الملهم — النسخة الداخلية',
+                    'name' => 'مشروع الوعي المعرفي — جامعة الملك سعود',
                     'partnership_id' => null,
                     'program_id' => $programs['teacher']->id,
                     'kind' => 'داخلي',

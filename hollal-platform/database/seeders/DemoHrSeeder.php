@@ -15,6 +15,8 @@ use App\Models\PeriodicEvaluation;
 use App\Models\Responsibility;
 use App\Models\SalaryComponent;
 use App\Models\User;
+use App\Models\WorkShift;
+use App\Services\QuarterlyEvaluationService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
@@ -58,12 +60,14 @@ class DemoHrSeeder extends Seeder
         }
 
         $this->seedProfiles();
+        $this->seedWorkShifts();
         $this->seedContracts();
         $this->seedPayScalesAndComponents();
         $this->seedPayrolls();
         $this->seedPayrollRuns();
         $this->seedResponsibilities();
         $this->seedEvaluations();
+        $this->seedQuarterlyEvaluationEngine();
         $this->seedAttendance();
         $this->seedLeaveRequests();
     }
@@ -612,6 +616,86 @@ class DemoHrSeeder extends Seeder
                 'approver_id' => $decided ? $approver?->id : null,
                 'approved_at' => $decided ? $row['decided_at'] : null,
             ]);
+        }
+    }
+
+    /**
+     * وردية افتراضية مربوطة بملفات موظفي التجربة (عمود الوردية في الحضور).
+     * Time: O(users) | Space: O(1)
+     */
+    private function seedWorkShifts(): void
+    {
+        $shift = WorkShift::query()->firstOrCreate(
+            ['name' => 'الوردية الصباحية'],
+            [
+                'start_time' => '08:00',
+                'end_time' => '16:00',
+                'grace_minutes' => 15,
+                'weekdays' => [0, 1, 2, 3, 4],
+                'is_active' => true,
+            ]
+        );
+
+        EmployeeProfile::query()
+            ->whereIn('user_id', collect($this->users)->pluck('id'))
+            ->whereNull('work_shift_id')
+            ->update(['work_shift_id' => $shift->id]);
+    }
+
+    /**
+     * محرك التقييم الربعي (قالب + دورة مفتوحة + تقييمات موظفين) لواجهة /evaluations.
+     * Time: O(employees) | Space: O(items)
+     */
+    private function seedQuarterlyEvaluationEngine(): void
+    {
+        $admin = $this->user(self::PHONE_ADMIN);
+
+        foreach ([self::PHONE_PROJECTS, self::PHONE_FINANCE, self::PHONE_EMPLOYEE] as $phone) {
+            $member = $this->user($phone);
+            if ($member && $member->manager_id === null && $admin) {
+                $member->forceFill(['manager_id' => $admin->id])->save();
+            }
+        }
+
+        $service = app(QuarterlyEvaluationService::class);
+
+        $template = \App\Models\EvaluationTemplate::query()->firstOrCreate(
+            ['name' => 'قالب التقييم الربعي — عرض تجريبي'],
+            ['is_active' => true]
+        );
+
+        if ($template->items()->count() === 0) {
+            $service->updateTemplate($template, $template->name, [
+                ['section' => 'مدير', 'question_text' => 'جودة إنجاز المهام الموكلة', 'weight' => 40, 'sort_order' => 1],
+                ['section' => 'مدير', 'question_text' => 'الالتزام بالمواعيد والحضور', 'weight' => 30, 'sort_order' => 2],
+                ['section' => 'موارد', 'question_text' => 'التعاون مع الفريق والتواصل', 'weight' => 30, 'sort_order' => 3],
+            ], true);
+        }
+
+        $year = (int) now()->year;
+        $quarter = (int) now()->quarter;
+
+        $cycle = \App\Models\EvaluationCycle::query()
+            ->where('year', $year)
+            ->where('quarter', $quarter)
+            ->first();
+
+        if (! $cycle) {
+            $cycle = $service->createCycle(
+                $year,
+                $quarter,
+                $template->fresh('items'),
+                now()->startOfQuarter()->toDateString(),
+                now()->endOfQuarter()->toDateString(),
+            );
+        }
+
+        if ($cycle->isDraft()) {
+            $service->openCycle($cycle->fresh());
+        }
+
+        if ($cycle->fresh()->isOpen() && $cycle->fresh()->items()->exists()) {
+            $service->bulkOpen($cycle->fresh());
         }
     }
 

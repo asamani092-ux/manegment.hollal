@@ -25,11 +25,13 @@
             <x-ds-form-group label="رقم الجوال" for="phone">
                 <input type="tel" id="phone" name="phone" class="ds-input"
                        value="{{ old('phone') }}" placeholder="05xxxxxxxx" required autofocus
-                       inputmode="tel" autocomplete="tel">
+                       inputmode="tel" autocomplete="tel"
+                       title="يرجى إدخال رقم الجوال">
             </x-ds-form-group>
             <x-ds-form-group label="كلمة المرور" for="password">
                 <input type="password" id="password" name="password" class="ds-input"
-                       placeholder="••••••••" required autocomplete="current-password">
+                       placeholder="••••••••" required autocomplete="current-password"
+                       title="يرجى إدخال كلمة المرور">
             </x-ds-form-group>
             <div class="ds-form-group">
                 <label class="ds-checkbox-label" for="remember">

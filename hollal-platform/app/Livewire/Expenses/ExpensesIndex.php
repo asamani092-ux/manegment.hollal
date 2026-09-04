@@ -93,6 +93,13 @@ class ExpensesIndex extends Component
     {
         $this->authorize('viewAny', ExpenseRequest::class);
 
+        // المراجعون يفتحون «جميع الطلبات» افتراضياً حتى لا تبدو الشاشة فارغة بلا مبرر.
+        if ($this->activeTab === 'my'
+            && ! request()->query->has('activeTab')
+            && auth()->user()->can('finance.expenses.view')) {
+            $this->activeTab = 'all';
+        }
+
         if ($this->activeTab === 'all' && ! auth()->user()->can('finance.expenses.view')) {
             $this->activeTab = 'my';
         }

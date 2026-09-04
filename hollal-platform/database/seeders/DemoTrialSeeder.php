@@ -44,6 +44,7 @@ class DemoTrialSeeder extends Seeder
         if ($category) {
             ExpenseRequest::factory()->pending()->create([
                 'requester_id' => $employee->id,
+                'project_id' => null,
                 'type' => 'operational',
                 'amount' => 750,
                 'reason' => 'طلب صرف تجريبي بانتظار الموافقة',
@@ -57,6 +58,7 @@ class DemoTrialSeeder extends Seeder
             'secretary_id' => $executive->id,
             'approval_status' => Meeting::APPROVAL_DRAFT,
             'scheduled_at' => now()->subDay(),
+            'agenda' => 'قرار تجريبي متأخر، ومتابعة التنفيذ، وملاحظات الحضور.',
         ]);
 
         MeetingItem::factory()->create([

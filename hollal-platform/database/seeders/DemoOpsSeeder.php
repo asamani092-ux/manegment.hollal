@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\ExceptionalGrant;
 use App\Models\Meeting;
+use App\Models\MeetingAmendment;
 use App\Models\MeetingItem;
 use App\Models\Project;
 use App\Models\ProjectUpdate;
@@ -80,6 +81,7 @@ class DemoOpsSeeder extends Seeder
         $this->seedReportingLines();
         $this->seedTasks();
         $this->seedMeetingAttendees();
+        $this->seedMeetingAmendments();
         $this->seedExceptionalGrants();
         $this->seedProjectUpdates();
         $this->seedWeeklyReports();
@@ -425,9 +427,15 @@ class DemoOpsSeeder extends Seeder
                 ->slice($index % $pool->count(), 4)
                 ->pluck('id');
 
+            $responsibleIds = MeetingItem::query()
+                ->where('meeting_id', $meeting->id)
+                ->whereNotNull('responsible_id')
+                ->pluck('responsible_id');
+
             $attendees = collect([$meeting->chair_id, $meeting->secretary_id])
                 ->filter()
                 ->merge($rotating)
+                ->merge($responsibleIds)
                 ->unique()
                 ->values()
                 ->all();
@@ -438,6 +446,42 @@ class DemoOpsSeeder extends Seeder
 
             $meeting->attendees()->syncWithoutDetaching($attendees);
         });
+    }
+
+    /**
+     * طلب تعديل محضر معلّق على اجتماع معتمد — لمسار الأرشيف الرباعي.
+     * Time: O(1) | Space: O(1)
+     */
+    private function seedMeetingAmendments(): void
+    {
+        $requester = $this->user(self::PHONE_EMPLOYEE) ?? $this->user(self::PHONE_EXECUTIVE);
+        $meeting = Meeting::query()
+            ->where('approval_status', Meeting::APPROVAL_APPROVED)
+            ->orderBy('id')
+            ->first();
+
+        if (! $requester || ! $meeting) {
+            return;
+        }
+
+        if ($meeting->agenda === null || trim((string) $meeting->agenda) === '') {
+            $meeting->forceFill([
+                'agenda' => 'مراجعة البنود المفتوحة ومتابعة القرارات السابقة.',
+            ])->save();
+        }
+
+        MeetingAmendment::query()->firstOrCreate(
+            [
+                'meeting_id' => $meeting->id,
+                'note' => 'طلب تعديل تجريبي — تصحيح صياغة القرار المالي في المحضر المعتمد.',
+            ],
+            [
+                'version' => max(1, (int) $meeting->version) + 1,
+                'status' => MeetingAmendment::STATUS_PENDING,
+                'requested_by' => $requester->id,
+                'created_at' => now(),
+            ]
+        );
     }
 
     /** ثلاثة استثناءات: سارٍ بمدة، سارٍ بلا انتهاء، ومنتهٍ. */
