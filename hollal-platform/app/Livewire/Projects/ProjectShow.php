@@ -155,7 +155,7 @@ class ProjectShow extends Component
                 ->select(['id', 'title', 'path', 'category', 'confidentiality', 'uploader_id', 'project_id', 'created_at'])
                 ->where('project_id', $this->project->id)
                 ->visibleTo(auth()->user())
-                ->with(['uploader:id,name'])
+                ->with(['uploader:id,name,org_unit_id'])
                 ->latest()
                 ->get();
         }
