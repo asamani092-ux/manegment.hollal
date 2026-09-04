@@ -123,6 +123,6 @@ class MeetingsArchiveIndex extends Component
                 )
                 ->latest('scheduled_at')
                 ->paginate(20),
-        ]);
+        ])->layout('layouts.app', ['title' => 'أرشيف المحاضر']);
     }
 }

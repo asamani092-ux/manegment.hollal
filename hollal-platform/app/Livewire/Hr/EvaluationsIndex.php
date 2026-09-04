@@ -659,7 +659,7 @@ class EvaluationsIndex extends Component
             'weightsTotal' => collect($this->templateItems)->sum(fn ($r) => (int) ($r['weight'] ?? 0)),
             'confirmTitle' => $confirmTitles[$this->confirmAction] ?? 'تأكيد',
             'confirmBody' => $confirmBodies[$this->confirmAction] ?? '',
-        ]);
+        ])->layout('layouts.app', ['title' => 'التقييم الربعي']);
     }
 
     private function canManage(): bool

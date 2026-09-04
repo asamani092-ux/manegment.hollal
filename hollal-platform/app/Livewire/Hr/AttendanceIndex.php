@@ -593,7 +593,7 @@ class AttendanceIndex extends Component
             'locations' => $locations,
             'weekdayLabels' => WorkShift::WEEKDAY_LABELS,
             'tabs' => $tabs,
-        ]);
+        ])->layout('layouts.app', ['title' => 'الحضور']);
     }
 
     /**

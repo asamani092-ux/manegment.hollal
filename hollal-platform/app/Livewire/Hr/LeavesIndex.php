@@ -207,6 +207,6 @@ class LeavesIndex extends Component
             'balance' => $balance,
             'canApprove' => $user->can('hr.leaves.approve') || $user->can('hr.employees.update'),
             'canRequest' => $user->can('hr.leaves.request'),
-        ]);
+        ])->layout('layouts.app', ['title' => 'الإجازات']);
     }
 }
