@@ -135,7 +135,7 @@ return [
             'label' => 'إعدادات المنصة',
             'items' => [
                 ['label' => 'عامة', 'route' => 'settings.index', 'icon' => 'fa-cog', 'permission' => 'settings.manage|settings.general.manage|settings.finance.manage|settings.backup.manage'],
-                ['label' => 'المالية', 'route' => 'settings.expenses', 'icon' => 'fa-coins', 'permission' => 'settings.manage|settings.finance.manage'],
+                ['label' => 'المالية', 'route' => 'settings.approval-rules', 'icon' => 'fa-coins', 'permission' => 'settings.manage|settings.finance.manage'],
                 ['label' => 'SMTP', 'route' => 'settings.notifications', 'icon' => 'fa-envelope', 'permission' => 'settings.notifications.manage'],
             ],
         ],

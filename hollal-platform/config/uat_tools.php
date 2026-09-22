@@ -207,7 +207,8 @@ return [
             'title' => 'إعدادات المنصة',
             'items' => [
                 ['id' => 'settings', 'tool' => 'عامة', 'path' => '/settings', 'checks' => 'إعدادات عامة · بداية الدوام · نسخ احتياطي', 'lifecycle' => 'تعديل → حفظ → تحقق'],
-                ['id' => 'exp-settings', 'tool' => 'إعدادات المالية', 'path' => '/settings/expenses', 'checks' => 'سلسلة الاعتماد · التصنيفات · الضريبة', 'lifecycle' => 'تعريف سلسلة → تصنيفات → تفعيل'],
+                ['id' => 'exp-settings', 'tool' => 'سلسلة الاعتماد (قواعد)', 'path' => '/settings/approval-rules', 'checks' => 'قواعد حسب المبلغ · أدوار · تفعيل', 'lifecycle' => 'تعريف قاعدة → نطاق مبلغ → خطوات'],
+                ['id' => 'exp-settings-legacy', 'tool' => 'احتياطي نمط سلسلة قديم', 'path' => '/settings/expenses', 'checks' => 'كامل/مختصر عند غياب القواعد · تخطي مدير القسم', 'lifecycle' => 'احتياطي فقط'],
                 ['id' => 'smtp', 'tool' => 'SMTP', 'path' => '/settings/notifications', 'checks' => 'بريد · تفضيلات الإشعارات', 'lifecycle' => 'إعداد SMTP → اختبار → تفعيل'],
             ],
         ],
@@ -217,7 +218,7 @@ return [
             'title' => 'المالية',
             'items' => [
                 ['id' => 'expenses', 'tool' => 'طلبات الصرف', 'path' => '/expenses', 'checks' => 'طلب · سلسلة اعتماد · صرف · إرجاع · مرفق', 'lifecycle' => 'طلب → اعتماد → صرف → إثبات'],
-                ['id' => 'custodies', 'tool' => 'العهد', 'path' => '/custodies', 'checks' => 'طلب · اعتماد · صرف · إثبات · بطاقات الجوال', 'lifecycle' => 'طلب → صرف → تسوية'],
+                ['id' => 'custodies', 'tool' => 'العهد', 'path' => '/custodies', 'checks' => 'طلب موظف · اعتماد تنفيذي · صرف مالية · تسوية فواتير+ضريبة', 'lifecycle' => 'طلب → اعتماد → صرف → تسوية'],
                 ['id' => 'assets', 'tool' => 'الأصول', 'path' => '/assets', 'checks' => 'تسجيل · تسليم · بحث · طباعة · Excel', 'lifecycle' => 'تسجيل → تسليم → إرجاع/استبعاد'],
                 ['id' => 'revenues', 'tool' => 'الإيرادات', 'path' => '/revenues', 'checks' => 'تسجيل · مرفق إلزامي · فلتر المصدر', 'lifecycle' => 'تسجيل → مرفق → اعتماد'],
                 ['id' => 'tax', 'tool' => 'الفواتير الضريبية', 'path' => '/tax-invoices', 'checks' => 'إصدار · إشعار دائن/مدين · PDF عربي', 'lifecycle' => 'إصدار → طباعة → إشعار تعديل'],

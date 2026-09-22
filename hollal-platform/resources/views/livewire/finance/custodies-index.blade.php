@@ -7,7 +7,10 @@
         wire:click="openRequestModal"
     />
 
-    <p class="ds-text-muted ds-mb-3">المسار: طلب ← اعتماد تنفيذي ← صرف ← تسوية متعددة الفواتير. الرفض يظهر مع السبب ولا يُصرف.</p>
+    <p class="ds-text-muted ds-mb-3">
+        المسار: طلب (الموظف) ← اعتماد تنفيذي ← صرف مالية + إثبات ← تسوية متعددة الفواتير (مالية).
+        الرفض يظهر مع السبب ولا يُصرف.
+    </p>
 
     <div class="ds-filters-row">
         <div class="ds-filter-field">
@@ -46,7 +49,7 @@
                     @if ($canDisburse && $custody->status === \App\Models\Custody::STATUS_APPROVED)
                         <button type="button" class="ds-btn ds-btn-teal ds-btn-sm" wire:click="openDisburse({{ $custody->id }})">صرف</button>
                     @endif
-                    @if (in_array($custody->status, [\App\Models\Custody::STATUS_DISBURSED, \App\Models\Custody::STATUS_SETTLING], true))
+                    @if ($canSettle && in_array($custody->status, [\App\Models\Custody::STATUS_DISBURSED, \App\Models\Custody::STATUS_SETTLING], true))
                         <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openSettle({{ $custody->id }})">تسوية</button>
                     @endif
                 </div>
@@ -88,7 +91,7 @@
                         @if ($canDisburse && $custody->status === \App\Models\Custody::STATUS_APPROVED)
                             <button type="button" class="ds-btn ds-btn-teal ds-btn-sm" wire:click="openDisburse({{ $custody->id }})">صرف</button>
                         @endif
-                        @if (in_array($custody->status, [\App\Models\Custody::STATUS_DISBURSED, \App\Models\Custody::STATUS_SETTLING], true))
+                        @if ($canSettle && in_array($custody->status, [\App\Models\Custody::STATUS_DISBURSED, \App\Models\Custody::STATUS_SETTLING], true))
                             <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openSettle({{ $custody->id }})">تسوية</button>
                         @endif
                     </td>

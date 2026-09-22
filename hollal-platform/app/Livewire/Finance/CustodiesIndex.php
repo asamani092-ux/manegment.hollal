@@ -188,12 +188,7 @@ class CustodiesIndex extends Component
 
     public function openSettle(int $id): void
     {
-        abort_unless(
-            auth()->user()->can('finance.custodies.view')
-            || auth()->user()->can('finance.custodies.disburse')
-            || auth()->user()->can('finance.custodies.approve'),
-            403
-        );
+        abort_unless($this->canSettle(), 403);
 
         $custody = Custody::findOrFail($id);
         if (! in_array($custody->status, [Custody::STATUS_DISBURSED, Custody::STATUS_SETTLING], true)) {
@@ -247,11 +242,7 @@ class CustodiesIndex extends Component
 
     public function submitSettlement(): void
     {
-        abort_unless(
-            auth()->user()->can('finance.custodies.view')
-            || auth()->user()->can('finance.custodies.disburse'),
-            403
-        );
+        abort_unless($this->canSettle(), 403);
 
         $this->validate([
             'settlingId' => 'required|exists:custodies,id',
@@ -343,6 +334,9 @@ class CustodiesIndex extends Component
 
     public function render(): View
     {
+        $canApprove = auth()->user()->can('finance.custodies.approve');
+        $canDisburse = auth()->user()->can('finance.custodies.disburse');
+
         $query = Custody::query()
             ->select(['id', 'employee_id', 'amount', 'disbursed_amount', 'purpose', 'status', 'due_date', 'rejection_reason', 'created_at'])
             ->with('employee:id,name')
@@ -354,10 +348,11 @@ class CustodiesIndex extends Component
             ))
             ->latest();
 
-        if (! auth()->user()->can('finance.custodies.view') && auth()->user()->can('finance.custodies.approve')) {
-            $query->whereIn('status', [Custody::STATUS_REQUESTED, Custody::STATUS_APPROVED]);
-        } elseif (! auth()->user()->can('finance.custodies.view')) {
+        // موظف بعرض فقط: عهوده. معتمد بلا عرض كامل: طابور الاعتماد. غير ذلك: الكل.
+        if (! $canApprove && ! $canDisburse) {
             $query->where('employee_id', auth()->id());
+        } elseif ($canApprove && ! $canDisburse && ! auth()->user()->can('finance.custodies.view')) {
+            $query->whereIn('status', [Custody::STATUS_REQUESTED, Custody::STATUS_APPROVED]);
         }
 
         $settlingCustody = $this->settlingId
@@ -376,10 +371,17 @@ class CustodiesIndex extends Component
                 Custody::STATUS_CLOSED,
                 Custody::STATUS_REJECTED,
             ],
-            'canApprove' => auth()->user()->can('finance.custodies.approve'),
-            'canDisburse' => auth()->user()->can('finance.custodies.disburse'),
+            'canApprove' => $canApprove,
+            'canDisburse' => $canDisburse,
+            'canSettle' => $this->canSettle(),
             'settlingCustody' => $settlingCustody,
             'settleSummary' => $this->settlingId ? $this->settleSummary() : null,
         ])->layout('layouts.app', ['title' => 'العهد']);
+    }
+
+    /** التسوية للمالية بعد الصرف فقط (صلاحية صرف العهد). */
+    private function canSettle(): bool
+    {
+        return auth()->user()->can('finance.custodies.disburse');
     }
 }

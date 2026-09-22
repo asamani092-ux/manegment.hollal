@@ -176,6 +176,7 @@ class RoleSeeder extends Seeder
         'documents.view',
         'finance.expenses.view',
         'finance.expenses.create',
+        'finance.custodies.view', // طلب ومتابعة عهد الموظف نفسه فقط
         'projects.view',
         'hr.employees.view',
         'hr.leaves.request',
