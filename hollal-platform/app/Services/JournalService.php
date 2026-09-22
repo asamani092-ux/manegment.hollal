@@ -13,6 +13,7 @@ use App\Models\PayrollRun;
 use App\Models\Revenue;
 use App\Models\TaxInvoice;
 use App\Models\User;
+use App\Support\CoaCodes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
@@ -65,7 +66,7 @@ class JournalService
         }
 
         $expenseAccount = $expense->category?->account
-            ?? $this->accountByCode('5100');
+            ?? $this->accountByCode(CoaCodes::EXP_MISC);
         $cashAccount = $this->cashOrBank($expense->payment_method ?? 'transfer');
 
         return $this->createEntry(
@@ -93,8 +94,8 @@ class JournalService
         }
 
         $revenueAccount = $revenue->category?->account
-            ?? $this->accountByCode('4100');
-        $cash = $this->accountByCode('1100');
+            ?? $this->accountByCode(CoaCodes::UNRESTRICTED_PARTNERSHIP_REVENUE);
+        $cash = $this->accountByCode(CoaCodes::CASH);
 
         return $this->createEntry(
             description: 'إيراد #'.$revenue->id,
@@ -120,8 +121,8 @@ class JournalService
             return null;
         }
 
-        $advances = $this->accountByCode('1300');
-        $cash = $this->accountByCode('1100');
+        $advances = $this->accountByCode(CoaCodes::EMPLOYEE_ADVANCES);
+        $cash = $this->accountByCode(CoaCodes::CASH);
 
         return $this->createEntry(
             description: 'صرف عهدة #'.$custody->id,
@@ -143,21 +144,78 @@ class JournalService
             return $this->existingFor($custody, 'S');
         }
 
-        $spent = round((float) $custody->settledTotal(), 2);
+        $custody->loadMissing(['settlementItems.category.account']);
+        $items = $custody->settlementItems;
+        $disbursed = round((float) ($custody->disbursed_amount ?? $custody->amount), 2);
+        $itemsTotal = round((float) $items->sum(fn ($i) => (float) ($i->total_amount ?: $i->amount)), 2);
         $returned = round((float) ($custody->returned_amount ?? 0), 2);
-        $advances = $this->accountByCode('1300');
-        $expenseAccount = $custody->category?->account ?? $this->accountByCode('5100');
-        $cash = $this->accountByCode('1100');
+        $claim = max(0.0, round($itemsTotal - $disbursed, 2));
+
+        $advances = $this->accountByCode(CoaCodes::EMPLOYEE_ADVANCES);
+        $vatAccount = $this->accountByCode(CoaCodes::VAT_PAYABLE);
+        $cash = $this->accountByCode(CoaCodes::CASH);
+        $fallbackExpense = $this->accountByCode(CoaCodes::EXP_MISC);
 
         $lines = [];
-        if ($spent > 0) {
-            $lines[] = ['account_id' => $expenseAccount->id, 'debit' => $spent, 'credit' => 0];
-            $lines[] = ['account_id' => $advances->id, 'debit' => 0, 'credit' => $spent];
+        $vatTotal = 0.0;
+
+        foreach ($items as $item) {
+            $net = round((float) $item->amount, 2);
+            $vat = round((float) ($item->vat_amount ?? 0), 2);
+            if ($net <= 0 && $vat <= 0) {
+                continue;
+            }
+            $expenseAccount = $item->category?->account ?? $custody->category?->account ?? $fallbackExpense;
+            if ($net > 0) {
+                $lines[] = [
+                    'account_id' => $expenseAccount->id,
+                    'debit' => $net,
+                    'credit' => 0,
+                    'description' => $item->vendor_name ?: $item->description,
+                ];
+            }
+            $vatTotal += $vat;
         }
+
+        if ($vatTotal > 0) {
+            $lines[] = [
+                'account_id' => $vatAccount->id,
+                'debit' => round($vatTotal, 2),
+                'credit' => 0,
+                'description' => 'ضريبة مدخلات — عهدة #'.$custody->id,
+            ];
+        }
+
+        // إغلاق العهدة بالكامل
+        if ($disbursed > 0) {
+            $lines[] = [
+                'account_id' => $advances->id,
+                'debit' => 0,
+                'credit' => $disbursed,
+                'description' => 'إقفال عهد الموظفين',
+            ];
+        }
+
+        // فرق زيادة المصروف يُصرف للموظف (دائن نقد)
+        if ($claim > 0) {
+            $lines[] = [
+                'account_id' => $cash->id,
+                'debit' => 0,
+                'credit' => $claim,
+                'description' => 'مطالبة فرق تسوية',
+            ];
+        }
+
+        // مرتجع نقدي إن كان إجمالي الفواتير أقل من المصروف
         if ($returned > 0) {
-            $lines[] = ['account_id' => $cash->id, 'debit' => $returned, 'credit' => 0];
-            $lines[] = ['account_id' => $advances->id, 'debit' => 0, 'credit' => $returned];
+            $lines[] = [
+                'account_id' => $cash->id,
+                'debit' => $returned,
+                'credit' => 0,
+                'description' => 'مرتجع عهدة',
+            ];
         }
+
         if ($lines === []) {
             return null;
         }
@@ -179,24 +237,47 @@ class JournalService
             return $this->existingFor($run);
         }
 
-        $amount = round((float) $run->items()->sum('net'), 2);
-        if ($amount <= 0) {
-            $amount = round((float) $run->items()->sum('gross'), 2);
+        $run->loadMissing('items.employee');
+        $monthEnd = \Illuminate\Support\Carbon::createFromFormat('Y-m', $run->month)->endOfMonth();
+
+        $delegationTotal = 0.0;
+        foreach ($run->items as $item) {
+            $delegationTotal += (float) \App\Models\SalaryComponent::query()
+                ->where('employee_id', $item->employee_id)
+                ->where('type', \App\Models\SalaryComponent::TYPE_ALLOWANCE)
+                ->where('label_ar', 'بدل انتداب')
+                ->effectiveOn($monthEnd)
+                ->sum('amount');
         }
-        if ($amount <= 0) {
+        $delegationTotal = round($delegationTotal, 2);
+
+        $netTotal = round((float) $run->items()->sum('net'), 2);
+        if ($netTotal <= 0) {
+            $netTotal = round((float) $run->items()->sum('gross'), 2);
+        }
+        if ($netTotal <= 0) {
             return null;
         }
 
-        $salaries = $this->accountByCode('5200');
-        $cash = $this->accountByCode('1100');
+        $salaries = $this->accountByCode(CoaCodes::EXP_SALARIES);
+        $delegation = $this->accountByCode(CoaCodes::EXP_DELEGATION);
+        $cash = $this->accountByCode(CoaCodes::CASH);
+
+        $salaryExpense = round(max(0, $netTotal - $delegationTotal), 2);
+        $lines = [];
+        if ($salaryExpense > 0) {
+            $lines[] = ['account_id' => $salaries->id, 'debit' => $salaryExpense, 'credit' => 0, 'description' => 'مصروف الرواتب'];
+        }
+        if ($delegationTotal > 0) {
+            $lines[] = ['account_id' => $delegation->id, 'debit' => $delegationTotal, 'credit' => 0, 'description' => 'بدل انتداب'];
+        }
+        $debitSum = round(collect($lines)->sum('debit'), 2);
+        $lines[] = ['account_id' => $cash->id, 'debit' => 0, 'credit' => $debitSum, 'description' => 'صرف مسير'];
 
         return $this->createEntry(
             description: 'مسير رواتب #'.$run->id,
             entryDate: now()->toDateString(),
-            lines: [
-                ['account_id' => $salaries->id, 'debit' => $amount, 'credit' => 0],
-                ['account_id' => $cash->id, 'debit' => 0, 'credit' => $amount],
-            ],
+            lines: $lines,
             source: $run,
             actor: $actor,
             automatic: true,
@@ -214,8 +295,8 @@ class JournalService
             return null;
         }
 
-        $fixed = $this->accountByCode('1400');
-        $cash = $this->accountByCode('1100');
+        $fixed = $this->accountByCode(CoaCodes::FURNITURE);
+        $cash = $this->accountByCode(CoaCodes::CASH);
 
         return $this->createEntry(
             description: 'شراء أصل '.$asset->code,
@@ -243,9 +324,9 @@ class JournalService
             return null;
         }
 
-        $cash = $this->accountByCode('1100');
-        $revenue = $this->accountByCode('4100');
-        $vatPayable = $this->accountByCode('2200');
+        $cash = $this->accountByCode(CoaCodes::CASH);
+        $revenue = $this->accountByCode(CoaCodes::UNRESTRICTED_PARTNERSHIP_REVENUE);
+        $vatPayable = $this->accountByCode(CoaCodes::VAT_PAYABLE);
 
         $lines = [
             ['account_id' => $cash->id, 'debit' => $total, 'credit' => 0],
@@ -385,7 +466,7 @@ class JournalService
     private function cashOrBank(?string $paymentMethod): ChartOfAccount
     {
         return $this->accountByCode(
-            in_array($paymentMethod, ['cash', 'نقد', 'نقدي'], true) ? '1100' : '1200'
+            in_array($paymentMethod, ['cash', 'نقد', 'نقدي'], true) ? CoaCodes::CASH : CoaCodes::BANK_RAJHI
         );
     }
 

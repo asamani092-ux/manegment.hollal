@@ -25,9 +25,9 @@ class AccountingReportServiceTest extends TestCase
     public function test_trial_balance_and_income_match_journals(): void
     {
         $user = User::factory()->create(['must_change_password' => false]);
-        $cash = ChartOfAccount::where('code', '1100')->firstOrFail();
-        $revenue = ChartOfAccount::where('code', '4100')->firstOrFail();
-        $expense = ChartOfAccount::where('code', '5100')->firstOrFail();
+        $cash = ChartOfAccount::where('code', '111')->firstOrFail();
+        $revenue = ChartOfAccount::where('code', '411')->firstOrFail();
+        $expense = ChartOfAccount::where('code', '518')->firstOrFail();
 
         app(JournalService::class)->postManual('إيراد', now()->toDateString(), [
             ['account_id' => $cash->id, 'debit' => 1000, 'credit' => 0],

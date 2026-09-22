@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\CustodyService;
 use App\Services\OffboardingService;
 use App\Services\TaskLifecycleService;
+use Database\Seeders\ChartOfAccountsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -17,6 +18,12 @@ use Tests\TestCase;
 class CustodyTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->seed(ChartOfAccountsSeeder::class);
+    }
 
     public function test_full_custody_cycle_closes_when_reconciled(): void
     {

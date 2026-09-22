@@ -20,7 +20,7 @@ class Revenue extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'source_type', 'source_id', 'category_id', 'amount', 'received_at',
+        'source_type', 'source_id', 'partnership_contract_id', 'category_id', 'amount', 'received_at',
         'confirmed_at', 'confirmed_by', 'tax_invoice_id', 'external_document_path', 'status',
     ];
 
@@ -44,5 +44,11 @@ class Revenue extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(RevenueCategory::class, 'category_id');
+    }
+
+    /** @return BelongsTo<PartnershipContract, $this> */
+    public function partnershipContract(): BelongsTo
+    {
+        return $this->belongsTo(PartnershipContract::class, 'partnership_contract_id');
     }
 }

@@ -49,6 +49,8 @@ class DemoFinanceSeeder extends Seeder
             return;
         }
 
+        $this->call(ApprovalRulesSeeder::class);
+
         $this->seedCompanyProfile();
         $this->seedPlaceholderEvidenceFiles();
         $this->seedAssets();

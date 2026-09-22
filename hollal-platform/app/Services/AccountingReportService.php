@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\CoaCodes;
 use App\Models\ChartOfAccount;
 use App\Models\JournalLine;
 use App\Support\PdfArabic;
@@ -127,61 +128,130 @@ class AccountingReportService
     }
 
     /**
-     * @return array{revenues: float, expenses: float, surplus: float}
+     * قائمة الأنشطة (غير ربحية): إيرادات مقيّدة/غير مقيّدة − مصروفات.
+     *
+     * @return array{
+     *   unrestricted_revenue: float,
+     *   restricted_revenue: float,
+     *   total_revenue: float,
+     *   expenses: float,
+     *   change_in_net_assets: float,
+     *   revenues: float,
+     *   surplus: float
+     * }
      */
-    public function incomeStatement(?string $from = null, ?string $to = null): array
+    public function incomeStatement(?string $from = null, ?string $to = null, ?int $costCenterId = null): array
     {
-        $revenues = $this->typeMovementTotal(ChartOfAccount::TYPE_REVENUE, $from, $to, creditNature: true);
-        $expenses = $this->typeMovementTotal(ChartOfAccount::TYPE_EXPENSE, $from, $to, creditNature: false);
+        $unrestrictedRevenue = $this->movementByPrefix('41', $from, $to, creditNature: true, costCenterId: $costCenterId);
+        $restrictedRevenue = $this->movementByPrefix('42', $from, $to, creditNature: true, costCenterId: $costCenterId);
+        $expenses = $this->typeMovementTotal(ChartOfAccount::TYPE_EXPENSE, $from, $to, creditNature: false, costCenterId: $costCenterId);
+        $totalRevenue = round($unrestrictedRevenue + $restrictedRevenue, 2);
+        $change = round($totalRevenue - $expenses, 2);
 
         return [
-            'revenues' => $revenues,
+            'unrestricted_revenue' => $unrestrictedRevenue,
+            'restricted_revenue' => $restrictedRevenue,
+            'total_revenue' => $totalRevenue,
             'expenses' => $expenses,
-            'surplus' => round($revenues - $expenses, 2),
+            'change_in_net_assets' => $change,
+            // توافق خلفي مع الواجهات القديمة
+            'revenues' => $totalRevenue,
+            'surplus' => $change,
         ];
     }
 
     /**
-     * @return array{assets: float, liabilities: float, equity: float, balanced: bool}
+     * قائمة المركز المالي: أصول = خصوم + صافي أصول (غير مقيّدة + مقيّدة).
+     *
+     * @return array{
+     *   assets: float,
+     *   liabilities: float,
+     *   unrestricted_net_assets: float,
+     *   restricted_net_assets: float,
+     *   total_net_assets: float,
+     *   equity: float,
+     *   balanced: bool
+     * }
      */
-    public function balanceSheet(?string $asOf = null): array
+    public function balanceSheet(?string $asOf = null, ?int $costCenterId = null): array
     {
-        $assets = $this->typeBalance(ChartOfAccount::TYPE_ASSETS, $asOf, debitNature: true);
-        $liabilities = $this->typeBalance(ChartOfAccount::TYPE_LIABILITIES, $asOf, debitNature: false);
-        $equity = $this->typeBalance(ChartOfAccount::TYPE_EQUITY, $asOf, debitNature: false);
-        $income = $this->incomeStatement(null, $asOf);
-        $equity += $income['surplus'];
+        $assets = $this->typeBalance(ChartOfAccount::TYPE_ASSETS, $asOf, debitNature: true, costCenterId: $costCenterId);
+        $liabilities = $this->typeBalance(ChartOfAccount::TYPE_LIABILITIES, $asOf, debitNature: false, costCenterId: $costCenterId);
+        $unrestrictedNetAssets = $this->balanceByPrefix('311', $asOf, debitNature: false, costCenterId: $costCenterId);
+        $restrictedNetAssets = $this->balanceByPrefix('321', $asOf, debitNature: false, costCenterId: $costCenterId)
+            + $this->balanceByPrefix('322', $asOf, debitNature: false, costCenterId: $costCenterId);
+        $income = $this->incomeStatement(null, $asOf, $costCenterId);
+        $unrestrictedNetAssets += $income['change_in_net_assets'];
 
+        $totalNetAssets = round($unrestrictedNetAssets + $restrictedNetAssets, 2);
         $assets = round($assets, 2);
         $liabilities = round($liabilities, 2);
-        $equity = round($equity, 2);
 
         return [
             'assets' => $assets,
             'liabilities' => $liabilities,
-            'equity' => $equity,
-            'balanced' => abs($assets - ($liabilities + $equity)) < 0.005,
+            'unrestricted_net_assets' => round($unrestrictedNetAssets, 2),
+            'restricted_net_assets' => round($restrictedNetAssets, 2),
+            'total_net_assets' => $totalNetAssets,
+            'equity' => $totalNetAssets,
+            'balanced' => abs($assets - ($liabilities + $totalNetAssets)) < 0.005,
         ];
     }
 
     /**
-     * Simplified operating cash flow: net cash/bank movement in period.
+     * قائمة التدفقات النقدية — تشغيلي / استثماري / تمويلي.
      *
-     * @return array{operating: float}
+     * @return array{
+     *   operating: float,
+     *   investing: float,
+     *   financing: float,
+     *   net_change: float,
+     *   opening_cash: float,
+     *   closing_cash: float
+     * }
      */
-    public function cashFlow(?string $from = null, ?string $to = null): array
+    /** اسم بديل للمواصفة. */
+    public function cashFlowStatement(?string $from = null, ?string $to = null, ?int $costCenterId = null): array
     {
-        $cashIds = ChartOfAccount::query()->whereIn('code', ['1100', '1200'])->pluck('id');
-        $debit = (float) JournalLine::query()
-            ->whereIn('account_id', $cashIds)
-            ->whereHas('entry', fn ($q) => $this->periodFilter($q, $from, $to))
-            ->sum('debit');
-        $credit = (float) JournalLine::query()
-            ->whereIn('account_id', $cashIds)
-            ->whereHas('entry', fn ($q) => $this->periodFilter($q, $from, $to))
-            ->sum('credit');
+        return $this->cashFlow($from, $to, $costCenterId);
+    }
 
-        return ['operating' => round($debit - $credit, 2)];
+    public function cashFlow(?string $from = null, ?string $to = null, ?int $costCenterId = null): array
+    {
+        $income = $this->incomeStatement($from, $to, $costCenterId);
+        $depreciation = $this->movementByCode(CoaCodes::EXP_DEPRECIATION, $from, $to, costCenterId: $costCenterId);
+        $changeReceivables = $this->periodChangeByCode(CoaCodes::RECEIVABLES, $from, $to, costCenterId: $costCenterId);
+        $changePayables = $this->periodChangeByCode(CoaCodes::SALARIES_PAYABLE, $from, $to, costCenterId: $costCenterId);
+        $changeDeferred = $this->periodChangeByCode(CoaCodes::DEFERRED_REVENUE, $from, $to, costCenterId: $costCenterId);
+
+        $operatingCash = $income['change_in_net_assets']
+            + $depreciation
+            - $changeReceivables
+            + $changePayables
+            + $changeDeferred;
+
+        $assetPurchases = $this->movementByCodeRange(CoaCodes::FURNITURE, CoaCodes::COMPUTERS, $from, $to, debitSide: true, costCenterId: $costCenterId);
+        $investingCash = -$assetPurchases;
+
+        $changeRestricted = $this->periodChangeByCode(CoaCodes::TEMP_RESTRICTED_NET_ASSETS, $from, $to, costCenterId: $costCenterId)
+            + $this->periodChangeByCode(CoaCodes::PERM_RESTRICTED_NET_ASSETS, $from, $to, costCenterId: $costCenterId);
+        $financingCash = $changeRestricted;
+
+        $netChange = round($operatingCash + $investingCash + $financingCash, 2);
+        $openingAsOf = $from
+            ? (new \DateTimeImmutable($from))->modify('-1 day')->format('Y-m-d')
+            : null;
+        $openingCash = $this->balanceByCodeRange(CoaCodes::CASH, CoaCodes::BANK_INMA, $openingAsOf, debitNature: true, costCenterId: $costCenterId);
+        $closingCash = round($openingCash + $netChange, 2);
+
+        return [
+            'operating' => round($operatingCash, 2),
+            'investing' => round($investingCash, 2),
+            'financing' => round($financingCash, 2),
+            'net_change' => $netChange,
+            'opening_cash' => round($openingCash, 2),
+            'closing_cash' => $closingCash,
+        ];
     }
 
     public function trialBalancePdf(?string $from = null, ?string $to = null): string
@@ -203,20 +273,116 @@ class AccountingReportService
         return PdfArabic::render('ميزان المراجعة', $body, includeCr: true);
     }
 
-    private function typeMovementTotal(string $type, ?string $from, ?string $to, bool $creditNature): float
+    public function cashFlowPdf(?string $from = null, ?string $to = null): string
     {
-        $ids = ChartOfAccount::query()->where('type', $type)->pluck('id');
-        $debit = (float) JournalLine::query()->whereIn('account_id', $ids)
-            ->whereHas('entry', fn ($q) => $this->periodFilter($q, $from, $to))->sum('debit');
-        $credit = (float) JournalLine::query()->whereIn('account_id', $ids)
-            ->whereHas('entry', fn ($q) => $this->periodFilter($q, $from, $to))->sum('credit');
+        $cf = $this->cashFlow($from, $to);
+        $body = '<h3>قائمة التدفقات النقدية</h3>'
+            .'<p>من '.e((string) $from).' إلى '.e((string) $to).'</p>'
+            .'<table border="1" cellpadding="4" width="100%">'
+            .'<tr><td>صافي النقد من التشغيل</td><td class="num">'.number_format($cf['operating'], 2).'</td></tr>'
+            .'<tr><td>صافي النقد من الاستثمار</td><td class="num">'.number_format($cf['investing'], 2).'</td></tr>'
+            .'<tr><td>صافي النقد من التمويل</td><td class="num">'.number_format($cf['financing'], 2).'</td></tr>'
+            .'<tr><th>صافي التغيّر</th><th class="num">'.number_format($cf['net_change'], 2).'</th></tr>'
+            .'<tr><td>رصيد أول المدة</td><td class="num">'.number_format($cf['opening_cash'], 2).'</td></tr>'
+            .'<tr><td>رصيد آخر المدة</td><td class="num">'.number_format($cf['closing_cash'], 2).'</td></tr>'
+            .'</table>';
 
-        return round($creditNature ? ($credit - $debit) : ($debit - $credit), 2);
+        return PdfArabic::render('التدفقات النقدية', $body, includeCr: true);
     }
 
-    private function typeBalance(string $type, ?string $asOf, bool $debitNature): float
+    private function typeMovementTotal(string $type, ?string $from, ?string $to, bool $creditNature, ?int $costCenterId = null): float
     {
-        return $this->typeMovementTotal($type, null, $asOf, creditNature: ! $debitNature);
+        $ids = ChartOfAccount::query()
+            ->where('type', $type)
+            ->where(function ($q) {
+                $q->where('is_postable', true)->orWhereRaw('LENGTH(code) = 3');
+            })
+            ->pluck('id');
+
+        return $this->netMovementForIds($ids, $from, $to, $creditNature, $costCenterId);
+    }
+
+    private function typeBalance(string $type, ?string $asOf, bool $debitNature, ?int $costCenterId = null): float
+    {
+        return $this->typeMovementTotal($type, null, $asOf, creditNature: ! $debitNature, costCenterId: $costCenterId);
+    }
+
+    private function movementByPrefix(string $prefix, ?string $from, ?string $to, bool $creditNature, ?int $costCenterId = null): float
+    {
+        $ids = ChartOfAccount::query()
+            ->where('code', 'like', $prefix.'%')
+            ->whereRaw('LENGTH(code) = 3')
+            ->pluck('id');
+
+        return $this->netMovementForIds($ids, $from, $to, $creditNature, $costCenterId);
+    }
+
+    private function balanceByPrefix(string $prefix, ?string $asOf, bool $debitNature, ?int $costCenterId = null): float
+    {
+        return $this->movementByPrefix($prefix, null, $asOf, creditNature: ! $debitNature, costCenterId: $costCenterId);
+    }
+
+    private function movementByCode(string $code, ?string $from, ?string $to, ?int $costCenterId = null): float
+    {
+        $id = ChartOfAccount::query()->where('code', $code)->value('id');
+        if (! $id) {
+            return 0.0;
+        }
+
+        return $this->netMovementForIds(collect([$id]), $from, $to, creditNature: false, costCenterId: $costCenterId);
+    }
+
+    private function movementByCodeRange(string $fromCode, string $toCode, ?string $from, ?string $to, bool $debitSide = true, ?int $costCenterId = null): float
+    {
+        $ids = ChartOfAccount::query()
+            ->where('code', '>=', $fromCode)
+            ->where('code', '<=', $toCode)
+            ->whereRaw('LENGTH(code) = 3')
+            ->pluck('id');
+
+        return $this->netMovementForIds($ids, $from, $to, creditNature: ! $debitSide, costCenterId: $costCenterId);
+    }
+
+    private function balanceByCodeRange(string $fromCode, string $toCode, ?string $asOf, bool $debitNature = true, ?int $costCenterId = null): float
+    {
+        return $this->movementByCodeRange($fromCode, $toCode, null, $asOf, debitSide: $debitNature, costCenterId: $costCenterId);
+    }
+
+    private function periodChangeByCode(string $code, ?string $from, ?string $to, ?int $costCenterId = null): float
+    {
+        $openingAsOf = $from
+            ? (new \DateTimeImmutable($from))->modify('-1 day')->format('Y-m-d')
+            : null;
+        $open = $this->balanceByPrefix($code, $openingAsOf, debitNature: true, costCenterId: $costCenterId);
+        // للحسابات الدائنة بطبيعتها نستخدم نفس صافي الحركة في الفترة
+        $id = ChartOfAccount::query()->where('code', $code)->first();
+        if (! $id) {
+            return 0.0;
+        }
+        $isDebit = $id->nature === ChartOfAccount::NATURE_DEBIT;
+        $close = $this->balanceByPrefix($code, $to, debitNature: $isDebit, costCenterId: $costCenterId);
+        $openBal = $this->balanceByPrefix($code, $openingAsOf, debitNature: $isDebit, costCenterId: $costCenterId);
+
+        return round($close - $openBal, 2);
+    }
+
+    /** @param \Illuminate\Support\Collection<int, int>|list<int> $ids */
+    private function netMovementForIds($ids, ?string $from, ?string $to, bool $creditNature, ?int $costCenterId = null): float
+    {
+        $ids = collect($ids)->filter()->values();
+        if ($ids->isEmpty()) {
+            return 0.0;
+        }
+
+        $query = JournalLine::query()->whereIn('account_id', $ids)
+            ->whereHas('entry', fn ($q) => $this->periodFilter($q, $from, $to));
+        if ($costCenterId) {
+            $query->where('cost_center_id', $costCenterId);
+        }
+        $debit = (float) (clone $query)->sum('debit');
+        $credit = (float) (clone $query)->sum('credit');
+
+        return round($creditNature ? ($credit - $debit) : ($debit - $credit), 2);
     }
 
     private function periodFilter($q, ?string $from, ?string $to): void

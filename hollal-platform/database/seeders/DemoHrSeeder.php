@@ -291,6 +291,27 @@ class DemoHrSeeder extends Seeder
                 ]
             );
         }
+
+        // بدل انتداب — غير نشط افتراضياً ويُفعَّل يدوياً عند كل انتداب
+        foreach ([self::PHONE_PROJECTS, self::PHONE_EMPLOYEE, self::PHONE_EXECUTIVE] as $phone) {
+            $employee = $this->user($phone);
+            if (! $employee) {
+                continue;
+            }
+            SalaryComponent::query()->firstOrCreate(
+                [
+                    'employee_id' => $employee->id,
+                    'type' => SalaryComponent::TYPE_ALLOWANCE,
+                    'label_ar' => 'بدل انتداب',
+                ],
+                [
+                    'amount' => 0,
+                    'valid_from' => $validFrom,
+                    'valid_to' => null,
+                    'is_active' => false,
+                ]
+            );
+        }
     }
 
     /** 12 صف راتب على ثلاثة أشهر لاختبار فلتر الشهر والترقيم. */

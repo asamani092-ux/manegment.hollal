@@ -33,12 +33,12 @@ class AccountingCloseServiceTest extends TestCase
         $opening = $service->postOpeningBalance(5000, $user);
         $this->assertTrue($opening->isBalanced());
 
-        $bankId = \App\Models\ChartOfAccount::where('code', '1200')->value('id');
+        $bankId = \App\Models\ChartOfAccount::where('code', '112')->value('id');
         $rec = $service->reconcileBank($bankId, now()->startOfMonth()->toDateString(), now()->toDateString(), 0, $user);
         $this->assertSame('مكتمل', $rec->status);
 
-        $cash = \App\Models\ChartOfAccount::where('code', '1100')->firstOrFail();
-        $rev = \App\Models\ChartOfAccount::where('code', '4100')->firstOrFail();
+        $cash = \App\Models\ChartOfAccount::where('code', '111')->firstOrFail();
+        $rev = \App\Models\ChartOfAccount::where('code', '411')->firstOrFail();
         app(JournalService::class)->postManual('إيراد سنة', now()->toDateString(), [
             ['account_id' => $cash->id, 'debit' => 200, 'credit' => 0],
             ['account_id' => $rev->id, 'debit' => 0, 'credit' => 200],

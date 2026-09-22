@@ -48,7 +48,8 @@
                     إعدادات مرتبطة
                 </h2>
                 <ul class="ds-link-list">
-                    <li><a href="{{ route('settings.expenses') }}" class="ds-link">سلسلة اعتماد طلبات الصرف</a></li>
+                    <li><a href="{{ route('settings.expenses') }}" class="ds-link">سلسلة اعتماد طلبات الصرف (نمط قديم)</a></li>
+                    <li><a href="{{ route('settings.approval-rules') }}" class="ds-link">سلسلة الاعتماد (قواعد ديناميكية)</a></li>
                     <li><a href="{{ route('settings.notifications') }}" class="ds-link">إعدادات البريد والإشعارات</a></li>
                 </ul>
             </section>

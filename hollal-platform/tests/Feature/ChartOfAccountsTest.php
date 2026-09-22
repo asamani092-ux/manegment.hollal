@@ -42,10 +42,18 @@ class ChartOfAccountsTest extends TestCase
 
         $this->seed(ChartOfAccountsSeeder::class);
 
-        $this->assertDatabaseHas('chart_of_accounts', ['code' => '1100', 'name_ar' => 'الصندوق']);
-        $this->assertDatabaseHas('chart_of_accounts', ['code' => '5100', 'name_ar' => 'مصروفات تشغيلية']);
+        $this->assertDatabaseHas('chart_of_accounts', ['code' => '111', 'name_ar' => 'الصندوق']);
+        $this->assertDatabaseHas('chart_of_accounts', ['code' => '51', 'name_ar' => 'مصروفات تشغيلية']);
+        $this->assertDatabaseHas('chart_of_accounts', ['code' => '518', 'name_ar' => 'مصروفات متنوعة']);
+        $this->assertDatabaseHas('chart_of_accounts', ['code' => '112', 'name_ar' => 'بنك الراجحي']);
+        $this->assertDatabaseHas('chart_of_accounts', ['code' => '113', 'name_ar' => 'بنك الإنماء']);
         $this->assertNotNull($expense->fresh()->account_id);
         $this->assertNotNull($revenue->fresh()->account_id);
+
+        $cash = ChartOfAccount::where('code', '111')->firstOrFail();
+        $this->assertSame('11', $cash->parent()->value('code'));
+        $this->assertFalse((bool) ChartOfAccount::where('code', '1')->value('is_postable'));
+        $this->assertTrue((bool) $cash->is_postable);
     }
 
     public function test_tree_screen_opens_for_accountant(): void
@@ -56,7 +64,7 @@ class ChartOfAccountsTest extends TestCase
             ->get(route('chart-of-accounts.index'))
             ->assertOk()
             ->assertSee('دليل الحسابات')
-            ->assertSee('الصندوق');
+            ->assertSee('الأصول');
     }
 
     public function test_stranger_cannot_open_chart(): void

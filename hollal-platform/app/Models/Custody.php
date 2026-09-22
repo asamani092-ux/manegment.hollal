@@ -48,7 +48,13 @@ class Custody extends Model
 
     public function settledTotal(): float
     {
-        return (float) $this->settlementItems()->sum('amount');
+        // يفضّل الإجمالي شامل الضريبة؛ إن كان صفراً (بيانات قديمة) نرجع للمبلغ.
+        $withTax = (float) $this->settlementItems()->sum('total_amount');
+        if ($withTax > 0) {
+            return round($withTax, 2);
+        }
+
+        return round((float) $this->settlementItems()->sum('amount'), 2);
     }
 
     /** @return HasMany<CustodySettlementItem, $this> */
