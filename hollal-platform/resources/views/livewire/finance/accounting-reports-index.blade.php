@@ -5,7 +5,7 @@
         <div class="ds-btn-group">
             <button type="button" class="ds-btn {{ $tab === 'trial' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setTab('trial')">ميزان المراجعة</button>
             <button type="button" class="ds-btn {{ $tab === 'ledger' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setTab('ledger')">دفتر الأستاذ</button>
-            <button type="button" class="ds-btn {{ $tab === 'income' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setTab('income')">قائمة الدخل</button>
+            <button type="button" class="ds-btn {{ $tab === 'income' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setTab('income')">قائمة الأنشطة</button>
             <button type="button" class="ds-btn {{ $tab === 'balance' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setTab('balance')">المركز المالي</button>
             <button type="button" class="ds-btn {{ $tab === 'cash' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setTab('cash')">التدفقات النقدية</button>
         </div>
@@ -33,6 +33,9 @@
         @endif
         @if ($tab === 'trial')
             <button type="button" class="ds-btn ds-btn-outline" wire:click="downloadTrialPdf">تصدير PDF</button>
+        @endif
+        @if ($tab === 'cash')
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="downloadCashFlowPdf">تصدير PDF</button>
         @endif
     </div>
 
@@ -76,20 +79,32 @@
         </x-ds-table>
     @elseif ($tab === 'income')
         <div class="ds-card">
-            <p>الإيرادات: <strong class="ds-ltr-num">{{ number_format($income['revenues'], 2) }}</strong></p>
+            <h3 class="ds-section-heading">قائمة الأنشطة</h3>
+            <p>إيرادات غير مقيّدة: <strong class="ds-ltr-num">{{ number_format($income['unrestricted_revenue'], 2) }}</strong></p>
+            <p>إيرادات مقيّدة: <strong class="ds-ltr-num">{{ number_format($income['restricted_revenue'], 2) }}</strong></p>
+            <p>إجمالي الإيرادات: <strong class="ds-ltr-num">{{ number_format($income['total_revenue'], 2) }}</strong></p>
             <p>المصروفات: <strong class="ds-ltr-num">{{ number_format($income['expenses'], 2) }}</strong></p>
-            <p>الفائض / العجز: <strong class="ds-ltr-num">{{ number_format($income['surplus'], 2) }}</strong></p>
+            <p>التغيّر في صافي الأصول: <strong class="ds-ltr-num">{{ number_format($income['change_in_net_assets'], 2) }}</strong></p>
         </div>
     @elseif ($tab === 'balance')
         <div class="ds-card">
+            <h3 class="ds-section-heading">قائمة المركز المالي</h3>
             <p>الأصول: <strong class="ds-ltr-num">{{ number_format($balance['assets'], 2) }}</strong></p>
             <p>الخصوم: <strong class="ds-ltr-num">{{ number_format($balance['liabilities'], 2) }}</strong></p>
-            <p>حقوق الملكية (+ الفائض): <strong class="ds-ltr-num">{{ number_format($balance['equity'], 2) }}</strong></p>
+            <p>صافي أصول غير مقيّدة: <strong class="ds-ltr-num">{{ number_format($balance['unrestricted_net_assets'], 2) }}</strong></p>
+            <p>صافي أصول مقيّدة: <strong class="ds-ltr-num">{{ number_format($balance['restricted_net_assets'], 2) }}</strong></p>
+            <p>إجمالي صافي الأصول: <strong class="ds-ltr-num">{{ number_format($balance['total_net_assets'], 2) }}</strong></p>
             <p>متوازن: {{ $balance['balanced'] ? 'نعم' : 'لا' }}</p>
         </div>
     @else
         <div class="ds-card">
-            <p>صافي التدفق التشغيلي (الصندوق/البنك): <strong class="ds-ltr-num">{{ number_format($cash['operating'], 2) }}</strong></p>
+            <h3 class="ds-section-heading">قائمة التدفقات النقدية</h3>
+            <p>صافي النقد من التشغيل: <strong class="ds-ltr-num">{{ number_format($cash['operating'], 2) }}</strong></p>
+            <p>صافي النقد من الاستثمار: <strong class="ds-ltr-num">{{ number_format($cash['investing'], 2) }}</strong></p>
+            <p>صافي النقد من التمويل: <strong class="ds-ltr-num">{{ number_format($cash['financing'], 2) }}</strong></p>
+            <p>صافي التغيّر في النقد: <strong class="ds-ltr-num">{{ number_format($cash['net_change'], 2) }}</strong></p>
+            <p>رصيد النقد — أول المدة: <strong class="ds-ltr-num">{{ number_format($cash['opening_cash'], 2) }}</strong></p>
+            <p>رصيد النقد — آخر المدة: <strong class="ds-ltr-num">{{ number_format($cash['closing_cash'], 2) }}</strong></p>
         </div>
     @endif
 </x-ds-page>

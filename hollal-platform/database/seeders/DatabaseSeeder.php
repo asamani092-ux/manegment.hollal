@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
             PlatformSettingsSeeder::class,
             PlanTemplateSeeder::class,
             ChartOfAccountsSeeder::class,
+            ApprovalRulesSeeder::class,
             AdminUserSeeder::class,
             DemoTrialSeeder::class,
         ]);

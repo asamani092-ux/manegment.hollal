@@ -30,6 +30,23 @@ class ExpenseApprovalService
      */
     public function resolveStages(ExpenseRequest $expense): array
     {
+        $amount = round((float) $expense->amount, 2);
+        $dynamic = app(ApprovalChainService::class)->stepsFor('expense', $amount);
+        if ($dynamic !== []) {
+            $expense->loadMissing('requester.manager');
+            // تخطّي مدير القسم إن لم يوجد مدير وكان الإعداد يسمح
+            $settings = ExpenseSetting::current();
+            if (! ($expense->requester?->manager_id) && $settings->skip_missing_department_manager) {
+                $dynamic = array_values(array_filter(
+                    $dynamic,
+                    fn (string $s) => $s !== self::STAGE_DEPARTMENT_MANAGER
+                ));
+            }
+
+            return $dynamic !== [] ? $dynamic : [self::STAGE_EXECUTIVE, self::STAGE_FINANCE];
+        }
+
+        // مسار قديم: full / short
         $settings = ExpenseSetting::current();
         $expense->loadMissing('requester.manager');
 

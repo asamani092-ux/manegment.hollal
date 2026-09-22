@@ -43,13 +43,22 @@ class ChartOfAccount extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'code', 'name_ar', 'type', 'parent_id', 'nature', 'is_active',
+        'code', 'name_ar', 'type', 'parent_id', 'nature', 'is_active', 'is_postable',
     ];
 
     /** @return array<string, string> */
     protected function casts(): array
     {
-        return ['is_active' => 'boolean'];
+        return [
+            'is_active' => 'boolean',
+            'is_postable' => 'boolean',
+        ];
+    }
+
+    /** حساب المستوى الثالث القابل للقيد مباشرة. */
+    public function isLeafPostable(): bool
+    {
+        return (bool) ($this->is_postable ?? strlen((string) $this->code) === 3);
     }
 
     /** @param Builder<ChartOfAccount> $query */

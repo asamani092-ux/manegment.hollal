@@ -7,7 +7,10 @@
         wire:click="openRequestModal"
     />
 
-    <p class="ds-text-muted ds-mb-3">المسار: طلب ← اعتماد تنفيذي ← صرف. الرفض يظهر مع السبب ولا يُصرف.</p>
+    <p class="ds-text-muted ds-mb-3">
+        المسار: طلب (الموظف) ← اعتماد تنفيذي ← صرف مالية + إثبات ← تسوية متعددة الفواتير (مالية).
+        الرفض يظهر مع السبب ولا يُصرف.
+    </p>
 
     <div class="ds-filters-row">
         <div class="ds-filter-field">
@@ -45,6 +48,9 @@
                     @endif
                     @if ($canDisburse && $custody->status === \App\Models\Custody::STATUS_APPROVED)
                         <button type="button" class="ds-btn ds-btn-teal ds-btn-sm" wire:click="openDisburse({{ $custody->id }})">صرف</button>
+                    @endif
+                    @if ($canSettle && in_array($custody->status, [\App\Models\Custody::STATUS_DISBURSED, \App\Models\Custody::STATUS_SETTLING], true))
+                        <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openSettle({{ $custody->id }})">تسوية</button>
                     @endif
                 </div>
             </article>
@@ -84,6 +90,9 @@
                         @endif
                         @if ($canDisburse && $custody->status === \App\Models\Custody::STATUS_APPROVED)
                             <button type="button" class="ds-btn ds-btn-teal ds-btn-sm" wire:click="openDisburse({{ $custody->id }})">صرف</button>
+                        @endif
+                        @if ($canSettle && in_array($custody->status, [\App\Models\Custody::STATUS_DISBURSED, \App\Models\Custody::STATUS_SETTLING], true))
+                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openSettle({{ $custody->id }})">تسوية</button>
                         @endif
                     </td>
                 </tr>
@@ -140,6 +149,93 @@
         <x-slot:footer>
             <button type="button" class="ds-btn ds-btn-primary" wire:click="disburseCustody" wire:loading.attr="disabled" wire:target="disbursementProof,disburseCustody">تأكيد الصرف</button>
             <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('disbursingId', null)">إلغاء</button>
+        </x-slot:footer>
+    </x-ds-modal>
+
+    <x-ds-modal :show="$settlingId !== null" title="تسوية العهدة" close-action="$set('settlingId', null)" size="lg">
+        @if ($settlingCustody && $settleSummary)
+            <p class="ds-mb-2">
+                عهدة رقم {{ $settlingCustody->id }}
+                ({{ $settlingCustody->employee?->name }} —
+                <span class="ds-ltr-num">{{ number_format($settleSummary['custody_amount'], 2) }}</span> ر.س)
+            </p>
+
+            <h3 class="ds-section-heading">الفواتير</h3>
+            <div class="ds-table-wrap">
+                <x-ds-table>
+                    <x-slot:head>
+                        <tr>
+                            <th>المورد</th>
+                            <th>المبلغ</th>
+                            <th>الضريبة</th>
+                            <th>الإجمالي</th>
+                            <th>رقم الفاتورة</th>
+                            <th>الفئة</th>
+                            <th>مرفق</th>
+                            <th></th>
+                        </tr>
+                    </x-slot:head>
+                    @foreach ($settleInvoices as $i => $row)
+                        @php
+                            $amt = (float) ($row['amount'] ?? 0);
+                            $rate = (float) (($row['vat_rate'] ?? '') !== '' ? $row['vat_rate'] : 0.15);
+                            $vatAmt = round($amt * $rate, 2);
+                            $tot = round($amt + $vatAmt, 2);
+                        @endphp
+                        <tr wire:key="settle-row-{{ $i }}">
+                            <td><input type="text" class="ds-input" wire:model.live="settleInvoices.{{ $i }}.vendor_name"></td>
+                            <td><input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model.live="settleInvoices.{{ $i }}.amount"></td>
+                            <td class="ds-ltr-num">{{ number_format($vatAmt, 2) }}</td>
+                            <td class="ds-ltr-num">{{ number_format($tot, 2) }}</td>
+                            <td><input type="text" class="ds-input" wire:model="settleInvoices.{{ $i }}.invoice_number"></td>
+                            <td>
+                                <select class="ds-input" wire:model="settleInvoices.{{ $i }}.category_id">
+                                    <option value="">—</option>
+                                    @foreach ($categories as $cat)
+                                        <option value="{{ $cat->id }}">{{ $cat->name_ar }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
+                            <td>
+                                <input type="file" class="ds-input" wire:model="settleInvoiceFile" wire:click="attachFileToRow({{ $i }})" accept=".pdf,.jpg,.jpeg,.png">
+                                @if (! empty($row['invoice_file']))
+                                    <span class="ds-help-text">مرفق ✓</span>
+                                @endif
+                            </td>
+                            <td>
+                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="removeSettleInvoiceRow({{ $i }})">حذف</button>
+                            </td>
+                        </tr>
+                    @endforeach
+                    <tr>
+                        <th>المجموع</th>
+                        <th class="ds-ltr-num">{{ number_format($settleSummary['net'], 2) }}</th>
+                        <th class="ds-ltr-num">{{ number_format($settleSummary['vat'], 2) }}</th>
+                        <th class="ds-ltr-num">{{ number_format($settleSummary['total'], 2) }}</th>
+                        <th colspan="4"></th>
+                    </tr>
+                </x-ds-table>
+            </div>
+
+            <button type="button" class="ds-btn ds-btn-outline ds-mt-2" wire:click="addSettleInvoiceRow">+ إضافة فاتورة</button>
+
+            <div class="ds-card ds-mt-3">
+                <h3 class="ds-section-heading">ملخص التسوية</h3>
+                <p>مبلغ العهدة: <strong class="ds-ltr-num">{{ number_format($settleSummary['custody_amount'], 2) }}</strong> ر.س</p>
+                <p>إجمالي الفواتير: <strong class="ds-ltr-num">{{ number_format($settleSummary['total'], 2) }}</strong> ر.س</p>
+                @if ($settleSummary['claim'] > 0)
+                    <p>الفرق (مطالبة): <strong class="ds-ltr-num">{{ number_format($settleSummary['claim'], 2) }}</strong> ر.س — يُصرف للموظف</p>
+                @elseif ($settleSummary['return'] > 0)
+                    <p>الفرق (مرتجع): <strong class="ds-ltr-num">{{ number_format($settleSummary['return'], 2) }}</strong> ر.س — يُسترد من الموظف</p>
+                @else
+                    <p>متطابق — لا فرق</p>
+                @endif
+            </div>
+        @endif
+
+        <x-slot:footer>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="submitSettlement">تسوية العهدة</button>
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="$set('settlingId', null)">إلغاء</button>
         </x-slot:footer>
     </x-ds-modal>
 </x-ds-page>

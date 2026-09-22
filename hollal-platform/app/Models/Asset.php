@@ -26,7 +26,8 @@ class Asset extends Model
     /** @var list<string> */
     protected $fillable = [
         'code', 'name_ar', 'description', 'category_id', 'can_be_custody', 'purchase_date',
-        'purchase_amount', 'useful_life_years', 'purchase_expense_id', 'location', 'condition',
+        'purchase_amount', 'useful_life_years', 'useful_life_months', 'salvage_value',
+        'depreciation_start', 'purchase_expense_id', 'location', 'condition',
         'current_holder_id', 'holder_since',
     ];
 
@@ -38,6 +39,9 @@ class Asset extends Model
             'purchase_date' => 'date',
             'purchase_amount' => 'decimal:2',
             'useful_life_years' => 'integer',
+            'useful_life_months' => 'integer',
+            'salvage_value' => 'decimal:2',
+            'depreciation_start' => 'date',
             'holder_since' => 'date',
         ];
     }

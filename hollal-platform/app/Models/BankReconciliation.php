@@ -30,4 +30,10 @@ class BankReconciliation extends Model
     {
         return $this->belongsTo(ChartOfAccount::class, 'account_id');
     }
+
+    /** @return \Illuminate\Database\Eloquent\Relations\HasMany<BankStatementLine, $this> */
+    public function statementLines(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(BankStatementLine::class);
+    }
 }

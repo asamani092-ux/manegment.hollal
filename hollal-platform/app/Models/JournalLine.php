@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class JournalLine extends Model
 {
@@ -31,5 +32,11 @@ class JournalLine extends Model
     public function account(): BelongsTo
     {
         return $this->belongsTo(ChartOfAccount::class, 'account_id');
+    }
+
+    /** @return HasMany<BankStatementLine, $this> */
+    public function matchedStatementLines(): HasMany
+    {
+        return $this->hasMany(BankStatementLine::class, 'matched_journal_line_id');
     }
 }

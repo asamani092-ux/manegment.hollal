@@ -10,7 +10,7 @@ use Livewire\Component;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * FIN-ACC-3/4 — ledger, trial balance, income statement, balance sheet, cash flow.
+ * FIN-ACC-3/4 — ledger, trial balance, nonprofit statements, cash flow.
  */
 class AccountingReportsIndex extends Component
 {
@@ -44,6 +44,16 @@ class AccountingReportsIndex extends Component
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf;
         }, 'trial-balance.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    public function downloadCashFlowPdf(): StreamedResponse
+    {
+        $this->authorize('finance.accounting.manage');
+        $pdf = app(AccountingReportService::class)->cashFlowPdf($this->from ?: null, $this->to ?: null);
+
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf;
+        }, 'cash-flow.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     public function render(): View

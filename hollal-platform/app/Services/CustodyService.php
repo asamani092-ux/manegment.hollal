@@ -7,8 +7,8 @@ use App\Models\CustodySettlementItem;
 use App\Models\User;
 
 /**
- * 04-B3 — custody lifecycle with the fixed chain employee → executive → finance
- * and a reconciliation gate (disbursed = Σ settlement items + returned).
+ * دورة حياة العهدة: طلب → اعتماد → صرف → تسوية متعددة الفواتير → إغلاق.
+ * Time: O(items) | Space: O(1)
  */
 class CustodyService
 {
@@ -74,18 +74,49 @@ class CustodyService
         return $custody;
     }
 
-    public function addSettlementItem(Custody $custody, string $description, float $amount, ?int $categoryId = null, ?string $invoiceFile = null): CustodySettlementItem
-    {
+    /**
+     * @param  array{description?: string, amount?: float, vat_rate?: float, category_id?: ?int, invoice_number?: ?string, invoice_date?: ?string, invoice_file?: ?string, vendor_name?: ?string}|string  $descriptionOrData
+     */
+    public function addSettlementItem(
+        Custody $custody,
+        array|string $descriptionOrData,
+        float $amount = 0,
+        ?int $categoryId = null,
+        ?string $invoiceFile = null,
+    ): CustodySettlementItem {
+        if (is_string($descriptionOrData)) {
+            $data = [
+                'description' => $descriptionOrData,
+                'amount' => $amount,
+                'category_id' => $categoryId,
+                'invoice_file' => $invoiceFile,
+                'vat_rate' => 0.0, // اختبارات قديمة بلا ضريبة
+            ];
+        } else {
+            $data = $descriptionOrData;
+        }
+
         if (! in_array($custody->status, [Custody::STATUS_DISBURSED, Custody::STATUS_SETTLING], true)) {
             throw new \RuntimeException('لا يمكن تسوية عهدة قبل صرفها.');
         }
 
+        $tax = CustodySettlementItem::computeTax(
+            (float) ($data['amount'] ?? 0),
+            (float) ($data['vat_rate'] ?? 0.15),
+        );
+
         $item = CustodySettlementItem::create([
             'custody_id' => $custody->id,
-            'description' => $description,
-            'amount' => $amount,
-            'category_id' => $categoryId,
-            'invoice_file' => $invoiceFile,
+            'description' => (string) ($data['description'] ?? ''),
+            'amount' => $tax['amount'],
+            'vat_rate' => $tax['vat_rate'],
+            'vat_amount' => $tax['vat_amount'],
+            'total_amount' => $tax['total_amount'],
+            'category_id' => $data['category_id'] ?? null,
+            'invoice_number' => $data['invoice_number'] ?? null,
+            'invoice_date' => $data['invoice_date'] ?? null,
+            'invoice_file' => $data['invoice_file'] ?? null,
+            'vendor_name' => $data['vendor_name'] ?? null,
         ]);
 
         $custody->update(['status' => Custody::STATUS_SETTLING]);
@@ -94,25 +125,54 @@ class CustodyService
     }
 
     /**
-     * Finance verifies the match and closes: disbursed = Σ items + returned.
+     * إغلاق التسوية: إن زاد إجمالي الفواتير عن المصروف يُحتسب مطالبة للموظف، وإلا مرتجع.
      */
-    public function close(Custody $custody, float $returnedAmount = 0): Custody
+    public function close(Custody $custody, ?float $returnedAmount = null): Custody
     {
-        $this->assertStatus($custody, Custody::STATUS_SETTLING, 'الإغلاق');
-
-        $disbursed = (float) $custody->disbursed_amount;
-        $reconciled = round($custody->settledTotal() + $returnedAmount, 2);
-
-        if (round($disbursed, 2) !== $reconciled) {
-            throw new \RuntimeException('عدم تطابق التسوية: المصروف '.$disbursed.' ≠ البنود + المرتجع '.$reconciled);
+        if (! in_array($custody->status, [Custody::STATUS_SETTLING, Custody::STATUS_DISBURSED], true)) {
+            throw new \RuntimeException('حالة العهدة لا تسمح بالإغلاق.');
         }
 
-        $custody->update(['status' => Custody::STATUS_CLOSED, 'returned_amount' => $returnedAmount]);
+        if ($custody->settlementItems()->count() === 0) {
+            throw new \RuntimeException('أضف فاتورة تسوية واحدة على الأقل قبل الإغلاق.');
+        }
+
+        $disbursed = round((float) $custody->disbursed_amount, 2);
+        $itemsTotal = $custody->settledTotal();
+        $diff = round($itemsTotal - $disbursed, 2);
+
+        if ($returnedAmount === null) {
+            $returnedAmount = $diff < 0 ? abs($diff) : 0.0;
+        }
+
+        $claim = $diff > 0 ? $diff : 0.0;
+        $returnedAmount = round((float) $returnedAmount, 2);
+
+        // التحقق: مصروف + مطالبة = فواتير، أو مصروف = فواتير + مرتجع
+        $left = round($disbursed + $claim, 2);
+        $right = round($itemsTotal + ($claim > 0 ? 0 : $returnedAmount), 2);
+        if ($claim > 0) {
+            $right = $itemsTotal;
+            $left = round($disbursed + $claim, 2);
+        } else {
+            $left = $disbursed;
+            $right = round($itemsTotal + $returnedAmount, 2);
+        }
+
+        if (abs($left - $right) >= 0.005) {
+            throw new \RuntimeException('عدم تطابق التسوية: المصروف '.$disbursed.' والفواتير '.$itemsTotal);
+        }
+
+        $custody->update([
+            'status' => Custody::STATUS_CLOSED,
+            'returned_amount' => $returnedAmount,
+        ]);
 
         try {
-            app(JournalService::class)->postCustodySettled($custody->fresh(['category.account', 'settlementItems']));
+            app(JournalService::class)->postCustodySettled($custody->fresh(['category.account', 'settlementItems.category.account']));
         } catch (\Throwable $e) {
             report($e);
+            throw $e;
         }
 
         return $custody;

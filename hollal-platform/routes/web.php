@@ -73,6 +73,7 @@ use App\Livewire\Projects\VisitsIndex;
 use App\Livewire\Reports\AuditLogIndex;
 use App\Livewire\Reports\ReportsCenter;
 use App\Livewire\Reports\ReportsIndex;
+use App\Livewire\Settings\ApprovalRulesIndex;
 use App\Livewire\Settings\ExpenseSettingsIndex;
 use App\Livewire\Settings\GrantsIndex;
 use App\Livewire\Settings\MailSettingsIndex;
@@ -278,6 +279,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/settings/expenses', ExpenseSettingsIndex::class)
         ->middleware('permission:settings.manage')
         ->name('settings.expenses');
+
+    Route::get('/settings/approval-rules', ApprovalRulesIndex::class)
+        ->middleware('permission:settings.manage')
+        ->name('settings.approval-rules');
 
     Route::get('/settings/notifications', MailSettingsIndex::class)
         ->middleware('permission:settings.notifications.manage')

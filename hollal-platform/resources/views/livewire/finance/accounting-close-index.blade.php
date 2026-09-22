@@ -34,7 +34,17 @@
             <x-ds-form-group label="من"><input type="date" class="ds-input" wire:model="from"></x-ds-form-group>
             <x-ds-form-group label="إلى"><input type="date" class="ds-input" wire:model="to"></x-ds-form-group>
         </div>
-        <button type="button" class="ds-btn" wire:click="reconcile">مطابقة</button>
+        <div class="ds-page-toolbar ds-mb-2">
+            <button type="button" class="ds-btn" wire:click="reconcile">مطابقة</button>
+        </div>
+
+        <x-ds-form-group label="رفع كشف البنك (CSV)" :error="$errors->first('statementFile')">
+            <input type="file" class="ds-input" wire:model="statementFile" accept=".csv,.txt,.xlsx,.xls">
+            <p class="ds-help-text">الأعمدة: التاريخ، الوصف، مدين، دائن، الرصيد [, مرجع]</p>
+            <div wire:loading wire:target="statementFile" class="ds-help-text">جاري الرفع…</div>
+        </x-ds-form-group>
+        <button type="button" class="ds-btn ds-btn-primary" wire:click="importStatement" wire:loading.attr="disabled">رفع كشف البنك</button>
+
         <x-ds-table>
             <x-slot:head><tr><th>الفترة</th><th>الكشف</th><th>الدفتر</th><th>الفرق</th><th>الحالة</th></tr></x-slot:head>
             @foreach ($reconciliations as $r)
@@ -47,6 +57,22 @@
                 </tr>
             @endforeach
         </x-ds-table>
+
+        @if ($statementLines->isNotEmpty())
+            <h3 class="ds-section-heading ds-mt-3">أسطر الكشف المستورد</h3>
+            <x-ds-table>
+                <x-slot:head><tr><th>التاريخ</th><th>الوصف</th><th>مدين</th><th>دائن</th><th>المطابقة</th></tr></x-slot:head>
+                @foreach ($statementLines as $line)
+                    <tr>
+                        <td dir="ltr">{{ $line->transaction_date?->format('Y-m-d') }}</td>
+                        <td>{{ $line->description }}</td>
+                        <td class="ds-ltr-num">{{ number_format((float) $line->debit, 2) }}</td>
+                        <td class="ds-ltr-num">{{ number_format((float) $line->credit, 2) }}</td>
+                        <td>{{ $line->match_status }}</td>
+                    </tr>
+                @endforeach
+            </x-ds-table>
+        @endif
     </section>
 
     <section class="ds-section ds-mb-3">

@@ -35,8 +35,8 @@ class JournalServiceTest extends TestCase
     public function test_manual_entry_must_balance(): void
     {
         $user = User::factory()->create(['must_change_password' => false]);
-        $cash = ChartOfAccount::where('code', '1100')->firstOrFail();
-        $expense = ChartOfAccount::where('code', '5100')->firstOrFail();
+        $cash = ChartOfAccount::where('code', '111')->firstOrFail();
+        $expense = ChartOfAccount::where('code', '518')->firstOrFail();
 
         $this->expectException(\InvalidArgumentException::class);
         app(JournalService::class)->postManual('غير متوازن', now()->toDateString(), [
@@ -48,8 +48,8 @@ class JournalServiceTest extends TestCase
     public function test_manual_balanced_entry_posts(): void
     {
         $user = User::factory()->create(['must_change_password' => false]);
-        $cash = ChartOfAccount::where('code', '1100')->firstOrFail();
-        $expense = ChartOfAccount::where('code', '5100')->firstOrFail();
+        $cash = ChartOfAccount::where('code', '111')->firstOrFail();
+        $expense = ChartOfAccount::where('code', '518')->firstOrFail();
 
         $entry = app(JournalService::class)->postManual('تسوية', now()->toDateString(), [
             ['account_id' => $expense->id, 'debit' => 100, 'credit' => 0],
@@ -65,7 +65,7 @@ class JournalServiceTest extends TestCase
     {
         $category = ExpenseCategory::create([
             'name_ar' => 'تشغيل',
-            'account_id' => ChartOfAccount::where('code', '5100')->value('id'),
+            'account_id' => ChartOfAccount::where('code', '518')->value('id'),
             'is_active' => true,
         ]);
         $expense = ExpenseRequest::create([
@@ -92,7 +92,7 @@ class JournalServiceTest extends TestCase
     {
         $revCat = RevenueCategory::create([
             'name_ar' => 'منح',
-            'account_id' => ChartOfAccount::where('code', '4100')->value('id'),
+            'account_id' => ChartOfAccount::where('code', '411')->value('id'),
             'is_active' => true,
         ]);
 
