@@ -1,7 +1,11 @@
 # نشر تجريبي على Coolify — منصة حلّل
 # Base Directory: /hollal-platform
 # Docker Compose Location: /docker-compose.coolify.yml
-# Domains for app: ضع الرابط بدون منفذ (التطبيق يستمع على 80)
+#
+# Domains for app (مهم):
+#   https://xxxx.sslip.io
+# بدون :8080 — التطبيق يستمع على 80
+# افتح الموقع بـ https وليس http
 
 services:
   app:
@@ -22,12 +26,10 @@ services:
       - hollal_logs:/app/storage/logs
     depends_on:
       - db
-    healthcheck:
-      test: ["CMD-SHELL", "php -r \"exit(@file_get_contents('http://127.0.0.1:80/up')===false?1:0);\""]
-      interval: 30s
-      timeout: 10s
-      retries: 8
-      start_period: 180s
+    # لا تضع healthcheck هنا — ترافيك يستبعد الحاوية غير الصحية → 503
+    # أثناء migrate/seed قبل تشغيل الخادم
+    labels:
+      - traefik.http.services.app.loadbalancer.server.port=80
     expose:
       - "80"
     restart: unless-stopped
