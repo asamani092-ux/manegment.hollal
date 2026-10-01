@@ -8,7 +8,6 @@ services:
       dockerfile: Dockerfile
     environment:
       CONTAINER_ROLE: web
-      PORT: "80"
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: "3306"

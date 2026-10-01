@@ -29,7 +29,6 @@ RUN composer dump-autoload --optimize \
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-ENV PORT=80
 ENV CONTAINER_ROLE=web
 
 EXPOSE 80
