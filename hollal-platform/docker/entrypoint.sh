@@ -2,8 +2,6 @@
 set -e
 
 ROLE="${CONTAINER_ROLE:-web}"
-# كولفاي قد يحقن PORT بقيمة أخرى — ثبّت 80 لتطابق ترافيك
-WEB_PORT=80
 
 mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs storage/app/private bootstrap/cache
 chmod -R ug+rwx storage bootstrap/cache || true
@@ -12,6 +10,27 @@ if [ -z "$APP_KEY" ]; then
   echo "ERROR: APP_KEY is not set. Generate: php artisan key:generate --show"
   exit 1
 fi
+
+start_web_servers() {
+  # ابدأ الاستماع فوراً قبل انتظار DB — وإلا ترافيك يعيد Bad Gateway
+  # استمع على 80 و8080 لتغطية إعداد النطاق في كولفاي أياً كان
+  echo "Starting web listeners on 0.0.0.0:80 and 0.0.0.0:8080"
+  php -S 0.0.0.0:80 -t /app/public /app/docker/router.php &
+  PID80=$!
+  php -S 0.0.0.0:8080 -t /app/public /app/docker/router.php &
+  PID8080=$!
+  sleep 1
+
+  if ! kill -0 "$PID80" 2>/dev/null; then
+    echo "ERROR: failed to bind port 80"
+    exit 1
+  fi
+  if ! kill -0 "$PID8080" 2>/dev/null; then
+    echo "ERROR: failed to bind port 8080"
+    exit 1
+  fi
+  echo "Web listeners are up (pids ${PID80}, ${PID8080})"
+}
 
 wait_for_database() {
   if [ -z "$DB_HOST" ] || [ "$DB_CONNECTION" != "mysql" ]; then
@@ -38,19 +57,7 @@ wait_for_database() {
   done
 }
 
-wait_for_database
-
-if [ "$ROLE" = "web" ]; then
-  echo "Starting web server on 0.0.0.0:${WEB_PORT} (before migrate, to avoid Bad Gateway)"
-  php -S "0.0.0.0:${WEB_PORT}" -t /app/public /app/docker/router.php &
-  SERVER_PID=$!
-  sleep 1
-
-  if ! kill -0 "$SERVER_PID" 2>/dev/null; then
-    echo "ERROR: web server failed to start on port ${WEB_PORT}"
-    exit 1
-  fi
-
+bootstrap_laravel() {
   set +e
   echo "Running migrations..."
   php artisan migrate --force --no-interaction
@@ -67,14 +74,22 @@ if [ "$ROLE" = "web" ]; then
   set -e
 
   if [ "$MIGRATE_STATUS" -ne 0 ]; then
-    echo "WARNING: migrate exited with status ${MIGRATE_STATUS} — server kept running"
+    echo "WARNING: migrate exited with status ${MIGRATE_STATUS} — listeners kept running"
   else
     echo "Bootstrap finished."
   fi
+}
 
-  wait "$SERVER_PID"
+if [ "$ROLE" = "web" ]; then
+  start_web_servers
+  wait_for_database
+  bootstrap_laravel
+  # أبقِ الحاوية حية طالما أحد المستمعين يعمل
+  wait "$PID80" "$PID8080"
   exit $?
 fi
+
+wait_for_database
 
 if [ "$ROLE" = "queue" ]; then
   php artisan config:cache

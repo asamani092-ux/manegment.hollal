@@ -26,9 +26,10 @@ services:
     depends_on:
       - db
     # ممنوع healthcheck على app
-    # الخادم يُقلع على 80 فوراً داخل entrypoint لتفادي Bad Gateway
+    # الاستماع يبدأ فوراً على 80 و8080 قبل انتظار DB
     expose:
       - "80"
+      - "8080"
     restart: unless-stopped
 
   queue:
