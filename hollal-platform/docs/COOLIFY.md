@@ -10,6 +10,7 @@
 |--------|----------------|
 | `404 page not found` على http | البروكسي لا يخدم http لهذا النطاق — استخدم https |
 | `no available server` على https | حاوية `app` غير صحية أو لا تستمع؛ سابقاً بسبب `healthcheck` أثناء migrate |
+| `HTTP ERROR 500` | خطأ داخل لارافيل (غالباً إعدادات/قاعدة بيانات) — مع `APP_DEBUG=true` تظهر الرسالة في المتصفح وسجلات `app` |
 | `Bad Gateway` | لا استماع على منفذ البروكسي أثناء انتظار DB — الآن يُقلع على 80 و8080 فوراً قبل أي انتظار |
 | `ERROR: APP_KEY is not set` | المتغير غير مضاف في Coolify |
 | `database not ready` | بيانات `DB_*` ناقصة أو حجم MySQL قديم بكلمة مرور مختلفة |
@@ -36,7 +37,7 @@
 ```env
 APP_NAME=منصة حلل
 APP_ENV=production
-APP_DEBUG=false
+APP_DEBUG=true
 APP_URL=https://s1jdubrp1eit4tuqu6v1y0hu.91.98.234.130.sslip.io
 APP_KEY=base64:aVHAfOAajbqY5UEkbHhSxk9+bExXQfN0nEdNyhzCPGc=
 APP_LOCALE=ar

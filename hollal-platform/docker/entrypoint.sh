@@ -2,6 +2,7 @@
 set -e
 
 ROLE="${CONTAINER_ROLE:-web}"
+SERVER_PHP="/app/vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php"
 
 mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs storage/app/private bootstrap/cache
 chmod -R ug+rwx storage bootstrap/cache || true
@@ -12,12 +13,20 @@ if [ -z "$APP_KEY" ]; then
 fi
 
 start_web_servers() {
-  # ابدأ الاستماع فوراً قبل انتظار DB — وإلا ترافيك يعيد Bad Gateway
-  # استمع على 80 و8080 لتغطية إعداد النطاق في كولفاي أياً كان
-  echo "Starting web listeners on 0.0.0.0:80 and 0.0.0.0:8080"
-  php -S 0.0.0.0:80 -t /app/public /app/docker/router.php &
+  # راوتر لارافيل الرسمي مع cwd=public — يتجنب 500 الناتج عن راوتر مخصص
+  # الاستماع فوراً قبل انتظار DB على 80 و8080
+  echo "Starting Laravel PHP servers on :80 and :8080"
+  (
+    cd /app/public
+    exec php -d display_errors=stderr -d log_errors=1 -d error_log=/proc/self/fd/2 \
+      -S 0.0.0.0:80 "$SERVER_PHP"
+  ) &
   PID80=$!
-  php -S 0.0.0.0:8080 -t /app/public /app/docker/router.php &
+  (
+    cd /app/public
+    exec php -d display_errors=stderr -d log_errors=1 -d error_log=/proc/self/fd/2 \
+      -S 0.0.0.0:8080 "$SERVER_PHP"
+  ) &
   PID8080=$!
   sleep 1
 
@@ -59,6 +68,12 @@ wait_for_database() {
 
 bootstrap_laravel() {
   set +e
+  # تجنّب config:cache على Coolify — غالباً يسبب 500 عند اختلاف المتغيرات
+  php artisan config:clear
+  php artisan route:clear
+  php artisan view:clear
+  php artisan cache:clear 2>/dev/null
+
   echo "Running migrations..."
   php artisan migrate --force --no-interaction
   MIGRATE_STATUS=$?
@@ -67,10 +82,6 @@ bootstrap_laravel() {
     echo "Running seeders..."
     php artisan db:seed --force --no-interaction
   fi
-
-  php artisan config:cache
-  php artisan route:cache
-  php artisan view:cache
   set -e
 
   if [ "$MIGRATE_STATUS" -ne 0 ]; then
@@ -84,7 +95,6 @@ if [ "$ROLE" = "web" ]; then
   start_web_servers
   wait_for_database
   bootstrap_laravel
-  # أبقِ الحاوية حية طالما أحد المستمعين يعمل
   wait "$PID80" "$PID8080"
   exit $?
 fi
@@ -92,12 +102,12 @@ fi
 wait_for_database
 
 if [ "$ROLE" = "queue" ]; then
-  php artisan config:cache
+  php artisan config:clear
   exec php artisan queue:work database --sleep=3 --tries=3 --max-time=3600
 fi
 
 if [ "$ROLE" = "scheduler" ]; then
-  php artisan config:cache
+  php artisan config:clear
   while true; do
     php artisan schedule:run --verbose --no-interaction
     sleep 60
