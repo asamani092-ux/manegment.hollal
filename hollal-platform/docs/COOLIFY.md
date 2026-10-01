@@ -1,41 +1,43 @@
 # نشر تجريبي على Coolify (VPS)
 
-دليل رفع منصة حلّل على Coolify للتجربة على نطاقك، قبل النقل لاحقاً إلى Hostinger العميل.
+النشر دائماً من الفرع `main` فقط.
 
 ---
 
-## 1. ما أُعدّ في المستودع
+## تشخيص الأعطال التي ظهرت
 
-| ملف | الغرض |
-|-----|--------|
-| `hollal-platform/Dockerfile` | صورة PHP 8.3 + GD + MySQL |
-| `hollal-platform/docker-compose.coolify.yml` | تطبيق + طابور + مجدوّل + MySQL |
-| `hollal-platform/docker/entrypoint.sh` | ترحيل / بذرة / تشغيل حسب الدور |
+| العرض | السبب الحقيقي |
+|--------|----------------|
+| `404 page not found` على http | البروكسي لا يخدم http لهذا النطاق — استخدم https |
+| `no available server` على https | حاوية `app` غير صحية أو لا تستمع بعد؛ في `main` القديم كان `healthcheck` يفشل أثناء migrate قبل تشغيل الخادم فيستبعد ترافيك الحاوية |
+| `ERROR: APP_KEY is not set` | المتغير غير مضاف في Coolify |
+| `database not ready` | بيانات `DB_*` ناقصة أو حجم MySQL قديم بكلمة مرور مختلفة |
 
 ---
 
-## 2. إعداد Coolify (من لوحتك)
+## إعداد Coolify (مرة واحدة)
 
-1. **New Resource → Application** من مستودع GitHub: `asamani092-ux/manegment.hollal`
-2. الفرع: `main` (أو `cursor/coolify-port-80-d8fc` حتى الدمج)
+1. Resource من المستودع `asamani092-ux/manegment.hollal`
+2. **Branch:** `main`
 3. **Build Pack:** Docker Compose
 4. **Base Directory:** `/hollal-platform`
 5. **Docker Compose Location:** `/docker-compose.coolify.yml`
-6. **Domains for app:** الرابط فقط بدون منفذ (التطبيق يستمع على 80)
-7. فعّل HTTPS (Let's Encrypt من Coolify) إن رغبت
+6. **Domains for app:**  
+   `https://s1jdubrp1eit4tuqu6v1y0hu.91.98.234.130.sslip.io`  
+   بدون `:8080` وبدون `:80` — اترك queue/scheduler فارغين
+7. احفظ ثم **Redeploy**
+8. افتح: `https://.../login` (https فقط)
 
 ---
 
-## 3. متغيرات البيئة (Environment Variables)
-
-ضع هذه القيم في Coolify (Shared / للخدمات كلها عدا ما يخص MySQL فقط):
+## متغيرات البيئة
 
 ```env
 APP_NAME=منصة حلل
 APP_ENV=production
 APP_DEBUG=false
-APP_URL=https://hollal.yourdomain.com
-APP_KEY=base64:XXXX   # ولّدها محلياً: php artisan key:generate --show
+APP_URL=https://s1jdubrp1eit4tuqu6v1y0hu.91.98.234.130.sslip.io
+APP_KEY=base64:aVHAfOAajbqY5UEkbHhSxk9+bExXQfN0nEdNyhzCPGc=
 APP_LOCALE=ar
 
 DB_CONNECTION=mysql
@@ -43,8 +45,8 @@ DB_HOST=db
 DB_PORT=3306
 DB_DATABASE=hollal
 DB_USERNAME=hollal
-DB_PASSWORD=كلمة_قوية
-DB_ROOT_PASSWORD=كلمة_جذر_قوية
+DB_PASSWORD=HollalDb2026!
+DB_ROOT_PASSWORD=HollalRoot2026!
 
 SESSION_DRIVER=database
 SESSION_LIFETIME=60
@@ -57,41 +59,26 @@ FILESYSTEM_DISK=local
 LOG_CHANNEL=stderr
 LOG_LEVEL=warning
 
-ADMIN_INITIAL_PASSWORD=كلمة_مدير_أولى
+ADMIN_INITIAL_PASSWORD=12341234
 RUN_SEED=true
 ```
 
-> بعد أول نشر ناجح غيّر `RUN_SEED=false` حتى لا تُعاد البذرة في كل إعادة نشر.
+بعد أول دخول ناجح: `RUN_SEED=false`.
+
+إن غيّرت كلمات مرور DB بعد نشر سابق: احذف حجم `hollal_mysql` من Storages ثم Redeploy.
 
 ---
 
-## 4. بعد أول Deploy
+## الدخول
 
-1. افتح `https://نطاقك/login`
-2. الجوال: `0500000000`
-3. كلمة المرور: قيمة `ADMIN_INITIAL_PASSWORD`
-4. غيّر كلمة المرور عند الطلب
-5. عطّل `RUN_SEED` في Coolify واحفظ
+- الجوال: `0500000000`
+- كلمة المرور: قيمة `ADMIN_INITIAL_PASSWORD`
 
 ---
 
-## 5. ملاحظات مهمة
+## ملاحظات
 
-- التخزين على volume دائم (`hollal_storage`) — المرفقات لا تُفقد عند إعادة النشر
-- الطابور والمجدول يعملان كحاويات منفصلة
-- للانتقال لاحقاً إلى Hostinger: صدّر MySQL + انسخ `storage/app` ثم اتبع `docs/DEPLOYMENT.md`
-- لا ترفع أسراراً إلى Git — كلها من لوحة Coolify فقط
-
----
-
-## 6. وصول الوكيل للمساعدة في النشر
-
-إن احتجت مساعدة مباشرة من الوكيل على السيرفر:
-
-1. أضف عنوان لوحة Coolify (مثال `https://coolify.yourdomain.com`)
-2. أنشئ مستخدماً بصلاحية Deploy فقط (لا root كامل إن أمكن) وأرسل بيانات الدخول عبر قناة آمنة / Secrets في Cursor
-3. أو: اربط المستودع بـ GitHub App في Coolify ثم اضغط Deploy بعد دمج هذا الفرع — غالباً يكفي بلا مشاركة كلمة مرور
-
----
-
-*للإنتاج النهائي عند العميل استخدم Hostinger حسب `DEPLOYMENT.md`.*
+- التطبيق يستمع داخل الحاوية على المنفذ 80
+- لا تُضف healthcheck لخدمة `app` في Compose
+- التخزين على `hollal_storage`
+- للإنتاج النهائي عند العميل: `docs/DEPLOYMENT.md` (Hostinger)

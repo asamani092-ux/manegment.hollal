@@ -11,30 +11,39 @@ if [ -z "$APP_KEY" ]; then
   exit 1
 fi
 
-# انتظار قاعدة البيانات (MySQL على Coolify)
-if [ -n "$DB_HOST" ] && [ "$DB_CONNECTION" = "mysql" ]; then
+wait_for_database() {
+  if [ -z "$DB_HOST" ] || [ "$DB_CONNECTION" != "mysql" ]; then
+    return 0
+  fi
+
   if [ -z "$DB_DATABASE" ] || [ -z "$DB_USERNAME" ] || [ -z "$DB_PASSWORD" ]; then
     echo "ERROR: DB_DATABASE / DB_USERNAME / DB_PASSWORD must be set"
     exit 1
   fi
+
   echo "Waiting for database ${DB_HOST}:${DB_PORT:-3306} db=${DB_DATABASE} user=${DB_USERNAME}..."
   i=0
-  last_err=""
-  until last_err=$(php -r "try { new PDO('mysql:host='.getenv('DB_HOST').';port='.(getenv('DB_PORT')?:3306).';dbname='.getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD')); exit(0);} catch (Throwable \$e) { fwrite(STDERR, \$e->getMessage()); exit(1);}" 2>&1); do
-    i=$((i+1))
-    if [ "$i" -ge 90 ]; then
-      echo "ERROR: database not ready after ${i} attempts: ${last_err}"
-      exit 1
+  while true; do
+    if err=$(php -r "try { new PDO('mysql:host='.getenv('DB_HOST').';port='.(getenv('DB_PORT')?:3306).';dbname='.getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD')); exit(0);} catch (Throwable \$e) { fwrite(STDERR, \$e->getMessage()); exit(1);}" 2>&1); then
+      echo "Database is ready."
+      return 0
+    fi
+    i=$((i + 1))
+    if [ $((i % 15)) -eq 0 ]; then
+      echo "Still waiting for database (attempt ${i}): ${err}"
     fi
     sleep 2
   done
-  echo "Database is ready."
-fi
+}
+
+wait_for_database
 
 if [ "$ROLE" = "web" ]; then
+  echo "Running migrations..."
   php artisan migrate --force --no-interaction
 
   if [ "$RUN_SEED" = "true" ]; then
+    echo "Running seeders..."
     php artisan db:seed --force --no-interaction
   fi
 
@@ -42,6 +51,7 @@ if [ "$ROLE" = "web" ]; then
   php artisan route:cache
   php artisan view:cache
 
+  echo "Starting web server on 0.0.0.0:${PORT:-80}"
   exec php artisan serve --host=0.0.0.0 --port="${PORT:-80}"
 fi
 
