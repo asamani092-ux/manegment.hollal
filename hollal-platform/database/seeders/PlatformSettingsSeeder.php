@@ -87,15 +87,18 @@ class PlatformSettingsSeeder extends Seeder
     private function seedAssetCategories(): void
     {
         $categories = [
-            ['أجهزة حاسب', true],
-            ['أجهزة عرض', true],
-            ['أثاث مكتبي', false],
-            ['مركبات', false],
-            ['أخرى', false],
+            ['أجهزة حاسب', true, '122'],
+            ['أجهزة عرض', true, '122'],
+            ['أثاث مكتبي', false, '121'],
+            ['مركبات', false, '121'],
+            ['أخرى', false, '121'],
         ];
 
-        foreach ($categories as [$name, $custody]) {
-            AssetCategory::firstOrCreate(['name_ar' => $name], ['can_be_custody' => $custody]);
+        foreach ($categories as [$name, $custody, $accountCode]) {
+            AssetCategory::updateOrCreate(
+                ['name_ar' => $name],
+                ['can_be_custody' => $custody, 'default_account_code' => $accountCode]
+            );
         }
     }
 }

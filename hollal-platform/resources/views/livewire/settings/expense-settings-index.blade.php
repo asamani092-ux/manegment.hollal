@@ -12,8 +12,8 @@
 
     <section class="ds-section">
         <form wire:submit="save">
-            <x-ds-form-group label="نمط السلسلة (احتياطي)" for="chain-mode" :error="$errors->first('chain_mode')" hint="يُستخدم فقط عند غياب قاعدة ديناميكية مطابقة.">
-                <select id="chain-mode" class="ds-input" wire:model="chain_mode">
+            <x-ds-form-group label="نمط السلسلة (مهجور)" for="chain-mode" hint="مسار الاعتماد أصبح من قواعد الاعتماد الديناميكية فقط — هذا الحقل للعرض ولا يُحفظ.">
+                <select id="chain-mode" class="ds-input" wire:model="chain_mode" disabled>
                     <option value="full">كامل: مقدم الطلب ← مدير القسم ← التنفيذي ← المالية</option>
                     <option value="short">مختصر: مقدم الطلب ← التنفيذي ← المالية</option>
                 </select>

@@ -26,6 +26,9 @@ class ApprovalChainService
                 $q->whereNull('max_amount')->orWhere('max_amount', '>=', $amount);
             })
             ->orderByDesc('min_amount')
+            // عند تساوي الحد الأدنى فضّل النطاق الأضيق قبل قاعدة catch-all
+            ->orderByRaw('CASE WHEN max_amount IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('max_amount')
             ->first();
 
         if (! $rule) {

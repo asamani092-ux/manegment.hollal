@@ -83,10 +83,11 @@ class RevenuesIndex extends Component
         abort_unless(auth()->user()->can('finance.revenues.manage'), 403);
         $this->validate([
             'amount' => 'required|numeric|min:0.01',
-            'category_id' => 'nullable|exists:revenue_categories,id',
+            'category_id' => 'required|exists:revenue_categories,id',
             'received_at' => 'required|date',
             'evidence' => 'required|file|max:10240|mimes:pdf,jpg,jpeg,png',
         ], [
+            'category_id.required' => 'يجب تحديد تصنيف الإيراد (مقيّد أو غير مقيّد)',
             'evidence.required' => 'شاهد الإيراد إلزامي — انتظر اكتمال رفع الملف قبل الحفظ',
         ]);
 

@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Notification;
 class ExpenseApprovalService
 {
     public function __construct(protected AuditLogService $auditLog) {}
+
     public const STAGE_DEPARTMENT_MANAGER = 'department_manager';
 
     public const STAGE_EXECUTIVE = 'executive';
@@ -32,40 +33,30 @@ class ExpenseApprovalService
     {
         $amount = round((float) $expense->amount, 2);
         $dynamic = app(ApprovalChainService::class)->stepsFor('expense', $amount);
-        if ($dynamic !== []) {
-            $expense->loadMissing('requester.manager');
-            // تخطّي مدير القسم إن لم يوجد مدير وكان الإعداد يسمح
-            $settings = ExpenseSetting::current();
-            if (! ($expense->requester?->manager_id) && $settings->skip_missing_department_manager) {
-                $dynamic = array_values(array_filter(
-                    $dynamic,
-                    fn (string $s) => $s !== self::STAGE_DEPARTMENT_MANAGER
-                ));
-            }
 
-            return $dynamic !== [] ? $dynamic : [self::STAGE_EXECUTIVE, self::STAGE_FINANCE];
+        if ($dynamic === []) {
+            throw new \RuntimeException(
+                "لا توجد قاعدة اعتماد مطابقة للنوع expense والمبلغ {$amount}"
+            );
         }
 
-        // مسار قديم: full / short
-        $settings = ExpenseSetting::current();
         $expense->loadMissing('requester.manager');
+        $settings = ExpenseSetting::current();
 
-        $stages = [];
-
-        if ($settings->chain_mode === 'full') {
-            $hasManager = (bool) $expense->requester?->manager_id;
-
-            if ($hasManager) {
-                $stages[] = self::STAGE_DEPARTMENT_MANAGER;
-            } elseif (! $settings->skip_missing_department_manager) {
-                $stages[] = self::STAGE_DEPARTMENT_MANAGER;
-            }
+        if (! ($expense->requester?->manager_id) && $settings->skip_missing_department_manager) {
+            $dynamic = array_values(array_filter(
+                $dynamic,
+                fn (string $s) => $s !== self::STAGE_DEPARTMENT_MANAGER
+            ));
         }
 
-        $stages[] = self::STAGE_EXECUTIVE;
-        $stages[] = self::STAGE_FINANCE;
+        if ($dynamic === []) {
+            throw new \RuntimeException(
+                "لا توجد قاعدة اعتماد مطابقة للنوع expense والمبلغ {$amount}"
+            );
+        }
 
-        return $stages;
+        return $dynamic;
     }
 
     public function initializeChain(ExpenseRequest $expense): void

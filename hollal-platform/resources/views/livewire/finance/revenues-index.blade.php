@@ -88,9 +88,9 @@
         <x-ds-form-group label="المبلغ" :error="$errors->first('amount')">
             <input type="number" step="0.01" class="ds-input" wire:model="amount">
         </x-ds-form-group>
-        <x-ds-form-group label="التصنيف">
-            <select class="ds-input" wire:model="category_id">
-                <option value="">— بدون —</option>
+        <x-ds-form-group label="التصنيف" :error="$errors->first('category_id')">
+            <select class="ds-input" wire:model="category_id" required>
+                <option value="">— اختر التصنيف —</option>
                 @foreach ($categories as $category)
                     <option value="{{ $category->id }}">{{ $category->name_ar }}</option>
                 @endforeach
