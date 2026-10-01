@@ -17,12 +17,12 @@
 ## 2. إعداد Coolify (من لوحتك)
 
 1. **New Resource → Application** من مستودع GitHub: `asamani092-ux/manegment.hollal`
-2. الفرع: `cursor/coolify-mysql-health-d8fc` حتى يُدمج الإصلاح في `main` (لا تستخدم `main` القديم — فحص MySQL فيها معطوب)
+2. الفرع: `main` (أو `cursor/coolify-port-80-d8fc` حتى الدمج)
 3. **Build Pack:** Docker Compose
 4. **Base Directory:** `/hollal-platform`
 5. **Docker Compose Location:** `/docker-compose.coolify.yml`
-6. اربط نطاقاً فرعياً (مثال: `hollal.yourdomain.com`) على خدمة `app` والمنفذ **8080**
-7. فعّل HTTPS (Let's Encrypt من Coolify)
+6. **Domains for app:** الرابط فقط بدون منفذ (التطبيق يستمع على 80)
+7. فعّل HTTPS (Let's Encrypt من Coolify) إن رغبت
 
 ---
 
