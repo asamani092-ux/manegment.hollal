@@ -1,19 +1,56 @@
 #!/bin/sh
 set -e
 
+ROLE="${CONTAINER_ROLE:-web}"
+
+mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs storage/app/private bootstrap/cache
+chmod -R ug+rwx storage bootstrap/cache || true
+
 if [ -z "$APP_KEY" ]; then
-  echo "ERROR: APP_KEY is not set. Generate one locally: php artisan key:generate --show"
+  echo "ERROR: APP_KEY is not set. Generate: php artisan key:generate --show"
   exit 1
 fi
 
-php artisan migrate --force --no-interaction
-
-if [ "$RUN_SEED" = "true" ]; then
-  php artisan db:seed --force --no-interaction
+# انتظار قاعدة البيانات (MySQL على Coolify)
+if [ -n "$DB_HOST" ] && [ "$DB_CONNECTION" = "mysql" ]; then
+  echo "Waiting for database ${DB_HOST}:${DB_PORT:-3306}..."
+  i=0
+  until php -r "try { new PDO('mysql:host='.getenv('DB_HOST').';port='.(getenv('DB_PORT')?:3306).';dbname='.getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD')); exit(0);} catch (Throwable \$e) { exit(1);}" 2>/dev/null; do
+    i=$((i+1))
+    if [ "$i" -ge 60 ]; then
+      echo "ERROR: database not ready"
+      exit 1
+    fi
+    sleep 2
+  done
 fi
 
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
+if [ "$ROLE" = "web" ]; then
+  php artisan migrate --force --no-interaction
 
-exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
+  if [ "$RUN_SEED" = "true" ]; then
+    php artisan db:seed --force --no-interaction
+  fi
+
+  php artisan config:cache
+  php artisan route:cache
+  php artisan view:cache
+
+  exec php artisan serve --host=0.0.0.0 --port="${PORT:-8080}"
+fi
+
+if [ "$ROLE" = "queue" ]; then
+  php artisan config:cache
+  exec php artisan queue:work database --sleep=3 --tries=3 --max-time=3600
+fi
+
+if [ "$ROLE" = "scheduler" ]; then
+  php artisan config:cache
+  while true; do
+    php artisan schedule:run --verbose --no-interaction
+    sleep 60
+  done
+fi
+
+echo "Unknown CONTAINER_ROLE=$ROLE (use web|queue|scheduler)"
+exit 1
