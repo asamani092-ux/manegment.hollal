@@ -1,6 +1,7 @@
 # نشر تجريبي على Coolify — منصة حلّل
 # Base Directory: /hollal-platform
 # Docker Compose Location: /docker-compose.coolify.yml
+# Domains for app: ضع الرابط بدون منفذ (التطبيق يستمع على 80)
 
 services:
   app:
@@ -9,23 +10,26 @@ services:
       dockerfile: Dockerfile
     environment:
       CONTAINER_ROLE: web
-      PORT: "8080"
+      PORT: "80"
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-hollal}
+      DB_USERNAME: ${DB_USERNAME:-hollal}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
     volumes:
       - hollal_storage:/app/storage/app
       - hollal_logs:/app/storage/logs
     depends_on:
       - db
     healthcheck:
-      test: ["CMD-SHELL", "php -r \"exit(@file_get_contents('http://127.0.0.1:8080/up')===false?1:0);\""]
+      test: ["CMD-SHELL", "php -r \"exit(@file_get_contents('http://127.0.0.1:80/up')===false?1:0);\""]
       interval: 30s
       timeout: 10s
       retries: 8
-      start_period: 120s
+      start_period: 180s
     expose:
-      - "8080"
+      - "80"
     restart: unless-stopped
 
   queue:
@@ -37,6 +41,9 @@ services:
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-hollal}
+      DB_USERNAME: ${DB_USERNAME:-hollal}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
     volumes:
       - hollal_storage:/app/storage/app
       - hollal_logs:/app/storage/logs
@@ -54,6 +61,9 @@ services:
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-hollal}
+      DB_USERNAME: ${DB_USERNAME:-hollal}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
     volumes:
       - hollal_storage:/app/storage/app
       - hollal_logs:/app/storage/logs
@@ -76,7 +86,6 @@ services:
     volumes:
       - hollal_mysql:/var/lib/mysql
     healthcheck:
-      # healthcheck.sh غير متوفر في كل وسوم mysql:8.0
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD:-changeme_root}"]
       interval: 5s
       timeout: 5s
