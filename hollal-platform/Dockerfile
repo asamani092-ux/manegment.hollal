@@ -31,6 +31,6 @@ RUN chmod +x /entrypoint.sh
 
 ENV CONTAINER_ROLE=web
 
-EXPOSE 80
+EXPOSE 80 8080
 
 CMD ["/entrypoint.sh"]
