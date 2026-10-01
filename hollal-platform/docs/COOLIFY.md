@@ -17,12 +17,12 @@
 ## 2. إعداد Coolify (من لوحتك)
 
 1. **New Resource → Application** من مستودع GitHub: `asamani092-ux/manegment.hollal`
-2. الفرع: `main` (أو `cursor/coolify-port-80-d8fc` حتى الدمج)
+2. الفرع: `main` (أو `cursor/coolify-traefik-503-d8fc` حتى الدمج)
 3. **Build Pack:** Docker Compose
 4. **Base Directory:** `/hollal-platform`
 5. **Docker Compose Location:** `/docker-compose.coolify.yml`
-6. **Domains for app:** الرابط فقط بدون منفذ (التطبيق يستمع على 80)
-7. فعّل HTTPS (Let's Encrypt من Coolify) إن رغبت
+6. **Domains for app:** `https://xxxx.sslip.io` فقط — بدون `:8080` (التطبيق على 80)
+7. افتح الموقع بـ **https** (‏http يعطي 404 من البروكسي)
 
 ---
 
