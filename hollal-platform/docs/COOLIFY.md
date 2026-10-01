@@ -17,7 +17,7 @@
 ## 2. إعداد Coolify (من لوحتك)
 
 1. **New Resource → Application** من مستودع GitHub: `asamani092-ux/manegment.hollal`
-2. الفرع: `main` (أو فرع النشر بعد الدمج)
+2. الفرع: `cursor/coolify-mysql-health-d8fc` حتى يُدمج الإصلاح في `main` (لا تستخدم `main` القديم — فحص MySQL فيها معطوب)
 3. **Build Pack:** Docker Compose
 4. **Base Directory:** `/hollal-platform`
 5. **Docker Compose Location:** `/docker-compose.coolify.yml`
