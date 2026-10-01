@@ -14,7 +14,6 @@ services:
       dockerfile: Dockerfile
     environment:
       CONTAINER_ROLE: web
-      PORT: "80"
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: "3306"
@@ -26,8 +25,8 @@ services:
       - hollal_logs:/app/storage/logs
     depends_on:
       - db
-    # ممنوع healthcheck على app: ترافيك يستبعد الحاوية → no available server
-    # أثناء انتظار DB / migrate / seed قبل تشغيل الخادم
+    # ممنوع healthcheck على app
+    # الخادم يُقلع على 80 فوراً داخل entrypoint لتفادي Bad Gateway
     expose:
       - "80"
     restart: unless-stopped

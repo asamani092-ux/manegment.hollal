@@ -2,6 +2,8 @@
 set -e
 
 ROLE="${CONTAINER_ROLE:-web}"
+# كولفاي قد يحقن PORT بقيمة أخرى — ثبّت 80 لتطابق ترافيك
+WEB_PORT=80
 
 mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs storage/app/private bootstrap/cache
 chmod -R ug+rwx storage bootstrap/cache || true
@@ -39,8 +41,20 @@ wait_for_database() {
 wait_for_database
 
 if [ "$ROLE" = "web" ]; then
+  echo "Starting web server on 0.0.0.0:${WEB_PORT} (before migrate, to avoid Bad Gateway)"
+  php -S "0.0.0.0:${WEB_PORT}" -t /app/public /app/docker/router.php &
+  SERVER_PID=$!
+  sleep 1
+
+  if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+    echo "ERROR: web server failed to start on port ${WEB_PORT}"
+    exit 1
+  fi
+
+  set +e
   echo "Running migrations..."
   php artisan migrate --force --no-interaction
+  MIGRATE_STATUS=$?
 
   if [ "$RUN_SEED" = "true" ]; then
     echo "Running seeders..."
@@ -50,9 +64,16 @@ if [ "$ROLE" = "web" ]; then
   php artisan config:cache
   php artisan route:cache
   php artisan view:cache
+  set -e
 
-  echo "Starting web server on 0.0.0.0:${PORT:-80}"
-  exec php artisan serve --host=0.0.0.0 --port="${PORT:-80}"
+  if [ "$MIGRATE_STATUS" -ne 0 ]; then
+    echo "WARNING: migrate exited with status ${MIGRATE_STATUS} — server kept running"
+  else
+    echo "Bootstrap finished."
+  fi
+
+  wait "$SERVER_PID"
+  exit $?
 fi
 
 if [ "$ROLE" = "queue" ]; then

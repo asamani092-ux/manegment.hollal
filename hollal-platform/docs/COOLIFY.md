@@ -9,7 +9,8 @@
 | العرض | السبب الحقيقي |
 |--------|----------------|
 | `404 page not found` على http | البروكسي لا يخدم http لهذا النطاق — استخدم https |
-| `no available server` على https | حاوية `app` غير صحية أو لا تستمع بعد؛ في `main` القديم كان `healthcheck` يفشل أثناء migrate قبل تشغيل الخادم فيستبعد ترافيك الحاوية |
+| `no available server` على https | حاوية `app` غير صحية أو لا تستمع؛ سابقاً بسبب `healthcheck` أثناء migrate |
+| `Bad Gateway` | البروكسي يصل للحاوية لكن لا استماع على 80 — الخادم يُقلع فوراً على 80 قبل الترحيل |
 | `ERROR: APP_KEY is not set` | المتغير غير مضاف في Coolify |
 | `database not ready` | بيانات `DB_*` ناقصة أو حجم MySQL قديم بكلمة مرور مختلفة |
 
