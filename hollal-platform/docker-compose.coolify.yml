@@ -13,6 +13,9 @@ services:
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-hollal}
+      DB_USERNAME: ${DB_USERNAME:-hollal}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
     volumes:
       - hollal_storage:/app/storage/app
       - hollal_logs:/app/storage/logs
@@ -23,7 +26,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 8
-      start_period: 120s
+      start_period: 180s
     expose:
       - "8080"
     restart: unless-stopped
@@ -37,6 +40,9 @@ services:
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-hollal}
+      DB_USERNAME: ${DB_USERNAME:-hollal}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
     volumes:
       - hollal_storage:/app/storage/app
       - hollal_logs:/app/storage/logs
@@ -54,6 +60,9 @@ services:
       DB_CONNECTION: mysql
       DB_HOST: db
       DB_PORT: "3306"
+      DB_DATABASE: ${DB_DATABASE:-hollal}
+      DB_USERNAME: ${DB_USERNAME:-hollal}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
     volumes:
       - hollal_storage:/app/storage/app
       - hollal_logs:/app/storage/logs
@@ -76,7 +85,6 @@ services:
     volumes:
       - hollal_mysql:/var/lib/mysql
     healthcheck:
-      # healthcheck.sh غير متوفر في كل وسوم mysql:8.0
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD:-changeme_root}"]
       interval: 5s
       timeout: 5s
