@@ -1,7 +1,5 @@
-# نشر تجريبي على Coolify — منصة حلّل
-# Base Directory: /hollal-platform
-# Docker Compose Location: /docker-compose.coolify.yml
-# (نسخة مطابقة لـ docker-compose.coolify.yml)
+# نسخة مطابقة لـ docker-compose.coolify.yml
+# الفرع في Coolify: main فقط
 
 services:
   app:
@@ -22,8 +20,6 @@ services:
       - hollal_logs:/app/storage/logs
     depends_on:
       - db
-    labels:
-      - traefik.http.services.app.loadbalancer.server.port=80
     expose:
       - "80"
     restart: unless-stopped
