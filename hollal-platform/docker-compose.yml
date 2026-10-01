@@ -1,0 +1,83 @@
+# نشر تجريبي على Coolify — منصة حلّل
+# Base Directory: /hollal-platform
+# Docker Compose Location: /docker-compose.yml  (أو /docker-compose.coolify.yml)
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      CONTAINER_ROLE: web
+      PORT: "8080"
+    volumes:
+      - hollal_storage:/app/storage/app
+      - hollal_logs:/app/storage/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "php -r \"exit(@file_get_contents('http://127.0.0.1:8080/up')===false?1:0);\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    # Coolify يوجّه النطاق لهذا المنفذ
+    expose:
+      - "8080"
+    labels:
+      - traefik.enable=true
+
+  queue:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      CONTAINER_ROLE: queue
+    volumes:
+      - hollal_storage:/app/storage/app
+      - hollal_logs:/app/storage/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    restart: unless-stopped
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      CONTAINER_ROLE: scheduler
+    volumes:
+      - hollal_storage:/app/storage/app
+      - hollal_logs:/app/storage/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      app:
+        condition: service_started
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE:-hollal}
+      MYSQL_USER: ${DB_USERNAME:-hollal}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-changeme}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-changeme_root}
+    volumes:
+      - hollal_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    restart: unless-stopped
+
+volumes:
+  hollal_storage:
+  hollal_logs:
+  hollal_mysql:
