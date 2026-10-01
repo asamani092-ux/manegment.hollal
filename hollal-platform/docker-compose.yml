@@ -1,6 +1,7 @@
 # نشر تجريبي على Coolify — منصة حلّل
 # Base Directory: /hollal-platform
 # Docker Compose Location: /docker-compose.coolify.yml
+# (نسخة مطابقة لـ docker-compose.coolify.yml)
 
 services:
   app:
@@ -76,7 +77,6 @@ services:
     volumes:
       - hollal_mysql:/var/lib/mysql
     healthcheck:
-      # healthcheck.sh غير متوفر في كل وسوم mysql:8.0
       test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-p${DB_ROOT_PASSWORD:-changeme_root}"]
       interval: 5s
       timeout: 5s
