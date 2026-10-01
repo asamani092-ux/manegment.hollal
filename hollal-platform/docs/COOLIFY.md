@@ -67,7 +67,7 @@ RUN_SEED=true
 
 بعد أول دخول ناجح: `RUN_SEED=false`.
 
-إن غيّرت كلمات مرور DB بعد نشر سابق: احذف حجم `hollal_mysql` من Storages ثم Redeploy.
+إن ظهر Access denied لـ MySQL: لا تغيّر كلمة المرور فقط — حجم البيانات القديم يحتفظ بالأولى. أعد النشر بعد تحديث اسم الحجم في Compose (حالياً `hollal_mysql_v2`) أو احذف الحجم من Persistent Storages ثم Redeploy.
 
 ---
 
