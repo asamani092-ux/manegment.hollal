@@ -77,6 +77,7 @@ use App\Livewire\Settings\ApprovalRulesIndex;
 use App\Livewire\Settings\ExpenseSettingsIndex;
 use App\Livewire\Settings\GrantsIndex;
 use App\Livewire\Settings\MailSettingsIndex;
+use App\Livewire\Settings\ReferenceListsIndex;
 use App\Livewire\Settings\SettingsIndex;
 use App\Livewire\Structure\CommitteesIndex;
 use App\Livewire\Structure\JobsIndex;
@@ -287,6 +288,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/settings/notifications', MailSettingsIndex::class)
         ->middleware('permission:settings.notifications.manage')
         ->name('settings.notifications');
+
+    Route::get('/settings/lists', ReferenceListsIndex::class)
+        ->middleware('permission:settings.lists.view|settings.lists.manage')
+        ->name('settings.lists');
 
     Route::get('/settings', SettingsIndex::class)
         ->middleware('permission:settings.manage|settings.general.manage|settings.finance.manage|settings.backup.manage')

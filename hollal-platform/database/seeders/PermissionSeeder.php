@@ -110,6 +110,9 @@ class PermissionSeeder extends Seeder
         'settings.finance.manage',
         'settings.backup.manage',
         'settings.notifications.manage',
+        'settings.lists.view',
+        'settings.lists.manage',
+        'settings.help.manage',
     ];
 
     public function run(): void

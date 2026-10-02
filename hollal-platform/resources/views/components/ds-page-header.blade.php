@@ -6,6 +6,7 @@
     'buttonPermission' => null,
     'backUrl' => null,
     'backLabel' => 'رجوع',
+    'screen' => null,
 ])
 
 <div class="ds-page-header-bar">
@@ -17,9 +18,15 @@
         @endif
         <h1 class="ds-page-title">{{ $title }}</h1>
     </div>
-    @if (isset($actions))
-        <div class="ds-toolbar-actions">{{ $actions }}</div>
-    @elseif ($showButton && ($buttonPermission === null || auth()->user()->can($buttonPermission)))
+    <div class="ds-toolbar-actions">
+        @if ($screen)
+            <x-help-button :screen="$screen" />
+        @endif
+        @if (isset($actions))
+            {{ $actions }}
+        @endif
+    </div>
+    @if (! isset($actions) && $showButton && ($buttonPermission === null || auth()->user()->can($buttonPermission)))
         <button type="button" {{ $attributes->merge(['class' => 'ds-btn ds-btn-primary']) }}>
             <i class="fas {{ $buttonIcon }}"></i> {{ $buttonLabel }}
         </button>
