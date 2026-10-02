@@ -99,6 +99,17 @@ class ReferenceListsSeeder extends Seeder
             ['hajj', 'حج', ['max_days_per_request' => 15, 'once_per_service' => true, 'min_service_months' => 24, 'paid' => true]],
             ['exceptional', 'استثنائية', ['paid' => false, 'deducts_from' => 'none']],
         ];
+        if (! $service->item('violations', 'draft-sample')) {
+            $draft = $service->createDraft('violations', 'draft-sample', 'نموذج — للاختبار', [
+                'category' => 'مواعيد العمل',
+                'description' => 'نموذج — للاختبار',
+                'origin' => 'ministry',
+                'auto_detectable' => 'none',
+                'penalties' => [],
+                'ministry_baseline' => [],
+            ], now()->toDateString());
+        }
+
         foreach ($leaveTypes as [$code, $name, $attrs]) {
             if ($service->item('leave_types', $code)) {
                 continue;

@@ -214,7 +214,7 @@
         >
             <div class="ds-modal ds-modal-lg" role="dialog" aria-modal="true" dir="rtl" wire:click.stop>
                 <div class="ds-modal-header">
-                    <h3>متابعة التهيئة/الإنهاء — {{ $detailUser->name }}</h3>
+                    <h3>متابعة إنهاء العلاقة — {{ $detailUser->name }}</h3>
                     <button type="button" class="ds-modal-close" wire:click="closeDetails" aria-label="إغلاق">&times;</button>
                 </div>
                 <div class="ds-modal-body">

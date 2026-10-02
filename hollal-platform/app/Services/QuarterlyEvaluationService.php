@@ -75,10 +75,6 @@ class QuarterlyEvaluationService
         Carbon|string $startsAt,
         Carbon|string $endsAt,
     ): EvaluationCycle {
-        if ($quarter < 1 || $quarter > 4) {
-            throw new InvalidArgumentException('الربع يجب أن يكون بين 1 و 4.');
-        }
-
         if (! $template->is_active) {
             throw new InvalidArgumentException('لا يمكن استخدام قالب غير نشط.');
         }

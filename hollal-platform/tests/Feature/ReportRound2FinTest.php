@@ -40,6 +40,7 @@ class ReportRound2FinTest extends TestCase
 
     public function test_expense_reject_visible_on_all_tab_and_return_reopens_for_requester(): void
     {
+        $this->seed(\Database\Seeders\ApprovalRulesSeeder::class);
         $category = ExpenseCategory::create(['name_ar' => 'تصنيف تجريبي', 'is_active' => true]);
         $requester = User::factory()->create(['must_change_password' => false]);
         $requester->givePermissionTo('finance.expenses.create');

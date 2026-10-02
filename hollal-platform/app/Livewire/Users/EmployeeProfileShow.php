@@ -271,7 +271,7 @@ class EmployeeProfileShow extends Component
             'editEmploymentType' => 'nullable|in:دوام_كامل,دوام_جزئي,متعاون,متطوع',
             'editHireDate' => 'nullable|date',
             'editNationalId' => 'nullable|string|max:50',
-            'editRoleName' => 'required|string|exists:roles,name',
+            'editRoleName' => 'nullable|string|exists:roles,name',
             'editPassword' => 'nullable|string|min:8',
             'editIsActive' => 'boolean',
         ], [], [
@@ -308,7 +308,9 @@ class EmployeeProfileShow extends Component
         }
 
         $user->update($payload);
-        $user->syncRoles([$this->editRoleName]);
+        if ($this->editRoleName !== '') {
+            $user->syncRoles([$this->editRoleName]);
+        }
 
         $profile = EmployeeProfile::query()->firstOrCreate(
             ['user_id' => $user->id],

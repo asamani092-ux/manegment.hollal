@@ -259,6 +259,10 @@ class ContractsIndex extends Component
             return '****';
         }
 
+        if ($contract->value !== null && (float) $contract->value > 0) {
+            return number_format((float) $contract->value, 2);
+        }
+
         $employee = $contract->employee;
         if (! $employee) {
             return '—';

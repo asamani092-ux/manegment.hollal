@@ -149,6 +149,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
             ->name('contracts.files.download');
 
         Route::get('/files/employee-documents/{employeeDocument}', EmployeeDocumentDownloadController::class)
+            ->middleware('permission:hr.employees.view|hr.documents.review')
             ->name('employee-documents.files.download');
 
         Route::get('/files/expenses/{expenseRequest}', ExpenseFileDownloadController::class)
@@ -164,12 +165,15 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
             ->name('financial-documents.files.download');
 
         Route::get('/files/documents/{document}', DocumentDownloadController::class)
+            ->middleware('permission:documents.view')
             ->name('documents.files.download');
 
         Route::get('/files/document-templates/{template}', DocumentTemplateDownloadController::class)
+            ->middleware('permission:documents.templates.manage|documents.view')
             ->name('documents.templates.download');
 
         Route::get('/files/document-versions/{version}', DocumentVersionDownloadController::class)
+            ->middleware('permission:documents.manage-versions|documents.view')
             ->name('documents.versions.download');
     });
 
@@ -223,6 +227,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('workload-board.index');
 
     Route::get('/expenses', ExpensesIndex::class)
+        ->middleware('permission:finance.expenses.view|finance.expenses.create|finance.expenses.approve|finance.expenses.pay')
         ->name('expenses.index');
 
     Route::get('/payroll', PayrollIndex::class)
@@ -325,6 +330,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('leaves.index');
 
     Route::get('/evaluations', EvaluationsIndex::class)
+        ->middleware('permission:dashboard.view|hr.employees.view|hr.employees.update')
         ->name('evaluations.index');
 
     // Round 5ب — legacy eval screens redirect into the unified wizard.
@@ -338,9 +344,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
 
     Route::get('/my-evaluations', function () {
         return redirect()->to(route('users.profile', auth()->id()).'?tab=log');
-    })->name('employee-evaluations.mine');
+    })->middleware('permission:dashboard.view|hr.employees.view')->name('employee-evaluations.mine');
 
     Route::get('/team-evaluations', fn () => redirect()->route('evaluations.index', ['step' => 'score']))
+        ->middleware('permission:hr.employees.view')
         ->name('employee-evaluations.team');
 
     Route::get('/responsibilities', ResponsibilitiesIndex::class)

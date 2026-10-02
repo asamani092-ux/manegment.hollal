@@ -51,9 +51,7 @@ class ExpenseApprovalService
         }
 
         if ($dynamic === []) {
-            throw new \RuntimeException(
-                "لا توجد قاعدة اعتماد مطابقة للنوع expense والمبلغ {$amount}"
-            );
+            $dynamic = [self::STAGE_EXECUTIVE, self::STAGE_FINANCE];
         }
 
         return $dynamic;

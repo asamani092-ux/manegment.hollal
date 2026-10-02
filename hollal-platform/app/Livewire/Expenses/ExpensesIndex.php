@@ -62,6 +62,8 @@ class ExpensesIndex extends Component
 
     public ?int $project_id = null;
 
+    public ?int $department_id = null;
+
     public ?int $category_id = null;
 
     public ?TemporaryUploadedFile $officialDocument = null;
