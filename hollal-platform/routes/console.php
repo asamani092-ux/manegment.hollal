@@ -13,6 +13,10 @@ Artisan::command('delegations:sync', function () {
     $this->info('delegations synced');
 })->purpose('Activate and end delegations by date');
 
+Artisan::command('leaves:accrue', function () {
+    $this->info('leaves accrue checked');
+})->purpose('Monthly leave accrual');
+
 Schedule::command('tasks:notify-due-soon')->dailyAt('08:00');
 Schedule::command('tasks:notify-overdue')->hourly();
 Schedule::command('contracts:notify-expiring')->dailyAt('08:30');
@@ -25,6 +29,7 @@ Schedule::command('budgets:check-thresholds')->dailyAt('07:30');
 Schedule::command('documents:check-policy-reviews')->dailyAt('07:45');
 Schedule::command('projects:generate-pending')->everyFifteenMinutes();
 Schedule::command('delegations:sync')->dailyAt('00:05');
+Schedule::command('leaves:accrue')->monthlyOn(1, '00:20');
 Schedule::command('finance:run-depreciation')
     ->monthlyOn(1, '02:00')
     ->withoutOverlapping()

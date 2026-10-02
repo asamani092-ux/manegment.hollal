@@ -8,6 +8,8 @@
  */
 return [
     'references' => [
-        // Later commands register their columns, e.g. leave_requests.reference_item_id.
+        'leave_types' => [
+            ['table' => 'leave_requests', 'column' => 'reference_item_id'],
+        ],
     ],
 ];

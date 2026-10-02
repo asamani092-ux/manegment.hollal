@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasReferenceItem;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class LeaveRequest extends Model
 {
+    use HasReferenceItem;
     use SoftDeletes;
 
     public const TYPE_ANNUAL = 'سنوية';
@@ -24,8 +26,9 @@ class LeaveRequest extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'employee_id', 'type', 'from_date', 'to_date', 'days_count',
-        'reason', 'status', 'approver_id', 'approved_at',
+        'employee_id', 'type', 'reference_item_id', 'substitute_id', 'substitute_status',
+        'parent_leave_id', 'from_date', 'to_date', 'cut_on', 'days_count',
+        'reason', 'attachment_path', 'status', 'approver_id', 'approved_at',
     ];
 
     /** @return array<string, string> */
@@ -34,6 +37,7 @@ class LeaveRequest extends Model
         return [
             'from_date' => 'date',
             'to_date' => 'date',
+            'cut_on' => 'date',
             'approved_at' => 'datetime',
             'days_count' => 'integer',
         ];

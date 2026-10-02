@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\AttendanceRecord;
+use App\Models\Delegation;
 use App\Models\EmployeeProfile;
+use App\Models\LeavePayImpact;
 use App\Models\LeaveRequest;
 use App\Models\ReferenceItem;
 use App\Models\ReferenceList;
@@ -56,7 +59,7 @@ class LeaveService
             // الطلبات المقدمة تحجز رصيدها حتى لا يتجاوزه الموظف بطلبات متتالية.
             $reserved = (int) LeaveRequest::query()
                 ->where('employee_id', $employee->id)
-                ->where('type', LeaveRequest::TYPE_ANNUAL)
+                ->whereIn('type', ['سنوية', 'annual'])
                 ->where('status', LeaveRequest::STATUS_SUBMITTED)
                 ->sum('days_count');
 
@@ -125,10 +128,92 @@ class LeaveService
                 'approved_at' => now(),
             ]);
 
-            $leave->employee?->notify(new LeaveDecision($leave->fresh()));
+            $fresh = $leave->fresh(['referenceItem']);
+            $this->writeAttendance($fresh, $approver);
+            app(LeaveBalanceService::class)->recordPayImpacts($fresh);
+            $leave->employee?->notify(new LeaveDecision($fresh));
 
-            return $leave->fresh();
+            return $fresh;
         });
+    }
+
+    public function extend(LeaveRequest $leave, Carbon|string $newTo): LeaveRequest
+    {
+        $newToDate = Carbon::parse($newTo)->startOfDay();
+        if ($newToDate->lte(Carbon::parse($leave->to_date))) {
+            throw new \InvalidArgumentException('تاريخ التمديد يجب أن يكون بعد نهاية الإجازة.');
+        }
+
+        return LeaveRequest::create([
+            'employee_id' => $leave->employee_id,
+            'type' => $leave->type,
+            'reference_item_id' => $leave->reference_item_id,
+            'parent_leave_id' => $leave->id,
+            'from_date' => Carbon::parse($leave->to_date)->addDay()->toDateString(),
+            'to_date' => $newToDate->toDateString(),
+            'days_count' => (int) Carbon::parse($leave->to_date)->addDay()->diffInDays($newToDate) + 1,
+            'reason' => 'تمديد',
+            'status' => LeaveRequest::STATUS_SUBMITTED,
+        ]);
+    }
+
+    public function cut(LeaveRequest $leave, Carbon|string $returnDate): LeaveRequest
+    {
+        $return = Carbon::parse($returnDate)->startOfDay();
+        $originalEnd = Carbon::parse($leave->to_date)->startOfDay();
+        $unused = $return->lte($originalEnd) ? ((int) $return->diffInDays($originalEnd) + 1) : 0;
+        $leave->update([
+            'cut_on' => $return->toDateString(),
+            'to_date' => $return->copy()->subDay()->toDateString(),
+            'days_count' => max(0, (int) $leave->days_count - $unused),
+        ]);
+
+        if ($unused > 0 && ($leave->type === 'سنوية' || $leave->type === 'annual')) {
+            EmployeeProfile::query()->where('user_id', $leave->employee_id)->increment('annual_leave_balance', $unused);
+        }
+
+        Delegation::query()
+            ->where('source_type', $leave->getMorphClass())
+            ->where('source_id', $leave->id)
+            ->where('status', Delegation::STATUS_ACTIVE)
+            ->update(['status' => Delegation::STATUS_ENDED, 'ended_at' => now(), 'ends_on' => $return->toDateString()]);
+
+        LeavePayImpact::query()->where('leave_request_id', $leave->id)->delete();
+        app(LeaveBalanceService::class)->recordPayImpacts($leave->fresh(['referenceItem']));
+
+        return $leave->fresh();
+    }
+
+    public function acceptExtension(LeaveRequest $child): LeaveRequest
+    {
+        $child->update(['status' => LeaveRequest::STATUS_APPROVED, 'approved_at' => now()]);
+        $parent = $child->parent_leave_id ? LeaveRequest::find($child->parent_leave_id) : null;
+        if ($parent) {
+            Delegation::query()
+                ->where('source_type', $parent->getMorphClass())
+                ->where('source_id', $parent->id)
+                ->whereIn('status', [Delegation::STATUS_ACTIVE, Delegation::STATUS_SCHEDULED])
+                ->update(['ends_on' => $child->to_date]);
+            $parent->update(['to_date' => $child->to_date]);
+        }
+
+        return $child->fresh();
+    }
+
+    private function writeAttendance(LeaveRequest $leave, User $approver): void
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('attendance_records')) {
+            return;
+        }
+        $cursor = Carbon::parse($leave->from_date)->startOfDay();
+        $end = Carbon::parse($leave->cut_on ?? $leave->to_date)->startOfDay();
+        while ($cursor->lte($end)) {
+            AttendanceRecord::query()->updateOrCreate(
+                ['employee_id' => $leave->employee_id, 'date' => $cursor->toDateString()],
+                ['type' => 'إجازة', 'declared_by' => $approver->id, 'source' => 'leave']
+            );
+            $cursor->addDay();
+        }
     }
 
     public function reject(LeaveRequest $leave, User $approver): LeaveRequest
