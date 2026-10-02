@@ -82,13 +82,22 @@ class ExpenseApprovalService
             return false;
         }
 
-        return match ($expense->current_approval_stage) {
-            self::STAGE_DEPARTMENT_MANAGER => $this->isDepartmentManager($user, $expense),
-            // Permission gate (not role name alone): Super Admin / GM / Executive with finance.expenses.approve
-            self::STAGE_EXECUTIVE => $user->can('finance.expenses.approve'),
-            self::STAGE_FINANCE => $user->can('finance.expenses.pay'),
+        $stage = (string) $expense->current_approval_stage;
+        $direct = match (true) {
+            $stage === self::STAGE_DEPARTMENT_MANAGER => $this->isDepartmentManager($user, $expense),
+            $stage === self::STAGE_EXECUTIVE => $user->can('finance.expenses.approve'),
+            $stage === self::STAGE_FINANCE => $user->can('finance.expenses.pay'),
+            str_starts_with($stage, 'user:') => (int) substr($stage, 5) === $user->id,
+            str_starts_with($stage, 'users:') => in_array($user->id, array_map('intval', explode(',', substr($stage, 6))), true),
+            str_starts_with($stage, 'role:') => $user->hasRole(substr($stage, 5)),
             default => false,
         };
+
+        if ($direct) {
+            return $user->id !== $expense->requester_id;
+        }
+
+        return app(\App\Services\DelegationService::class)->isActingForStage($user, $expense) && $user->id !== $expense->requester_id;
     }
 
     /**
@@ -248,17 +257,22 @@ class ExpenseApprovalService
     /** @return Collection<int, User> */
     protected function approversForStage(ExpenseRequest $expense, string $stage): Collection
     {
-        return match ($stage) {
-            self::STAGE_DEPARTMENT_MANAGER => collect([
+        $people = match (true) {
+            $stage === self::STAGE_DEPARTMENT_MANAGER => collect([
                 $expense->requester?->manager,
             ])->filter(),
-            self::STAGE_EXECUTIVE => User::permission('finance.expenses.approve')
+            $stage === self::STAGE_EXECUTIVE => User::permission('finance.expenses.approve')
                 ->where('is_active', true)
                 ->get(),
-            self::STAGE_FINANCE => User::permission('finance.expenses.pay')
+            $stage === self::STAGE_FINANCE => User::permission('finance.expenses.pay')
                 ->where('is_active', true)
                 ->get(),
+            str_starts_with($stage, 'user:') => collect([User::find((int) substr($stage, 5))])->filter(),
+            str_starts_with($stage, 'users:') => User::query()->whereIn('id', array_map('intval', explode(',', substr($stage, 6))))->get(),
+            str_starts_with($stage, 'role:') => User::role(substr($stage, 5))->where('is_active', true)->get(),
             default => collect(),
         };
+
+        return app(\App\Services\DelegationService::class)->substitute($people, $expense->requester_id);
     }
 }

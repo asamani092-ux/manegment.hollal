@@ -23,6 +23,7 @@ class ApprovalRule extends Model
     /** @var list<string> */
     protected $fillable = [
         'transaction_type',
+        'metric',
         'min_amount',
         'max_amount',
         'approval_steps',

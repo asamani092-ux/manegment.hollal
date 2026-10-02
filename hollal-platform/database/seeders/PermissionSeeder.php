@@ -113,6 +113,8 @@ class PermissionSeeder extends Seeder
         'settings.lists.view',
         'settings.lists.manage',
         'settings.help.manage',
+        'settings.approval-chains.manage',
+        'hr.delegations.manage',
     ];
 
     public function run(): void

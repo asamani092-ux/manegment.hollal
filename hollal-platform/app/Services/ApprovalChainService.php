@@ -37,22 +37,43 @@ class ApprovalChainService
 
         $steps = [];
         foreach ($rule->approval_steps ?? [] as $step) {
-            $role = is_array($step) ? (string) ($step['role'] ?? '') : (string) $step;
-            $mapped = $this->mapRoleToStage($role);
-            if ($mapped !== null) {
-                $steps[] = $mapped;
+            $token = $this->tokenForStep(is_array($step) ? $step : ['role' => (string) $step]);
+            if ($token !== null) {
+                $steps[] = $token;
             }
         }
 
         return array_values(array_unique($steps));
     }
 
-    private function mapRoleToStage(string $role): ?string
+    /**
+     * @param  array<string, mixed>  $step
+     */
+    private function tokenForStep(array $step): ?string
     {
-        return match ($role) {
-            'department_manager', ExpenseApprovalService::STAGE_DEPARTMENT_MANAGER => ExpenseApprovalService::STAGE_DEPARTMENT_MANAGER,
-            'finance_manager', 'finance', ExpenseApprovalService::STAGE_FINANCE => ExpenseApprovalService::STAGE_FINANCE,
-            'executive_director', 'executive', ExpenseApprovalService::STAGE_EXECUTIVE => ExpenseApprovalService::STAGE_EXECUTIVE,
+        $type = $step['type'] ?? null;
+        if ($type === null) {
+            $role = (string) ($step['role'] ?? '');
+
+            return match ($role) {
+                'department_manager' => ExpenseApprovalService::STAGE_DEPARTMENT_MANAGER,
+                'finance', 'finance_manager' => ExpenseApprovalService::STAGE_FINANCE,
+                'executive', 'executive_director' => ExpenseApprovalService::STAGE_EXECUTIVE,
+                '' => null,
+                default => 'role:'.$role,
+            };
+        }
+
+        return match ($type) {
+            'direct_manager', 'department_head' => ExpenseApprovalService::STAGE_DEPARTMENT_MANAGER,
+            'user' => 'user:'.(int) ($step['user_id'] ?? 0),
+            'any_of_users' => 'users:'.implode(',', array_map('intval', $step['user_ids'] ?? [])),
+            'role' => match ((string) ($step['role'] ?? '')) {
+                'Finance', 'finance', 'finance_manager' => ExpenseApprovalService::STAGE_FINANCE,
+                'Executive Manager', 'executive', 'executive_director' => ExpenseApprovalService::STAGE_EXECUTIVE,
+                '' => null,
+                default => 'role:'.(string) $step['role'],
+            },
             default => null,
         };
     }

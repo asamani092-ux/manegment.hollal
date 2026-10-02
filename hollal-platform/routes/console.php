@@ -8,6 +8,11 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
+Artisan::command('delegations:sync', function () {
+    app(\App\Services\DelegationService::class)->syncDaily();
+    $this->info('delegations synced');
+})->purpose('Activate and end delegations by date');
+
 Schedule::command('tasks:notify-due-soon')->dailyAt('08:00');
 Schedule::command('tasks:notify-overdue')->hourly();
 Schedule::command('contracts:notify-expiring')->dailyAt('08:30');
@@ -19,6 +24,7 @@ Schedule::command('tasks:generate-recurring')->dailyAt('01:00');
 Schedule::command('budgets:check-thresholds')->dailyAt('07:30');
 Schedule::command('documents:check-policy-reviews')->dailyAt('07:45');
 Schedule::command('projects:generate-pending')->everyFifteenMinutes();
+Schedule::command('delegations:sync')->dailyAt('00:05');
 Schedule::command('finance:run-depreciation')
     ->monthlyOn(1, '02:00')
     ->withoutOverlapping()

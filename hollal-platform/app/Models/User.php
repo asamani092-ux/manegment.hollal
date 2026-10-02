@@ -67,6 +67,26 @@ class User extends Authenticatable
     }
 
     /**
+     * Direct reports plus reports of delegators this user currently replaces.
+     * Time: O(n) | Space: O(n)
+     *
+     * @return list<int>
+     */
+    public function effectiveManagedUserIds(): array
+    {
+        $ids = static::query()->where('manager_id', $this->id)->pluck('id')->all();
+        $delegatorIds = \App\Models\Delegation::query()
+            ->where('delegate_id', $this->id)
+            ->where('status', \App\Models\Delegation::STATUS_ACTIVE)
+            ->pluck('delegator_id');
+        foreach ($delegatorIds as $delegatorId) {
+            $ids = array_merge($ids, static::query()->where('manager_id', $delegatorId)->pluck('id')->all());
+        }
+
+        return array_values(array_unique(array_map('intval', $ids)));
+    }
+
+    /**
      * Display label for org placement (قسم or إدارة ancestor). Time: O(1) | Space: O(1)
      */
     public function orgPlacementLabel(): string

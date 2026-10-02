@@ -2,9 +2,12 @@
 
 namespace App\Providers;
 
+use App\Models\Delegation;
 use App\Models\MailSetting;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
@@ -33,6 +36,34 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->applyMailSettings();
+
+        Gate::before(function ($user, string $ability) {
+            if (! $user instanceof User) {
+                return null;
+            }
+            static $inside = false;
+            if ($inside) {
+                return null;
+            }
+            $delegation = Delegation::query()
+                ->where('delegate_id', $user->id)
+                ->where('status', Delegation::STATUS_ACTIVE)
+                ->whereDate('starts_on', '<=', today())
+                ->whereDate('ends_on', '>=', today())
+                ->first();
+            if (! $delegation?->delegator) {
+                return null;
+            }
+            $inside = true;
+            try {
+                $allowed = $delegation->delegator->hasPermissionTo($ability);
+            } catch (\Throwable) {
+                $allowed = false;
+            }
+            $inside = false;
+
+            return $allowed ? true : null;
+        });
     }
 
     /**
