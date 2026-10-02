@@ -74,6 +74,7 @@ class ExpenseApprovalService
         ]);
 
         $this->notifyApproversForStage($expense->fresh(), $stages[0] ?? null);
+        app(\App\Services\Approval\ApprovalEngine::class)->snapshotExpense($expense->fresh(), $stages);
     }
 
     public function canApprove(User $user, ExpenseRequest $expense): bool
@@ -128,11 +129,15 @@ class ExpenseApprovalService
     {
         $stage = $expense->current_approval_stage;
 
+        $behalf = app(\App\Services\DelegationService::class)->behalfOf($approver, $expense);
+        app(\App\Services\Approval\ApprovalEngine::class)->markStepActed($expense, $approver, $behalf, 'approved');
+
         ExpenseApprovalLog::create([
             'expense_request_id' => $expense->id,
             'stage' => $stage,
             'approver_id' => $approver->id,
             'action' => 'approved',
+            'notes' => $behalf ? 'بالإنابة عن مستخدم '.$behalf : null,
             'acted_at' => now(),
         ]);
 

@@ -180,6 +180,7 @@
                         @if ($expense->rejection_reason && in_array($expense->status, ['rejected', 'returned'], true))
                             <p class="ds-text-muted">السبب: {{ $expense->rejection_reason }}</p>
                         @endif
+                        <x-approval-timeline :request="\App\Models\ApprovalRequest::query()->where('approvable_type', 'expense_request')->where('approvable_id', $expense->id)->with('steps')->first()" />
                         @if ($hint = $approvalService->cannotApproveReason(auth()->user(), $expense))
                             <p class="ds-text-muted">{{ $hint }}</p>
                         @endif
@@ -225,7 +226,8 @@
                             @if ($expense->rejection_reason && in_array($expense->status, ['rejected', 'returned'], true))
                                 <div class="ds-text-muted">{{ $expense->rejection_reason }}</div>
                             @endif
-                            @if ($hint = $approvalService->cannotApproveReason(auth()->user(), $expense))
+                            <x-approval-timeline :request="\App\Models\ApprovalRequest::query()->where('approvable_type', 'expense_request')->where('approvable_id', $expense->id)->with('steps')->first()" />
+                        @if ($hint = $approvalService->cannotApproveReason(auth()->user(), $expense))
                                 <div class="ds-text-muted">{{ $hint }}</div>
                             @endif
                         </td>

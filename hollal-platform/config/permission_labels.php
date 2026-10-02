@@ -114,6 +114,11 @@ return [
         'settings.finance.manage' => 'إدارة إعدادات المالية',
         'settings.backup.manage' => 'إدارة النسخ الاحتياطي',
         'settings.notifications.manage' => 'إدارة إعدادات الإشعارات والبريد',
+        'settings.lists.view' => 'عرض القوائم المرجعية',
+        'settings.lists.manage' => 'إدارة القوائم المرجعية',
+        'settings.help.manage' => 'إدارة شروحات الشاشات',
+        'settings.approval-chains.manage' => 'إدارة سلاسل الطلبات',
+        'hr.delegations.manage' => 'إدارة الإنابة',
     ],
 
     'groups' => [

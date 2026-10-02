@@ -78,6 +78,10 @@ bootstrap_laravel() {
   php artisan migrate --force --no-interaction
   MIGRATE_STATUS=$?
 
+  echo "Seeding HR reference data..."
+  php artisan hr:seed-reference --no-interaction
+  php artisan optimize:clear --no-interaction
+
   if [ "$RUN_SEED" = "true" ]; then
     echo "Running seeders..."
     php artisan db:seed --force --no-interaction

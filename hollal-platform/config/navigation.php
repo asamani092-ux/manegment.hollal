@@ -136,6 +136,7 @@ return [
             'items' => [
                 ['label' => 'عامة', 'route' => 'settings.index', 'icon' => 'fa-cog', 'permission' => 'settings.manage|settings.general.manage|settings.finance.manage|settings.backup.manage'],
                 ['label' => 'القوائم المرجعية', 'route' => 'settings.lists', 'icon' => 'fa-list', 'permission' => 'settings.lists.view|settings.lists.manage'],
+                ['label' => 'سلاسل الطلبات', 'route' => 'settings.approval-chains', 'icon' => 'fa-sitemap', 'permission' => 'settings.approval-chains.manage'],
                 ['label' => 'المالية', 'route' => 'settings.approval-rules', 'icon' => 'fa-coins', 'permission' => 'settings.manage|settings.finance.manage'],
                 ['label' => 'SMTP', 'route' => 'settings.notifications', 'icon' => 'fa-envelope', 'permission' => 'settings.notifications.manage'],
             ],

@@ -4,8 +4,10 @@ namespace App\Services;
 
 use App\Models\Delegation;
 use App\Models\ExpenseRequest;
+use App\Models\LeaveRequest;
 use App\Models\User;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Notification;
 
 /**
  * Active delegations substitute approvers and permissions for one hop.
@@ -128,6 +130,83 @@ class DelegationService
                 ->count(),
             'direct_reports' => User::query()->where('manager_id', $delegator->id)->pluck('id')->all(),
         ];
+    }
+
+    public function propose(User $delegator, User $delegate, string $from, string $to, string $reason): Delegation
+    {
+        $this->assertPair($delegator, $delegate, $from, $to);
+
+        return Delegation::query()->create([
+            'delegator_id' => $delegator->id,
+            'delegate_id' => $delegate->id,
+            'starts_on' => $from,
+            'ends_on' => $to,
+            'reason' => $reason,
+            'status' => 'pending_delegate',
+            'created_by' => $delegator->id,
+        ]);
+    }
+
+    public function acceptByDelegate(Delegation $delegation, User $delegate): Delegation
+    {
+        if ($delegation->delegate_id !== $delegate->id || $delegation->status !== 'pending_delegate') {
+            throw new \RuntimeException('قبول الإنابة غير متاح');
+        }
+        $delegation->update(['status' => 'pending_manager']);
+
+        return $delegation->fresh();
+    }
+
+    public function approveByManager(Delegation $delegation, User $manager): Delegation
+    {
+        $delegator = $delegation->delegator;
+        if ($delegation->status !== 'pending_manager' || $delegator?->manager_id !== $manager->id) {
+            throw new \RuntimeException('اعتماد المدير غير متاح');
+        }
+        $delegation->update(['status' => 'pending_hr']);
+
+        return $delegation->fresh();
+    }
+
+    public function approveByHr(Delegation $delegation, User $hr): Delegation
+    {
+        if ($delegation->status !== 'pending_hr' || ! $hr->can('hr.delegations.manage')) {
+            throw new \RuntimeException('اعتماد الموارد البشرية غير متاح');
+        }
+        $delegation->update(['status' => Delegation::STATUS_SCHEDULED]);
+        $summary = $this->preview($delegation->delegator);
+        $delegation->delegator?->notify(new \App\Notifications\DelegationApprovedSummary($delegation, $summary));
+        Notification::send(
+            User::permission('hr.delegations.manage')->where('is_active', true)->get(),
+            new \App\Notifications\DelegationApprovedSummary($delegation, $summary)
+        );
+
+        return $delegation->fresh();
+    }
+
+    private function assertPair(User $delegator, User $delegate, string $from, string $to): void
+    {
+        if ($delegator->id === $delegate->id) {
+            throw new \InvalidArgumentException('لا يمكن الإنابة عن النفس');
+        }
+        $leave = LeaveRequest::query()
+            ->where('employee_id', $delegate->id)
+            ->where('status', LeaveRequest::STATUS_APPROVED)
+            ->whereDate('from_date', '<=', $to)
+            ->whereDate('to_date', '>=', $from)
+            ->exists();
+        if ($leave) {
+            throw new \InvalidArgumentException('البديل لديه إجازة متداخلة');
+        }
+        $busy = Delegation::query()
+            ->where('delegator_id', $delegate->id)
+            ->whereIn('status', [Delegation::STATUS_SCHEDULED, Delegation::STATUS_ACTIVE, 'pending_delegate', 'pending_manager', 'pending_hr'])
+            ->whereDate('starts_on', '<=', $to)
+            ->whereDate('ends_on', '>=', $from)
+            ->exists();
+        if ($busy) {
+            throw new \InvalidArgumentException('البديل مفوّض في الفترة نفسها');
+        }
     }
 
     public function syncDaily(): void

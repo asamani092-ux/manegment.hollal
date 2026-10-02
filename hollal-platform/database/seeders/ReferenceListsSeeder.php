@@ -81,7 +81,7 @@ class ReferenceListsSeeder extends Seeder
         ];
 
         foreach ($definitions as $key => $def) {
-            ReferenceList::query()->updateOrCreate(
+            ReferenceList::query()->firstOrCreate(
                 ['key' => $key],
                 $def
             );
@@ -101,6 +101,16 @@ class ReferenceListsSeeder extends Seeder
             }
             $draft = $service->createDraft('exclusion_reasons', $code, $name, [], now()->toDateString());
             $service->publish($draft, null, 'بذرة أسباب الاستبعاد');
+        }
+
+        if (! $service->item('help_topics', 'settings.approval-chains')) {
+            $draft = $service->createDraft('help_topics', 'settings.approval-chains', 'سلاسل الطلبات', [
+                'screen_key' => 'settings.approval-chains',
+                'title_ar' => 'سلاسل الطلبات',
+                'body_ar' => 'كل خطوة يمكن أن تكون أي موظف بالاسم. الإنابة تنقل صلاحيات المفوِّض طوال مدتها.',
+                'steps' => ['اختر نوع العملية', 'أضف شريحة', 'اختر موظفاً في الخطوة'],
+            ], now()->toDateString());
+            $service->publish($draft, null, 'بذرة شرح سلاسل الطلبات');
         }
 
         if (! $service->item('help_topics', 'settings.lists')) {

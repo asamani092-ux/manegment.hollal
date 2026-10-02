@@ -223,7 +223,6 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('workload-board.index');
 
     Route::get('/expenses', ExpensesIndex::class)
-        ->middleware('permission:finance.expenses.view|finance.expenses.create|finance.expenses.approve|finance.expenses.pay')
         ->name('expenses.index');
 
     Route::get('/payroll', PayrollIndex::class)
@@ -288,6 +287,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
     Route::get('/settings/notifications', MailSettingsIndex::class)
         ->middleware('permission:settings.notifications.manage')
         ->name('settings.notifications');
+
+    Route::get('/settings/approval-chains', \App\Livewire\Settings\ApprovalChainsIndex::class)
+        ->middleware('permission:settings.approval-chains.manage')
+        ->name('settings.approval-chains');
 
     Route::get('/settings/lists', ReferenceListsIndex::class)
         ->middleware('permission:settings.lists.view|settings.lists.manage')

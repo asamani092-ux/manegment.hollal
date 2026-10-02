@@ -163,6 +163,124 @@ class ApprovalEngineTest extends TestCase
         $this->assertSame(Delegation::STATUS_ENDED, $service->cut($row, today()->toDateString())->status);
     }
 
+    public function test_any_of_users_step_and_behalf_is_stored(): void
+    {
+        $requester = User::factory()->create();
+        $manager = User::factory()->create();
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+        $a->assignRole('Employee');
+        $b->assignRole('Employee');
+
+        ApprovalRule::query()->create([
+            'transaction_type' => ApprovalRule::TYPE_EXPENSE,
+            'min_amount' => 0,
+            'max_amount' => null,
+            'approval_steps' => [[
+                'type' => 'any_of_users',
+                'user_ids' => [$a->id, $b->id],
+                'required' => true,
+                'mode' => 'any',
+                'label_ar' => 'أحد المعتمدين',
+            ]],
+            'is_active' => true,
+        ]);
+
+        $expense = ExpenseRequest::factory()->create([
+            'requester_id' => $requester->id,
+            'amount' => 80,
+            'status' => 'draft',
+        ]);
+        app(ExpenseApprovalService::class)->initializeChain($expense);
+        $this->assertTrue(app(ExpenseApprovalService::class)->canApprove($b, $expense->fresh()));
+
+        $managerExpense = ExpenseRequest::factory()->create([
+            'requester_id' => User::factory()->create(['manager_id' => $manager->id])->id,
+            'amount' => 90,
+            'status' => 'draft',
+        ]);
+        ApprovalRule::query()->where('transaction_type', ApprovalRule::TYPE_EXPENSE)->delete();
+        ApprovalRule::query()->create([
+            'transaction_type' => ApprovalRule::TYPE_EXPENSE,
+            'min_amount' => 0,
+            'max_amount' => null,
+            'approval_steps' => [['type' => 'direct_manager', 'required' => true, 'mode' => 'any', 'label_ar' => 'مدير']],
+            'is_active' => true,
+        ]);
+        app(ExpenseApprovalService::class)->initializeChain($managerExpense);
+        $junior = User::factory()->create();
+        Delegation::query()->create([
+            'delegator_id' => $manager->id,
+            'delegate_id' => $junior->id,
+            'starts_on' => today()->toDateString(),
+            'ends_on' => today()->toDateString(),
+            'status' => Delegation::STATUS_ACTIVE,
+        ]);
+        app(ExpenseApprovalService::class)->approve($junior, $managerExpense->fresh());
+        $step = \App\Models\ApprovalRequestStep::query()->where('acted_by', $junior->id)->first();
+        $this->assertNotNull($step);
+        $this->assertSame($manager->id, (int) $step->acted_on_behalf_of);
+    }
+
+    public function test_delegation_stays_unscheduled_until_hr_and_notifies(): void
+    {
+        \Illuminate\Support\Facades\Notification::fake();
+        $manager = User::factory()->create();
+        $employee = User::factory()->create(['manager_id' => $manager->id]);
+        $delegate = User::factory()->create();
+        $hr = User::factory()->create();
+        $hr->givePermissionTo('hr.delegations.manage');
+
+        $service = app(DelegationService::class);
+        $row = $service->propose($employee, $delegate, today()->toDateString(), today()->addDay()->toDateString(), 'سفر');
+        $this->assertSame('pending_delegate', $row->status);
+        $row = $service->acceptByDelegate($row, $delegate);
+        $row = $service->approveByManager($row, $manager);
+        $this->assertSame('pending_hr', $row->status);
+        $row = $service->approveByHr($row, $hr);
+        $this->assertSame(Delegation::STATUS_SCHEDULED, $row->status);
+        \Illuminate\Support\Facades\Notification::assertSentTo($employee, \App\Notifications\DelegationApprovedSummary::class);
+        $preview = $service->preview($hr);
+        $this->assertArrayHasKey('sensitive', $preview);
+    }
+
+    public function test_delegate_inherits_permission_only_while_active(): void
+    {
+        $this->seed(\Database\Seeders\ReferenceListsSeeder::class);
+        $delegator = User::factory()->create(['must_change_password' => false]);
+        $delegator->givePermissionTo('settings.lists.view');
+        $delegate = User::factory()->create(['must_change_password' => false]);
+        $delegate->assignRole('Employee');
+
+        $row = Delegation::query()->create([
+            'delegator_id' => $delegator->id,
+            'delegate_id' => $delegate->id,
+            'starts_on' => today()->toDateString(),
+            'ends_on' => today()->toDateString(),
+            'status' => Delegation::STATUS_ACTIVE,
+        ]);
+
+        $this->actingAs($delegate)->get(route('settings.lists'))->assertOk();
+        app(DelegationService::class)->end($row);
+        $this->actingAs($delegate)->get(route('settings.lists'))->assertForbidden();
+    }
+
+    public function test_inflight_expense_stage_remains_approvable(): void
+    {
+        $manager = User::factory()->create();
+        $manager->givePermissionTo('finance.expenses.approve');
+        $requester = User::factory()->create(['manager_id' => $manager->id]);
+        $expense = ExpenseRequest::factory()->create([
+            'requester_id' => $requester->id,
+            'amount' => 100,
+            'status' => 'pending',
+            'approval_stages' => [ExpenseApprovalService::STAGE_DEPARTMENT_MANAGER],
+            'current_approval_stage' => ExpenseApprovalService::STAGE_DEPARTMENT_MANAGER,
+        ]);
+
+        $this->assertTrue(app(ExpenseApprovalService::class)->canApprove($manager, $expense));
+    }
+
     public function test_map_role_to_stage_symbol_is_gone(): void
     {
         $source = file_get_contents(app_path('Services/ApprovalChainService.php'));

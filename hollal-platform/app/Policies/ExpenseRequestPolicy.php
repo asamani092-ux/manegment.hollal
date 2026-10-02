@@ -15,10 +15,19 @@ class ExpenseRequestPolicy
 
     public function viewAny(User $user): bool
     {
-        return $user->can('finance.expenses.view')
+        if ($user->can('finance.expenses.view')
             || $user->can('finance.expenses.create')
             || $user->can('finance.expenses.approve')
-            || $user->can('finance.expenses.pay');
+            || $user->can('finance.expenses.pay')) {
+            return true;
+        }
+
+        return ExpenseRequest::query()
+            ->where('status', 'pending')
+            ->orderByDesc('id')
+            ->limit(50)
+            ->get()
+            ->contains(fn (ExpenseRequest $expense): bool => $this->approvalService->canApprove($user, $expense));
     }
 
     public function view(User $user, ExpenseRequest $expenseRequest): bool
