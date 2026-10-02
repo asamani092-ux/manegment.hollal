@@ -44,11 +44,13 @@
 
 ## 7. التحقق الحي
 
-يُستكمل بعد الدفع: `/login` و`/settings/approval-chains` و`/settings/lists`.
+- `/login` → 200
+- `/settings/lists` → 302 (المسار موجود ويحوّل لتسجيل الدخول)
+- `/settings/approval-chains` → 302 بعد اكتمال النشر
 
 ## 8. الدمج
 
-يُثبَّت برقم `git ls-remote origin main` بعد الدفع.
+`git ls-remote origin main` → `f4d09ff833947c37605a8aafa7c666b507510633`
 
 ## 9. النسخة الاحتياطية
 
