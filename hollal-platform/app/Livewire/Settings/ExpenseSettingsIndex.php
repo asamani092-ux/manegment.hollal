@@ -11,6 +11,7 @@ class ExpenseSettingsIndex extends Component
 {
     use AuthorizesRequests;
 
+    /** @deprecated مسار الاعتماد من ApprovalRule — الحقل معروض للقراءة فقط إن وُجد في الواجهة */
     public string $chain_mode = 'full';
 
     public bool $skip_missing_department_manager = true;
@@ -20,7 +21,7 @@ class ExpenseSettingsIndex extends Component
         $this->authorize('settings.manage');
 
         $settings = ExpenseSetting::current();
-        $this->chain_mode = $settings->chain_mode;
+        $this->chain_mode = (string) ($settings->chain_mode ?? 'full');
         $this->skip_missing_department_manager = $settings->skip_missing_department_manager;
     }
 
@@ -29,12 +30,10 @@ class ExpenseSettingsIndex extends Component
         $this->authorize('settings.manage');
 
         $this->validate([
-            'chain_mode' => 'required|in:full,short',
             'skip_missing_department_manager' => 'boolean',
         ]);
 
         ExpenseSetting::current()->update([
-            'chain_mode' => $this->chain_mode,
             'skip_missing_department_manager' => $this->skip_missing_department_manager,
         ]);
 

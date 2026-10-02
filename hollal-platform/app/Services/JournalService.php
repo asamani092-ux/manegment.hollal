@@ -295,7 +295,9 @@ class JournalService
             return null;
         }
 
-        $fixed = $this->accountByCode(CoaCodes::FURNITURE);
+        $asset->loadMissing('category');
+        $accountCode = $asset->category?->default_account_code ?: CoaCodes::FURNITURE;
+        $fixed = $this->accountByCode($accountCode);
         $cash = $this->accountByCode(CoaCodes::CASH);
 
         return $this->createEntry(

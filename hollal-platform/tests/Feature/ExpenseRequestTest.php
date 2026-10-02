@@ -10,6 +10,7 @@ use App\Notifications\ExpenseAwaitingApproval;
 use App\Notifications\ExpensePaidReady;
 use App\Notifications\ExpenseRejected;
 use App\Services\ExpenseApprovalService;
+use App\Models\ApprovalRule;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -36,7 +37,17 @@ class ExpenseRequestTest extends TestCase
         $this->seed(PermissionSeeder::class);
         $this->seed(RoleSeeder::class);
 
-        ExpenseSetting::current()->update(['chain_mode' => 'short']);
+        ApprovalRule::query()->where('transaction_type', ApprovalRule::TYPE_EXPENSE)->delete();
+        ApprovalRule::query()->create([
+            'transaction_type' => ApprovalRule::TYPE_EXPENSE,
+            'min_amount' => 0,
+            'max_amount' => null,
+            'approval_steps' => [
+                ['role' => 'executive'],
+                ['role' => 'finance'],
+            ],
+            'is_active' => true,
+        ]);
 
         $this->requester = User::factory()->create(['phone' => '0503333333', 'must_change_password' => false]);
         $this->requester->assignRole('Employee');

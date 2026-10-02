@@ -19,3 +19,7 @@ Schedule::command('tasks:generate-recurring')->dailyAt('01:00');
 Schedule::command('budgets:check-thresholds')->dailyAt('07:30');
 Schedule::command('documents:check-policy-reviews')->dailyAt('07:45');
 Schedule::command('projects:generate-pending')->everyFifteenMinutes();
+Schedule::command('finance:run-depreciation')
+    ->monthlyOn(1, '02:00')
+    ->withoutOverlapping()
+    ->appendOutputTo(storage_path('logs/depreciation.log'));

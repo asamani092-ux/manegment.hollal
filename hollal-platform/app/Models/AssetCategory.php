@@ -11,7 +11,7 @@ class AssetCategory extends Model
     use SoftDeletes;
 
     /** @var list<string> */
-    protected $fillable = ['name_ar', 'can_be_custody', 'is_active'];
+    protected $fillable = ['name_ar', 'default_account_code', 'can_be_custody', 'is_active'];
 
     /** @return array<string, string> */
     protected function casts(): array

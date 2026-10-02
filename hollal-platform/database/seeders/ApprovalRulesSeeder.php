@@ -54,5 +54,32 @@ class ApprovalRulesSeeder extends Seeder
                 );
             }
         }
+
+        // catch-all — يغطي أي مبلغ لم تطابقه قاعدة أضيق
+        $catchAllSteps = [
+            ['role' => 'department_manager', 'stage' => 1],
+            ['role' => 'executive', 'stage' => 2],
+            ['role' => 'finance', 'stage' => 3],
+        ];
+
+        foreach ([
+            ApprovalRule::TYPE_EXPENSE,
+            ApprovalRule::TYPE_CUSTODY,
+            ApprovalRule::TYPE_QUOTE,
+            ApprovalRule::TYPE_CONTRACT,
+            ApprovalRule::TYPE_LEAVE,
+        ] as $type) {
+            ApprovalRule::query()->firstOrCreate(
+                [
+                    'transaction_type' => $type,
+                    'min_amount' => 0,
+                    'max_amount' => 999999999,
+                ],
+                [
+                    'approval_steps' => $catchAllSteps,
+                    'is_active' => true,
+                ],
+            );
+        }
     }
 }

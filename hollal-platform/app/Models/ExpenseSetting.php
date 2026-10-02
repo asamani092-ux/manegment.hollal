@@ -6,11 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * Single-row expense workflow configuration.
+ *
+ * @property string $chain_mode @deprecated مسار الاعتماد أصبح من ApprovalRule فقط
  */
 class ExpenseSetting extends Model
 {
     protected $fillable = [
-        'chain_mode',
         'skip_missing_department_manager',
     ];
 

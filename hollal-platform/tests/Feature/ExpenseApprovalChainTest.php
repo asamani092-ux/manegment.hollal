@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Livewire\Expenses\ExpensesIndex;
+use App\Models\ApprovalRule;
 use App\Models\ExpenseRequest;
 use App\Models\ExpenseSetting;
 use App\Models\User;
@@ -54,14 +55,32 @@ class ExpenseApprovalChainTest extends TestCase
         $this->finance->assignRole('Finance');
     }
 
+    private function seedExpenseRule(array $steps, ?float $max = null): void
+    {
+        ApprovalRule::query()->where('transaction_type', ApprovalRule::TYPE_EXPENSE)->delete();
+        ApprovalRule::query()->create([
+            'transaction_type' => ApprovalRule::TYPE_EXPENSE,
+            'min_amount' => 0,
+            'max_amount' => $max,
+            'approval_steps' => $steps,
+            'is_active' => true,
+        ]);
+    }
+
     public function test_full_chain_routes_through_all_stages(): void
     {
         Notification::fake();
 
-        ExpenseSetting::current()->update(['chain_mode' => 'full', 'skip_missing_department_manager' => true]);
+        ExpenseSetting::current()->update(['skip_missing_department_manager' => true]);
+        $this->seedExpenseRule([
+            ['role' => 'department_manager'],
+            ['role' => 'executive'],
+            ['role' => 'finance'],
+        ]);
 
         $expense = ExpenseRequest::factory()->create([
             'requester_id' => $this->requester->id,
+            'amount' => 1500,
             'status' => 'draft',
         ]);
 
@@ -108,10 +127,14 @@ class ExpenseApprovalChainTest extends TestCase
 
     public function test_short_chain_skips_department_manager(): void
     {
-        ExpenseSetting::current()->update(['chain_mode' => 'short']);
+        $this->seedExpenseRule([
+            ['role' => 'executive'],
+            ['role' => 'finance'],
+        ]);
 
         $expense = ExpenseRequest::factory()->create([
             'requester_id' => $this->requester->id,
+            'amount' => 1500,
             'status' => 'draft',
         ]);
 
@@ -127,7 +150,12 @@ class ExpenseApprovalChainTest extends TestCase
 
     public function test_missing_department_manager_is_skipped_when_enabled(): void
     {
-        ExpenseSetting::current()->update(['chain_mode' => 'full', 'skip_missing_department_manager' => true]);
+        ExpenseSetting::current()->update(['skip_missing_department_manager' => true]);
+        $this->seedExpenseRule([
+            ['role' => 'department_manager'],
+            ['role' => 'executive'],
+            ['role' => 'finance'],
+        ]);
 
         $requesterNoManager = User::factory()->create([
             'phone' => '0501000005',
@@ -138,6 +166,7 @@ class ExpenseApprovalChainTest extends TestCase
 
         $expense = ExpenseRequest::factory()->create([
             'requester_id' => $requesterNoManager->id,
+            'amount' => 1500,
             'status' => 'draft',
         ]);
 

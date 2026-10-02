@@ -89,12 +89,11 @@ class ReportRound1ToolsSmokeTest extends TestCase
 
         Livewire::actingAs($admin)
             ->test(ExpenseSettingsIndex::class)
-            ->set('chain_mode', 'short')
             ->set('skip_missing_department_manager', false)
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertSame('short', ExpenseSetting::current()->chain_mode);
+        $this->assertFalse(ExpenseSetting::current()->skip_missing_department_manager);
     }
 
     public function test_document_template_and_policy_create_smoke(): void

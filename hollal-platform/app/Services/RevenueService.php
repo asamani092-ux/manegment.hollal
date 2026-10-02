@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Revenue;
+use App\Models\RevenueCategory;
 
 /**
  * 04-B4 — revenue recording. Partnership payments produce exactly one revenue on
@@ -12,6 +13,16 @@ class RevenueService
 {
     public function recordManual(float $amount, ?int $categoryId, ?string $receivedAt, ?string $externalDocumentPath = null): Revenue
     {
+        if (empty($categoryId)) {
+            throw new \InvalidArgumentException('تصنيف الإيراد مطلوب');
+        }
+
+        $category = RevenueCategory::query()->with('account:id,code')->findOrFail($categoryId);
+        $accountCode = (string) ($category->account?->code ?? '');
+        if ($accountCode !== '' && ! str_starts_with($accountCode, '4')) {
+            throw new \InvalidArgumentException('حساب تصنيف الإيراد يجب أن يكون ضمن حسابات الإيرادات (4xx)');
+        }
+
         $revenue = Revenue::create([
             'source_type' => Revenue::SOURCE_MANUAL,
             'category_id' => $categoryId,
