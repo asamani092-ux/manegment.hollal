@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Models\EmployeeProfile;
 use App\Models\LeaveRequest;
+use App\Models\ReferenceItem;
+use App\Models\ReferenceList;
 use App\Models\User;
 use App\Notifications\LeaveDecision;
 use App\Notifications\LeaveRequested;
@@ -30,7 +32,8 @@ class LeaveService
             throw new \InvalidArgumentException('تاريخ النهاية يجب أن يكون بعد البداية أو مساويًا له.');
         }
 
-        if (! in_array($type, [LeaveRequest::TYPE_ANNUAL, LeaveRequest::TYPE_SICK, LeaveRequest::TYPE_EXCEPTIONAL], true)) {
+        $leaveType = $this->resolveLeaveType($type);
+        if (! $leaveType) {
             throw new \InvalidArgumentException('نوع الإجازة غير معتمد.');
         }
 
@@ -47,7 +50,7 @@ class LeaveService
             throw new \RuntimeException('توجد إجازة أخرى متداخلة مع هذه الفترة.');
         }
 
-        if ($type === LeaveRequest::TYPE_ANNUAL) {
+        if ($leaveType->code === 'annual' || $leaveType->name_ar === 'سنوية') {
             $balance = (int) ($employee->profile?->annual_leave_balance ?? 0);
 
             // الطلبات المقدمة تحجز رصيدها حتى لا يتجاوزه الموظف بطلبات متتالية.
@@ -62,15 +65,20 @@ class LeaveService
             }
         }
 
-        $leave = LeaveRequest::create([
+        $payload = [
             'employee_id' => $employee->id,
-            'type' => $type,
+            'type' => $leaveType->name_ar,
             'from_date' => $fromDate,
             'to_date' => $toDate,
             'days_count' => $days,
             'reason' => $reason,
             'status' => LeaveRequest::STATUS_SUBMITTED,
-        ]);
+        ];
+        if ($this->leaveHasReferenceColumn()) {
+            $payload['reference_item_id'] = $leaveType->id;
+        }
+
+        $leave = LeaveRequest::create($payload);
 
         $manager = $employee->manager;
         if ($manager) {
@@ -93,7 +101,7 @@ class LeaveService
                 throw new \RuntimeException('لا يمكن اعتماد طلب ليس بحالة مقدم.');
             }
 
-            if ($leave->type === LeaveRequest::TYPE_ANNUAL) {
+            if ($leave->type === 'سنوية' || $leave->type === 'annual') {
                 EmployeeProfile::query()->firstOrCreate(
                     ['user_id' => $leave->employee_id],
                     ['annual_leave_balance' => 21]
@@ -138,5 +146,27 @@ class LeaveService
         $leave->employee?->notify(new LeaveDecision($leave->fresh()));
 
         return $leave->fresh();
+    }
+
+    private function resolveLeaveType(string $type): ?ReferenceItem
+    {
+        if (! ReferenceList::query()->where('key', 'leave_types')->exists()) {
+            return null;
+        }
+
+        $service = app(ReferenceListService::class);
+        $byCode = $service->item('leave_types', $type);
+        if ($byCode) {
+            return $byCode;
+        }
+
+        return $service->activeItems('leave_types')->first(function (ReferenceItem $item) use ($type) {
+            return $item->name_ar === $type || $item->code === $type;
+        });
+    }
+
+    private function leaveHasReferenceColumn(): bool
+    {
+        return \Illuminate\Support\Facades\Schema::hasColumn('leave_requests', 'reference_item_id');
     }
 }

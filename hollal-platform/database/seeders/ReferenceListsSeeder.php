@@ -89,6 +89,24 @@ class ReferenceListsSeeder extends Seeder
 
         $service = app(ReferenceListService::class);
 
+        $leaveTypes = [
+            ['annual', 'سنوية', ['annual_entitlement_days' => 21, 'entitlement_after_5y_days' => 30, 'deducts_from' => 'own', 'paid' => true, 'requires_substitute' => true]],
+            ['emergency', 'طارئة', ['max_days_per_request' => 3, 'deducts_from' => 'annual', 'paid' => true, 'requires_substitute' => true]],
+            ['sick', 'مرضية', ['deducts_from' => 'own', 'paid' => true, 'requires_attachment' => true, 'pay_tiers' => [['days' => 30, 'pay_pct' => 100], ['days' => 60, 'pay_pct' => 75], ['days' => 30, 'pay_pct' => 0]]]],
+            ['marriage', 'زواج', ['max_days_per_request' => 5, 'once_per_service' => true, 'paid' => true]],
+            ['bereavement', 'وفاة', ['max_days_per_request' => 5, 'paid' => true]],
+            ['newborn', 'مولود', ['max_days_per_request' => 3, 'paid' => true]],
+            ['hajj', 'حج', ['max_days_per_request' => 15, 'once_per_service' => true, 'min_service_months' => 24, 'paid' => true]],
+            ['exceptional', 'استثنائية', ['paid' => false, 'deducts_from' => 'none']],
+        ];
+        foreach ($leaveTypes as [$code, $name, $attrs]) {
+            if ($service->item('leave_types', $code)) {
+                continue;
+            }
+            $draft = $service->createDraft('leave_types', $code, $name, $attrs, now()->toDateString());
+            $service->publish($draft, null, 'بذرة أنواع الإجازة');
+        }
+
         foreach ([
             ['fingerprint_error', 'خطأ في البصمة'],
             ['prior_permission', 'إذن مسبق'],

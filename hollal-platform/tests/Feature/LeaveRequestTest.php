@@ -22,6 +22,7 @@ class LeaveRequestTest extends TestCase
         parent::setUp();
         $this->seed(PermissionSeeder::class);
         $this->seed(RoleSeeder::class);
+        $this->seed(\Database\Seeders\ReferenceListsSeeder::class);
         Notification::fake();
     }
 
