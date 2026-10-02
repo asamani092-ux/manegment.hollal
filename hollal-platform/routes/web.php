@@ -312,6 +312,10 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:hr.employees.view')
         ->name('attendance.index');
 
+    Route::get('/attendance/overtime', \App\Livewire\Hr\OvertimeRequestsIndex::class)
+        ->middleware('permission:hr.employees.view')
+        ->name('attendance.overtime');
+
     Route::get('/attendance/cycle', \App\Livewire\Hr\AttendanceCycleIndex::class)
         ->middleware('permission:hr.employees.update')
         ->name('attendance.cycle');
