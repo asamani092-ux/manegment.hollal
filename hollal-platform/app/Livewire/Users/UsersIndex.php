@@ -244,6 +244,7 @@ class UsersIndex extends Component
         if ($user->wasRecentlyCreated) {
             $assignee = User::findOrFail($this->onboarding_assignee_id);
             app(\App\Services\OnboardingService::class)->generateTasks($user, auth()->user(), $assignee);
+            app(\App\Services\OnboardingChecklistService::class)->generate($user);
         }
 
         $this->showModal = false;

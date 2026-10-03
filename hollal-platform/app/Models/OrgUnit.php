@@ -15,6 +15,8 @@ class OrgUnit extends Model
 {
     use SoftDeletes;
 
+    public const LEVEL_TOP = 'الإدارة العليا';
+
     public const LEVEL_ADMINISTRATION = 'إدارة';
 
     /** Structural mid-level (Arabic label «قسم»; constant kept for callers). */
@@ -24,6 +26,7 @@ class OrgUnit extends Model
 
     /** @var array<string, ?string> level => the level allowed beneath it */
     public const CHILD_LEVEL = [
+        self::LEVEL_TOP => self::LEVEL_ADMINISTRATION,
         self::LEVEL_ADMINISTRATION => self::LEVEL_UNIT,
         self::LEVEL_UNIT => self::LEVEL_JOB,
         self::LEVEL_JOB => null,
@@ -31,7 +34,7 @@ class OrgUnit extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'name', 'level', 'parent_id', 'manager_id',
+        'name', 'level', 'parent_id', 'manager_id', 'default_role',
         'job_purpose', 'job_responsibilities', 'job_requirements', 'position',
     ];
 

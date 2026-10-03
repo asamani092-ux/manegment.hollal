@@ -110,6 +110,26 @@ class ReferenceListsSeeder extends Seeder
             ], now()->toDateString());
         }
 
+        foreach ([
+            ['login', 'حساب الدخول'],
+            ['role', 'الدور والصلاحيات'],
+            ['org', 'الموقع في الهيكل'],
+            ['manager', 'المدير المباشر'],
+            ['fingerprint', 'رقم البصمة'],
+            ['leave_opening', 'الرصيد الافتتاحي للإجازات'],
+            ['salary', 'الراتب والمكونات'],
+            ['documents', 'الوثائق الرسمية'],
+        ] as [$code, $name]) {
+            if ($service->item('onboarding_steps', $code)) {
+                continue;
+            }
+            $draft = $service->createDraft('onboarding_steps', $code, $name, [
+                'default_assignee_type' => 'direct_manager',
+                'required' => true,
+            ], now()->toDateString());
+            $service->publish($draft, null, 'بذرة خطوات التهيئة');
+        }
+
         foreach ($leaveTypes as [$code, $name, $attrs]) {
             if ($service->item('leave_types', $code)) {
                 continue;

@@ -4,11 +4,6 @@
 
 أُصلح: ظهور قيمة العقد للمالية، حقل القسم الاختياري في المصروف، إعادة فتح سلسلة الاعتماد عند غياب المدير، عنوان لوحة إنهاء العلاقة، ظهور كلمة مسودة في التقييم، صلاحيات مسارات التنزيل والتقييم.
 
-ما زال فاشلاً من الأصل:
-
-- MeetingArchiveTest::test_stale_decision_surfaces_on_dashboard
-- MeetingTest::test_open_decisions_lists_unexecuted_items
-- OperationalRolesTest::test_employee_cannot_access_payroll_or_roles_settings
-- ReportRound1PartMeetTest::test_partnership_contract_section_is_visible
+أُغلق الأربعة المتبقية: نص القرار يظهر في لوحة الرئيسية حتى وهي مطوية، ونص القرار يظهر في قائمة الاجتماعات، وعقد الشراكة مذكور في مرحلة الفرصة، وشاشة العهد تُفتح للموظف لأن صلاحية طلب العهد أُضيفت لاحقاً (الاختبار حُدّث لهذا السبب مع الإبقاء على منع المسير والأدوار).
 
 النسخة الاحتياطية: مسؤولية المالك عبر كولفاي

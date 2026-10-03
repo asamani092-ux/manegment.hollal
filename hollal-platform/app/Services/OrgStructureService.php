@@ -29,8 +29,8 @@ class OrgStructureService
             );
         }
 
-        if (! $parent && $level !== OrgUnit::LEVEL_ADMINISTRATION) {
-            throw new \InvalidArgumentException('جذر الشجرة يجب أن يكون إدارة');
+        if (! $parent && ! in_array($level, [OrgUnit::LEVEL_TOP, OrgUnit::LEVEL_ADMINISTRATION], true)) {
+            throw new \InvalidArgumentException('جذر الشجرة يجب أن يكون إدارة أو الإدارة العليا');
         }
 
         unset($attributes['department_id']);
@@ -105,6 +105,34 @@ class OrgStructureService
     /**
      * @return Collection<int, EmployeeTransfer>
      */
+    public function placeEmployee(User $user, OrgUnit $job): User
+    {
+        if ($job->level !== OrgUnit::LEVEL_JOB) {
+            throw new \InvalidArgumentException('التعيين يكون على وظيفة');
+        }
+
+        return DB::transaction(function () use ($user, $job) {
+            if ($user->auto_role_name && $user->auto_role_name !== $job->default_role) {
+                $user->removeRole($user->auto_role_name);
+            }
+            if ($job->default_role) {
+                $user->assignRole($job->default_role);
+            }
+            $user->forceFill([
+                'org_unit_id' => $job->id,
+                'auto_role_name' => $job->default_role,
+            ])->save();
+
+            app(AuditLogService::class)->record('structure.place', $user, [
+                'org_unit_id' => $job->id,
+                'role' => $job->default_role,
+                'source' => 'الهيكل',
+            ]);
+
+            return $user->fresh();
+        });
+    }
+
     public function historyFor(User $employee): Collection
     {
         return EmployeeTransfer::where('user_id', $employee->id)
