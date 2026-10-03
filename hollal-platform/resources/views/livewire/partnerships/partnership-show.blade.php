@@ -37,7 +37,7 @@
     @if (! $workspaceAvailable)
         <section class="ds-section ds-section-spaced">
             <h2 class="ds-section-title">مساحة العمل</h2>
-            <p class="ds-text-muted">تُفتح مساحة العمل عند مرحلة «تشخيص الاحتياج» فقط — بعد فرصة وتواصل ولقاء.</p>
+            <p class="ds-text-muted">تُفتح مساحة العمل عند مرحلة «تشخيص الاحتياج» فقط — بعد فرصة وتواصل ولقاء. عقد الشراكة جزء من عرض السعر حتى التنفيذ.</p>
             @can('partnerships.pipeline.manage')
                 <button type="button" class="ds-btn ds-btn-primary" wire:click="startDiagnosisWorkspace">بدء التشخيص وفتح مساحة العمل</button>
             @endcan

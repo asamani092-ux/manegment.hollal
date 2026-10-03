@@ -45,8 +45,7 @@
                 </span>
                 <i class="fas {{ $actionPanelOpen ? 'fa-chevron-up' : 'fa-chevron-down' }}" aria-hidden="true"></i>
             </button>
-            @if ($actionPanelOpen)
-                <div class="ds-action-panel-body">
+            <div class="ds-action-panel-body" @if (! $actionPanelOpen) hidden @endif>
                     @foreach ($actionItems as $item)
                         <div class="ds-stat-mini" wire:key="action-{{ $item['kind'] }}-{{ $loop->index }}">
                             <div>
@@ -62,8 +61,7 @@
                             </div>
                         </div>
                     @endforeach
-                </div>
-            @endif
+            </div>
         </section>
     @endif
 

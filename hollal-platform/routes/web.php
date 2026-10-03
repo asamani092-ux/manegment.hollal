@@ -121,6 +121,10 @@ Route::middleware('throttle:portal')->group(function () {
     Route::get('/sign/{token}/pdf', SignaturePortalPdfController::class)->name('sign.portal.pdf');
 });
 
+Route::get('/hr/deploy-marker', function () {
+    return response('leave-balances-d470f80', 200)->header('Content-Type', 'text/plain');
+})->name('hr.deploy-marker');
+
 Route::middleware('guest')->group(function () {
     Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
     Route::post('/login', [AuthController::class, 'login']);

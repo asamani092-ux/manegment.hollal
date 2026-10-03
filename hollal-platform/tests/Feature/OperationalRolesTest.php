@@ -144,7 +144,8 @@ class OperationalRolesTest extends TestCase
 
         $this->actingAs($user)->get(route('payroll.index'))->assertForbidden();
         $this->actingAs($user)->get(route('settings.roles'))->assertForbidden();
-        $this->actingAs($user)->get(route('custodies.index'))->assertForbidden();
+        // الموظف يطلب عهدته من الشاشة نفسها بعد إضافة finance.custodies.view.
+        $this->actingAs($user)->get(route('custodies.index'))->assertOk();
         $this->actingAs($user)->get(route('settings.grants'))->assertForbidden();
     }
 
