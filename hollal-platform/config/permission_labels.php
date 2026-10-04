@@ -124,6 +124,7 @@ return [
         'hr.violations.decide' => 'البت في المخالفات',
         'hr.payroll-adjustments.view' => 'عرض تسويات الرواتب',
         'hr.payroll-adjustments.manage' => 'إدارة تسويات الرواتب',
+        'hr.documents.review' => 'مراجعة وثائق الموظفين',
     ],
 
     'groups' => [

@@ -66,6 +66,15 @@ class User extends Authenticatable
         return $this->belongsTo(User::class, 'manager_id');
     }
 
+    public function effectiveManager(): ?self
+    {
+        if ($this->manager_override_id) {
+            return static::query()->find($this->manager_override_id);
+        }
+
+        return $this->manager;
+    }
+
     /**
      * Direct reports plus reports of delegators this user currently replaces.
      * Time: O(n) | Space: O(n)

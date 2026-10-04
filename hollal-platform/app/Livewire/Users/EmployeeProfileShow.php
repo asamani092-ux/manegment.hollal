@@ -677,6 +677,28 @@ class EmployeeProfileShow extends Component
         return $entries->sortByDesc(fn (array $row) => $row['at'])->values();
     }
 
+    public function completeOnboarding(int $id): void
+    {
+        $item = \App\Models\EmployeeOnboardingItem::query()->where('user_id', $this->userId)->findOrFail($id);
+        abort_unless(auth()->user()->can('hr.employees.update') || (int) auth()->id() === (int) $this->userId, 403);
+        app(\App\Services\OnboardingChecklistService::class)->markDone($item, auth()->user());
+    }
+
+    public function closeOnboarding(int $id): void
+    {
+        $item = \App\Models\EmployeeOnboardingItem::query()->where('user_id', $this->userId)->findOrFail($id);
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        app(\App\Services\OnboardingChecklistService::class)->close($item, auth()->user());
+    }
+
+    public function convertOnboarding(int $id): void
+    {
+        $item = \App\Models\EmployeeOnboardingItem::query()->where('user_id', $this->userId)->findOrFail($id);
+        abort_unless(auth()->user()->can('hr.employees.update'), 403);
+        $employee = User::query()->findOrFail($this->userId);
+        app(\App\Services\OnboardingChecklistService::class)->convertToTask($item, $employee, auth()->user());
+    }
+
     public function render(): View
     {
         $user = User::with([
@@ -708,6 +730,7 @@ class EmployeeProfileShow extends Component
             'salaryTotals' => $salaryTotals,
             'contracts' => Contract::query()->where('employee_id', $this->userId)->latest('end_date')->get(),
             'onboardingItems' => \App\Models\EmployeeOnboardingItem::query()
+                ->with('referenceItem:id,name_ar,code')
                 ->where('user_id', $this->userId)
                 ->limit(20)
                 ->get(),

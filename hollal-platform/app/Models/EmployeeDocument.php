@@ -42,6 +42,11 @@ class EmployeeDocument extends Model
         'file_path',
         'notes',
         'uploaded_by',
+        'status',
+        'reviewed_by',
+        'reviewed_at',
+        'rejection_reason',
+        'previous_document_id',
     ];
 
     protected function casts(): array
@@ -49,6 +54,7 @@ class EmployeeDocument extends Model
         return [
             'issue_date' => 'date',
             'expiry_date' => 'date',
+            'reviewed_at' => 'datetime',
         ];
     }
 

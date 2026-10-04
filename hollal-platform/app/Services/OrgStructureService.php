@@ -105,6 +105,20 @@ class OrgStructureService
     /**
      * @return Collection<int, EmployeeTransfer>
      */
+    public function gatherAdministrationsUnderTop(): OrgUnit
+    {
+        $top = OrgUnit::query()->firstOrCreate(
+            ['level' => OrgUnit::LEVEL_TOP, 'name' => 'الإدارة العليا'],
+            ['position' => 0]
+        );
+        OrgUnit::query()
+            ->where('level', OrgUnit::LEVEL_ADMINISTRATION)
+            ->whereNull('parent_id')
+            ->update(['parent_id' => $top->id]);
+
+        return $top;
+    }
+
     public function placeEmployee(User $user, OrgUnit $job): User
     {
         if ($job->level !== OrgUnit::LEVEL_JOB) {

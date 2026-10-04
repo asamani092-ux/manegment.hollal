@@ -67,7 +67,14 @@
                         <h3>قائمة التهيئة</h3>
                         <ul>
                             @foreach ($onboardingItems as $item)
-                                <li>{{ $item->status }}</li>
+                                <li>
+                                    {{ $item->referenceItem?->name_ar ?? 'خطوة' }} — {{ $item->status }}
+                                    @if ($item->status === 'open' && $canUpdate)
+                                        <button type="button" class="ds-btn ds-btn-sm" wire:click="completeOnboarding({{ $item->id }})">تم</button>
+                                        <button type="button" class="ds-btn ds-btn-sm" wire:click="convertOnboarding({{ $item->id }})">تحويل إلى مهمة</button>
+                                        <button type="button" class="ds-btn ds-btn-sm" wire:click="closeOnboarding({{ $item->id }})">إغلاق</button>
+                                    @endif
+                                </li>
                             @endforeach
                         </ul>
                     @endif

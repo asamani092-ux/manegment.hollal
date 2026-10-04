@@ -120,6 +120,7 @@ class PermissionSeeder extends Seeder
         'hr.violations.decide',
         'hr.payroll-adjustments.view',
         'hr.payroll-adjustments.manage',
+        'hr.documents.review',
     ];
 
     public function run(): void
