@@ -154,17 +154,29 @@ class EmployeeProfileShow extends Component
         $this->payScaleId = $user->profile?->pay_scale_id;
         $this->gradeLabel = (string) ($user->profile?->grade_label ?? '');
         $this->overtimeHourValue = (string) ($user->profile?->overtime_hour_value ?? '0');
-        $base = SalaryComponent::query()
-            ->where('employee_id', $user->id)
-            ->where('type', SalaryComponent::TYPE_BASE)
-            ->effectiveOn(today())
-            ->value('amount');
-        $this->baseAmount = $base !== null ? (string) $base : '';
 
         $tab = request()->query('tab');
         if (is_string($tab) && $tab !== '') {
             $this->setTab($tab);
         }
+    }
+
+    /**
+     * Load the editable base amount only when the salary card is shown.
+     * Time: O(1) | Space: O(1)
+     */
+    private function loadSalaryFormDefaults(): void
+    {
+        if ($this->baseAmount !== '') {
+            return;
+        }
+
+        $base = SalaryComponent::query()
+            ->where('employee_id', $this->userId)
+            ->where('type', SalaryComponent::TYPE_BASE)
+            ->effectiveOn(today())
+            ->value('amount');
+        $this->baseAmount = $base !== null ? (string) $base : '0';
     }
 
     public function setTab(string $tab): void
@@ -174,6 +186,9 @@ class EmployeeProfileShow extends Component
         }
 
         $this->activeTab = $this->normalizeTab($tab);
+        if (in_array($this->activeTab, ['job', 'pay'], true) && $this->canViewSalary()) {
+            $this->loadSalaryFormDefaults();
+        }
     }
 
     public function updatedActiveTab(string $value): void
@@ -742,103 +757,156 @@ class EmployeeProfileShow extends Component
 
     public function render(): View
     {
-        $user = User::with([
-            'manager:id,name',
-            'orgUnit:id,name,level,parent_id',
-            'orgUnit.parent:id,name,level',
-            'profile.payScale',
-            'roles:id,name',
-        ])->findOrFail($this->userId);
+        $tab = $this->activeTab;
+        $with = ['profile'];
+        if (in_array($tab, ['overview', 'personal'], true)) {
+            $with[] = 'manager:id,name';
+        }
+        if (in_array($tab, ['overview', 'personal', 'job', 'pay', 'leaves'], true)) {
+            $with[] = 'orgUnit:id,name,level,parent_id';
+            $with[] = 'orgUnit.parent:id,name,level';
+        }
+        if ($tab === 'personal') {
+            $with[] = 'roles:id,name';
+        }
+        if (in_array($tab, ['job', 'pay'], true)) {
+            $with[] = 'profile.payScale:id,name_ar';
+        }
 
-        $salaryTotals = $this->canViewSalary()
-            ? app(SalaryService::class)->monthlyFromComponents($user)
-            : null;
-        $documentMatrix = in_array($this->activeTab, ['overview', 'documents'], true)
-            ? app(\App\Services\DocumentRequirementService::class)->matrix($user)
-            : [];
-        $performanceSummary = $this->activeTab === 'performance'
-            ? app(\App\Services\PerformanceService::class)->summary($user, now()->startOfYear(), now()->endOfYear())
-            : null;
+        $user = User::with($with)->findOrFail($this->userId);
+        $salaryTab = in_array($tab, ['job', 'pay'], true) && $this->canViewSalary();
+        $salaryComponents = $salaryTab
+            ? SalaryComponent::query()->where('employee_id', $this->userId)->effectiveOn(today())->orderBy('type')->get()
+            : collect();
+        $showCatalogs = $this->showEdit;
 
         return view('livewire.users.employee-profile-show', [
             'user' => $user,
             'canViewSalary' => $this->canViewSalary(),
             'canManageOvertime' => auth()->user()->can('hr.salaries.manage'),
             'canUpdate' => auth()->user()->can('hr.employees.update'),
-            'administrations' => OrgJobCatalog::administrations(),
-            'managers' => User::orderBy('name')->get(['id', 'name']),
-            'roles' => Role::orderBy('name')->get(['id', 'name']),
-            'unitOptions' => OrgJobCatalog::optionsForUnits($this->editAdministrationId),
-            'jobOptions' => OrgJobCatalog::optionsForUnit($this->editUnitId),
-            'payScales' => PayScale::query()->where('is_active', true)->orderBy('name_ar')->get(),
-            'salaryComponents' => $this->canViewSalary()
-                ? SalaryComponent::query()->where('employee_id', $this->userId)->effectiveOn(today())->orderBy('type')->get()
+            'administrations' => $showCatalogs ? OrgJobCatalog::administrations() : collect(),
+            'managers' => $showCatalogs ? User::orderBy('name')->get(['id', 'name']) : collect(),
+            'roles' => $showCatalogs ? Role::orderBy('name')->get(['id', 'name']) : collect(),
+            'unitOptions' => $showCatalogs ? OrgJobCatalog::optionsForUnits($this->editAdministrationId) : [],
+            'jobOptions' => $showCatalogs ? OrgJobCatalog::optionsForUnit($this->editUnitId) : [],
+            'payScales' => $salaryTab
+                ? PayScale::query()->where('is_active', true)->orderBy('name_ar')->get(['id', 'name_ar', 'grades'])
                 : collect(),
-            'salaryTotals' => $salaryTotals,
-            'documentMatrix' => $documentMatrix,
-            'performanceSummary' => $performanceSummary,
-            'profileViolations' => $this->activeTab === 'violations'
+            'salaryComponents' => $salaryComponents,
+            'salaryTotals' => $salaryTab ? $this->totalsFromComponents($user, $salaryComponents) : null,
+            'documentMatrix' => in_array($tab, ['overview', 'documents'], true)
+                ? app(\App\Services\DocumentRequirementService::class)->matrix($user)
+                : [],
+            'performanceSummary' => $tab === 'performance'
+                ? app(\App\Services\PerformanceService::class)->summary($user, now()->startOfYear(), now()->endOfYear())
+                : null,
+            'profileViolations' => $tab === 'violations'
                 ? \App\Models\Violation::query()->where('employee_id', $this->userId)->latest('id')->limit(30)->get()
                 : collect(),
-            'payslips' => $this->activeTab === 'pay'
+            'payslips' => $tab === 'pay'
                 ? \App\Models\PayrollRunItem::query()->where('employee_id', $this->userId)->with('run:id,month,status')->latest('id')->limit(12)->get()
                 : collect(),
-            'attendanceRows' => $this->activeTab === 'attendance'
+            'attendanceRows' => $tab === 'attendance'
                 ? \App\Models\AttendanceRecord::query()->where('employee_id', $this->userId)->latest('date')->limit(31)->get()
                 : collect(),
-            'custodyRows' => $this->activeTab === 'custody'
+            'custodyRows' => $tab === 'custody'
                 ? \App\Models\Custody::query()->where('employee_id', $this->userId)->latest('id')->limit(20)->get()
                 : collect(),
-            'assetRows' => $this->activeTab === 'custody'
+            'assetRows' => $tab === 'custody'
                 ? \App\Models\Asset::query()->where('current_holder_id', $this->userId)->latest('id')->limit(20)->get()
                 : collect(),
-            'contracts' => Contract::query()->where('employee_id', $this->userId)->latest('end_date')->get(),
-            'onboardingItems' => \Illuminate\Support\Facades\Schema::hasTable('employee_onboarding_items')
+            'contracts' => $tab === 'documents'
+                ? Contract::query()->where('employee_id', $this->userId)->latest('end_date')->get()
+                : collect(),
+            'onboardingItems' => $tab === 'overview' && \Illuminate\Support\Facades\Schema::hasTable('employee_onboarding_items')
                 ? \App\Models\EmployeeOnboardingItem::query()
                     ->with('referenceItem:id,name_ar,code')
                     ->where('user_id', $this->userId)
                     ->limit(20)
                     ->get()
                 : collect(),
-            'employeeDocuments' => EmployeeDocument::query()
-                ->where('user_id', $this->userId)
-                ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END')
-                ->orderBy('expiry_date')
-                ->get(),
-            'responsibilities' => Responsibility::query()->where('employee_id', $this->userId)->active()->orderBy('order')->get(),
-            'quarterlyEvaluations' => EmployeeEvaluation::query()
-                ->where('employee_id', $this->userId)
-                ->when(
-                    (int) auth()->id() === (int) $this->userId
-                        && ! auth()->user()->can('hr.employees.update'),
-                    fn ($q) => $q->whereIn('status', [
-                        EmployeeEvaluation::STATUS_APPROVED,
-                        EmployeeEvaluation::STATUS_ARCHIVED,
-                    ])
-                )
-                ->with(['cycle.items', 'scores.cycleItem', 'evaluator:id,name'])
-                ->orderByDesc('approved_at')
-                ->orderByDesc('id')
-                ->get(),
-            'evaluations' => PeriodicEvaluation::query()
-                ->where('employee_id', $this->userId)
-                ->where('status', '!=', PeriodicEvaluation::STATUS_ARCHIVED)
-                ->when(
-                    ! auth()->user()->can('hr.employees.update'),
-                    fn ($q) => $q->where('status', PeriodicEvaluation::STATUS_PUBLISHED)
-                )
-                ->with(['scores.responsibility', 'evaluator:id,name'])
-                ->latest()
-                ->get(),
-            'archivedEvaluations' => PeriodicEvaluation::query()
-                ->where('employee_id', $this->userId)
-                ->where('status', PeriodicEvaluation::STATUS_ARCHIVED)
-                ->with(['scores.responsibility', 'evaluator:id,name'])
-                ->latest()
-                ->get(),
-            'leaves' => LeaveRequest::query()->where('employee_id', $this->userId)->latest()->limit(20)->get(),
-            'tasks' => Task::query()->where('assigned_to', $this->userId)->latest()->limit(20)->get(['id', 'title', 'status', 'due_date']),
-            'profileLogEntries' => $this->activeTab === 'log' ? $this->profileLogEntries() : collect(),
+            'employeeDocuments' => $tab === 'documents'
+                ? EmployeeDocument::query()
+                    ->where('user_id', $this->userId)
+                    ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END')
+                    ->orderBy('expiry_date')
+                    ->get()
+                : collect(),
+            'responsibilities' => in_array($tab, ['job', 'pay'], true)
+                ? Responsibility::query()->where('employee_id', $this->userId)->active()->orderBy('order')->get()
+                : collect(),
+            'quarterlyEvaluations' => in_array($tab, ['performance', 'log'], true)
+                ? $this->quarterlyEvaluationsFor($user, $tab === 'log')
+                : collect(),
+            'evaluations' => $tab === 'log' ? $this->legacyEvaluations(false) : collect(),
+            'archivedEvaluations' => $tab === 'log' ? $this->legacyEvaluations(true) : collect(),
+            'leaves' => $tab === 'leaves'
+                ? LeaveRequest::query()->where('employee_id', $this->userId)->latest()->limit(20)->get()
+                : collect(),
+            'tasks' => $tab === 'performance'
+                ? Task::query()->where('assigned_to', $this->userId)->latest()->limit(20)->get(['id', 'title', 'status', 'due_date'])
+                : collect(),
+            'profileLogEntries' => $tab === 'log' ? $this->profileLogEntries() : collect(),
         ])->layout('layouts.app', ['title' => 'الملف الوظيفي — '.$user->name]);
+    }
+
+    /**
+     * @param  \Illuminate\Support\Collection<int, SalaryComponent>  $components
+     * @return array{base: float, allowances: float, deductions: float, monthly: float}
+     */
+    private function totalsFromComponents(User $user, $components): array
+    {
+        $base = (float) $components->where('type', SalaryComponent::TYPE_BASE)->sum('amount');
+        $allowances = (float) $components->where('type', SalaryComponent::TYPE_ALLOWANCE)->sum('amount');
+        $deductions = app(SalaryService::class)->isRegularEmployee($user)
+            ? (float) $components->where('type', SalaryComponent::TYPE_DEDUCTION)->sum('amount')
+            : 0.0;
+
+        return [
+            'base' => $base,
+            'allowances' => $allowances,
+            'deductions' => $deductions,
+            'monthly' => $base + $allowances - $deductions,
+        ];
+    }
+
+    private function quarterlyEvaluationsFor(User $user, bool $withScores)
+    {
+        $with = $withScores
+            ? ['cycle.items', 'scores', 'evaluator:id,name']
+            : ['cycle:id,name,quarter,year'];
+
+        return EmployeeEvaluation::query()
+            ->where('employee_id', $user->id)
+            ->when(
+                (int) auth()->id() === (int) $user->id && ! auth()->user()->can('hr.employees.update'),
+                fn ($q) => $q->whereIn('status', [
+                    EmployeeEvaluation::STATUS_APPROVED,
+                    EmployeeEvaluation::STATUS_ARCHIVED,
+                ])
+            )
+            ->with($with)
+            ->orderByDesc('approved_at')
+            ->orderByDesc('id')
+            ->get();
+    }
+
+    private function legacyEvaluations(bool $archived)
+    {
+        return PeriodicEvaluation::query()
+            ->where('employee_id', $this->userId)
+            ->when(
+                $archived,
+                fn ($q) => $q->where('status', PeriodicEvaluation::STATUS_ARCHIVED),
+                fn ($q) => $q->where('status', '!=', PeriodicEvaluation::STATUS_ARCHIVED)
+                    ->when(
+                        ! auth()->user()->can('hr.employees.update'),
+                        fn ($inner) => $inner->where('status', PeriodicEvaluation::STATUS_PUBLISHED)
+                    )
+            )
+            ->with(['scores.responsibility:id,body', 'evaluator:id,name'])
+            ->latest()
+            ->get();
     }
 }
