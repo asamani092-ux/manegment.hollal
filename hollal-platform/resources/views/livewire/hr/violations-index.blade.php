@@ -5,6 +5,7 @@
             <button type="button" class="ds-tab" wire:click="$set('tab','suggested')">مقترحة</button>
             <button type="button" class="ds-tab" wire:click="$set('tab','statement')">بانتظار الإفادة</button>
             <button type="button" class="ds-tab" wire:click="$set('tab','decision')">بانتظار القرار</button>
+            <button type="button" class="ds-tab" wire:click="$set('tab','window')">نافذة</button>
             <button type="button" class="ds-tab" wire:click="$set('tab','all')">الكل</button>
             @if ($canManage && $tab === 'suggested')
                 <button type="button" class="ds-btn ds-btn-sm" wire:click="confirmAllSuggested">تأكيد المقترح</button>
@@ -23,5 +24,23 @@
                 @endif
             </p>
         @endforeach
+        @if ($canManage)
+            <h2>تسجيل مخالفة</h2>
+            <select class="ds-input" wire:model="manualEmployeeId">
+                <option value="">الموظف</option>
+                @foreach ($employees as $employee)
+                    <option value="{{ $employee->id }}">{{ $employee->name }}</option>
+                @endforeach
+            </select>
+            <select class="ds-input" wire:model="manualItemId">
+                <option value="">المخالفة من القائمة</option>
+                @foreach ($violationItems as $item)
+                    <option value="{{ $item->id }}">{{ $item->name_ar }}</option>
+                @endforeach
+            </select>
+            <input class="ds-input" type="date" wire:model="manualOccurred">
+            <textarea class="ds-input" wire:model="manualFacts" placeholder="الوقائع"></textarea>
+            <button type="button" class="ds-btn" wire:click="recordManualFromList">تسجيل</button>
+        @endif
     </x-ds-page>
 </div>

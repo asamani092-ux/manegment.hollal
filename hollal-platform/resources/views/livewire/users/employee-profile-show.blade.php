@@ -314,7 +314,15 @@
                     </x-slot:actions>
                     <ul>
                         @foreach ($documentMatrix ?? [] as $cell)
-                            <li class="ds-doc-{{ $cell['color'] }}">{{ $cell['name'] }} — {{ $cell['state'] }}</li>
+                            @php
+                                $tone = match ($cell['color']) {
+                                    'red' => '#B42318',
+                                    'yellow' => '#B54708',
+                                    'green' => '#067647',
+                                    default => '#667085',
+                                };
+                            @endphp
+                            <li style="color: {{ $tone }}">{{ $cell['name'] }} — {{ $cell['state'] }}</li>
                         @endforeach
                     </ul>
                     <p class="ds-text-muted ds-mb-3">هوية · إقامة · جواز · عقد عمل · أخرى — مع رقم الوثيقة وتاريخ الانتهاء للتنبيه قبل التجديد.</p>

@@ -678,7 +678,14 @@ class EvaluationsIndex extends Component
     {
         $id = auth()->id();
 
-        return \App\Models\User::query()->where('manager_id', $id)->exists()
+        return \App\Models\User::query()
+            ->where(function ($query) use ($id) {
+                $query->where('manager_override_id', $id)
+                    ->orWhere(function ($inner) use ($id) {
+                        $inner->whereNull('manager_override_id')->where('manager_id', $id);
+                    });
+            })
+            ->exists()
             || EmployeeEvaluation::query()->where('evaluator_id', $id)->exists();
     }
 

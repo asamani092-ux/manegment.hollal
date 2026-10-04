@@ -106,6 +106,9 @@ class EvaluationService
         }
 
         $evaluation->update(['status' => PeriodicEvaluation::STATUS_ARCHIVED]);
+        if (\Illuminate\Support\Facades\Schema::hasTable('evaluation_cycles')) {
+            app(EvaluationCycleService::class)->importLegacy($evaluation->fresh());
+        }
     }
 
     public function scoresComplete(PeriodicEvaluation $evaluation): bool

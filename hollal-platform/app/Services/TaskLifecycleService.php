@@ -102,7 +102,7 @@ class TaskLifecycleService
         }
 
         $assignee = User::query()->find($task->assigned_to);
-        if (! $assignee || (int) $assignee->manager_id !== (int) $manager->id) {
+        if (! $assignee || (int) $assignee->effectiveManager()?->id !== (int) $manager->id) {
             if (! $manager->can('esnad.tasks.all.view')) {
                 throw new \RuntimeException('تغيير الحالة يقتصر على مدير المكلَّف.');
             }

@@ -3,6 +3,11 @@
 namespace Tests\Feature;
 
 use App\Livewire\Hr\DocumentReviewsIndex;
+use App\Livewire\Hr\ViolationsIndex;
+use App\Models\EvaluationCycle;
+use App\Models\EvaluationScore;
+use App\Models\Responsibility;
+use App\Services\EvaluationService;
 use App\Models\AttendanceCycleDay;
 use App\Models\ChartOfAccount;
 use App\Models\EmployeeOnboardingItem;
@@ -293,5 +298,77 @@ class HrRemainderTest extends TestCase
         $this->assertSame($head->id, $placed->fresh()->manager_id);
         $unit->update(['manager_id' => $next->id]);
         $this->assertSame($next->id, $employee->fresh()->manager_id);
+    }
+
+    public function test_window_hides_old_violations_and_manual_record_uses_the_list(): void
+    {
+        $hr = User::factory()->create();
+        $hr->givePermissionTo(['hr.violations.view', 'hr.violations.manage']);
+        $employee = User::factory()->create(['name' => 'موظف النافذة']);
+        $service = app(ReferenceListService::class);
+        $draft = $service->createDraft('violations', 'window-sample', 'نافذة — للاختبار', [
+            'category' => 'سلوك العامل',
+            'origin' => 'company',
+            'penalties' => [['type' => 'warning', 'value' => 0]],
+        ], now()->toDateString());
+        $item = $service->publish($draft, null, 'اختبار');
+
+        Violation::query()->create([
+            'employee_id' => $employee->id,
+            'reference_item_id' => $item->id,
+            'status' => 'applied',
+            'occurred_on' => now()->subDays(10)->toDateString(),
+            'discovered_on' => now()->subDays(10)->toDateString(),
+            'facts' => 'داخل النافذة',
+        ]);
+        Violation::query()->create([
+            'employee_id' => $employee->id,
+            'reference_item_id' => $item->id,
+            'status' => 'applied',
+            'occurred_on' => now()->subDays(400)->toDateString(),
+            'discovered_on' => now()->subDays(400)->toDateString(),
+            'facts' => 'خارج النافذة',
+        ]);
+
+        Livewire::actingAs($hr)
+            ->test(ViolationsIndex::class)
+            ->set('tab', 'window')
+            ->assertSee('داخل النافذة', false)
+            ->assertDontSee('خارج النافذة', false)
+            ->set('manualEmployeeId', $employee->id)
+            ->set('manualItemId', $item->id)
+            ->set('manualFacts', 'وقائع من القائمة')
+            ->set('manualOccurred', now()->toDateString())
+            ->call('recordManualFromList')
+            ->assertHasNoErrors();
+
+        $this->assertDatabaseHas('violations', [
+            'employee_id' => $employee->id,
+            'reference_item_id' => $item->id,
+            'facts' => 'وقائع من القائمة',
+            'status' => 'awaiting_statement',
+        ]);
+
+        $resp = Responsibility::query()->create([
+            'employee_id' => $employee->id,
+            'body' => 'جودة',
+            'order' => 1,
+            'is_active' => true,
+        ]);
+        $legacy = PeriodicEvaluation::query()->create([
+            'employee_id' => $employee->id,
+            'period' => '2025-Q4',
+            'evaluator_id' => $hr->id,
+            'status' => PeriodicEvaluation::STATUS_DRAFT,
+        ]);
+        EvaluationScore::query()->create([
+            'periodic_evaluation_id' => $legacy->id,
+            'responsibility_id' => $resp->id,
+            'score' => 5,
+        ]);
+        app(EvaluationService::class)->archive($legacy);
+        $this->assertTrue(
+            EvaluationCycle::query()->where('name', 'أرشيف — 2025-Q4')->exists()
+        );
     }
 }

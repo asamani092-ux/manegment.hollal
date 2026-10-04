@@ -117,7 +117,7 @@ class TeamEvaluationsIndex extends Component
     {
         $userId = auth()->id();
         $ok = (int) $evaluation->evaluator_id === (int) $userId
-            || (int) $evaluation->employee?->manager_id === (int) $userId
+            || (int) $evaluation->employee?->effectiveManager()?->id === (int) $userId
             || auth()->user()->can('hr.employees.update');
 
         abort_unless($ok, 403);
