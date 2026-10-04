@@ -1,6 +1,7 @@
 <div>
     <x-ds-page>
         <x-ds-page-header title="المخالفات" screen="hr.violations" />
+        <p class="ds-text-muted">جزاء الشركة يظهر بجانب جزاء الوزارة. إذا كان أشد يظهر تنبيه أحمر ويلزم سبب فيه كلمة أؤكد. الجدول الرسمي ما زال بانتظار المالك، والبند الحالي مسودة «نموذج — للاختبار».</p>
         <div class="ds-tabs">
             <button type="button" class="ds-tab" wire:click="$set('tab','suggested')">مقترحة</button>
             <button type="button" class="ds-tab" wire:click="$set('tab','statement')">بانتظار الإفادة</button>

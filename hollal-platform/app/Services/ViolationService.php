@@ -352,6 +352,37 @@ class ViolationService
         return ($used + (float) ($penalty['value'] ?? 0)) > $cap;
     }
 
+    /**
+     * @param  list<array{type?: string, value?: int|float}>  $company
+     * @param  list<array{type?: string, value?: int|float}>  $baseline
+     */
+    public function assertCompanyRevision(array $company, array $baseline, string $reason): void
+    {
+        foreach ($company as $index => $penalty) {
+            $origin = $baseline[$index] ?? null;
+            if (! is_array($penalty) || ! is_array($origin)) {
+                continue;
+            }
+            if ($this->isHarsherThanBaseline($penalty, $origin) && ! str_contains($reason, 'أؤكد')) {
+                throw new \RuntimeException('الجزاء أشد من النموذج المعتمد من الوزارة');
+            }
+        }
+    }
+
+    /** @param  array{type?: string, value?: int|float}  $company
+     * @param  array{type?: string, value?: int|float}  $baseline
+     */
+    public function isHarsherThanBaseline(array $company, array $baseline): bool
+    {
+        $left = self::SEVERITY[$company['type'] ?? ''] ?? 0;
+        $right = self::SEVERITY[$baseline['type'] ?? ''] ?? 0;
+        if ($left > $right) {
+            return true;
+        }
+
+        return $left === $right && (float) ($company['value'] ?? 0) > (float) ($baseline['value'] ?? 0);
+    }
+
     private function listExists(string $key): bool
     {
         return Schema::hasTable('reference_lists')
