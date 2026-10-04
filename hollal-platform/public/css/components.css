@@ -1123,14 +1123,21 @@
   margin-bottom: 0.875rem;
 }
 
+.ds-page-header-bar > div:first-child {
+  min-width: 0;
+  flex: 1 1 12rem;
+}
+
 .ds-page-header-bar .ds-page-title {
   margin: 0;
+  overflow-wrap: anywhere;
 }
 
 .ds-toolbar-actions {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+  flex-shrink: 0;
 }
 
 .ds-section-spaced {
