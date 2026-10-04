@@ -65,7 +65,7 @@ ADMIN_INITIAL_PASSWORD=12341234
 RUN_SEED=true
 ```
 
-بعد أول دخول ناجح: `RUN_SEED=false`.
+`RUN_SEED=true` يملأ القاعدة مرة واحدة فقط إذا لم يوجد أي مستخدم. بعد ذلك النشر لا يعيد البيانات التجريبية ولا يمسح التعديلات.
 
 إن ظهر Access denied لـ MySQL: لا تغيّر كلمة المرور فقط — حجم البيانات القديم يحتفظ بالأولى. أعد النشر بعد تحديث اسم الحجم في Compose (حالياً `hollal_mysql_v2`) أو احذف الحجم من Persistent Storages ثم Redeploy.
 

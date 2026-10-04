@@ -85,8 +85,8 @@ bootstrap_laravel() {
   php artisan optimize:clear --no-interaction
 
   if [ "$RUN_SEED" = "true" ]; then
-    echo "Running seeders..."
-    php artisan db:seed --force --no-interaction
+    echo "Seeding demo data only when the database is empty..."
+    php artisan db:seed-if-empty --no-interaction
   fi
   set -e
 
