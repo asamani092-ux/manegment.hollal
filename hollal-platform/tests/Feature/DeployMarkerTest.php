@@ -31,4 +31,12 @@ class DeployMarkerTest extends TestCase
         $this->assertStringNotContainsString('secret', $response->getContent());
         $this->assertStringNotContainsString('password', $response->getContent());
     }
+
+    public function test_entrypoint_exports_migrate_status_to_the_status_file(): void
+    {
+        $script = file_get_contents(base_path('docker/entrypoint.sh'));
+
+        $this->assertStringContainsString('MIGRATE_STATUS="$MIGRATE_STATUS"', $script);
+        $this->assertStringContainsString('PENDING="$PENDING"', $script);
+    }
 }

@@ -81,7 +81,7 @@ bootstrap_laravel() {
   MIGRATE_STATUS=$?
   cat /tmp/hollal-migrate.log
   PENDING=$(php artisan migrate:status --pending --no-interaction 2>/dev/null | grep -c "Pending" || true)
-  php -r '
+  MIGRATE_STATUS="$MIGRATE_STATUS" PENDING="$PENDING" php -r '
     $status = getenv("MIGRATE_STATUS") === "0" ? "ok" : "failed";
     $pending = (int) getenv("PENDING");
     $lines = is_file("/tmp/hollal-migrate.log") ? file("/tmp/hollal-migrate.log", FILE_IGNORE_NEW_LINES) : [];
