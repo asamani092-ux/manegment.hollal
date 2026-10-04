@@ -31,7 +31,7 @@ class UatPhase3FixTest extends TestCase
         $paths = [
             '/attendance' => 'الحضور',
             '/leaves' => 'الإجازات',
-            '/evaluations' => 'التقييم الربعي',
+            '/evaluations' => 'التقييم',
             '/meetings/archive' => 'أرشيف المحاضر',
         ];
 

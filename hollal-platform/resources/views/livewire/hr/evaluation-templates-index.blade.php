@@ -6,7 +6,7 @@
         <a href="{{ route('evaluation-cycles.index') }}" class="ds-btn ds-btn-secondary">دورات التقييم</a>
     </div>
 
-    <x-ds-page-header title="قوالب التقييم الربعي" :show-button="false" />
+    <x-ds-page-header title="قوالب التقييم" :show-button="false" />
 
     <div class="ds-filters-row">
         <div class="ds-filter-field">

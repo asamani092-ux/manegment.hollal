@@ -119,6 +119,11 @@ return [
         'settings.help.manage' => 'إدارة شروحات الشاشات',
         'settings.approval-chains.manage' => 'إدارة سلاسل الطلبات',
         'hr.delegations.manage' => 'إدارة الإنابة',
+        'hr.violations.view' => 'عرض المخالفات',
+        'hr.violations.manage' => 'إدارة المخالفات',
+        'hr.violations.decide' => 'البت في المخالفات',
+        'hr.payroll-adjustments.view' => 'عرض تسويات الرواتب',
+        'hr.payroll-adjustments.manage' => 'إدارة تسويات الرواتب',
     ],
 
     'groups' => [

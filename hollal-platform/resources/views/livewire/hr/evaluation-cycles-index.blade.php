@@ -6,7 +6,7 @@
         <a href="{{ route('evaluation-templates.index') }}" class="ds-btn ds-btn-secondary">قوالب التقييم</a>
     </div>
 
-    <x-ds-page-header title="دورات التقييم الربعي" :show-button="false" />
+    <x-ds-page-header title="دورات التقييم" :show-button="false" />
 
     <p class="ds-text-muted ds-mb-3">
         عند فتح الدورة تُنسخ بنود القالب كلقطة ثابتة لا تتأثر بتعديل القالب لاحقاً.

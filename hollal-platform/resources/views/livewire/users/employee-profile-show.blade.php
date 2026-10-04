@@ -406,9 +406,9 @@
                     @endforelse
                 </x-ds-table>
 
-                <h3 class="ds-section-title ds-mt-4">التقييم الربعي</h3>
+                <h3 class="ds-section-title ds-mt-4">التقييم</h3>
                 <p class="ds-text-muted ds-mb-3">
-                    أرشيف التقييم الربعي بعد الاعتماد. يظهر للموظف فور اعتماد الموارد البشرية (ثم يُؤرشف عند إغلاق الدورة).
+                    أرشيف التقييم بعد الاعتماد. يظهر للموظف فور اعتماد الموارد البشرية (ثم يُؤرشف عند إغلاق الدورة).
                 </p>
                 @forelse ($quarterlyEvaluations as $evaluation)
                     <article class="ds-card ds-mb-3" wire:key="qev-{{ $evaluation->id }}">

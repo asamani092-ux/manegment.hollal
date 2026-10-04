@@ -1,5 +1,5 @@
 <x-ds-page>
-    <x-ds-page-header title="التقييم الربعي" :show-button="false" />
+    <x-ds-page-header title="التقييم" :show-button="false" />
 
     <p class="ds-text-muted ds-mb-3">
         مسار واحد متسلسل: مسودة قالب ← فتح دورة ← فتح جماعي ← تعبئة ← اعتماد جماعي ← إغلاق/أرشفة.

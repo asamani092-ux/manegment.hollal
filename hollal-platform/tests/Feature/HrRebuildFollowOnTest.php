@@ -78,4 +78,27 @@ class HrRebuildFollowOnTest extends TestCase
         $this->assertSame('7.00', number_format((float) $updated->amount, 2, '.', ''));
         $this->assertSame('10.00', number_format((float) $updated->computed_amount, 2, '.', ''));
     }
+
+    public function test_generate_posts_approved_adjustment_into_run(): void
+    {
+        $employee = User::factory()->create([
+            'is_active' => true,
+            'employment_status' => \App\Models\User::STATUS_ACTIVE,
+        ]);
+        $month = now()->format('Y-m');
+        PayrollAdjustment::query()->create([
+            'employee_id' => $employee->id,
+            'month' => $month,
+            'amount' => 40,
+            'computed_amount' => 40,
+            'status' => 'approved',
+            'reason' => 'مكافأة',
+        ]);
+
+        $run = app(\App\Services\PayrollRunService::class)->generate($month);
+        $item = $run->items()->where('employee_id', $employee->id)->first();
+        $this->assertNotNull($item);
+        $this->assertSame('earning', $item->variables[0]['kind'] ?? null);
+        $this->assertSame('posted', PayrollAdjustment::query()->first()->status);
+    }
 }

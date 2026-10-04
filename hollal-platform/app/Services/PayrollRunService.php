@@ -85,10 +85,43 @@ class PayrollRunService
                 $item->payroll_run_id = $run->id;
                 $item->recalculate();
                 $item->save();
+                $this->applyPostedAdjustments($item, $month);
             }
 
             return $run;
         });
+    }
+
+    private function applyPostedAdjustments(PayrollRunItem $item, string $month): void
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('payroll_adjustments')) {
+            return;
+        }
+
+        $lines = \App\Models\PayrollAdjustment::query()
+            ->where('employee_id', $item->employee_id)
+            ->where('month', $month)
+            ->whereIn('status', ['approved', 'modified'])
+            ->get();
+
+        if ($lines->isEmpty()) {
+            return;
+        }
+
+        $variables = $item->variables ?? [];
+        foreach ($lines as $line) {
+            $amount = (float) $line->amount;
+            $variables[] = [
+                'label' => 'تسوية',
+                'reason' => (string) ($line->reason ?? ''),
+                'amount' => abs($amount),
+                'kind' => $amount < 0 ? 'deduction' : 'earning',
+            ];
+            $line->update(['status' => 'posted']);
+        }
+        $item->variables = $variables;
+        $item->recalculate();
+        $item->save();
     }
 
     public function setOvertime(PayrollRunItem $item, float $hours): PayrollRunItem
@@ -335,6 +368,7 @@ class PayrollRunService
     public function submitToFinance(PayrollRun $run, User $actor): PayrollRun
     {
         $this->assertEditable($run);
+        app(PayrollAdjustmentService::class)->assertNoProposed($run->month);
 
         $run->update([
             'status' => PayrollRun::STATUS_SUBMITTED,

@@ -38,7 +38,8 @@ return [
                 ['label' => 'مسيّرات الرواتب', 'route' => 'payroll-runs.index', 'icon' => 'fa-file-invoice-dollar', 'permission' => 'hr.salaries.view'],
                 // «الرواتب الشهرية» أُدمجت في المسيّر + الملف الوظيفي — لا تبويب ثالث.
                 // Round 5ب: شاشة واحدة /evaluations (wizard) — أخفِ القوالب/الدورات/فريقي/أرشيفي من الشريط.
-                ['label' => 'التقييم الربعي', 'route' => 'evaluations.index', 'icon' => 'fa-star-half-alt', 'permission' => 'hr.employees.view|dashboard.view'],
+                ['label' => 'التقييم', 'route' => 'evaluations.index', 'icon' => 'fa-star-half-alt', 'permission' => 'hr.employees.view|dashboard.view'],
+                ['label' => 'المخالفات', 'route' => 'hr.violations', 'icon' => 'fa-gavel', 'permission' => 'hr.violations.view|hr.violations.manage'],
                 // ['label' => 'قوالب التقييم', 'route' => 'evaluation-templates.index', ...],
                 // ['label' => 'دورات التقييم', 'route' => 'evaluation-cycles.index', ...],
                 // ['label' => 'تقييمات فريقي', 'route' => 'employee-evaluations.team', ...],

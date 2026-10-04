@@ -55,7 +55,7 @@ class UatToolsChecklistTest extends TestCase
             ->assertSee('دليل العاملين', false)
             ->assertSee('قوالب التقييم', false)
             ->assertSee('دورات التقييم', false)
-            ->assertSee('التقييم الربعي', false)
+            ->assertSee('التقييم', false)
             ->assertSee('تقييمات فريقي', false)
             ->assertSee('أرشيف تقييماتي', false)
             ->assertSee('الحضور (برنامج التحضير)', false)

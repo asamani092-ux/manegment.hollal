@@ -115,6 +115,11 @@ class PermissionSeeder extends Seeder
         'settings.help.manage',
         'settings.approval-chains.manage',
         'hr.delegations.manage',
+        'hr.violations.view',
+        'hr.violations.manage',
+        'hr.violations.decide',
+        'hr.payroll-adjustments.view',
+        'hr.payroll-adjustments.manage',
     ];
 
     public function run(): void
