@@ -15,7 +15,7 @@ services:
     image: hollal-app:local
     environment:
       CONTAINER_ROLE: web
-      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_DEBUG: ${APP_DEBUG:-false}
       LOG_CHANNEL: stderr
       LOG_LEVEL: ${LOG_LEVEL:-debug}
       DB_CONNECTION: mysql
