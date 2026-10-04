@@ -1,24 +1,17 @@
 FROM php:8.3-cli-bookworm
 
-RUN apt-get update && apt-get install -y \
-    git \
-    unzip \
-    libzip-dev \
-    libonig-dev \
-    libxml2-dev \
-    libpng-dev \
-    libjpeg62-turbo-dev \
-    libfreetype6-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install pdo_mysql zip mbstring bcmath gd \
-    && rm -rf /var/lib/apt/lists/*
+COPY --from=mlocati/php-extension-installer:2 /usr/bin/install-php-extensions /usr/local/bin/
+
+RUN install-php-extensions pdo_mysql zip mbstring bcmath gd
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
 WORKDIR /app
 
+ENV COMPOSER_ALLOW_SUPERUSER=1
+
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-scripts --prefer-dist --no-progress
 
 COPY . .
 

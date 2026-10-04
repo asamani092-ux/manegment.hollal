@@ -53,7 +53,7 @@ wait_for_database() {
 
   echo "Waiting for database ${DB_HOST}:${DB_PORT:-3306} db=${DB_DATABASE} user=${DB_USERNAME}..."
   i=0
-  while true; do
+  while [ "$i" -lt 90 ]; do
     if err=$(php -r "try { new PDO('mysql:host='.getenv('DB_HOST').';port='.(getenv('DB_PORT')?:3306).';dbname='.getenv('DB_DATABASE'), getenv('DB_USERNAME'), getenv('DB_PASSWORD')); exit(0);} catch (Throwable \$e) { fwrite(STDERR, \$e->getMessage()); exit(1);}" 2>&1); then
       echo "Database is ready."
       return 0
@@ -64,6 +64,8 @@ wait_for_database() {
     fi
     sleep 2
   done
+  echo "ERROR: database not ready after 3 minutes: ${err}"
+  exit 1
 }
 
 bootstrap_laravel() {

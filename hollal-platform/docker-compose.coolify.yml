@@ -12,6 +12,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: hollal-app:local
     environment:
       CONTAINER_ROLE: web
       APP_DEBUG: ${APP_DEBUG:-true}
@@ -36,9 +37,8 @@ services:
     restart: unless-stopped
 
   queue:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: hollal-app:local
+    pull_policy: never
     environment:
       CONTAINER_ROLE: queue
       DB_CONNECTION: mysql
@@ -56,9 +56,8 @@ services:
     restart: unless-stopped
 
   scheduler:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: hollal-app:local
+    pull_policy: never
     environment:
       CONTAINER_ROLE: scheduler
       DB_CONNECTION: mysql
