@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\LeaveBalance;
+use App\Models\LeaveBalanceAdjustment;
 use App\Models\LeavePayImpact;
 use App\Models\LeaveRequest;
 use App\Models\ReferenceItem;
@@ -139,6 +140,61 @@ class LeaveBalanceService
                 );
             }
         }
+    }
+
+    /**
+     * Add one month of annual entitlement. Repeat calls in the same month do nothing.
+     * Time: O(employees) | Space: O(1)
+     */
+    public function accrueMonth(?Carbon $on = null): int
+    {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('leave_balances')) {
+            return 0;
+        }
+        $on = ($on ?? now())->copy()->startOfMonth();
+        $type = app(ReferenceListService::class)->item('leave_types', 'annual');
+        if (! $type) {
+            return 0;
+        }
+        $reason = 'استحقاق '.$on->format('Y-m');
+        $count = 0;
+        User::query()
+            ->where('is_active', true)
+            ->where('employment_status', User::STATUS_ACTIVE)
+            ->with('profile')
+            ->orderBy('id')
+            ->each(function (User $user) use ($type, $on, $reason, &$count) {
+                $already = LeaveBalanceAdjustment::query()
+                    ->where('user_id', $user->id)
+                    ->where('reference_item_id', $type->id)
+                    ->where('reason', $reason)
+                    ->exists();
+                if ($already) {
+                    return;
+                }
+                $slice = round($this->entitlementDays($user, $type, $on) / 12, 2);
+                if ($slice <= 0) {
+                    return;
+                }
+                $balance = LeaveBalance::query()->firstOrCreate(
+                    [
+                        'user_id' => $user->id,
+                        'reference_item_id' => $type->id,
+                        'period_year' => (int) $on->year,
+                    ],
+                    ['entitled' => 0, 'used' => 0, 'reserved' => 0, 'adjusted' => 0]
+                );
+                $balance->increment('entitled', $slice);
+                LeaveBalanceAdjustment::query()->create([
+                    'user_id' => $user->id,
+                    'reference_item_id' => $type->id,
+                    'days' => $slice,
+                    'reason' => $reason,
+                ]);
+                $count++;
+            });
+
+        return $count;
     }
 
     public function carryoverCap(): ?int

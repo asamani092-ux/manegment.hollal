@@ -212,7 +212,7 @@ class EmployeeProfileShow extends Component
         $this->editName = $user->name;
         $this->editPhone = (string) ($user->phone ?? '');
         $this->editEmail = $user->email;
-        $this->editManagerId = $user->manager_id;
+        $this->editManagerId = $user->effectiveManager()?->id;
         $this->editJobTitle = (string) ($user->profile?->job_title ?? '');
         $this->editJobOrgUnitId = $user->org_unit_id;
         $cascade = OrgJobCatalog::cascadeFromJob($user->org_unit_id);
@@ -309,11 +309,14 @@ class EmployeeProfileShow extends Component
             }
         }
 
+        $derived = app(\App\Services\OrgStructureService::class)->deriveManagerId($user);
+        $selected = $this->editManagerId ? (int) $this->editManagerId : null;
+        $override = ($selected !== null && $selected !== $derived) ? $selected : null;
         $payload = [
             'name' => $this->editName,
             'phone' => $this->editPhone,
             'email' => $this->editEmail,
-            'manager_id' => $this->editManagerId,
+            'manager_id' => $derived ?? $selected,
             'org_unit_id' => $this->editJobOrgUnitId,
             'is_active' => $this->editIsActive,
         ];
@@ -324,6 +327,7 @@ class EmployeeProfileShow extends Component
         }
 
         $user->update($payload);
+        $user->forceFill(['manager_override_id' => $override])->save();
         if ($this->editRoleName !== '') {
             $user->syncRoles([$this->editRoleName]);
         }

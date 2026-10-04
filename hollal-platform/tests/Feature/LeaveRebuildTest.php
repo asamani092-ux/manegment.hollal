@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Models\AttendanceRecord;
+use App\Models\LeaveBalance;
+use App\Models\LeaveBalanceAdjustment;
 use App\Models\Delegation;
 use App\Models\EmployeeProfile;
 use App\Models\LeavePayImpact;
@@ -84,6 +86,25 @@ class LeaveRebuildTest extends TestCase
         $feb = LeavePayImpact::query()->where('leave_request_id', $leave->id)->where('month', '2026-02')->first();
         $this->assertSame('2.00', number_format((float) $jan->unpaid_days, 2, '.', ''));
         $this->assertSame('3.00', number_format((float) $feb->unpaid_days, 2, '.', ''));
+    }
+
+    public function test_monthly_accrual_is_added_once(): void
+    {
+        $employee = User::factory()->create();
+        EmployeeProfile::create([
+            'user_id' => $employee->id,
+            'hire_date' => '2024-01-01',
+            'annual_leave_balance' => 21,
+        ]);
+        $service = app(LeaveBalanceService::class);
+        $on = now()->startOfMonth();
+        $this->assertSame(1, $service->accrueMonth($on));
+        $this->assertSame(1, LeaveBalanceAdjustment::query()->where('user_id', $employee->id)->count());
+        $balance = LeaveBalance::query()->where('user_id', $employee->id)->first();
+        $this->assertSame('1.75', number_format((float) $balance->entitled, 2, '.', ''));
+        $this->assertSame(0, $service->accrueMonth($on));
+        $this->assertSame('1.75', number_format((float) $balance->fresh()->entitled, 2, '.', ''));
+        $this->assertSame(21, $employee->fresh()->profile->annual_leave_balance);
     }
 
     public function test_extension_moves_delegation_end_and_cut_returns_days(): void

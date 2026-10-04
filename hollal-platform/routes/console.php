@@ -14,7 +14,8 @@ Artisan::command('delegations:sync', function () {
 })->purpose('Activate and end delegations by date');
 
 Artisan::command('leaves:accrue', function () {
-    $this->info('leaves accrue checked');
+    $count = app(\App\Services\LeaveBalanceService::class)->accrueMonth();
+    $this->info('accrued '.$count);
 })->purpose('Monthly leave accrual');
 
 Schedule::command('tasks:notify-due-soon')->dailyAt('08:00');
