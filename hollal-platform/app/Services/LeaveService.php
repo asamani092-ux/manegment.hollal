@@ -97,6 +97,17 @@ class LeaveService
             throw new \RuntimeException('لا يمكن اعتماد طلب ليس بحالة مقدم.');
         }
 
+        $done = app(\App\Services\Approval\ApprovalEngine::class)->gate(
+            'leave',
+            $leave->id,
+            $leave->employee_id,
+            (float) $leave->days_count,
+            $approver,
+        );
+        if ($done === false) {
+            return $leave->fresh();
+        }
+
         return DB::transaction(function () use ($leave, $approver) {
             // قفل الطلب يمنع اعتمادين متزامنين يخصمان الرصيد مرتين.
             $locked = LeaveRequest::query()->lockForUpdate()->find($leave->id);

@@ -68,7 +68,7 @@ class ApprovalRulesIndex extends Component
     {
         $this->authorize('settings.manage');
         $this->validate([
-            'transaction_type' => 'required|in:expense,custody,quote,contract,leave',
+            'transaction_type' => 'required|in:expense,custody,quote,contract,leave,overtime,excuse,delegation',
             'min_amount' => 'required|numeric|min:0',
             'max_amount' => 'nullable|numeric|gte:min_amount',
             'selectedRoles' => 'required|array|min:1',
@@ -135,6 +135,9 @@ class ApprovalRulesIndex extends Component
                 'quote' => 'عرض سعر',
                 'contract' => 'عقد',
                 'leave' => 'إجازة',
+                'overtime' => 'عمل إضافي',
+                'excuse' => 'استئذان',
+                'delegation' => 'إنابة',
             ],
         ])->layout('layouts.app', ['title' => 'سلسلة الاعتماد']);
     }

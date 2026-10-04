@@ -68,6 +68,9 @@ class ApprovalRulesSeeder extends Seeder
             ApprovalRule::TYPE_QUOTE,
             ApprovalRule::TYPE_CONTRACT,
             ApprovalRule::TYPE_LEAVE,
+            ApprovalRule::TYPE_OVERTIME,
+            ApprovalRule::TYPE_EXCUSE,
+            ApprovalRule::TYPE_DELEGATION,
         ] as $type) {
             ApprovalRule::query()->firstOrCreate(
                 [

@@ -129,7 +129,7 @@ Route::get('/hr/deploy-marker', function () {
     }
 
     return response()->json([
-        'marker' => 'hr-fix-2',
+        'marker' => 'hr-fix-3',
         'commit' => env('SOURCE_COMMIT'),
         'migrate_status' => $file['migrate_status'] ?? 'unknown',
         'pending_migrations_count' => (int) ($file['pending_migrations_count'] ?? 0),
@@ -297,7 +297,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('structure.org-tree');
 
     Route::get('/settings/expenses', ExpenseSettingsIndex::class)
-        ->middleware('permission:settings.manage')
+        ->middleware('permission:settings.manage|settings.finance.manage')
         ->name('settings.expenses');
 
     Route::get('/settings/approval-rules', ApprovalRulesIndex::class)

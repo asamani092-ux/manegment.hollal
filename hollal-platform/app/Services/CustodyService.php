@@ -29,9 +29,19 @@ class CustodyService
     public function approve(Custody $custody, User $executive): Custody
     {
         $this->assertStatus($custody, Custody::STATUS_REQUESTED, 'الاعتماد');
+        $done = app(\App\Services\Approval\ApprovalEngine::class)->gate(
+            'custody',
+            $custody->id,
+            $custody->requested_by,
+            (float) $custody->amount,
+            $executive,
+        );
+        if ($done === false) {
+            return $custody->fresh();
+        }
         $custody->update(['status' => Custody::STATUS_APPROVED, 'approved_by' => $executive->id]);
 
-        return $custody;
+        return $custody->fresh();
     }
 
     public function reject(Custody $custody, User $executive, string $reason): Custody

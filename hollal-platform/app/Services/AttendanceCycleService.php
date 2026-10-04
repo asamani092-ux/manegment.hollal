@@ -102,6 +102,40 @@ class AttendanceCycleService
         return $cycle->fresh();
     }
 
+    public function approveOvertime(OvertimeRequest $request, User $actor): OvertimeRequest
+    {
+        $done = app(\App\Services\Approval\ApprovalEngine::class)->gate(
+            'overtime',
+            $request->id,
+            $request->employee_id,
+            (float) $request->hours,
+            $actor,
+        );
+        if ($done === false) {
+            return $request->fresh();
+        }
+        $request->update(['status' => 'approved']);
+
+        return $request->fresh();
+    }
+
+    public function approveExcuse(ExcuseRequest $request, User $actor): ExcuseRequest
+    {
+        $done = app(\App\Services\Approval\ApprovalEngine::class)->gate(
+            'excuse',
+            $request->id,
+            $request->employee_id,
+            (float) $request->minutes,
+            $actor,
+        );
+        if ($done === false) {
+            return $request->fresh();
+        }
+        $request->update(['status' => 'approved']);
+
+        return $request->fresh();
+    }
+
     public function overtimeAmount(float $hourlyWage, float $hours, bool $approved): float
     {
         if (! $approved || $hours <= 0) {

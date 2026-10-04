@@ -18,7 +18,7 @@ class ExpenseSettingsIndex extends Component
 
     public function mount(): void
     {
-        $this->authorize('settings.manage');
+        abort_unless(auth()->user()->can('settings.manage') || auth()->user()->can('settings.finance.manage'), 403);
 
         $settings = ExpenseSetting::current();
         $this->chain_mode = (string) ($settings->chain_mode ?? 'full');
@@ -27,7 +27,7 @@ class ExpenseSettingsIndex extends Component
 
     public function save(): void
     {
-        $this->authorize('settings.manage');
+        abort_unless(auth()->user()->can('settings.manage') || auth()->user()->can('settings.finance.manage'), 403);
 
         $this->validate([
             'skip_missing_department_manager' => 'boolean',

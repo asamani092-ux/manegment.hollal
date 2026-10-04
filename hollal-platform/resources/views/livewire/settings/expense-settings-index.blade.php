@@ -1,5 +1,5 @@
 <x-ds-page>
-    <x-ds-page-header title="احتياطي: نمط سلسلة الاعتماد" />
+    <x-ds-page-header title="إعدادات المالية" />
 
     <div class="ds-card ds-mb-3">
         <p>

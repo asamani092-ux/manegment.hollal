@@ -20,6 +20,12 @@ class ApprovalRule extends Model
 
     public const TYPE_LEAVE = 'leave';
 
+    public const TYPE_OVERTIME = 'overtime';
+
+    public const TYPE_EXCUSE = 'excuse';
+
+    public const TYPE_DELEGATION = 'delegation';
+
     /** @var list<string> */
     protected $fillable = [
         'transaction_type',
