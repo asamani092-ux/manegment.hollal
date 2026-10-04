@@ -122,7 +122,7 @@ Route::middleware('throttle:portal')->group(function () {
 });
 
 Route::get('/hr/deploy-marker', function () {
-    return response('hr-build-once', 200)->header('Content-Type', 'text/plain');
+    return response('hr-ext-official', 200)->header('Content-Type', 'text/plain');
 })->name('hr.deploy-marker');
 
 Route::middleware('guest')->group(function () {
