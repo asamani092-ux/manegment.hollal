@@ -122,7 +122,18 @@ Route::middleware('throttle:portal')->group(function () {
 });
 
 Route::get('/hr/deploy-marker', function () {
-    return response('hr-fix-1', 200)->header('Content-Type', 'text/plain');
+    $path = storage_path('app/deploy-status.json');
+    $file = is_file($path) ? json_decode((string) file_get_contents($path), true) : [];
+    if (! is_array($file)) {
+        $file = [];
+    }
+
+    return response()->json([
+        'marker' => 'hr-fix-2',
+        'commit' => env('SOURCE_COMMIT'),
+        'migrate_status' => $file['migrate_status'] ?? 'unknown',
+        'pending_migrations_count' => (int) ($file['pending_migrations_count'] ?? 0),
+    ]);
 })->name('hr.deploy-marker');
 
 Route::middleware('guest')->group(function () {

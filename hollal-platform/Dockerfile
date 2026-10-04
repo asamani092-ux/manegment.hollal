@@ -31,6 +31,8 @@ RUN composer dump-autoload --optimize \
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+ARG SOURCE_COMMIT=unknown
+ENV SOURCE_COMMIT=$SOURCE_COMMIT
 ENV CONTAINER_ROLE=web
 
 EXPOSE 80 8080

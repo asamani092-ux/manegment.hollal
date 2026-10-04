@@ -77,8 +77,20 @@ bootstrap_laravel() {
   php artisan cache:clear 2>/dev/null
 
   echo "Running migrations..."
-  php artisan migrate --force --no-interaction
+  php artisan migrate --force --no-interaction > /tmp/hollal-migrate.log 2>&1
   MIGRATE_STATUS=$?
+  cat /tmp/hollal-migrate.log
+  PENDING=$(php artisan migrate:status --pending --no-interaction 2>/dev/null | grep -c "Pending" || true)
+  php -r '
+    $status = getenv("MIGRATE_STATUS") === "0" ? "ok" : "failed";
+    $pending = (int) getenv("PENDING");
+    $lines = is_file("/tmp/hollal-migrate.log") ? file("/tmp/hollal-migrate.log", FILE_IGNORE_NEW_LINES) : [];
+    file_put_contents("storage/app/deploy-status.json", json_encode([
+      "migrate_status" => $status,
+      "pending_migrations_count" => $pending,
+      "error_lines" => array_slice($lines ?: [], -15),
+    ], JSON_UNESCAPED_UNICODE));
+  '
 
   echo "Seeding HR reference data..."
   php artisan hr:seed-reference --no-interaction
