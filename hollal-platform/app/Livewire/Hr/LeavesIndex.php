@@ -21,7 +21,9 @@ class LeavesIndex extends Component
 
     public bool $showForm = false;
 
-    public string $type = LeaveRequest::TYPE_ANNUAL;
+    public string $type = '';
+
+    public ?int $substitute_id = null;
 
     public string $from_date = '';
 
@@ -84,8 +86,9 @@ class LeavesIndex extends Component
     public function openForm(): void
     {
         abort_unless(auth()->user()->can('hr.leaves.request'), 403);
-        $this->reset(['type', 'from_date', 'to_date', 'reason']);
-        $this->type = LeaveRequest::TYPE_ANNUAL;
+        $this->reset(['type', 'from_date', 'to_date', 'reason', 'substitute_id']);
+        $first = app(\App\Services\ReferenceListService::class)->activeItems('leave_types')->first();
+        $this->type = $first?->name_ar ?? 'سنوية';
         $this->showForm = true;
     }
 
@@ -94,7 +97,8 @@ class LeavesIndex extends Component
         abort_unless(auth()->user()->can('hr.leaves.request'), 403);
 
         $this->validate([
-            'type' => 'required|in:سنوية,مرضية,استثنائية',
+            'type' => 'required|string',
+            'substitute_id' => 'nullable|exists:users,id',
             'from_date' => 'required|date',
             'to_date' => 'required|date|after_or_equal:from_date',
             'reason' => 'nullable|string|max:1000',
@@ -107,6 +111,7 @@ class LeavesIndex extends Component
                 $this->from_date,
                 $this->to_date,
                 $this->reason ?: null,
+                $this->substitute_id,
             );
         } catch (\Throwable $e) {
             $this->addError('from_date', $e->getMessage());
@@ -116,6 +121,20 @@ class LeavesIndex extends Component
 
         $this->showForm = false;
         $this->dispatch('toast', type: 'success', message: 'تم تقديم طلب الإجازة');
+    }
+
+    public function acceptSubstitute(int $id): void
+    {
+        $leave = LeaveRequest::findOrFail($id);
+        app(LeaveService::class)->acceptSubstitute($leave, auth()->user());
+        $this->dispatch('toast', type: 'success', message: 'تم قبول البديل');
+    }
+
+    public function declineSubstitute(int $id): void
+    {
+        $leave = LeaveRequest::findOrFail($id);
+        app(LeaveService::class)->declineSubstitute($leave, auth()->user());
+        $this->dispatch('toast', type: 'success', message: 'تم رفض البديل');
     }
 
     public function approve(int $id): void
@@ -173,7 +192,7 @@ class LeavesIndex extends Component
     {
         $user = auth()->user();
         $query = LeaveRequest::query()
-            ->select(['id', 'employee_id', 'type', 'from_date', 'to_date', 'days_count', 'reason', 'status', 'approver_id', 'created_at'])
+            ->select(['id', 'employee_id', 'type', 'from_date', 'to_date', 'days_count', 'reason', 'status', 'approver_id', 'substitute_id', 'substitute_status', 'created_at'])
             ->with([
                 'employee:id,name,manager_id',
                 'employee.profile:id,user_id,annual_leave_balance',
@@ -197,7 +216,9 @@ class LeavesIndex extends Component
                     ->orWhereIn('employee_id', $subIds);
             });
         } else {
-            $query->where('employee_id', $user->id);
+            $query->where(function ($q) use ($user) {
+                $q->where('employee_id', $user->id)->orWhere('substitute_id', $user->id);
+            });
         }
 
         $balance = (int) ($user->profile?->annual_leave_balance ?? 21);
@@ -207,6 +228,7 @@ class LeavesIndex extends Component
             'balance' => $balance,
             'canApprove' => $user->can('hr.leaves.approve') || $user->can('hr.employees.update'),
             'canRequest' => $user->can('hr.leaves.request'),
+            'substitutes' => User::query()->where('is_active', true)->orderBy('name')->limit(100)->get(['id', 'name']),
         ])->layout('layouts.app', ['title' => 'الإجازات']);
     }
 }

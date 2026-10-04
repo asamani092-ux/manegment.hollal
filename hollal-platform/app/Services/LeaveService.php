@@ -27,6 +27,7 @@ class LeaveService
         Carbon|string $from,
         Carbon|string $to,
         ?string $reason = null,
+        ?int $substituteId = null,
     ): LeaveRequest {
         $fromDate = Carbon::parse($from)->startOfDay();
         $toDate = Carbon::parse($to)->startOfDay();
@@ -77,24 +78,69 @@ class LeaveService
             'reason' => $reason,
             'status' => LeaveRequest::STATUS_SUBMITTED,
         ];
+        if ($substituteId) {
+            $busy = LeaveRequest::query()
+                ->where('employee_id', $substituteId)
+                ->where('status', LeaveRequest::STATUS_APPROVED)
+                ->whereDate('from_date', '<=', $toDate)
+                ->whereDate('to_date', '>=', $fromDate)
+                ->exists();
+            if ($busy) {
+                throw new \RuntimeException('البديل لديه إجازة متداخلة');
+            }
+            $payload['substitute_id'] = $substituteId;
+            $payload['substitute_status'] = 'pending';
+        }
         if ($this->leaveHasReferenceColumn()) {
             $payload['reference_item_id'] = $leaveType->id;
         }
 
         $leave = LeaveRequest::create($payload);
 
-        $manager = $employee->effectiveManager();
+        if (! $substituteId) {
+            $manager = $employee->effectiveManager();
+            if ($manager) {
+                $manager->notify(new LeaveRequested($leave));
+            }
+        }
+
+        return $leave;
+    }
+
+    public function acceptSubstitute(LeaveRequest $leave, User $substitute): LeaveRequest
+    {
+        if ((int) $leave->substitute_id !== (int) $substitute->id || $leave->substitute_status !== 'pending') {
+            throw new \RuntimeException('قبول البديل غير متاح');
+        }
+        $leave->update(['substitute_status' => 'accepted']);
+        $manager = $leave->employee?->effectiveManager();
         if ($manager) {
             $manager->notify(new LeaveRequested($leave));
         }
 
-        return $leave;
+        return $leave->fresh();
+    }
+
+    public function declineSubstitute(LeaveRequest $leave, User $substitute): LeaveRequest
+    {
+        if ((int) $leave->substitute_id !== (int) $substitute->id || $leave->substitute_status !== 'pending') {
+            throw new \RuntimeException('رفض البديل غير متاح');
+        }
+        $leave->update([
+            'substitute_status' => 'declined',
+            'status' => LeaveRequest::STATUS_REJECTED,
+        ]);
+
+        return $leave->fresh();
     }
 
     public function approve(LeaveRequest $leave, User $approver): LeaveRequest
     {
         if (! $leave->isSubmitted()) {
             throw new \RuntimeException('لا يمكن اعتماد طلب ليس بحالة مقدم.');
+        }
+        if ($leave->substitute_id && $leave->substitute_status !== 'accepted') {
+            throw new \RuntimeException('بانتظار قبول البديل');
         }
 
         $done = app(\App\Services\Approval\ApprovalEngine::class)->gate(
@@ -138,6 +184,20 @@ class LeaveService
                 'approver_id' => $approver->id,
                 'approved_at' => now(),
             ]);
+
+            if ($leave->substitute_id) {
+                Delegation::query()->create([
+                    'delegator_id' => $leave->employee_id,
+                    'delegate_id' => $leave->substitute_id,
+                    'starts_on' => $leave->from_date,
+                    'ends_on' => $leave->to_date,
+                    'reason' => 'إجازة',
+                    'status' => Delegation::STATUS_SCHEDULED,
+                    'source_type' => $leave->getMorphClass(),
+                    'source_id' => $leave->id,
+                    'created_by' => $approver->id,
+                ]);
+            }
 
             $fresh = $leave->fresh(['referenceItem']);
             $this->writeAttendance($fresh, $approver);

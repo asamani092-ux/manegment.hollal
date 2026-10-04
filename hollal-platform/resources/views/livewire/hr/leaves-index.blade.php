@@ -87,7 +87,14 @@
                     <td class="ds-ltr-num">{{ $leave->days_count }}</td>
                     <td><x-ds-status-badge :status="$leave->status" /></td>
                     <td>
-                        @if ($canApprove && $leave->employee_id !== auth()->id() && $leave->status === \App\Models\LeaveRequest::STATUS_SUBMITTED)
+                        @if ($leave->substitute_id)
+                            <span>معاينة الإنابة</span>
+                        @endif
+                        @if ((int) $leave->substitute_id === (int) auth()->id() && $leave->substitute_status === 'pending')
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="acceptSubstitute({{ $leave->id }})">قبول البديل</button>
+                            <button type="button" class="ds-btn ds-btn-sm" wire:click="declineSubstitute({{ $leave->id }})">رفض البديل</button>
+                        @endif
+                        @if ($canApprove && $leave->employee_id !== auth()->id() && $leave->status === \App\Models\LeaveRequest::STATUS_SUBMITTED && $leave->substitute_status !== 'pending')
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="approve({{ $leave->id }})">اعتماد</button>
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="reject({{ $leave->id }})">رفض</button>
                         @endif
@@ -114,6 +121,14 @@
         </x-ds-form-group>
         <x-ds-form-group label="إلى" :error="$errors->first('to_date')">
             <input type="date" class="ds-input" wire:model="to_date">
+        </x-ds-form-group>
+        <x-ds-form-group label="البديل" :error="$errors->first('substitute_id')">
+            <select class="ds-input" wire:model="substitute_id">
+                <option value="">بدون بديل</option>
+                @foreach ($substitutes as $person)
+                    <option value="{{ $person->id }}">{{ $person->name }}</option>
+                @endforeach
+            </select>
         </x-ds-form-group>
         <x-ds-form-group label="السبب" :error="$errors->first('reason')">
             <textarea class="ds-input" wire:model="reason" rows="2"></textarea>

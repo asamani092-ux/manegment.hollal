@@ -69,6 +69,10 @@
                     @if ($alertCount > 0)
                         <p>وثائق تحتاج متابعة: {{ $alertCount }}</p>
                     @endif
+                    @if ((int) auth()->id() === (int) $user->id)
+                        <h3>إنابة</h3>
+                        <p class="ds-text-muted">للرحلات: اختر البديل من شاشة الإجازات أو سجّل الإنابة مع الطلب.</p>
+                    @endif
                     @if (($onboardingItems ?? collect())->contains(fn ($item) => $item->status === 'open'))
                         <h3>قائمة التهيئة</h3>
                         <input type="date" class="ds-input" wire:model="onboardingDue">
