@@ -13,9 +13,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('approval_rules', function (Blueprint $table) {
-            $table->string('metric', 20)->default('amount')->after('transaction_type');
-        });
+        if (! Schema::hasColumn('approval_rules', 'metric')) {
+            Schema::table('approval_rules', function (Blueprint $table) {
+                $table->string('metric', 20)->default('amount')->after('transaction_type');
+            });
+        }
+
+        if (Schema::hasTable('approval_requests')) {
+            return;
+        }
 
         Schema::create('approval_requests', function (Blueprint $table) {
             $table->id();

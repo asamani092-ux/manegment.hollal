@@ -11,15 +11,30 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('leave_requests', function (Blueprint $table) {
-            $table->unsignedBigInteger('reference_item_id')->nullable()->after('type');
-            $table->foreignId('substitute_id')->nullable()->after('reference_item_id')->constrained('users')->nullOnDelete();
-            $table->string('substitute_status', 20)->nullable()->after('substitute_id');
-            $table->unsignedBigInteger('parent_leave_id')->nullable()->after('substitute_status');
-            $table->date('cut_on')->nullable()->after('to_date');
-            $table->string('attachment_path')->nullable()->after('reason');
-        });
+        if (! Schema::hasColumn('leave_requests', 'reference_item_id')) {
+            Schema::table('leave_requests', function (Blueprint $table) {
+                $table->unsignedBigInteger('reference_item_id')->nullable()->after('type');
+            });
+        }
+        if (! Schema::hasColumn('leave_requests', 'substitute_id')) {
+            Schema::table('leave_requests', function (Blueprint $table) {
+                $table->foreignId('substitute_id')->nullable()->after('reference_item_id')->constrained('users')->nullOnDelete();
+                $table->string('substitute_status', 20)->nullable()->after('substitute_id');
+                $table->unsignedBigInteger('parent_leave_id')->nullable()->after('substitute_status');
+            });
+        }
+        if (! Schema::hasColumn('leave_requests', 'cut_on')) {
+            Schema::table('leave_requests', function (Blueprint $table) {
+                $table->date('cut_on')->nullable()->after('to_date');
+            });
+        }
+        if (! Schema::hasColumn('leave_requests', 'attachment_path')) {
+            Schema::table('leave_requests', function (Blueprint $table) {
+                $table->string('attachment_path')->nullable()->after('reason');
+            });
+        }
 
+        if (! Schema::hasTable('leave_balances')) {
         Schema::create('leave_balances', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
@@ -32,7 +47,9 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['user_id', 'reference_item_id', 'period_year']);
         });
+        }
 
+        if (! Schema::hasTable('leave_balance_adjustments')) {
         Schema::create('leave_balance_adjustments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
@@ -42,7 +59,9 @@ return new class extends Migration
             $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
         });
+        }
 
+        if (! Schema::hasTable('leave_pay_impacts')) {
         Schema::create('leave_pay_impacts', function (Blueprint $table) {
             $table->id();
             $table->foreignId('leave_request_id')->constrained('leave_requests')->cascadeOnDelete();
@@ -53,6 +72,7 @@ return new class extends Migration
             $table->timestamps();
             $table->unique(['leave_request_id', 'month', 'partial_pct']);
         });
+        }
     }
 
     public function down(): void

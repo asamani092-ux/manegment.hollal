@@ -793,11 +793,13 @@ class EmployeeProfileShow extends Component
                 ? \App\Models\Asset::query()->where('current_holder_id', $this->userId)->latest('id')->limit(20)->get()
                 : collect(),
             'contracts' => Contract::query()->where('employee_id', $this->userId)->latest('end_date')->get(),
-            'onboardingItems' => \App\Models\EmployeeOnboardingItem::query()
-                ->with('referenceItem:id,name_ar,code')
-                ->where('user_id', $this->userId)
-                ->limit(20)
-                ->get(),
+            'onboardingItems' => \Illuminate\Support\Facades\Schema::hasTable('employee_onboarding_items')
+                ? \App\Models\EmployeeOnboardingItem::query()
+                    ->with('referenceItem:id,name_ar,code')
+                    ->where('user_id', $this->userId)
+                    ->limit(20)
+                    ->get()
+                : collect(),
             'employeeDocuments' => EmployeeDocument::query()
                 ->where('user_id', $this->userId)
                 ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END')
