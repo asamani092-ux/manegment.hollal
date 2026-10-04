@@ -13,6 +13,7 @@
             'documents' => 'العقود والمستندات',
             'performance' => 'المهام',
             'leaves' => 'الإجازات',
+            'violations' => 'المخالفات',
             'log' => 'السجل',
         ];
         $typeLabels = [
@@ -62,6 +63,14 @@
                         <div><dt>المدير</dt><dd>{{ $user->manager?->name ?? '—' }}</dd></div>
                         <div><dt>تاريخ المباشرة</dt><dd>{{ $user->profile?->hire_date?->format('Y-m-d') ?? '—' }}</dd></div>
                     </dl>
+                    @if (($onboardingItems ?? collect())->isNotEmpty())
+                        <h3>قائمة التهيئة</h3>
+                        <ul>
+                            @foreach ($onboardingItems as $item)
+                                <li>{{ $item->status }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
                 </x-ds-collapsible-card>
             @elseif (in_array($activeTab, ['data', 'personal'], true))
                 <x-ds-collapsible-card title="بطاقة البيانات" :open="false">
@@ -348,6 +357,10 @@
                         <tr><td colspan="3" class="ds-text-muted">لا توجد مهام</td></tr>
                     @endforelse
                 </x-ds-table>
+            @elseif ($activeTab === 'violations')
+                <x-ds-collapsible-card title="المخالفات" :open="true">
+                    <p class="ds-text-muted">سجل المخالفات المرتبطة بهذا الموظف.</p>
+                </x-ds-collapsible-card>
             @elseif ($activeTab === 'leaves')
                 <p class="ds-text-muted ds-mb-3">الرصيد السنوي: <strong class="ds-ltr-num">{{ $user->profile?->annual_leave_balance ?? '—' }}</strong></p>
                 <x-ds-table>

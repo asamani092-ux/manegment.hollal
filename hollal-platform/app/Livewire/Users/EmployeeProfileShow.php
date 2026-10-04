@@ -132,7 +132,15 @@ class EmployeeProfileShow extends Component
 
     public function mount(User $user): void
     {
-        $this->authorize('hr.employees.view');
+        $self = (int) auth()->id() === (int) $user->id;
+        if (! $self) {
+            $this->authorize('hr.employees.view');
+        } else {
+            abort_unless(
+                auth()->user()->can('dashboard.view') || auth()->user()->can('hr.employees.view'),
+                403
+            );
+        }
         $this->userId = $user->id;
         $this->attendanceEnabled = (bool) $user->attendance_enabled;
         $this->weeklyHours = (string) ($user->profile?->weekly_hours ?? '');
@@ -699,6 +707,10 @@ class EmployeeProfileShow extends Component
                 : collect(),
             'salaryTotals' => $salaryTotals,
             'contracts' => Contract::query()->where('employee_id', $this->userId)->latest('end_date')->get(),
+            'onboardingItems' => \App\Models\EmployeeOnboardingItem::query()
+                ->where('user_id', $this->userId)
+                ->limit(20)
+                ->get(),
             'employeeDocuments' => EmployeeDocument::query()
                 ->where('user_id', $this->userId)
                 ->orderByRaw('CASE WHEN expiry_date IS NULL THEN 1 ELSE 0 END')

@@ -1,5 +1,6 @@
 <x-ds-page>
     <x-ds-page-header title="مساحتي" />
+    <livewire:users.employee-profile-show :user="auth()->user()" :key="'self-file-'.auth()->id()" />
     <p class="ds-text-muted ds-mb-3">بوابة الموظف: مهامي · إجازاتي · راتبي · تقييمي · حضوري · مستنداتي · مسؤولياتي.</p>
 
     <section class="ds-section ds-mb-3">
