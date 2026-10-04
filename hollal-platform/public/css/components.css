@@ -670,7 +670,7 @@
 .ds-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: 1040;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1957,4 +1957,32 @@
   display: flex;
   gap: 0.35rem;
   margin-bottom: 1rem;
+}
+
+/* Help drawer sits in the content column, clear of the fixed sidebar. */
+.ds-help-panel {
+  position: fixed;
+  z-index: 900;
+  top: calc(var(--ds-navbar-height) + 0.75rem);
+  inset-inline-start: calc(var(--ds-sidebar-width) + 1rem);
+  width: min(22rem, calc(100vw - var(--ds-sidebar-width) - 2rem));
+  max-height: calc(100vh - var(--ds-navbar-height) - 6rem);
+  overflow: auto;
+  margin: 0;
+  padding: 1rem;
+  box-shadow: var(--ds-shadow-md);
+}
+
+@media (min-width: 769px) {
+  .ds-main-layout.is-sidebar-collapsed .ds-help-panel {
+    inset-inline-start: calc(56px + 1rem);
+    width: min(22rem, calc(100vw - 56px - 2rem));
+  }
+}
+
+@media (max-width: 768px) {
+  .ds-help-panel {
+    inset-inline-start: 0.75rem;
+    width: min(22rem, calc(100vw - 1.5rem));
+  }
 }

@@ -11,7 +11,7 @@
 
 @if ($topic)
     <button type="button" class="ds-btn ds-btn-sm" data-help-open="{{ $panelId }}">شرح</button>
-    <aside id="{{ $panelId }}" hidden class="ds-card" style="position:fixed;inset-inline-start:1rem;top:4rem;width:min(24rem,90vw);z-index:40;">
+    <aside id="{{ $panelId }}" hidden class="ds-card ds-help-panel">
         <h3>{{ $topic->attributes['title_ar'] ?? $topic->name_ar }}</h3>
         <div>{!! \Illuminate\Support\Str::markdown((string) ($topic->attributes['body_ar'] ?? '')) !!}</div>
         @if (! empty($topic->attributes['steps']) && is_array($topic->attributes['steps']))
