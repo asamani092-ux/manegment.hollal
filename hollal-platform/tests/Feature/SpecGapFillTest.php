@@ -145,12 +145,9 @@ class SpecGapFillTest extends TestCase
 
         Livewire::actingAs($hr)
             ->test(EmployeeProfileShow::class, ['user' => $employee])
-            ->call('setTab', 'salary')
-            ->set('overtimeGate', 'مفتوح')
-            ->call('saveOvertimeGate')
-            ->assertHasNoErrors();
-
-        $this->assertTrue((bool) $employee->fresh()->profile?->overtime_unlocked);
+            ->call('setTab', 'pay')
+            ->assertSee('تُحسب من طلبات العمل الإضافي المعتمدة', false)
+            ->assertDontSee('wire:model="overtimeGate"', false);
     }
 
     public function test_audit_log_route_requires_dedicated_permission(): void

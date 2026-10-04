@@ -25,15 +25,8 @@ class PayrollRunService
         $monthEnd = Carbon::createFromFormat('Y-m', $month)->endOfMonth();
 
         $monthStart = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
-        $attendanceByEmployee = AttendanceRecord::query()
-            ->whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
-            ->whereNotNull('check_in_at')
-            ->whereNotNull('check_out_at')
-            ->get(['employee_id', 'check_in_at', 'check_out_at'])
-            ->groupBy('employee_id');
-        $attendanceService = app(AttendanceService::class);
 
-        return DB::transaction(function () use ($month, $monthEnd, $attendanceByEmployee, $attendanceService) {
+        return DB::transaction(function () use ($month, $monthEnd, $monthStart) {
             $cycle = app(AttendanceDeductionService::class)->currentCycle(
                 Carbon::createFromFormat('Y-m', $month)->startOfMonth()
             );
@@ -60,15 +53,14 @@ class PayrollRunService
                 $isRegular = app(SalaryService::class)->isRegularEmployee($employee);
                 $overtimeHours = 0.0;
                 $overtimeAmount = 0.0;
-                if ($employee->attendance_enabled) {
-                    $overtimeHours = $attendanceService->overtimeHoursForMonth(
-                        $employee,
-                        $month,
-                        $attendanceByEmployee->get($employee->id, collect()),
-                    );
-                    if ($employee->profile?->overtime_unlocked) {
-                        $overtimeAmount = round($overtimeHours * (float) ($employee->profile->overtime_hour_value ?? 0), 2);
-                    }
+                $overtimeHours = (float) \App\Models\OvertimeRequest::query()
+                    ->where('employee_id', $employee->id)
+                    ->whereBetween('date', [$monthStart->toDateString(), $monthEnd->toDateString()])
+                    ->where('status', 'approved')
+                    ->sum('hours');
+                if ($overtimeHours > 0) {
+                    $hourly = (float) ($employee->profile->overtime_hour_value ?? 0);
+                    $overtimeAmount = app(AttendanceCycleService::class)->overtimeAmount($hourly, $overtimeHours, true);
                 }
 
                 $item = new PayrollRunItem([
@@ -127,10 +119,6 @@ class PayrollRunService
     public function setOvertime(PayrollRunItem $item, float $hours): PayrollRunItem
     {
         $this->assertEditable($item->run);
-
-        if (! $item->employee->profile?->overtime_unlocked) {
-            throw new \InvalidArgumentException('الساعات الإضافية مقفلة لهذا الموظف — افتحها من الملف الوظيفي أولاً');
-        }
 
         $hourValue = (float) ($item->employee->profile?->overtime_hour_value ?? 0);
 

@@ -159,7 +159,7 @@
                         <div><dt>البدلات</dt><dd class="ds-ltr-num">{{ number_format($salaryTotals['allowances'] ?? 0, 2) }}</dd></div>
                         <div><dt>الخصم الثابت</dt><dd class="ds-ltr-num">{{ number_format($salaryTotals['deductions'] ?? 0, 2) }}</dd></div>
                         <div><dt>الراتب الشهري المشتق</dt><dd class="ds-ltr-num"><strong>{{ number_format($salaryTotals['monthly'] ?? 0, 2) }}</strong></dd></div>
-                        <div><dt>الساعات الإضافية</dt><dd>{{ $user->profile?->overtime_unlocked ? 'مفتوح' : 'مقفل' }}</dd></div>
+                        <div><dt>الساعات الإضافية</dt><dd>تُحسب من طلبات العمل الإضافي المعتمدة</dd></div>
                         <div><dt>قيمة ساعة الإضافي</dt><dd class="ds-ltr-num">{{ $user->profile?->overtime_hour_value ?? '0' }}</dd></div>
                     </dl>
                     </x-ds-collapsible-card>
@@ -261,13 +261,7 @@
                         </section>
 
                         <section class="ds-section">
-                            <h3 class="ds-section-title">فتح الساعات الإضافية</h3>
-                            <x-ds-form-group label="حالة الإضافي" :error="$errors->first('overtimeGate')">
-                                <select class="ds-input" wire:model="overtimeGate">
-                                    <option value="مقفل">مقفل</option>
-                                    <option value="مفتوح">مفتوح</option>
-                                </select>
-                            </x-ds-form-group>
+                            <h3 class="ds-section-title">قيمة ساعة العمل الإضافي</h3>
                             <x-ds-form-group label="قيمة ساعة الإضافي" :error="$errors->first('overtimeHourValue')">
                                 <input type="number" step="0.01" class="ds-input ds-ltr-num" wire:model="overtimeHourValue">
                             </x-ds-form-group>

@@ -133,7 +133,7 @@ class PayrollRunTest extends TestCase
         $this->employeeWithSalary(5000, 0, 0, overtimeValue: 50);
         $run = app(PayrollRunService::class)->generate('2026-07');
 
-        $this->expectException(\InvalidArgumentException::class);
         app(PayrollRunService::class)->setOvertime($run->items->first(), 2);
+        $this->assertSame('100.00', $run->items->first()->fresh()->overtime_amount);
     }
 }
