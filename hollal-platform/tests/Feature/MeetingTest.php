@@ -194,6 +194,9 @@ class MeetingTest extends TestCase
 
         Livewire::actingAs($this->admin)
             ->test(OpenDecisionsIndex::class)
+            ->assertDontSee('قرار مفتوح')
+            ->assertDontSee('قرار منجز')
+            ->call('selectMeeting', $meeting->id)
             ->assertSee('قرار مفتوح')
             ->assertDontSee('قرار منجز');
     }

@@ -148,7 +148,6 @@ class OpenDecisionsIndex extends Component
                 ->when($this->search !== '', fn ($q) => $q->where('title', 'like', '%'.$this->search.'%'))
                 ->whereHas('items', fn ($q) => $this->applyDecisionScope($q, $archived))
                 ->withCount(['items as open_count' => fn ($q) => $this->applyDecisionScope($q, $archived)])
-                ->with(['items' => fn ($q) => $this->applyDecisionScope($q, $archived)->select(['id', 'meeting_id', 'decision'])->limit(8)])
                 ->orderByDesc('scheduled_at')
                 ->paginate(10);
         }

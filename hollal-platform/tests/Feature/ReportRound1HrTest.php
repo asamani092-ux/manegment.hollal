@@ -160,8 +160,20 @@ class ReportRound1HrTest extends TestCase
         $run = app(PayrollRunService::class)->generate('2026-07');
         $item = $run->items->firstWhere('employee_id', $employee->id);
 
-        $this->assertSame('2.00', $item->overtime_hours);
-        $this->assertSame('100.00', $item->overtime_amount);
+        $this->assertSame('0.00', $item->overtime_hours);
+        $this->assertSame('0.00', $item->overtime_amount);
+
+        \App\Models\OvertimeRequest::query()->create([
+            'employee_id' => $employee->id,
+            'date' => '2026-08-02',
+            'hours' => 2,
+            'reason' => 'إضافي معتمد',
+            'status' => 'approved',
+        ]);
+        $paid = app(PayrollRunService::class)->generate('2026-08');
+        $paidItem = $paid->items->firstWhere('employee_id', $employee->id);
+        $this->assertSame('2.00', $paidItem->overtime_hours);
+        $this->assertSame('150.00', $paidItem->overtime_amount);
     }
 
     public function test_variable_deduction_requires_reason(): void

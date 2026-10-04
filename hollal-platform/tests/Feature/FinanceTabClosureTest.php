@@ -75,7 +75,10 @@ class FinanceTabClosureTest extends TestCase
         $service = app(CustodyService::class);
         $custody = $service->request($employee, 3000, 'عهدة اختبار', null, null, null, $employee);
         $service->approve($custody, User::factory()->create());
-        $service->disburse($custody, 'custodies/disbursements/proof.pdf');
+        $finance = User::factory()->create();
+        $finance->givePermissionTo('finance.expenses.pay');
+        $service->approve($custody->fresh(), $finance);
+        $service->disburse($custody->fresh(), 'custodies/disbursements/proof.pdf');
 
         $service->addSettlementItem($custody->fresh(), [
             'description' => 'فندق',

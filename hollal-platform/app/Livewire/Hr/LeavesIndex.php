@@ -87,7 +87,9 @@ class LeavesIndex extends Component
     {
         abort_unless(auth()->user()->can('hr.leaves.request'), 403);
         $this->reset(['type', 'from_date', 'to_date', 'reason', 'substitute_id']);
-        $first = app(\App\Services\ReferenceListService::class)->activeItems('leave_types')->first();
+        $first = \App\Models\ReferenceList::query()->where('key', 'leave_types')->exists()
+            ? app(\App\Services\ReferenceListService::class)->activeItems('leave_types')->first()
+            : null;
         $this->type = $first?->name_ar ?? 'سنوية';
         $this->showForm = true;
     }

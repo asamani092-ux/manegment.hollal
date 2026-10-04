@@ -103,9 +103,6 @@
                         <td class="ds-ltr-num">{{ hollal_dt($row->scheduled_at) }}</td>
                         <td>
                             <span class="ds-ltr-num">{{ $row->open_count }}</span>
-                            @foreach ($row->items as $item)
-                                <div>{{ $item->decision }}</div>
-                            @endforeach
                         </td>
                         <td>
                             <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="selectMeeting({{ $row->id }})">

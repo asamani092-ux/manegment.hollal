@@ -42,8 +42,8 @@ return [
                 ['label' => 'المخالفات', 'route' => 'hr.violations', 'icon' => 'fa-gavel', 'permission' => 'hr.violations.view|hr.violations.manage'],
                 ['label' => 'تسويات الرواتب', 'route' => 'hr.payroll-adjustments', 'icon' => 'fa-balance-scale', 'permission' => 'hr.payroll-adjustments.view|hr.payroll-adjustments.manage'],
                 ['label' => 'مراجعة الوثائق', 'route' => 'hr.document-reviews', 'icon' => 'fa-id-card', 'permission' => 'hr.documents.review'],
-                ['label' => 'دورات التقييم', 'route' => 'evaluation-cycles.index', 'icon' => 'fa-star', 'permission' => 'hr.employees.update'],
-                ['label' => 'تقييماتي', 'route' => 'employee-evaluations.mine', 'icon' => 'fa-star', 'permission' => 'dashboard.view|hr.employees.view'],
+                ['label' => 'دورات التقييم', 'route' => 'evaluations.index', 'icon' => 'fa-star', 'permission' => 'hr.employees.update'],
+                ['label' => 'تقييماتي', 'route' => 'evaluations.index', 'icon' => 'fa-star', 'permission' => 'dashboard.view|hr.employees.view'],
                 ['label' => 'المسؤوليات', 'route' => 'responsibilities.index', 'icon' => 'fa-clipboard-list', 'permission' => 'hr.employees.update'],
                 ['label' => 'الحضور', 'route' => 'attendance.index', 'icon' => 'fa-user-clock', 'permission' => 'hr.employees.view'],
                 ['label' => 'الحضور الشهري', 'route' => 'attendance.cycle', 'icon' => 'fa-calendar-week', 'permission' => 'hr.employees.update'],
@@ -70,7 +70,6 @@ return [
             'label' => 'المالية',
             'items' => [
                 ['label' => 'طلبات الصرف', 'route' => 'expenses.index', 'icon' => 'fa-money-bill-wave', 'permission' => 'finance.expenses.view|finance.expenses.create|finance.expenses.approve|finance.expenses.pay'],
-                ['label' => 'مسير الرواتب', 'route' => 'payroll-runs.index', 'icon' => 'fa-file-invoice-dollar', 'permission' => 'finance.payroll.view|hr.salaries.view'],
                 ['label' => 'العهد', 'route' => 'custodies.index', 'icon' => 'fa-hand-holding-usd', 'permission' => 'finance.custodies.view|finance.custodies.approve|finance.custodies.disburse'],
                 ['label' => 'الأصول', 'route' => 'assets.index', 'icon' => 'fa-boxes', 'permission' => 'finance.assets.view|finance.assets.manage'],
                 ['label' => 'الإيرادات', 'route' => 'revenues.index', 'icon' => 'fa-coins', 'permission' => 'finance.revenues.view|finance.revenues.manage'],
