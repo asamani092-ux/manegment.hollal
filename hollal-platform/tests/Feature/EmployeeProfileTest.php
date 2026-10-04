@@ -32,7 +32,7 @@ class EmployeeProfileTest extends TestCase
         Livewire::actingAs($viewer)
             ->test(EmployeeProfileShow::class, ['user' => $target])
             ->call('setTab', 'salary')
-            ->assertSet('activeTab', 'job')
+            ->assertSet('activeTab', 'pay')
             ->assertDontSee('بيانات الراتب', false);
 
         $this->assertDatabaseCount('profile_access_logs', 0);
@@ -47,7 +47,7 @@ class EmployeeProfileTest extends TestCase
         Livewire::actingAs($viewer)
             ->test(EmployeeProfileShow::class, ['user' => $target])
             ->call('setTab', 'salary')
-            ->assertSet('activeTab', 'job');
+            ->assertSet('activeTab', 'pay');
 
         $this->assertDatabaseHas('profile_access_logs', [
             'user_id' => $viewer->id,

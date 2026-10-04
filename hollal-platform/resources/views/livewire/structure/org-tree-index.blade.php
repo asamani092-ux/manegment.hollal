@@ -13,6 +13,13 @@
 
     @if ($tab === 'tree')
         <section class="ds-section">
+            <h2 class="ds-section-title">عرض الشجرة</h2>
+            <ul>
+                @foreach ($tree as $root)
+                    @include('livewire.structure.partials.org-branch', ['node' => $root])
+                @endforeach
+            </ul>
+            <h2 class="ds-section-title">عرض الجدول</h2>
             <x-ds-table>
                 <x-slot:head>
                     <tr><th>الوحدة</th><th>المستوى</th><th>المسؤول</th><th>الأعضاء</th><th>إجراءات</th></tr>

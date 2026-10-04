@@ -6,10 +6,12 @@
             'منتهية_علاقته' => 'ds-badge-danger',
         ];
         $tabs = [
-            'data' => 'البيانات',
+            'overview' => 'نظرة',
+            'personal' => 'البيانات',
             'job' => 'الوظيفة',
-            'contracts_documents' => 'العقود والمستندات',
-            'tasks' => 'المهام',
+            'pay' => 'الراتب',
+            'documents' => 'العقود والمستندات',
+            'performance' => 'المهام',
             'leaves' => 'الإجازات',
             'log' => 'السجل',
         ];
@@ -52,7 +54,16 @@
         </nav>
 
         <div class="ds-tab-panel">
-            @if ($activeTab === 'data')
+            @if ($activeTab === 'overview')
+                <x-ds-collapsible-card title="ملخص" :open="true">
+                    <dl class="ds-detail-grid">
+                        <div><dt>الحالة</dt><dd>{{ $user->employment_status }}</dd></div>
+                        <div><dt>المسمى</dt><dd>{{ $user->profile?->job_title ?? '—' }}</dd></div>
+                        <div><dt>المدير</dt><dd>{{ $user->manager?->name ?? '—' }}</dd></div>
+                        <div><dt>تاريخ المباشرة</dt><dd>{{ $user->profile?->hire_date?->format('Y-m-d') ?? '—' }}</dd></div>
+                    </dl>
+                </x-ds-collapsible-card>
+            @elseif (in_array($activeTab, ['data', 'personal'], true))
                 <x-ds-collapsible-card title="بطاقة البيانات" :open="false">
                     <x-slot:actions>
                         @if ($canUpdate)
@@ -68,7 +79,7 @@
                         <div><dt>الدور</dt><dd><x-ds-role-label :name="$user->roles->first()?->name ?? ''" /></dd></div>
                     </dl>
                 </x-ds-collapsible-card>
-            @elseif ($activeTab === 'job')
+            @elseif (in_array($activeTab, ['job', 'pay'], true))
                 <x-ds-collapsible-card title="بطاقة الوظيفة" :open="true">
                     <x-slot:actions>
                         @if ($canUpdate)
@@ -238,7 +249,7 @@
                     @endif
                     </x-ds-collapsible-card>
                 @endif
-            @elseif ($activeTab === 'contracts_documents')
+            @elseif (in_array($activeTab, ['contracts_documents', 'documents'], true))
                 <p class="ds-text-muted ds-mb-3">فترات التوظيف الرسمية (قراءة فقط) والوثائق الرسمية (هوية · إقامة · جواز · عقد عمل · أخرى).</p>
                 <x-ds-collapsible-card title="عقود التوظيف" :open="true">
                 <x-ds-table>
@@ -318,7 +329,7 @@
                         @endforelse
                     </x-ds-table>
                 </x-ds-collapsible-card>
-            @elseif ($activeTab === 'tasks')
+            @elseif (in_array($activeTab, ['tasks', 'performance'], true))
                 <x-ds-table>
                     <x-slot:head>
                         <tr>

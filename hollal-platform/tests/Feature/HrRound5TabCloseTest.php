@@ -31,13 +31,13 @@ class HrRound5TabCloseTest extends TestCase
         Livewire::actingAs($viewer)
             ->test(EmployeeProfileShow::class, ['user' => $target])
             ->call('setTab', 'contracts')
-            ->assertSet('activeTab', 'contracts_documents')
-            ->call('setTab', 'documents')
-            ->assertSet('activeTab', 'contracts_documents')
-            ->call('setTab', 'salary')
             ->assertSet('activeTab', 'job')
+            ->call('setTab', 'documents')
+            ->assertSet('activeTab', 'documents')
+            ->call('setTab', 'salary')
+            ->assertSet('activeTab', 'pay')
             ->call('setTab', 'evaluations')
-            ->assertSet('activeTab', 'log');
+            ->assertSet('activeTab', 'performance');
     }
 
     public function test_query_tab_redirects_on_mount(): void
@@ -53,17 +53,17 @@ class HrRound5TabCloseTest extends TestCase
         Livewire::actingAs($viewer)
             ->withQueryParams(['tab' => 'documents'])
             ->test(EmployeeProfileShow::class, ['user' => $target])
-            ->assertSet('activeTab', 'contracts_documents');
+            ->assertSet('activeTab', 'documents');
 
         Livewire::actingAs($viewer)
             ->withQueryParams(['tab' => 'evaluations'])
             ->test(EmployeeProfileShow::class, ['user' => $target])
-            ->assertSet('activeTab', 'log');
+            ->assertSet('activeTab', 'performance');
 
         Livewire::actingAs($viewer)
             ->withQueryParams(['tab' => 'salary'])
             ->test(EmployeeProfileShow::class, ['user' => $target])
-            ->assertSet('activeTab', 'job');
+            ->assertSet('activeTab', 'pay');
     }
 
     public function test_tab_bar_shows_consolidated_labels_only(): void
@@ -81,7 +81,7 @@ class HrRound5TabCloseTest extends TestCase
             ->assertSee('الإجازات', false)
             ->assertSee('السجل', false)
             ->assertDontSeeHtml("setTab('contracts')")
-            ->assertDontSeeHtml("setTab('documents')")
+            ->assertSeeHtml("setTab('documents')")
             ->assertDontSeeHtml("setTab('salary')")
             ->assertDontSeeHtml("setTab('evaluations')");
     }
@@ -95,7 +95,7 @@ class HrRound5TabCloseTest extends TestCase
         Livewire::actingAs($viewer)
             ->test(EmployeeProfileShow::class, ['user' => $target])
             ->call('setTab', 'salary')
-            ->assertSet('activeTab', 'job')
+            ->assertSet('activeTab', 'pay')
             ->assertDontSee('بيانات الراتب', false)
             ->assertDontSee('مكوّنات الراتب', false);
 
@@ -111,7 +111,7 @@ class HrRound5TabCloseTest extends TestCase
         Livewire::actingAs($viewer)
             ->test(EmployeeProfileShow::class, ['user' => $target])
             ->call('setTab', 'salary')
-            ->assertSet('activeTab', 'job')
+            ->assertSet('activeTab', 'pay')
             ->assertSee('بيانات الراتب', false);
 
         $this->assertDatabaseHas('profile_access_logs', [

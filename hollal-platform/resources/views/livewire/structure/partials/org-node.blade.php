@@ -1,6 +1,7 @@
 {{-- 09-B1 — one node of the org chart, indented by depth, level-styled. --}}
 @php
     $levelClass = match ($node->level) {
+        \App\Models\OrgUnit::LEVEL_TOP => 'org-node--admin',
         \App\Models\OrgUnit::LEVEL_ADMINISTRATION => 'org-node--admin',
         \App\Models\OrgUnit::LEVEL_UNIT => 'org-node--unit',
         \App\Models\OrgUnit::LEVEL_JOB => 'org-node--job',

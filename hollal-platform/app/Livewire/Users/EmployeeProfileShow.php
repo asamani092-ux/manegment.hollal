@@ -46,7 +46,7 @@ class EmployeeProfileShow extends Component
     #[Locked]
     public int $userId;
 
-    public string $activeTab = 'data';
+    public string $activeTab = 'overview';
 
     public bool $attendanceEnabled = false;
 
@@ -177,9 +177,11 @@ class EmployeeProfileShow extends Component
     public function normalizeTab(string $tab): string
     {
         return match ($tab) {
-            'contracts', 'documents' => 'contracts_documents',
-            'salary' => 'job',
-            'evaluations' => 'log',
+            'data' => 'personal',
+            'contracts', 'contracts_documents' => 'job',
+            'documents' => 'documents',
+            'salary' => 'pay',
+            'evaluations', 'tasks' => 'performance',
             default => $tab,
         };
     }
