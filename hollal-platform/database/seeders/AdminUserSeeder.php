@@ -17,16 +17,17 @@ class AdminUserSeeder extends Seeder
             $password = '12341234';
         }
 
-        $user = User::updateOrCreate(
-            ['email' => 'admin@hollal.local'],
-            [
+        $user = User::query()->where('email', 'admin@hollal.local')->first();
+        if (! $user) {
+            $user = User::query()->create([
                 'name' => 'Super Admin',
+                'email' => 'admin@hollal.local',
                 'phone' => '0500000000',
                 'password' => Hash::make($password),
                 'is_active' => true,
                 'must_change_password' => true,
-            ]
-        );
+            ]);
+        }
 
         $user->syncRoles(['Super Admin']);
 

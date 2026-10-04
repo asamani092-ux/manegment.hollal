@@ -99,6 +99,18 @@ class MustChangePasswordTest extends TestCase
         $this->assertTrue(Hash::check('env-test-password', $admin->password));
         $this->assertTrue($admin->must_change_password);
 
+        $admin->forceFill([
+            'password' => Hash::make('chosen-by-owner'),
+            'must_change_password' => false,
+        ])->save();
+
+        $this->artisan('db:seed', ['--class' => AdminUserSeeder::class])
+            ->assertSuccessful();
+
+        $admin->refresh();
+        $this->assertFalse($admin->must_change_password);
+        $this->assertTrue(Hash::check('chosen-by-owner', $admin->password));
+
         putenv('ADMIN_INITIAL_PASSWORD');
         unset($_ENV['ADMIN_INITIAL_PASSWORD'], $_SERVER['ADMIN_INITIAL_PASSWORD']);
     }

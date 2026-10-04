@@ -53,15 +53,15 @@ class OnboardingSeeder extends Seeder
             $role = $data['role'];
             unset($data['role']);
 
-            $user = User::updateOrCreate(
-                ['phone' => $data['phone']],
-                [
+            $user = User::query()->where('phone', $data['phone'])->first();
+            if (! $user) {
+                $user = User::query()->create([
                     ...$data,
                     'password' => Hash::make($password),
                     'is_active' => true,
                     'must_change_password' => true,
-                ]
-            );
+                ]);
+            }
 
             $user->syncRoles([$role]);
         }
