@@ -27,9 +27,13 @@
             <label class="ds-label" for="leaves-type">النوع</label>
             <select id="leaves-type" class="ds-input" wire:model.live="typeFilter">
                 <option value="">— الكل —</option>
-                <option value="سنوية">سنوية</option>
-                <option value="مرضية">مرضية</option>
-                <option value="استثنائية">استثنائية</option>
+                @forelse ($leaveTypes as $item)
+                    <option value="{{ $item->name_ar }}">{{ $item->name_ar }}</option>
+                @empty
+                    <option value="سنوية">سنوية</option>
+                    <option value="مرضية">مرضية</option>
+                    <option value="استثنائية">استثنائية</option>
+                @endforelse
             </select>
         </div>
         <div class="ds-filter-field">
@@ -111,9 +115,13 @@
         <p class="ds-text-muted ds-mb-3">رصيدك السنوي المتاح: <strong class="ds-ltr-num">{{ $balance }}</strong> يومًا (تُحجز الأيام عند الإرسال).</p>
         <x-ds-form-group label="النوع" :error="$errors->first('type')">
             <select class="ds-input" wire:model="type">
-                <option value="سنوية">سنوية</option>
-                <option value="مرضية">مرضية</option>
-                <option value="استثنائية">استثنائية</option>
+                @forelse ($leaveTypes as $item)
+                    <option value="{{ $item->name_ar }}">{{ $item->name_ar }}</option>
+                @empty
+                    <option value="سنوية">سنوية</option>
+                    <option value="مرضية">مرضية</option>
+                    <option value="استثنائية">استثنائية</option>
+                @endforelse
             </select>
         </x-ds-form-group>
         <x-ds-form-group label="من" :error="$errors->first('from_date')">

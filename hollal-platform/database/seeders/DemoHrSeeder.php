@@ -571,7 +571,7 @@ class DemoHrSeeder extends Seeder
         $rows = [
             [
                 'phone' => self::PHONE_ADMIN,
-                'type' => LeaveRequest::TYPE_ANNUAL,
+                'type' => 'سنوية',
                 'from' => $monthStart->copy()->addDays(9),
                 'to' => $monthStart->copy()->addDays(11),
                 'reason' => 'إجازة سنوية قصيرة — مناسبة عائلية',
@@ -580,7 +580,7 @@ class DemoHrSeeder extends Seeder
             ],
             [
                 'phone' => self::PHONE_EMPLOYEE,
-                'type' => LeaveRequest::TYPE_ANNUAL,
+                'type' => 'سنوية',
                 'from' => now()->addDays(7)->startOfDay(),
                 'to' => now()->addDays(8)->startOfDay(),
                 'reason' => 'ظرف عائلي — بانتظار اعتماد المدير',
@@ -589,7 +589,7 @@ class DemoHrSeeder extends Seeder
             ],
             [
                 'phone' => self::PHONE_PROJECTS,
-                'type' => LeaveRequest::TYPE_EXCEPTIONAL,
+                'type' => 'استثنائية',
                 'from' => now()->subDays(20)->startOfDay(),
                 'to' => now()->subDays(20)->startOfDay(),
                 'reason' => 'طلب إجازة استثنائية تعارض مع تسليم مشروع',
@@ -598,7 +598,7 @@ class DemoHrSeeder extends Seeder
             ],
             [
                 'phone' => self::PHONE_FINANCE,
-                'type' => LeaveRequest::TYPE_SICK,
+                'type' => 'مرضية',
                 'from' => now()->subMonth()->startOfMonth()->addDays(14),
                 'to' => now()->subMonth()->startOfMonth()->addDays(17),
                 'reason' => 'إجازة مرضية بتقرير طبي معتمد',

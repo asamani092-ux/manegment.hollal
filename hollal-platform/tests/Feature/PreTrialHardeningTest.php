@@ -44,7 +44,7 @@ class PreTrialHardeningTest extends TestCase
 
         $leave = LeaveRequest::create([
             'employee_id' => $admin->id,
-            'type' => LeaveRequest::TYPE_ANNUAL,
+            'type' => 'سنوية',
             'from_date' => now()->toDateString(),
             'to_date' => now()->addDay()->toDateString(),
             'days_count' => 2,
@@ -75,7 +75,7 @@ class PreTrialHardeningTest extends TestCase
         Livewire::actingAs($employee)
             ->test(LeavesIndex::class)
             ->call('openForm')
-            ->set('type', LeaveRequest::TYPE_ANNUAL)
+            ->set('type', 'سنوية')
             ->set('from_date', now()->toDateString())
             ->set('to_date', now()->addDays(3)->toDateString())
             ->set('reason', 'أولى')
@@ -86,7 +86,7 @@ class PreTrialHardeningTest extends TestCase
         Livewire::actingAs($employee)
             ->test(LeavesIndex::class)
             ->call('openForm')
-            ->set('type', LeaveRequest::TYPE_ANNUAL)
+            ->set('type', 'سنوية')
             ->set('from_date', now()->addDays(10)->toDateString())
             ->set('to_date', now()->addDays(12)->toDateString())
             ->set('reason', 'ثانية')
@@ -103,7 +103,7 @@ class PreTrialHardeningTest extends TestCase
 
         LeaveRequest::create([
             'employee_id' => $employee->id,
-            'type' => LeaveRequest::TYPE_ANNUAL,
+            'type' => 'سنوية',
             'from_date' => now()->addDays(5)->toDateString(),
             'to_date' => now()->addDays(8)->toDateString(),
             'days_count' => 4,
@@ -113,7 +113,7 @@ class PreTrialHardeningTest extends TestCase
         Livewire::actingAs($employee)
             ->test(LeavesIndex::class)
             ->call('openForm')
-            ->set('type', LeaveRequest::TYPE_SICK)
+            ->set('type', 'مرضية')
             ->set('from_date', now()->addDays(7)->toDateString())
             ->set('to_date', now()->addDays(9)->toDateString())
             ->call('submitLeave');

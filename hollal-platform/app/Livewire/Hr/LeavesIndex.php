@@ -224,10 +224,14 @@ class LeavesIndex extends Component
         }
 
         $balance = (int) ($user->profile?->annual_leave_balance ?? 21);
+        $leaveTypes = \App\Models\ReferenceList::query()->where('key', 'leave_types')->exists()
+            ? app(\App\Services\ReferenceListService::class)->activeItems('leave_types')
+            : collect();
 
         return view('livewire.hr.leaves-index', [
             'leaves' => $query->paginate(20),
             'balance' => $balance,
+            'leaveTypes' => $leaveTypes,
             'canApprove' => $user->can('hr.leaves.approve') || $user->can('hr.employees.update'),
             'canRequest' => $user->can('hr.leaves.request'),
             'substitutes' => User::query()->where('is_active', true)->orderBy('name')->limit(100)->get(['id', 'name']),

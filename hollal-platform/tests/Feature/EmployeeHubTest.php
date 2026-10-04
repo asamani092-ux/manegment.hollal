@@ -62,7 +62,7 @@ class EmployeeHubTest extends TestCase
 
         Livewire::actingAs($user)
             ->test(EmployeeHub::class)
-            ->set('leaveType', LeaveRequest::TYPE_ANNUAL)
+            ->set('leaveType', 'سنوية')
             ->set('leaveFrom', now()->addDays(3)->toDateString())
             ->set('leaveTo', now()->addDays(4)->toDateString())
             ->set('leaveReason', 'راحة')

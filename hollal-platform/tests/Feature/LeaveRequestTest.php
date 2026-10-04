@@ -55,7 +55,7 @@ class LeaveRequestTest extends TestCase
         Livewire::actingAs($employee)
             ->test(LeavesIndex::class)
             ->call('openForm')
-            ->set('type', LeaveRequest::TYPE_ANNUAL)
+            ->set('type', 'سنوية')
             ->set('from_date', now()->toDateString())
             ->set('to_date', now()->addDays(2)->toDateString())
             ->set('reason', 'إجازة تجريبية')
