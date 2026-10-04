@@ -194,7 +194,7 @@ class AttendanceService
             ? $record->employee
             : $record->employee()->first();
 
-        return $employee && (int) $employee->manager_id === (int) $actor->id;
+        return $employee && (int) $employee->effectiveManager()?->id === (int) $actor->id;
     }
 
     /**

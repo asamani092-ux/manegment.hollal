@@ -43,7 +43,7 @@ class ExpenseApprovalService
         $expense->loadMissing('requester.manager');
         $settings = ExpenseSetting::current();
 
-        if (! ($expense->requester?->manager_id) && $settings->skip_missing_department_manager) {
+        if (! ($expense->requester?->effectiveManager()) && $settings->skip_missing_department_manager) {
             $dynamic = array_values(array_filter(
                 $dynamic,
                 fn (string $s) => $s !== self::STAGE_DEPARTMENT_MANAGER
@@ -240,7 +240,7 @@ class ExpenseApprovalService
     {
         $expense->loadMissing('requester');
 
-        return $expense->requester?->manager_id === $user->id;
+        return (int) $expense->requester?->effectiveManager()?->id === (int) $user->id;
     }
 
     protected function notifyApproversForStage(ExpenseRequest $expense, ?string $stage): void
@@ -262,7 +262,7 @@ class ExpenseApprovalService
     {
         $people = match (true) {
             $stage === self::STAGE_DEPARTMENT_MANAGER => collect([
-                $expense->requester?->manager,
+                $expense->requester?->effectiveManager(),
             ])->filter(),
             $stage === self::STAGE_EXECUTIVE => User::permission('finance.expenses.approve')
                 ->where('is_active', true)

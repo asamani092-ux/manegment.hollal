@@ -86,6 +86,7 @@ class OrgStructureService
             $employee->forceFill([
                 'org_unit_id' => $toUnit?->id,
             ])->save();
+            $this->recomputeDerivedManager($employee->fresh());
 
             app(AuditLogService::class)->record(
                 action: 'structure.transfer',
@@ -136,6 +137,7 @@ class OrgStructureService
                 'org_unit_id' => $job->id,
                 'auto_role_name' => $job->default_role,
             ])->save();
+            $this->recomputeDerivedManager($user->fresh());
 
             app(AuditLogService::class)->record('structure.place', $user, [
                 'org_unit_id' => $job->id,
@@ -145,6 +147,58 @@ class OrgStructureService
 
             return $user->fresh();
         });
+    }
+
+    /**
+     * Head of the nearest ancestor whose manager is someone else.
+     * Time: O(depth) | Space: O(1)
+     */
+    public function deriveManagerId(User $user): ?int
+    {
+        $unit = $user->orgUnit;
+        while ($unit) {
+            if ($unit->manager_id && (int) $unit->manager_id !== (int) $user->id) {
+                return (int) $unit->manager_id;
+            }
+            $unit = $unit->parent;
+        }
+
+        return null;
+    }
+
+    public function recomputeDerivedManager(User $user): void
+    {
+        if ($user->manager_override_id) {
+            return;
+        }
+        $user->loadMissing('orgUnit.parent');
+        $derived = $this->deriveManagerId($user);
+        if ($derived === null || (int) $user->manager_id === $derived) {
+            return;
+        }
+        $user->forceFill(['manager_id' => $derived])->save();
+    }
+
+    public function recomputeManagersUnder(OrgUnit $unit): void
+    {
+        $ids = $this->descendantIds($unit);
+        $ids[] = $unit->id;
+        User::query()->whereIn('org_unit_id', $ids)->each(function (User $user): void {
+            $this->recomputeDerivedManager($user);
+        });
+    }
+
+    /** @return list<int> */
+    private function descendantIds(OrgUnit $unit): array
+    {
+        $ids = [];
+        $children = OrgUnit::query()->where('parent_id', $unit->id)->get();
+        foreach ($children as $child) {
+            $ids[] = $child->id;
+            $ids = array_merge($ids, $this->descendantIds($child));
+        }
+
+        return $ids;
     }
 
     public function historyFor(User $employee): Collection

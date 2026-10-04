@@ -16,8 +16,8 @@ class EvaluationCycle extends Model
 
     /** @var list<string> */
     protected $fillable = [
-        'year', 'quarter', 'status', 'evaluation_template_id',
-        'starts_at', 'ends_at', 'opened_at', 'closed_at',
+        'name', 'year', 'quarter', 'scope', 'linked_project_ids', 'status',
+        'evaluation_template_id', 'starts_at', 'ends_at', 'opened_at', 'closed_at',
     ];
 
     /** @return array<string, string> */
@@ -26,6 +26,8 @@ class EvaluationCycle extends Model
         return [
             'year' => 'integer',
             'quarter' => 'integer',
+            'scope' => 'array',
+            'linked_project_ids' => 'array',
             'starts_at' => 'date',
             'ends_at' => 'date',
             'opened_at' => 'datetime',
@@ -50,6 +52,10 @@ class EvaluationCycle extends Model
 
     public function periodLabel(): string
     {
+        if ($this->name) {
+            return $this->name;
+        }
+
         return 'الربع '.$this->quarter.' / '.$this->year;
     }
 

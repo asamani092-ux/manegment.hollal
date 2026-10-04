@@ -245,6 +245,9 @@ class UsersIndex extends Component
             $assignee = User::findOrFail($this->onboarding_assignee_id);
             app(\App\Services\OnboardingService::class)->generateTasks($user, auth()->user(), $assignee);
             app(\App\Services\OnboardingChecklistService::class)->generate($user);
+            $this->redirect(route('users.profile', $user).'?tab=overview', navigate: true);
+
+            return;
         }
 
         $this->showModal = false;

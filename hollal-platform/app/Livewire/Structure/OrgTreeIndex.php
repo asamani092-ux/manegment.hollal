@@ -58,6 +58,12 @@ class OrgTreeIndex extends Component
         $this->authorize('structure.view');
     }
 
+    public function gatherUnderTop(): void
+    {
+        $this->authorize('structure.manage');
+        app(OrgStructureService::class)->gatherAdministrationsUnderTop();
+    }
+
     public function openUnitModal(?int $parentId = null): void
     {
         $this->authorize('structure.manage');
@@ -223,6 +229,7 @@ class OrgTreeIndex extends Component
                 ->orderBy('name')
                 ->get(['id', 'name', 'parent_id', 'manager_id', 'job_purpose']),
             'adminColors' => $this->administrationColors($tree),
+            'chartNodes' => $this->chartNodes(),
         ])->layout('layouts.app', ['title' => 'الهيكل التنظيمي']);
     }
 
@@ -232,6 +239,39 @@ class OrgTreeIndex extends Component
      * @param  \Illuminate\Support\Collection<int, OrgUnit>  $tree
      * @return array<int, string>
      */
+    /** @return list<array<string, mixed>> */
+    private function chartNodes(): array
+    {
+        $flat = OrgUnit::query()->with('manager:id,name')->withCount('members')->orderBy('position')->get();
+        $rows = $flat->map(fn (OrgUnit $unit) => [
+            'id' => (string) $unit->id,
+            'parentId' => $unit->parent_id ? (string) $unit->parent_id : null,
+            'name' => $unit->name,
+            'level' => $unit->level,
+            'head' => $unit->manager?->name ?? '—',
+            'members' => $unit->members_count,
+        ])->values()->all();
+        $roots = collect($rows)->whereNull('parentId')->count();
+        if ($roots > 1) {
+            foreach ($rows as &$row) {
+                if ($row['parentId'] === null) {
+                    $row['parentId'] = 'root';
+                }
+            }
+            unset($row);
+            array_unshift($rows, [
+                'id' => 'root',
+                'parentId' => null,
+                'name' => 'الهيكل',
+                'level' => 'جذر',
+                'head' => '—',
+                'members' => 0,
+            ]);
+        }
+
+        return $rows;
+    }
+
     private function administrationColors($tree): array
     {
         $palette = ['#0F3446', '#1B6B93', '#2D6A4F', '#C45C26', '#6B4C9A', '#8B5A2B'];

@@ -103,6 +103,7 @@ class QuarterlyEvaluationService
         }
 
         return EvaluationCycle::create([
+            'name' => 'الربع '.$quarter.' / '.$year,
             'year' => $year,
             'quarter' => $quarter,
             'status' => EvaluationCycle::STATUS_DRAFT,
@@ -186,7 +187,7 @@ class QuarterlyEvaluationService
                 EmployeeEvaluation::create([
                     'evaluation_cycle_id' => $cycle->id,
                     'employee_id' => $employee->id,
-                    'evaluator_id' => $employee->manager_id,
+                    'evaluator_id' => $employee->effectiveManager()?->id,
                     'status' => EmployeeEvaluation::STATUS_DRAFT,
                 ]);
                 $created++;

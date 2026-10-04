@@ -83,7 +83,15 @@ class User extends Authenticatable
      */
     public function effectiveManagedUserIds(): array
     {
-        $ids = static::query()->where('manager_id', $this->id)->pluck('id')->all();
+        $ids = static::query()
+            ->where(function ($query) {
+                $query->where('manager_override_id', $this->id)
+                    ->orWhere(function ($inner) {
+                        $inner->whereNull('manager_override_id')->where('manager_id', $this->id);
+                    });
+            })
+            ->pluck('id')
+            ->all();
         $delegatorIds = \App\Models\Delegation::query()
             ->where('delegate_id', $this->id)
             ->where('status', \App\Models\Delegation::STATUS_ACTIVE)

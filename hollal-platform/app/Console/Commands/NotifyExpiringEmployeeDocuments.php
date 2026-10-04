@@ -43,6 +43,18 @@ class NotifyExpiringEmployeeDocuments extends Command
                 ->get();
 
             foreach ($documents as $document) {
+                $owner = $document->user;
+                if ($owner) {
+                    $alreadyOwner = $owner->notifications()
+                        ->where('type', EmployeeDocumentExpiring::class)
+                        ->where('data->employee_document_id', $document->id)
+                        ->where('data->days_remaining', $days)
+                        ->exists();
+                    if (! $alreadyOwner) {
+                        $owner->notify(new EmployeeDocumentExpiring($document, $days));
+                        $sent++;
+                    }
+                }
                 foreach ($recipients as $recipient) {
                     $already = $recipient->notifications()
                         ->where('type', EmployeeDocumentExpiring::class)
@@ -59,6 +71,12 @@ class NotifyExpiringEmployeeDocuments extends Command
                 }
             }
         }
+
+        EmployeeDocument::query()
+            ->whereNotNull('expiry_date')
+            ->whereDate('expiry_date', '<=', now()->toDateString())
+            ->where('status', 'approved')
+            ->update(['status' => 'expired']);
 
         $this->info("Sent {$sent} employee document expiry notification(s).");
 

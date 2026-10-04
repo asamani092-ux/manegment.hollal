@@ -83,7 +83,7 @@ class LeaveService
 
         $leave = LeaveRequest::create($payload);
 
-        $manager = $employee->manager;
+        $manager = $employee->effectiveManager();
         if ($manager) {
             $manager->notify(new LeaveRequested($leave));
         }

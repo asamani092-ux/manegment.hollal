@@ -117,7 +117,7 @@ class PayrollRunService
                 'amount' => abs($amount),
                 'kind' => $amount < 0 ? 'deduction' : 'earning',
             ];
-            $line->update(['status' => 'posted']);
+            $line->update(['status' => 'posted', 'payroll_run_item_id' => $item->id]);
         }
         $item->variables = $variables;
         $item->recalculate();

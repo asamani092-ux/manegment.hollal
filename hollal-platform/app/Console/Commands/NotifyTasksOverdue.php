@@ -41,7 +41,7 @@ class NotifyTasksOverdue extends Command
             }
 
             if ($task->due_date->lte(now()->subHours(48))) {
-                $manager = $assignee->manager;
+                $manager = $assignee->effectiveManager();
 
                 if ($manager instanceof User
                     && ! TaskNotificationHelper::alreadyNotified($manager, TaskOverdue::class, $task->id, true)) {

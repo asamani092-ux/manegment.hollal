@@ -50,7 +50,7 @@ class DelegationService
     public function behalfOf(User $actor, ExpenseRequest $expense): ?int
     {
         $expense->loadMissing('requester.manager');
-        $candidates = collect([$expense->requester?->manager])->filter();
+        $candidates = collect([$expense->requester?->effectiveManager()])->filter();
         foreach ($candidates as $person) {
             $delegation = $this->activeForDelegator($person->id);
             if ($delegation && $delegation->delegate_id === $actor->id) {
@@ -160,7 +160,7 @@ class DelegationService
     public function approveByManager(Delegation $delegation, User $manager): Delegation
     {
         $delegator = $delegation->delegator;
-        if ($delegation->status !== 'pending_manager' || $delegator?->manager_id !== $manager->id) {
+        if ($delegation->status !== 'pending_manager' || (int) $delegator?->effectiveManager()?->id !== (int) $manager->id) {
             throw new \RuntimeException('اعتماد المدير غير متاح');
         }
         $delegation->update(['status' => 'pending_hr']);

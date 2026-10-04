@@ -29,6 +29,7 @@ Schedule::command('budgets:check-thresholds')->dailyAt('07:30');
 Schedule::command('documents:check-policy-reviews')->dailyAt('07:45');
 Schedule::command('projects:generate-pending')->everyFifteenMinutes();
 Schedule::command('delegations:sync')->dailyAt('00:05');
+Schedule::command('violations:statement-deadlines')->dailyAt('00:30');
 Schedule::command('leaves:accrue')->monthlyOn(1, '00:20');
 Schedule::command('finance:run-depreciation')
     ->monthlyOn(1, '02:00')

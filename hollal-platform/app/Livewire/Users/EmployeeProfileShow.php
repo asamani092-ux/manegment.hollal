@@ -48,6 +48,12 @@ class EmployeeProfileShow extends Component
 
     public string $activeTab = 'overview';
 
+    public string $statementBody = '';
+
+    public string $onboardingDue = '';
+
+    public bool $ownUpload = false;
+
     public bool $attendanceEnabled = false;
 
     public string $weeklyHours = '';
@@ -540,9 +546,20 @@ class EmployeeProfileShow extends Component
         $this->showDocumentModal = true;
     }
 
+    public function openOwnUpload(): void
+    {
+        abort_unless((int) auth()->id() === (int) $this->userId, 403);
+        $this->ownUpload = true;
+        $this->resetDocumentForm();
+        $this->showDocumentModal = true;
+    }
+
     public function saveDocument(): void
     {
-        $this->authorize('hr.employees.update');
+        $isSelf = (int) auth()->id() === (int) $this->userId;
+        if (! $isSelf) {
+            $this->authorize('hr.employees.update');
+        }
 
         $this->validate([
             'docType' => 'required|in:'.implode(',', EmployeeDocument::TYPES),
@@ -570,6 +587,13 @@ class EmployeeProfileShow extends Component
 
         if ($this->docFile) {
             $payload['file_path'] = $this->docFile->store('employee-documents/'.$this->userId, 'local');
+        }
+
+        $selfPending = $isSelf && ! auth()->user()->can('hr.documents.review');
+        if ($selfPending) {
+            $payload['status'] = 'pending_review';
+        } elseif (! $this->documentId) {
+            $payload['status'] = 'approved';
         }
 
         if ($this->documentId) {
@@ -696,7 +720,20 @@ class EmployeeProfileShow extends Component
         $item = \App\Models\EmployeeOnboardingItem::query()->where('user_id', $this->userId)->findOrFail($id);
         abort_unless(auth()->user()->can('hr.employees.update'), 403);
         $employee = User::query()->findOrFail($this->userId);
-        app(\App\Services\OnboardingChecklistService::class)->convertToTask($item, $employee, auth()->user());
+        app(\App\Services\OnboardingChecklistService::class)->convertToTask(
+            $item,
+            $employee,
+            auth()->user(),
+            $this->onboardingDue !== '' ? $this->onboardingDue : null,
+        );
+    }
+
+    public function submitViolationStatement(int $id): void
+    {
+        abort_unless((int) auth()->id() === (int) $this->userId, 403);
+        $violation = \App\Models\Violation::query()->where('employee_id', $this->userId)->findOrFail($id);
+        app(\App\Services\ViolationService::class)->submitStatement($violation, auth()->user(), $this->statementBody);
+        $this->statementBody = '';
     }
 
     public function render(): View
@@ -711,6 +748,12 @@ class EmployeeProfileShow extends Component
 
         $salaryTotals = $this->canViewSalary()
             ? app(SalaryService::class)->monthlyFromComponents($user)
+            : null;
+        $documentMatrix = in_array($this->activeTab, ['overview', 'documents'], true)
+            ? app(\App\Services\DocumentRequirementService::class)->matrix($user)
+            : [];
+        $performanceSummary = $this->activeTab === 'performance'
+            ? app(\App\Services\PerformanceService::class)->summary($user, now()->startOfYear(), now()->endOfYear())
             : null;
 
         return view('livewire.users.employee-profile-show', [
@@ -728,6 +771,23 @@ class EmployeeProfileShow extends Component
                 ? SalaryComponent::query()->where('employee_id', $this->userId)->effectiveOn(today())->orderBy('type')->get()
                 : collect(),
             'salaryTotals' => $salaryTotals,
+            'documentMatrix' => $documentMatrix,
+            'performanceSummary' => $performanceSummary,
+            'profileViolations' => $this->activeTab === 'violations'
+                ? \App\Models\Violation::query()->where('employee_id', $this->userId)->latest('id')->limit(30)->get()
+                : collect(),
+            'payslips' => $this->activeTab === 'pay'
+                ? \App\Models\PayrollRunItem::query()->where('employee_id', $this->userId)->with('run:id,month,status')->latest('id')->limit(12)->get()
+                : collect(),
+            'attendanceRows' => $this->activeTab === 'attendance'
+                ? \App\Models\AttendanceRecord::query()->where('employee_id', $this->userId)->latest('date')->limit(31)->get()
+                : collect(),
+            'custodyRows' => $this->activeTab === 'custody'
+                ? \App\Models\Custody::query()->where('employee_id', $this->userId)->latest('id')->limit(20)->get()
+                : collect(),
+            'assetRows' => $this->activeTab === 'custody'
+                ? \App\Models\Asset::query()->where('current_holder_id', $this->userId)->latest('id')->limit(20)->get()
+                : collect(),
             'contracts' => Contract::query()->where('employee_id', $this->userId)->latest('end_date')->get(),
             'onboardingItems' => \App\Models\EmployeeOnboardingItem::query()
                 ->with('referenceItem:id,name_ar,code')

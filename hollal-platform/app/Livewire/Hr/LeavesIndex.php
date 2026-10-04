@@ -166,7 +166,7 @@ class LeavesIndex extends Component
             return;
         }
 
-        abort_unless($leave->employee?->manager_id === $user->id, 403);
+        abort_unless((int) $leave->employee?->effectiveManager()?->id === (int) $user->id, 403);
     }
 
     public function render(): View

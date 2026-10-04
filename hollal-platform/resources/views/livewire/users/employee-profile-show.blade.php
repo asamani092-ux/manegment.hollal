@@ -10,10 +10,12 @@
             'personal' => 'البيانات',
             'job' => 'الوظيفة',
             'pay' => 'الراتب',
+            'attendance' => 'الحضور',
             'documents' => 'العقود والمستندات',
             'performance' => 'المهام',
             'leaves' => 'الإجازات',
             'violations' => 'المخالفات',
+            'custody' => 'العهد',
             'log' => 'السجل',
         ];
         $typeLabels = [
@@ -60,11 +62,16 @@
                     <dl class="ds-detail-grid">
                         <div><dt>الحالة</dt><dd>{{ $user->employment_status }}</dd></div>
                         <div><dt>المسمى</dt><dd>{{ $user->profile?->job_title ?? '—' }}</dd></div>
-                        <div><dt>المدير</dt><dd>{{ $user->manager?->name ?? '—' }}</dd></div>
+                        <div><dt>المدير</dt><dd>{{ $user->effectiveManager()?->name ?? '—' }}</dd></div>
                         <div><dt>تاريخ المباشرة</dt><dd>{{ $user->profile?->hire_date?->format('Y-m-d') ?? '—' }}</dd></div>
                     </dl>
-                    @if (($onboardingItems ?? collect())->isNotEmpty())
+                    @php $alertCount = collect($documentMatrix ?? [])->whereIn('color', ['red', 'yellow'])->count(); @endphp
+                    @if ($alertCount > 0)
+                        <p>وثائق تحتاج متابعة: {{ $alertCount }}</p>
+                    @endif
+                    @if (($onboardingItems ?? collect())->contains(fn ($item) => $item->status === 'open'))
                         <h3>قائمة التهيئة</h3>
+                        <input type="date" class="ds-input" wire:model="onboardingDue">
                         <ul>
                             @foreach ($onboardingItems as $item)
                                 <li>
@@ -262,6 +269,14 @@
                             </x-ds-form-group>
                             <button type="button" class="ds-btn ds-btn-primary" wire:click="saveOvertimeGate">حفظ</button>
                         </section>
+                        @if ($activeTab === 'pay')
+                            <h3>مسيرات الشهر</h3>
+                            @forelse ($payslips as $slip)
+                                <p wire:key="slip-{{ $slip->id }}">{{ $slip->run?->month }} — الصافي {{ $slip->net }} — التحويل {{ $slip->transfer_date?->format('Y-m-d') ?? '—' }}</p>
+                            @empty
+                                <p>لا توجد مسيرات.</p>
+                            @endforelse
+                        @endif
                     @endif
                     </x-ds-collapsible-card>
                 @endif
@@ -293,7 +308,15 @@
                         @if ($canUpdate)
                             <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openDocumentModal">إضافة وثيقة</button>
                         @endif
+                        @if ((int) auth()->id() === (int) $user->id)
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openOwnUpload">رفع وثيقة</button>
+                        @endif
                     </x-slot:actions>
+                    <ul>
+                        @foreach ($documentMatrix ?? [] as $cell)
+                            <li class="ds-doc-{{ $cell['color'] }}">{{ $cell['name'] }} — {{ $cell['state'] }}</li>
+                        @endforeach
+                    </ul>
                     <p class="ds-text-muted ds-mb-3">هوية · إقامة · جواز · عقد عمل · أخرى — مع رقم الوثيقة وتاريخ الانتهاء للتنبيه قبل التجديد.</p>
                     <x-ds-table>
                         <x-slot:head>
@@ -346,6 +369,12 @@
                     </x-ds-table>
                 </x-ds-collapsible-card>
             @elseif (in_array($activeTab, ['tasks', 'performance'], true))
+                @if ($performanceSummary)
+                    <p>المهام: {{ $performanceSummary['tasks']['count'] }} — في الوقت {{ $performanceSummary['tasks']['on_time_pct'] }}٪ — المتأخر {{ $performanceSummary['tasks']['overdue'] }}</p>
+                @endif
+                @foreach ($quarterlyEvaluations as $evaluation)
+                    <p wire:key="perf-eval-{{ $evaluation->id }}">{{ $evaluation->cycle?->periodLabel() }}</p>
+                @endforeach
                 <x-ds-table>
                     <x-slot:head>
                         <tr>
@@ -366,7 +395,33 @@
                 </x-ds-table>
             @elseif ($activeTab === 'violations')
                 <x-ds-collapsible-card title="المخالفات" :open="true">
-                    <p class="ds-text-muted">سجل المخالفات المرتبطة بهذا الموظف.</p>
+                    @forelse ($profileViolations as $violation)
+                        <p wire:key="pv-{{ $violation->id }}">{{ $violation->status }} — {{ $violation->facts }}
+                            @if ((int) auth()->id() === (int) $user->id && $violation->status === 'awaiting_statement')
+                                <textarea class="ds-input" wire:model="statementBody"></textarea>
+                                <button type="button" class="ds-btn ds-btn-sm" wire:click="submitViolationStatement({{ $violation->id }})">إرسال الإفادة</button>
+                            @endif
+                        </p>
+                    @empty
+                        <p class="ds-text-muted">لا توجد مخالفات.</p>
+                    @endforelse
+                </x-ds-collapsible-card>
+            @elseif ($activeTab === 'attendance')
+                <x-ds-collapsible-card title="الحضور" :open="true">
+                    @forelse ($attendanceRows as $day)
+                        <p wire:key="att-{{ $day->id }}">{{ $day->date?->format('Y-m-d') }} — {{ $day->type }}</p>
+                    @empty
+                        <p>لا يوجد سجل حضور.</p>
+                    @endforelse
+                </x-ds-collapsible-card>
+            @elseif ($activeTab === 'custody')
+                <x-ds-collapsible-card title="العهد" :open="true">
+                    @foreach ($custodyRows as $custody)
+                        <p wire:key="cus-{{ $custody->id }}">عهدة {{ $custody->amount }}</p>
+                    @endforeach
+                    @foreach ($assetRows as $asset)
+                        <p wire:key="asset-{{ $asset->id }}">أصل {{ $asset->name_ar }}</p>
+                    @endforeach
                 </x-ds-collapsible-card>
             @elseif ($activeTab === 'leaves')
                 <p class="ds-text-muted ds-mb-3">الرصيد السنوي: <strong class="ds-ltr-num">{{ $user->profile?->annual_leave_balance ?? '—' }}</strong></p>

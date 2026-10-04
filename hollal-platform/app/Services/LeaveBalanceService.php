@@ -74,11 +74,19 @@ class LeaveBalanceService
         $fullPay = in_array($code, ['annual', 'emergency', 'marriage', 'bereavement', 'newborn', 'hajj'], true)
             || in_array($name, ['سنوية', 'طارئة', 'زواج', 'وفاة', 'مولود', 'حج'], true);
         if ($fullPay) {
+            event(new \App\Events\LeavePayImpactsRecorded($leave));
+
             return;
         }
 
         $from = Carbon::parse($leave->from_date);
         $to = Carbon::parse($leave->cut_on ?? $leave->to_date);
+        if ($code === 'sick' || $name === 'مرضية') {
+            $this->recordSickImpacts($leave, $from, $to);
+            event(new \App\Events\LeavePayImpactsRecorded($leave));
+
+            return;
+        }
         foreach ($this->splitByMonth($from, $to) as $month => $days) {
             $unpaid = ($code === 'exceptional' || $name === 'استثنائية') ? $days : 0;
             $partial = $unpaid > 0 ? 0 : $days;
@@ -97,6 +105,39 @@ class LeaveBalanceService
                     'partial_days' => $partial,
                 ]
             );
+        }
+        event(new \App\Events\LeavePayImpactsRecorded($leave));
+    }
+
+    private function recordSickImpacts(LeaveRequest $leave, Carbon $from, Carbon $to): void
+    {
+        $dayNumber = 1;
+        $cursor = $from->copy()->startOfDay();
+        $end = $to->copy()->startOfDay();
+        $buckets = [];
+        while ($cursor->lte($end)) {
+            $percent = $this->sickPayPercent($dayNumber);
+            if ($percent < 100) {
+                $month = $cursor->format('Y-m');
+                $buckets[$month][$percent] = ($buckets[$month][$percent] ?? 0) + 1;
+            }
+            $dayNumber++;
+            $cursor->addDay();
+        }
+        foreach ($buckets as $month => $byPercent) {
+            foreach ($byPercent as $percent => $days) {
+                LeavePayImpact::query()->updateOrCreate(
+                    [
+                        'leave_request_id' => $leave->id,
+                        'month' => $month,
+                        'partial_pct' => (int) $percent,
+                    ],
+                    [
+                        'unpaid_days' => $percent === 0 ? $days : 0,
+                        'partial_days' => $percent === 0 ? 0 : $days,
+                    ]
+                );
+            }
         }
     }
 

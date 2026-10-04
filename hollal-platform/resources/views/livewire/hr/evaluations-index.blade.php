@@ -276,6 +276,9 @@
     {{-- Scoring modal --}}
     <x-ds-modal :show="$scoringId !== null" :title="'تقييم — '.($scoringEvaluation?->employee?->name ?? '')" close-action="closeScoring" size="lg">
         @if ($scoringEvaluation)
+            @if (! empty($performanceSummary['tasks']))
+                <p>مؤشرات المهام: {{ $performanceSummary['tasks']['count'] }} — في الوقت {{ $performanceSummary['tasks']['on_time_pct'] }}٪</p>
+            @endif
             <p class="ds-mb-2">
                 {{ $scoringEvaluation->cycle?->periodLabel() }}
                 — <x-ds-status-badge :status="$scoringEvaluation->status" />

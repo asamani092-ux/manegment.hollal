@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\PlatformSetting;
+use App\Models\ReferenceItem;
 use App\Models\ReferenceList;
 use App\Services\ReferenceListService;
 use Illuminate\Database\Seeder;
@@ -50,6 +52,16 @@ class ReferenceListsSeeder extends Seeder
                     ['name' => 'kind', 'type' => 'string', 'required' => true, 'label_ar' => 'النوع'],
                     ['name' => 'account_code', 'type' => 'string', 'required' => false, 'label_ar' => 'رمز الحساب'],
                     ['name' => 'auto_source', 'type' => 'string', 'required' => false, 'label_ar' => 'المصدر الآلي'],
+                ],
+            ],
+            'document_types' => [
+                'name_ar' => 'أنواع الوثائق',
+                'description_ar' => 'وثائق الموظف المطلوبة',
+                'schema' => [
+                    ['name' => 'category', 'type' => 'string', 'required' => true, 'label_ar' => 'التصنيف'],
+                    ['name' => 'has_expiry', 'type' => 'boolean', 'required' => false, 'label_ar' => 'لها انتهاء'],
+                    ['name' => 'renewal_notice_days', 'type' => 'integer', 'required' => false, 'label_ar' => 'أيام التنبيه'],
+                    ['name' => 'required_for', 'type' => 'string', 'required' => false, 'label_ar' => 'الإلزام'],
                 ],
             ],
             'onboarding_steps' => [
@@ -171,5 +183,78 @@ class ReferenceListsSeeder extends Seeder
             ], now()->toDateString());
             $service->publish($draft, null, 'بذرة شرح الشاشة');
         }
+
+        foreach ([
+            ['project_bonus', 'مكافأة إنجاز مشروع', ['kind' => 'earning', 'account_code' => '521', 'auto_source' => 'none']],
+            ['excellence_bonus', 'مكافأة تميز', ['kind' => 'earning', 'account_code' => '521', 'auto_source' => 'none']],
+            ['overtime_pay', 'أجر إضافي', ['kind' => 'earning', 'account_code' => '521', 'auto_source' => 'overtime']],
+            ['delegation_allowance', 'بدل انتداب', ['kind' => 'earning', 'account_code' => '523', 'auto_source' => 'delegation_allowance']],
+            ['absence_deduction', 'حسم غياب', ['kind' => 'deduction', 'account_code' => '521', 'auto_source' => 'absence']],
+            ['unpaid_leave', 'حسم إجازة بدون أجر', ['kind' => 'deduction', 'account_code' => '521', 'auto_source' => 'leave_unpaid']],
+            ['partial_leave', 'حسم إجازة بأجر جزئي', ['kind' => 'deduction', 'account_code' => '521', 'auto_source' => 'leave_partial']],
+            ['violation_penalty', 'جزاء مخالفة', ['kind' => 'deduction', 'account_code' => '521', 'auto_source' => 'violation']],
+            ['advance', 'سلفة', ['kind' => 'deduction', 'account_code' => '114', 'auto_source' => 'none']],
+        ] as [$code, $name, $attrs]) {
+            $this->publishIfMissing($service, 'payroll_adjustment_items', $code, $name, $attrs);
+        }
+
+        foreach ([
+            ['id_card', 'هوية', ['category' => 'official', 'has_expiry' => true, 'renewal_notice_days' => 30, 'required_for' => 'all']],
+            ['iqama', 'إقامة', ['category' => 'official', 'has_expiry' => true, 'renewal_notice_days' => 30, 'required_for' => 'optional']],
+            ['passport', 'جواز', ['category' => 'official', 'has_expiry' => true, 'renewal_notice_days' => 30, 'required_for' => 'optional']],
+            ['contract', 'عقد عمل', ['category' => 'official', 'has_expiry' => true, 'renewal_notice_days' => 30, 'required_for' => 'optional']],
+            ['clearance', 'مخالصة', ['category' => 'official', 'has_expiry' => false, 'required_for' => 'optional']],
+            ['other', 'أخرى', ['category' => 'other', 'has_expiry' => false, 'required_for' => 'optional']],
+            ['degree', 'شهادة علمية', ['category' => 'academic', 'has_expiry' => false, 'required_for' => 'optional']],
+            ['certificate', 'شهادة مهنية', ['category' => 'professional', 'has_expiry' => true, 'renewal_notice_days' => 30, 'required_for' => 'optional']],
+        ] as [$code, $name, $attrs]) {
+            $this->publishIfMissing($service, 'document_types', $code, $name, $attrs);
+        }
+
+        foreach ([
+            ['hr.violations', 'المخالفات', 'من هنا تُستبعد المخالفة المقترحة أو تُؤكد ثم تُطلب الإفادة قبل القرار.'],
+            ['hr.payroll-adjustments', 'تسويات الرواتب', 'التسوية المقترحة تُعتمد أو تُعدّل أو تُلغى أو تُؤجل، ثم تدخل المسير.'],
+            ['hr.document-reviews', 'مراجعة الوثائق', 'الاعتماد يستبدل النسخة السابقة، والرفض يحتاج سبباً.'],
+            ['structure.org-tree', 'الهيكل التنظيمي', 'الشجرة تعرض المواقع من الأعلى، والجدول يبقى للتعديل.'],
+            ['employees.profile', 'ملف الموظف', 'كل تبويب يعرض جزءاً من الملف، والوثيقة لا تُعتمد إلا بعد المراجعة.'],
+        ] as [$code, $title, $body]) {
+            if ($service->item('help_topics', $code)) {
+                continue;
+            }
+            $draft = $service->createDraft('help_topics', $code, $title, [
+                'screen_key' => $code,
+                'title_ar' => $title,
+                'body_ar' => $body,
+                'steps' => [],
+            ], now()->toDateString());
+            $service->publish($draft, null, 'بذرة شرح');
+        }
+
+        foreach ([
+            ['hr.violations.recurrence_window_days', '180', 'integer', 'نافذة تكرار المخالفة بالأيام'],
+            ['hr.violations.max_deduction_days_per_month', '5', 'integer', 'سقف أيام الحسم في الشهر'],
+            ['hr.violations.detection_limit_days', '30', 'integer', 'مهلة اكتشاف المخالفة'],
+            ['hr.violations.statement_deadline_workdays', '3', 'integer', 'مهلة الإفادة بأيام العمل'],
+            ['hr.overtime.rate_formula', 'hourly_plus_50', 'string', 'معادلة الأجر الإضافي'],
+        ] as [$key, $value, $type, $label]) {
+            PlatformSetting::query()->firstOrCreate(
+                ['key' => $key],
+                ['value' => $value, 'type' => $type, 'label_ar' => $label],
+            );
+        }
+    }
+
+    /** @param  array<string, mixed>  $attributes */
+    private function publishIfMissing(ReferenceListService $service, string $list, string $code, string $name, array $attributes): void
+    {
+        $exists = ReferenceItem::query()
+            ->where('code', $code)
+            ->whereHas('list', fn ($query) => $query->where('key', $list))
+            ->exists();
+        if ($exists) {
+            return;
+        }
+        $draft = $service->createDraft($list, $code, $name, $attributes, now()->toDateString());
+        $service->publish($draft, null, 'بذرة '.$list);
     }
 }

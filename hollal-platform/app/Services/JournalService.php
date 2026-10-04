@@ -263,16 +263,37 @@ class JournalService
         $delegation = $this->accountByCode(CoaCodes::EXP_DELEGATION);
         $cash = $this->accountByCode(CoaCodes::CASH);
 
-        $salaryExpense = round(max(0, $netTotal - $delegationTotal), 2);
+        $split = $this->postedAdjustmentSplit($run);
+        $earningTotal = round(array_sum($split['earnings']), 2);
+        $deductionTotal = round(array_sum($split['deductions']), 2);
+        $salaryExpense = round($netTotal - $delegationTotal - $earningTotal + $deductionTotal, 2);
         $lines = [];
         if ($salaryExpense > 0) {
             $lines[] = ['account_id' => $salaries->id, 'debit' => $salaryExpense, 'credit' => 0, 'description' => 'مصروف الرواتب'];
+        } elseif ($salaryExpense < 0) {
+            $lines[] = ['account_id' => $salaries->id, 'debit' => 0, 'credit' => abs($salaryExpense), 'description' => 'مصروف الرواتب'];
         }
         if ($delegationTotal > 0) {
             $lines[] = ['account_id' => $delegation->id, 'debit' => $delegationTotal, 'credit' => 0, 'description' => 'بدل انتداب'];
         }
+        foreach ($split['earnings'] as $code => $amount) {
+            if ($amount > 0) {
+                $lines[] = ['account_id' => $this->accountByCode($code)->id, 'debit' => $amount, 'credit' => 0, 'description' => 'إضافة مسير'];
+            }
+        }
+        foreach ($split['deductions'] as $code => $amount) {
+            if ($amount > 0) {
+                $lines[] = ['account_id' => $this->accountByCode($code)->id, 'debit' => 0, 'credit' => $amount, 'description' => 'حسم مسير'];
+            }
+        }
         $debitSum = round(collect($lines)->sum('debit'), 2);
-        $lines[] = ['account_id' => $cash->id, 'debit' => 0, 'credit' => $debitSum, 'description' => 'صرف مسير'];
+        $creditSum = round(collect($lines)->sum('credit'), 2);
+        $cashCredit = round($debitSum - $creditSum, 2);
+        if ($cashCredit > 0) {
+            $lines[] = ['account_id' => $cash->id, 'debit' => 0, 'credit' => $cashCredit, 'description' => 'صرف مسير'];
+        } elseif ($cashCredit < 0) {
+            $lines[] = ['account_id' => $cash->id, 'debit' => abs($cashCredit), 'credit' => 0, 'description' => 'صرف مسير'];
+        }
 
         return $this->createEntry(
             description: 'مسير رواتب #'.$run->id,
@@ -282,6 +303,35 @@ class JournalService
             actor: $actor,
             automatic: true,
         );
+    }
+
+    /**
+     * @return array{earnings: array<string, float>, deductions: array<string, float>}
+     */
+    private function postedAdjustmentSplit(PayrollRun $run): array
+    {
+        $earnings = [];
+        $deductions = [];
+        if (! \Illuminate\Support\Facades\Schema::hasTable('payroll_adjustments')) {
+            return ['earnings' => $earnings, 'deductions' => $deductions];
+        }
+
+        $rows = \App\Models\PayrollAdjustment::query()
+            ->where('month', $run->month)
+            ->where('status', 'posted')
+            ->with('referenceItem')
+            ->get();
+        foreach ($rows as $line) {
+            $code = (string) ($line->referenceItem?->attributes['account_code'] ?? CoaCodes::EXP_SALARIES);
+            $amount = round(abs((float) $line->amount), 2);
+            if ((float) $line->amount < 0) {
+                $deductions[$code] = round(($deductions[$code] ?? 0) + $amount, 2);
+            } elseif ($amount > 0) {
+                $earnings[$code] = round(($earnings[$code] ?? 0) + $amount, 2);
+            }
+        }
+
+        return ['earnings' => $earnings, 'deductions' => $deductions];
     }
 
     public function postAssetPurchased(Asset $asset, ?User $actor = null): ?JournalEntry

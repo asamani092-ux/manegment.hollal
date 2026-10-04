@@ -681,7 +681,7 @@ class DemoHrSeeder extends Seeder
         $service = app(QuarterlyEvaluationService::class);
 
         $template = \App\Models\EvaluationTemplate::query()->firstOrCreate(
-            ['name' => 'قالب التقييم الربعي — عرض تجريبي'],
+            ['name' => 'قالب التقييم — عرض تجريبي'],
             ['is_active' => true]
         );
 

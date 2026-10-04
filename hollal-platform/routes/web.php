@@ -122,7 +122,7 @@ Route::middleware('throttle:portal')->group(function () {
 });
 
 Route::get('/hr/deploy-marker', function () {
-    return response('leave-balances-d470f80', 200)->header('Content-Type', 'text/plain');
+    return response('hr-remainder-close', 200)->header('Content-Type', 'text/plain');
 })->name('hr.deploy-marker');
 
 Route::middleware('guest')->group(function () {
@@ -325,6 +325,18 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:hr.violations.view|hr.violations.manage')
         ->name('hr.violations');
 
+    Route::get('/hr/violations/{violation}/statement', \App\Http\Controllers\ViolationStatementPdfController::class)
+        ->middleware('permission:hr.violations.view|hr.violations.manage')
+        ->name('hr.violations.statement');
+
+    Route::get('/hr/payroll-adjustments', \App\Livewire\Hr\PayrollAdjustmentsIndex::class)
+        ->middleware('permission:hr.payroll-adjustments.view|hr.payroll-adjustments.manage')
+        ->name('hr.payroll-adjustments');
+
+    Route::get('/hr/document-reviews', \App\Livewire\Hr\DocumentReviewsIndex::class)
+        ->middleware('permission:hr.documents.review')
+        ->name('hr.document-reviews');
+
     Route::get('/attendance/overtime', \App\Livewire\Hr\OvertimeRequestsIndex::class)
         ->middleware('permission:hr.employees.view')
         ->name('attendance.overtime');
@@ -351,7 +363,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('evaluation-cycles.index');
 
     Route::get('/my-evaluations', function () {
-        return redirect()->to(route('users.profile', auth()->id()).'?tab=log');
+        return redirect()->to(route('users.profile', auth()->id()).'?tab=performance');
     })->middleware('permission:dashboard.view|hr.employees.view')->name('employee-evaluations.mine');
 
     Route::get('/team-evaluations', fn () => redirect()->route('evaluations.index', ['step' => 'score']))

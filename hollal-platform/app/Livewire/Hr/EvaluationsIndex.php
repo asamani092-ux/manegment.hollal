@@ -647,6 +647,13 @@ class EvaluationsIndex extends Component
             'allFullyScored' => $allFullyScored,
             'pendingApproveCount' => $pendingApproveCount,
             'scoringEvaluation' => $scoringEvaluation,
+            'performanceSummary' => $scoringEvaluation?->employee && $scoringEvaluation->cycle
+                ? app(\App\Services\PerformanceService::class)->summary(
+                    $scoringEvaluation->employee,
+                    $scoringEvaluation->cycle->starts_at,
+                    $scoringEvaluation->cycle->ends_at,
+                )
+                : null,
             'hrItems' => $scoringEvaluation?->cycle?->items->where('section', EvaluationTemplateItem::SECTION_HR) ?? collect(),
             'managerItems' => $scoringEvaluation?->cycle?->items->where('section', EvaluationTemplateItem::SECTION_MANAGER) ?? collect(),
             'attendanceRows' => $reports['attendance'],
@@ -683,7 +690,7 @@ class EvaluationsIndex extends Component
 
         $userId = auth()->id();
         $ok = (int) $evaluation->evaluator_id === (int) $userId
-            || (int) $evaluation->employee?->manager_id === (int) $userId;
+            || (int) $evaluation->employee?->effectiveManager()?->id === (int) $userId;
 
         abort_unless($ok, 403);
     }

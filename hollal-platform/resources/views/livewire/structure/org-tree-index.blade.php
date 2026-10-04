@@ -8,13 +8,27 @@
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'committees')">اللجان</button>
         @can('structure.manage')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openUnitModal">إضافة إدارة</button>
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="gatherUnderTop">اجمع الإدارات تحت الإدارة العليا</button>
         @endcan
     </section>
 
     @if ($tab === 'tree')
         <section class="ds-section">
             <h2 class="ds-section-title">عرض الشجرة</h2>
-            <ul>
+            <p>
+                <span style="color:#0F3446">الإدارة العليا</span>
+                · <span style="color:#C4A052">إدارة</span>
+                · <span style="color:#27A588">قسم</span>
+                · <span style="color:#5C6B73">وظيفة</span>
+            </p>
+            <div id="org-chart-wide" wire:ignore>
+                <input id="org-search" class="ds-input" placeholder="بحث عن موظف أو وحدة">
+                <button type="button" class="ds-btn ds-btn-sm" id="org-export-png">تصدير صورة</button>
+                <button type="button" class="ds-btn ds-btn-sm" id="org-export-pdf">تصدير ملف</button>
+                <div id="org-chart"></div>
+                <script type="application/json" id="org-chart-data">@json($chartNodes)</script>
+            </div>
+            <ul id="org-chart-mobile">
                 @foreach ($tree as $root)
                     @include('livewire.structure.partials.org-branch', ['node' => $root])
                 @endforeach
@@ -225,4 +239,43 @@
             <button type="button" class="ds-btn ds-btn-primary" wire:click="saveUnit">حفظ</button>
         </x-slot:footer>
     </x-ds-modal>
-</x-ds-page>
+    </x-ds-page>
+    @once
+        @push('scripts')
+            <style>
+                @media (max-width: 768px) { #org-chart-wide { display: none; } }
+                @media (min-width: 769px) { #org-chart-mobile { display: none; } }
+            </style>
+            <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+            <script src="https://cdn.jsdelivr.net/npm/d3-org-chart@3"></script>
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    var node = document.getElementById('org-chart-data');
+                    if (!node || !window.d3 || !d3.OrgChart) return;
+                    var data = JSON.parse(node.textContent || '[]');
+                    if (!data.length) return;
+                    var colors = {'الإدارة العليا':'#0F3446','إدارة':'#C4A052','قسم':'#27A588','وظيفة':'#5C6B73','جذر':'#0F3446'};
+                    var chart = new d3.OrgChart()
+                        .container('#org-chart')
+                        .data(data)
+                        .nodeWidth(function () { return 220; })
+                        .nodeHeight(function () { return 92; })
+                        .nodeContent(function (d) {
+                            var color = colors[d.data.level] || '#0F3446';
+                            return '<div style="border:2px solid '+color+';padding:8px;direction:rtl;background:#fff"><strong>'+d.data.name+'</strong><div>'+d.data.head+'</div><div>'+d.data.members+'</div></div>';
+                        })
+                        .render();
+                    var png = document.getElementById('org-export-png');
+                    if (png) png.addEventListener('click', function () { if (chart.exportImg) chart.exportImg(); });
+                    var pdf = document.getElementById('org-export-pdf');
+                    if (pdf) pdf.addEventListener('click', function () { window.print(); });
+                    var search = document.getElementById('org-search');
+                    if (search) search.addEventListener('input', function () {
+                        var q = search.value.trim();
+                        var hit = data.find(function (row) { return q && (row.name.indexOf(q) !== -1 || row.head.indexOf(q) !== -1); });
+                        if (hit && chart.setHighlighted) chart.setHighlighted(hit.id).render();
+                    });
+                });
+            </script>
+        @endpush
+    @endonce

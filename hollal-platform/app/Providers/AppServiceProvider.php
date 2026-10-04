@@ -2,11 +2,18 @@
 
 namespace App\Providers;
 
+use App\Events\AttendanceCycleClosed;
+use App\Events\LeavePayImpactsRecorded;
+use App\Events\ViolationApplied;
+use App\Listeners\HrRemainderListener;
 use App\Models\Delegation;
 use App\Models\MailSetting;
+use App\Models\OrgUnit;
 use App\Models\User;
+use App\Observers\OrgUnitObserver;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Schema;
@@ -36,6 +43,10 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->applyMailSettings();
+        OrgUnit::observe(OrgUnitObserver::class);
+        Event::listen(AttendanceCycleClosed::class, [HrRemainderListener::class, 'onCycleClosed']);
+        Event::listen(ViolationApplied::class, [HrRemainderListener::class, 'onViolationApplied']);
+        Event::listen(LeavePayImpactsRecorded::class, [HrRemainderListener::class, 'onLeaveImpacts']);
 
         Gate::before(function ($user, string $ability) {
             if (! $user instanceof User) {

@@ -171,9 +171,9 @@ class HrRound5EvalWizardTest extends TestCase
 
         $this->assertTrue($routes->contains('evaluations.index'));
         $this->assertFalse($routes->contains('evaluation-templates.index'));
-        $this->assertFalse($routes->contains('evaluation-cycles.index'));
+        $this->assertTrue($routes->contains('evaluation-cycles.index'));
         $this->assertFalse($routes->contains('employee-evaluations.team'));
-        $this->assertFalse($routes->contains('employee-evaluations.mine'));
+        $this->assertTrue($routes->contains('employee-evaluations.mine'));
     }
 
     public function test_legacy_eval_routes_redirect_to_wizard(): void
