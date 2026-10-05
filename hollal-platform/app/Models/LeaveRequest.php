@@ -64,4 +64,10 @@ class LeaveRequest extends Model
     {
         return $this->belongsTo(User::class, 'approver_id');
     }
+
+    /** @return BelongsTo<User, $this> */
+    public function substitute(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'substitute_id');
+    }
 }

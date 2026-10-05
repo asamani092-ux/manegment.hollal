@@ -197,8 +197,10 @@ class LeavesIndex extends Component
             ->select(['id', 'employee_id', 'type', 'from_date', 'to_date', 'days_count', 'reason', 'status', 'approver_id', 'substitute_id', 'substitute_status', 'created_at'])
             ->with([
                 'employee:id,name,manager_id',
+                'employee.manager:id,name',
                 'employee.profile:id,user_id,annual_leave_balance',
                 'approver:id,name',
+                'substitute:id,name',
             ])
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
             ->when($this->typeFilter, fn ($q) => $q->where('type', $this->typeFilter))
@@ -234,7 +236,31 @@ class LeavesIndex extends Component
             'leaveTypes' => $leaveTypes,
             'canApprove' => $user->can('hr.leaves.approve') || $user->can('hr.employees.update'),
             'canRequest' => $user->can('hr.leaves.request'),
-            'substitutes' => User::query()->where('is_active', true)->orderBy('name')->limit(100)->get(['id', 'name']),
+            'substitutes' => $this->substituteChoices(),
+            'delegationPreview' => $this->substitute_id
+                ? app(\App\Services\DelegationService::class)->preview($user)
+                : null,
         ])->layout('layouts.app', ['title' => 'الإجازات']);
+    }
+
+    /** @return \Illuminate\Support\Collection<int, User> */
+    private function substituteChoices()
+    {
+        $busy = collect();
+        if ($this->from_date !== '' && $this->to_date !== '') {
+            $busy = LeaveRequest::query()
+                ->whereIn('status', [LeaveRequest::STATUS_SUBMITTED, LeaveRequest::STATUS_APPROVED])
+                ->whereDate('from_date', '<=', $this->to_date)
+                ->whereDate('to_date', '>=', $this->from_date)
+                ->pluck('employee_id');
+        }
+
+        return User::query()
+            ->where('is_active', true)
+            ->where('id', '!=', auth()->id())
+            ->when($busy->isNotEmpty(), fn ($q) => $q->whereNotIn('id', $busy))
+            ->orderBy('name')
+            ->limit(100)
+            ->get(['id', 'name']);
     }
 }

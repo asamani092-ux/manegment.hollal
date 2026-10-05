@@ -157,6 +157,13 @@ class EmployeeHub extends Component
             'docs' => $docs,
             'responsibilities' => $responsibilities,
             'leaveBalance' => (float) ($user->profile?->annual_leave_balance ?? 0),
+            'substituteInbox' => LeaveRequest::query()
+                ->where('substitute_id', $id)
+                ->where('substitute_status', 'pending')
+                ->with('employee:id,name')
+                ->latest('id')
+                ->limit(8)
+                ->get(['id', 'employee_id', 'from_date', 'to_date']),
         ])->layout('layouts.app', ['title' => 'مساحتي']);
     }
 }

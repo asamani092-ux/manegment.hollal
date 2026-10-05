@@ -19,6 +19,17 @@
 
     <x-ds-page-header title="الرئيسية" />
 
+    @if (($substituteInbox ?? collect())->isNotEmpty())
+        <section class="ds-card" style="padding:0.75rem;margin-bottom:1rem">
+            <h2>طلبات إنابة بانتظار موافقتك</h2>
+            @foreach ($substituteInbox as $row)
+                <p>{{ $row->employee?->name }} — {{ $row->from_date?->format('Y-m-d') }}
+                    <a class="ds-btn ds-btn-sm" href="{{ route('leaves.index') }}">مراجعة</a>
+                </p>
+            @endforeach
+        </section>
+    @endif
+
     @if ($dutiesFileUrl)
         <section class="ds-section ds-section-spaced">
             <div class="ds-page-toolbar">

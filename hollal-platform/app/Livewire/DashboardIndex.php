@@ -62,6 +62,13 @@ class DashboardIndex extends Component
             'myOpenTasks' => $this->myOpenTasks($user),
             'myUpcomingMeetings' => $this->myUpcomingMeetings($user),
             'dutiesFileUrl' => $this->officialDutiesFileUrl(),
+            'substituteInbox' => \App\Models\LeaveRequest::query()
+                ->where('substitute_id', $user->id)
+                ->where('substitute_status', 'pending')
+                ->with('employee:id,name')
+                ->latest('id')
+                ->limit(8)
+                ->get(['id', 'employee_id', 'from_date', 'to_date', 'substitute_status']),
         ])->layout('layouts.app', ['title' => 'الرئيسية']);
     }
 

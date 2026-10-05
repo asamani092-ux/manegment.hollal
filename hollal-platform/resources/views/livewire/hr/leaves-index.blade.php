@@ -58,6 +58,7 @@
                         <span class="ds-ltr-num">{{ $leave->days_count }} يوم</span>
                     </div>
                     <x-ds-status-badge :status="$leave->status" />
+                    <p>البديل: {{ $leave->substitute?->name ?? '—' }} — {{ ['pending' => 'بانتظار', 'accepted' => 'وافق', 'declined' => 'اعتذر'][$leave->substitute_status] ?? '—' }}</p>
                     @if ($canApprove && $leave->employee_id !== auth()->id() && $leave->status === \App\Models\LeaveRequest::STATUS_SUBMITTED)
                         <div class="ds-toolbar-actions">
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="approve({{ $leave->id }})">اعتماد</button>
@@ -79,6 +80,9 @@
                     <th scope="col">إلى</th>
                     <th scope="col">الأيام</th>
                     <th scope="col">الحالة</th>
+                    <th scope="col">البديل</th>
+                    <th scope="col">حالة البديل</th>
+                    <th scope="col">خطوة الاعتماد</th>
                     <th scope="col">إجراءات</th>
                 </tr>
             </x-slot:head>
@@ -90,6 +94,17 @@
                     <td class="ds-ltr-num">{{ $leave->to_date?->format('Y-m-d') }}</td>
                     <td class="ds-ltr-num">{{ $leave->days_count }}</td>
                     <td><x-ds-status-badge :status="$leave->status" /></td>
+                    <td>{{ $leave->substitute?->name ?? '—' }}</td>
+                    <td>{{ ['pending' => 'بانتظار', 'accepted' => 'وافق', 'declined' => 'اعتذر'][$leave->substitute_status] ?? '—' }}</td>
+                    <td>
+                        @if ($leave->substitute_status === 'pending')
+                            بانتظار {{ $leave->substitute?->name }}
+                        @elseif ($leave->status === 'مقدم')
+                            بانتظار {{ $leave->employee?->manager?->name ?? 'المدير' }}
+                        @else
+                            اكتملت
+                        @endif
+                    </td>
                     <td>
                         @if ($leave->substitute_id)
                             <span>معاينة الإنابة</span>
@@ -105,7 +120,7 @@
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="7"><x-ds-empty-state message="لا توجد طلبات إجازة" icon="fa-umbrella-beach" /></td></tr>
+                <tr><td colspan="10"><x-ds-empty-state message="لا توجد طلبات إجازة" icon="fa-umbrella-beach" /></td></tr>
             @endforelse
         </x-ds-table>
     @endif
@@ -131,13 +146,20 @@
             <input type="date" class="ds-input" wire:model="to_date">
         </x-ds-form-group>
         <x-ds-form-group label="البديل" :error="$errors->first('substitute_id')">
-            <select class="ds-input" wire:model="substitute_id">
+            <select class="ds-input" wire:model.live="substitute_id">
                 <option value="">بدون بديل</option>
                 @foreach ($substitutes as $person)
                     <option value="{{ $person->id }}">{{ $person->name }}</option>
                 @endforeach
             </select>
         </x-ds-form-group>
+        @if ($delegationPreview)
+            <div class="ds-card" style="padding:0.6rem;margin-bottom:0.6rem">
+                <strong>معاينة الإنابة</strong>
+                <p>صلاحيات: {{ count($delegationPreview['permissions'] ?? []) }} — منها حساسة: {{ count($delegationPreview['sensitive'] ?? []) }}</p>
+                <p>خطوات معلّقة: {{ $delegationPreview['pending_steps'] ?? 0 }} — مرؤوسون: {{ count($delegationPreview['direct_reports'] ?? []) }}</p>
+            </div>
+        @endif
         <x-ds-form-group label="السبب" :error="$errors->first('reason')">
             <textarea class="ds-input" wire:model="reason" rows="2"></textarea>
         </x-ds-form-group>

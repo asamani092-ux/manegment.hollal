@@ -82,8 +82,15 @@ class LeaveSubstituteFlowTest extends TestCase
             $substitute->id,
         );
 
-        Livewire::actingAs($substitute)->test(LeavesIndex::class)->assertSee('قبول البديل', false);
+        Livewire::actingAs($substitute)->test(LeavesIndex::class)
+            ->assertSee('قبول البديل', false)
+            ->assertSee('بانتظار', false)
+            ->assertSee('البديل', false);
         Livewire::actingAs($hr)->test(LeavesIndex::class)->assertSee('معاينة الإنابة', false);
+        Livewire::actingAs($employee)->test(LeavesIndex::class)
+            ->call('openForm')
+            ->set('substitute_id', $substitute->id)
+            ->assertSee('صلاحيات', false);
         $this->assertNotNull($leave->id);
     }
 }
