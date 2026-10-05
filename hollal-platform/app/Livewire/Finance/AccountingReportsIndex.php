@@ -22,6 +22,18 @@ class AccountingReportsIndex extends Component
 
     public string $to = '';
 
+    public string $fromYear = '';
+
+    public string $fromMonth = '';
+
+    public string $fromDay = '';
+
+    public string $toYear = '';
+
+    public string $toMonth = '';
+
+    public string $toDay = '';
+
     public ?int $accountId = null;
 
     public function mount(): void
@@ -29,6 +41,59 @@ class AccountingReportsIndex extends Component
         $this->authorize('finance.accounting.manage');
         $this->from = now()->startOfYear()->toDateString();
         $this->to = now()->toDateString();
+        $this->splitDates();
+    }
+
+    public function updatedFromYear(): void
+    {
+        $this->composeDate('from');
+    }
+
+    public function updatedFromMonth(): void
+    {
+        $this->composeDate('from');
+    }
+
+    public function updatedFromDay(): void
+    {
+        $this->composeDate('from');
+    }
+
+    public function updatedToYear(): void
+    {
+        $this->composeDate('to');
+    }
+
+    public function updatedToMonth(): void
+    {
+        $this->composeDate('to');
+    }
+
+    public function updatedToDay(): void
+    {
+        $this->composeDate('to');
+    }
+
+    private function splitDates(): void
+    {
+        [$this->fromYear, $this->fromMonth, $this->fromDay] = array_pad(explode('-', $this->from), 3, '');
+        [$this->toYear, $this->toMonth, $this->toDay] = array_pad(explode('-', $this->to), 3, '');
+    }
+
+    private function composeDate(string $which): void
+    {
+        $year = $which === 'from' ? $this->fromYear : $this->toYear;
+        $month = $which === 'from' ? $this->fromMonth : $this->toMonth;
+        $day = $which === 'from' ? $this->fromDay : $this->toDay;
+        if ($year === '' || $month === '' || $day === '') {
+            return;
+        }
+        $value = sprintf('%04d-%02d-%02d', (int) $year, (int) $month, (int) $day);
+        if ($which === 'from') {
+            $this->from = $value;
+        } else {
+            $this->to = $value;
+        }
     }
 
     public function setTab(string $tab): void

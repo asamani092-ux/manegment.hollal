@@ -8,7 +8,6 @@ use App\Models\ExpenseRequest;
 use App\Models\Meeting;
 use App\Models\MeetingItem;
 use App\Models\OrgUnit;
-use App\Models\PayrollRun;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -76,13 +75,6 @@ class DemoTrialSeeder extends Seeder
             'purpose' => 'عهدة تجريبية بانتظار الاعتماد',
             'requested_by' => $employee->id,
             'status' => Custody::STATUS_REQUESTED,
-        ]);
-
-        PayrollRun::create([
-            'month' => now()->format('Y-m'),
-            'status' => PayrollRun::STATUS_SUBMITTED,
-            'submitted_by' => $manager?->id,
-            'submitted_at' => now(),
         ]);
 
         // Attendance actions abort unless the flag is on; UAT needs the button live.

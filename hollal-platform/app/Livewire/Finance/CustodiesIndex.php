@@ -39,6 +39,8 @@ class CustodiesIndex extends Component
 
     public ?TemporaryUploadedFile $disbursementProof = null;
 
+    public string $viewMode = 'table';
+
     public string $statusFilter = '';
 
     public string $search = '';
@@ -78,6 +80,13 @@ class CustodiesIndex extends Component
             || auth()->user()->can('finance.custodies.disburse'),
             403
         );
+    }
+
+    public function setViewMode(string $mode): void
+    {
+        if (in_array($mode, ['table', 'cards'], true)) {
+            $this->viewMode = $mode;
+        }
     }
 
     public function openRequestModal(): void

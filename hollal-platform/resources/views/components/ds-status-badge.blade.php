@@ -52,4 +52,4 @@
     $tone = $variant ?? ($palette[trim((string) $status)] ?? 'info');
 @endphp
 
-<span {{ $attributes->merge(['class' => 'ds-badge ds-badge-'.$tone]) }}>{{ $status !== '' ? $status : '—' }}</span>
+<span {{ $attributes->merge(['class' => 'ds-badge ds-badge-'.$tone]) }}>{{ \App\Support\ArabicStatus::label($status !== '' ? (string) $status : null) }}</span>

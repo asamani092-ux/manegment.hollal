@@ -26,6 +26,14 @@ class PayrollRunService
 
         $monthStart = Carbon::createFromFormat('Y-m', $month)->startOfMonth();
 
+        $eligible = User::query()
+            ->where('is_active', true)
+            ->where('employment_status', User::STATUS_ACTIVE)
+            ->count();
+        if ($eligible === 0) {
+            throw new \RuntimeException('لا يمكن إنشاء مسيّر بلا موظفين نشطين.');
+        }
+
         return DB::transaction(function () use ($month, $monthEnd, $monthStart) {
             $cycle = app(AttendanceDeductionService::class)->currentCycle(
                 Carbon::createFromFormat('Y-m', $month)->startOfMonth()
@@ -356,6 +364,9 @@ class PayrollRunService
     public function submitToFinance(PayrollRun $run, User $actor): PayrollRun
     {
         $this->assertEditable($run);
+        if ($run->items()->count() === 0) {
+            throw new \InvalidArgumentException('لا يمكن رفع مسيّر بلا موظفين إلى المالية.');
+        }
         app(PayrollAdjustmentService::class)->assertNoProposed($run->month);
 
         $run->update([

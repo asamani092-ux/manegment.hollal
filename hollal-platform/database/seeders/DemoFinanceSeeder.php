@@ -3,19 +3,22 @@
 namespace Database\Seeders;
 
 use App\Models\Asset;
+use App\Models\PayrollRun;
 use App\Models\AssetCategory;
 use App\Models\AssetMovement;
 use App\Models\CompanyProfile;
 use App\Models\Custody;
 use App\Models\CustodySettlementItem;
-use App\Models\ExpenseApprovalLog;
 use App\Models\ExpenseCategory;
 use App\Models\ExpenseRequest;
 use App\Models\Revenue;
 use App\Models\RevenueCategory;
 use App\Models\TaxInvoice;
 use App\Models\User;
+use App\Services\CustodyService;
 use App\Services\ExpenseApprovalService;
+use App\Services\JournalService;
+use App\Services\RevenueService;
 use App\Services\TaxInvoiceService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Storage;
@@ -58,6 +61,7 @@ class DemoFinanceSeeder extends Seeder
         $this->seedTaxInvoices();
         $this->seedExpenseRequests();
         $this->seedCustodies();
+        $this->postLedgers();
     }
 
     private function seedCompanyProfile(): void
@@ -183,6 +187,9 @@ class DemoFinanceSeeder extends Seeder
                     'holder_since' => $row['holder_since'],
                 ],
             );
+            if ($assets[$row['code']]->wasRecentlyCreated) {
+                app(JournalService::class)->postAssetPurchased($assets[$row['code']]->fresh('category'), $this->finance);
+            }
         }
 
         $this->addMovement($assets['AST-D001'], 'تسليم', [
@@ -289,7 +296,25 @@ class DemoFinanceSeeder extends Seeder
             $category = RevenueCategory::where('name_ar', $row['category'])->first();
             $confirmed = $row['status'] === Revenue::STATUS_CONFIRMED;
 
-            Revenue::create([
+            if ($row['source_type'] === Revenue::SOURCE_MANUAL && $category) {
+                $revenue = app(RevenueService::class)->recordManual(
+                    (float) $row['amount'],
+                    $category->id,
+                    $row['received_at'],
+                    $row['evidence'] ?? null,
+                );
+                if ($confirmed) {
+                    $revenue->update([
+                        'status' => Revenue::STATUS_CONFIRMED,
+                        'confirmed_at' => $row['received_at'].' 10:00:00',
+                        'confirmed_by' => $this->finance->id,
+                    ]);
+                }
+
+                continue;
+            }
+
+            $revenue = Revenue::create([
                 'source_type' => $row['source_type'],
                 'amount' => $row['amount'],
                 'received_at' => $row['received_at'],
@@ -299,6 +324,9 @@ class DemoFinanceSeeder extends Seeder
                 'confirmed_at' => $confirmed ? $row['received_at'].' 10:00:00' : null,
                 'confirmed_by' => $confirmed ? $this->finance->id : null,
             ]);
+            if ($confirmed) {
+                app(JournalService::class)->postRevenueConfirmed($revenue->fresh(['category.account']), $this->finance);
+            }
         }
     }
 
@@ -363,8 +391,6 @@ class DemoFinanceSeeder extends Seeder
     /** 5 expense requests covering pending / approved / paid / rejected. */
     private function seedExpenseRequests(): void
     {
-        $stages = [ExpenseApprovalService::STAGE_EXECUTIVE, ExpenseApprovalService::STAGE_FINANCE];
-
         $rows = [
             [
                 'requester' => $this->employee,
@@ -450,44 +476,61 @@ class DemoFinanceSeeder extends Seeder
         ];
 
         foreach ($rows as $row) {
-            $category = ExpenseCategory::where('name_ar', $row['category'])->first();
-
-            $expense = ExpenseRequest::firstOrCreate(
-                ['reason' => $row['reason']],
-                [
-                    'requester_id' => $row['requester']->id,
-                    'category_id' => $category?->id,
-                    'type' => $row['type'],
-                    'amount' => $row['amount'],
-                    'priority' => $row['priority'],
-                    'payment_method' => $row['payment_method'],
-                    'status' => $row['status'],
-                    'approval_stages' => $stages,
-                    'current_approval_stage' => $row['current_approval_stage'],
-                    'approver_id' => isset($row['approver']) ? $row['approver']->id : null,
-                    'approved_at' => $row['approved_at'] ?? null,
-                    'paid_ready_at' => $row['paid_ready_at'] ?? null,
-                    'rejection_reason' => $row['rejection_reason'] ?? null,
-                    'official_document_path' => in_array($row['status'], ['approved', 'paid'], true)
-                        ? 'expenses/official/demo-invoice-1.pdf'
-                        : null,
-                ],
-            );
-
-            foreach ($row['logs'] as $log) {
-                ExpenseApprovalLog::firstOrCreate(
-                    [
-                        'expense_request_id' => $expense->id,
-                        'stage' => $log['stage'],
-                        'action' => $log['action'],
-                    ],
-                    [
-                        'approver_id' => $log['approver']->id,
-                        'notes' => $log['notes'],
-                        'acted_at' => $log['acted_at'],
-                    ],
-                );
+            if (ExpenseRequest::query()->where('reason', $row['reason'])->exists()) {
+                continue;
             }
+            $category = ExpenseCategory::where('name_ar', $row['category'])->first();
+            $expense = ExpenseRequest::create([
+                'requester_id' => $row['requester']->id,
+                'category_id' => $category?->id,
+                'type' => $row['type'],
+                'amount' => $row['amount'],
+                'reason' => $row['reason'],
+                'priority' => $row['priority'],
+                'payment_method' => $row['payment_method'],
+                'status' => 'draft',
+                'official_document_path' => in_array($row['status'], ['approved', 'paid'], true)
+                    ? 'expenses/official/demo-invoice-1.pdf'
+                    : null,
+            ]);
+            $this->driveExpense($expense, $row);
+        }
+    }
+
+    /** @param  array<string, mixed>  $row */
+    private function driveExpense(ExpenseRequest $expense, array $row): void
+    {
+        $service = app(ExpenseApprovalService::class);
+        try {
+            $service->initializeChain($expense);
+            $guard = 0;
+            while ($expense->fresh()->status === 'pending' && $guard < 8) {
+                $expense = $expense->fresh();
+                if ($row['status'] === 'rejected') {
+                    $service->reject($this->executive, $expense, (string) ($row['rejection_reason'] ?? 'مرفوض'));
+
+                    return;
+                }
+                if ($row['status'] === 'pending') {
+                    return;
+                }
+                $approver = $service->approversForStage($expense, (string) $expense->current_approval_stage)->first();
+                if (! $approver) {
+                    break;
+                }
+                $service->approve($approver, $expense);
+                $guard++;
+            }
+        } catch (\Throwable) {
+            $expense->update(['status' => $row['status'] === 'paid' ? 'approved' : $row['status']]);
+        }
+
+        $expense = $expense->fresh();
+        if ($row['status'] === 'paid') {
+            if ($expense->status !== 'paid') {
+                $expense->update(['status' => 'paid', 'paid_ready_at' => $expense->paid_ready_at ?? now()]);
+            }
+            app(JournalService::class)->postExpensePaid($expense->fresh(['category.account']), $this->finance);
         }
     }
 
@@ -538,26 +581,22 @@ class DemoFinanceSeeder extends Seeder
             ],
         ];
 
+        $service = app(CustodyService::class);
         foreach ($rows as $row) {
+            if (Custody::query()->where('purpose', $row['purpose'])->exists()) {
+                continue;
+            }
             $category = ExpenseCategory::where('name_ar', $row['category'])->first();
-
-            $custody = Custody::firstOrCreate(
-                ['purpose' => $row['purpose']],
-                [
-                    'employee_id' => $row['employee']->id,
-                    'amount' => $row['amount'],
-                    'disbursed_amount' => $row['disbursed_amount'] ?? null,
-                    'disbursement_proof_path' => isset($row['disbursed_amount'])
-                        ? 'custodies/disbursements/demo-proof.pdf'
-                        : null,
-                    'returned_amount' => 0,
-                    'category_id' => $category?->id,
-                    'requested_by' => $row['employee']->id,
-                    'approved_by' => isset($row['approved_by']) ? $row['approved_by']->id : null,
-                    'status' => $row['status'],
-                    'due_date' => $row['due_date'],
-                ],
+            $custody = $service->request(
+                $row['employee'],
+                (float) $row['amount'],
+                $row['purpose'],
+                $category?->id,
+                null,
+                $row['due_date'],
+                $row['employee'],
             );
+            $this->driveCustody($service, $custody, $row);
 
             foreach ($row['items'] ?? [] as $item) {
                 $itemCategory = ExpenseCategory::where('name_ar', $item['category'])->first();
@@ -574,6 +613,87 @@ class DemoFinanceSeeder extends Seeder
                     ],
                 );
             }
+        }
+    }
+
+    /** @param  array<string, mixed>  $row */
+    private function driveCustody(CustodyService $service, Custody $custody, array $row): void
+    {
+        $target = $row['status'];
+        if ($target === Custody::STATUS_REQUESTED) {
+            return;
+        }
+        $guard = 0;
+        while ($custody->fresh()->status === Custody::STATUS_REQUESTED && $guard < 6) {
+            $custody = $custody->fresh();
+            $steps = app(\App\Services\ApprovalChainService::class)->stepsFor('custody', (float) $custody->amount);
+            $request = \App\Models\ApprovalRequest::query()
+                ->where('approvable_type', 'custody')
+                ->where('approvable_id', $custody->id)
+                ->first();
+            $pending = $request?->steps()->where('status', 'pending')->orderBy('step_index')->first();
+            $stage = $pending
+                ? (string) ($pending->definition['legacy_stage'] ?? '')
+                : (string) ($steps[0] ?? '');
+            $employee = $custody->employee ?? User::query()->find($custody->employee_id);
+            if ($stage === ExpenseApprovalService::STAGE_DEPARTMENT_MANAGER && $employee && ! $employee->effectiveManager()) {
+                $employee->forceFill(['manager_id' => $this->executive->id])->save();
+            }
+            $actor = $employee ? $this->actorForStage($stage, $employee) : $this->finance;
+            if (! $actor) {
+                break;
+            }
+            try {
+                $custody = $service->approve($custody, $actor);
+            } catch (\Throwable) {
+                break;
+            }
+            $guard++;
+        }
+        $custody = $custody->fresh();
+        if (in_array($target, [Custody::STATUS_DISBURSED, Custody::STATUS_SETTLING, Custody::STATUS_CLOSED], true)
+            && $custody->status === Custody::STATUS_APPROVED) {
+            $service->disburse($custody, 'custodies/disbursements/demo-proof.pdf');
+        }
+    }
+
+    private function actorForStage(string $stage, User $employee): ?User
+    {
+        if ($stage === '' ) {
+            return $this->finance;
+        }
+        if ($stage === \App\Services\ExpenseApprovalService::STAGE_DEPARTMENT_MANAGER) {
+            return $employee->effectiveManager() ?? $this->executive;
+        }
+        if (str_starts_with($stage, 'user:')) {
+            return User::query()->find((int) substr($stage, 5));
+        }
+        if (str_starts_with($stage, 'users:')) {
+            $id = (int) explode(',', substr($stage, 6))[0];
+
+            return User::query()->find($id) ?? $this->finance;
+        }
+
+        return $this->finance;
+    }
+
+    private function postLedgers(): void
+    {
+        $journal = app(JournalService::class);
+        foreach (ExpenseRequest::query()->where('status', 'paid')->get() as $expense) {
+            $journal->postExpensePaid($expense->fresh(['category.account']), $this->finance);
+        }
+        foreach (Custody::query()->whereIn('status', [Custody::STATUS_DISBURSED, Custody::STATUS_SETTLING, Custody::STATUS_CLOSED])->get() as $custody) {
+            $journal->postCustodyDisbursed($custody, $this->finance);
+        }
+        foreach (Revenue::query()->where('status', Revenue::STATUS_CONFIRMED)->get() as $revenue) {
+            $journal->postRevenueConfirmed($revenue->fresh(['category.account']), $this->finance);
+        }
+        foreach (Asset::query()->where('purchase_amount', '>', 0)->get() as $asset) {
+            $journal->postAssetPurchased($asset->fresh('category'), $this->finance);
+        }
+        foreach (PayrollRun::query()->where('status', PayrollRun::STATUS_EXECUTED)->get() as $run) {
+            $journal->postPayrollExecuted($run, $this->finance);
         }
     }
 }

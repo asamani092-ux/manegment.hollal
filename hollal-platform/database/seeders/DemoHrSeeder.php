@@ -488,6 +488,10 @@ class DemoHrSeeder extends Seeder
 
                 $item->save();
             }
+
+            if ($isExecuted) {
+                app(\App\Services\JournalService::class)->postPayrollExecuted($run->fresh(), $finance);
+            }
         }
     }
 

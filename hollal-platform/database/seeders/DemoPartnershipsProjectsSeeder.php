@@ -59,6 +59,13 @@ class DemoPartnershipsProjectsSeeder extends Seeder
         $quotes = $this->seedQuotes($partnerships, $programs, $executive);
         $this->seedContractsAndPayments($partnerships, $quotes, $admin);
         $projects = $this->seedProjects($partnerships, $programs, $projectManager, $executive);
+        $linked = collect($projects)->first(fn ($project) => (float) ($project->budget ?? 0) > 0);
+        if ($linked) {
+            \App\Models\ExpenseRequest::query()
+                ->where('status', 'paid')
+                ->whereNull('project_id')
+                ->update(['project_id' => $linked->id]);
+        }
         $this->seedVisits($projects, $projectManager, $executive);
         $this->seedMeasurement($programs, $projects);
     }

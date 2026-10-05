@@ -131,6 +131,19 @@ class ExpenseApprovalService
         return 'لا يمكنك اعتماد هذا الطلب لأن مرحلته الحالية («'.$stage.'») خارج صلاحيتك أو ليست دورك في السلسلة.';
     }
 
+    public function stepSummary(ExpenseRequest $expense): string
+    {
+        if ($expense->status !== 'pending' || ! $expense->current_approval_stage) {
+            return '';
+        }
+        $names = $this->approversForStage($expense, (string) $expense->current_approval_stage)
+            ->pluck('name')
+            ->filter()
+            ->implode('، ');
+
+        return $names !== '' ? 'الخطوة الحالية: '.$names : 'بانتظار معتمد';
+    }
+
     public function approve(User $approver, ExpenseRequest $expense): void
     {
         $stage = $expense->current_approval_stage;

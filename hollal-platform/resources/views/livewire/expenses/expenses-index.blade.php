@@ -37,11 +37,6 @@
         wire:click="openExpenseCreate"
     />
 
-    <p class="ds-text-muted ds-mb-3">
-        الاعتماد يتطلب أن تكون في المرحلة الصحيحة ولديك صلاحية المرحلة.
-        إن لم يظهر زر الموافقة فأنت لست معتمد هذه المرحلة أو بلا صلاحية.
-    </p>
-
     <div class="ds-page-toolbar">
         <div class="ds-toolbar-actions">
             <button type="button" class="ds-btn @if ($activeTab === 'my') ds-btn-primary @else ds-btn-outline @endif" wire:click="setTab('my')">
@@ -52,6 +47,9 @@
                     جميع الطلبات
                 </button>
             @endif
+            <button type="button" class="ds-btn @if ($awaitingMe) ds-btn-primary @else ds-btn-outline @endif" wire:click="toggleAwaitingMe">بانتظارك</button>
+            <button type="button" class="ds-btn ds-btn-sm {{ $viewMode === 'table' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setViewMode('table')">جدول</button>
+            <button type="button" class="ds-btn ds-btn-sm {{ $viewMode === 'cards' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setViewMode('cards')">بطاقات</button>
         </div>
     </div>
 
@@ -80,7 +78,8 @@
         <section class="ds-section-spaced">
             <h2 class="ds-section-heading">طلباتي</h2>
 
-            <div class="ds-task-cards ds-list-cards-mobile">
+            @if ($viewMode === 'cards')
+            <div class="ds-task-cards">
                 @forelse ($myExpenses as $expense)
                     <article class="ds-task-card" wire:key="my-exp-card-{{ $expense->id }}">
                         <h3 class="ds-task-card-title">{{ $typeLabels[$expense->type] ?? $expense->type }}</h3>
@@ -89,7 +88,10 @@
                             <span>{{ $priorityLabels[$expense->priority] ?? $expense->priority }}</span>
                             <span class="ds-ltr-num">{{ $expense->created_at?->format('Y-m-d') ?? '—' }}</span>
                         </div>
-                        <span class="ds-badge ds-badge-pending">{{ $statusLabels[$expense->status] ?? $expense->status }}</span>
+                        <span class="ds-badge ds-badge-pending">{{ $statusLabels[$expense->status] ?? \App\Support\ArabicStatus::label($expense->status) }}</span>
+                        @if ($hint = $approvalService->stepSummary($expense))
+                            <p>{{ $hint }}</p>
+                        @endif
                         @if ($expense->rejection_reason && in_array($expense->status, ['rejected', 'returned'], true))
                             <p class="ds-text-muted">السبب: {{ $expense->rejection_reason }}</p>
                         @endif
@@ -108,8 +110,7 @@
                     <x-ds-empty-state message="لا توجد طلبات" icon="fa-money-bill-wave" />
                 @endforelse
             </div>
-
-            <div class="ds-list-table-desktop">
+            @else
             <x-ds-table>
                 <x-slot:head>
                     <tr>
@@ -129,7 +130,10 @@
                         <td>{{ $priorityLabels[$expense->priority] ?? $expense->priority }}</td>
                         <td>{{ $expense->project?->name ?? '—' }}</td>
                         <td>
-                            <x-ds-status-badge :status="$statusLabels[$expense->status] ?? $expense->status" />
+                            <x-ds-status-badge :status="$expense->status" />
+                            @if ($hint = $approvalService->stepSummary($expense))
+                                <div>{{ $hint }}</div>
+                            @endif
                             @if ($expense->rejection_reason && in_array($expense->status, ['rejected', 'returned'], true))
                                 <div class="ds-text-muted">{{ $expense->rejection_reason }}</div>
                             @endif
@@ -160,7 +164,7 @@
                     </tr>
                 @endforelse
             </x-ds-table>
-            </div>
+            @endif
 
             {{ $myExpenses->links() }}
         </section>
@@ -168,7 +172,8 @@
         <section class="ds-section-spaced">
             <h2 class="ds-section-heading">جميع الطلبات</h2>
 
-            <div class="ds-task-cards ds-list-cards-mobile">
+            @if ($viewMode === 'cards')
+            <div class="ds-task-cards">
                 @forelse ($allExpenses as $expense)
                     <article class="ds-task-card" wire:key="all-exp-card-{{ $expense->id }}">
                         <h3 class="ds-task-card-title">{{ $expense->requester?->name ?? '—' }}</h3>
@@ -176,7 +181,10 @@
                             <span>{{ $typeLabels[$expense->type] ?? $expense->type }}</span>
                             <span class="ds-ltr-num">{{ number_format((float) $expense->amount, 2) }}</span>
                         </div>
-                        <span class="ds-badge ds-badge-pending">{{ $statusLabels[$expense->status] ?? $expense->status }}</span>
+                        <span class="ds-badge ds-badge-pending">{{ $statusLabels[$expense->status] ?? \App\Support\ArabicStatus::label($expense->status) }}</span>
+                        @if ($hint = $approvalService->stepSummary($expense))
+                            <p>{{ $hint }}</p>
+                        @endif
                         @if ($expense->rejection_reason && in_array($expense->status, ['rejected', 'returned'], true))
                             <p class="ds-text-muted">السبب: {{ $expense->rejection_reason }}</p>
                         @endif
@@ -200,8 +208,7 @@
                     <x-ds-empty-state message="لا توجد طلبات" icon="fa-money-bill-wave" />
                 @endforelse
             </div>
-
-            <div class="ds-list-table-desktop">
+            @else
             <x-ds-table>
                 <x-slot:head>
                     <tr>
@@ -222,7 +229,10 @@
                         <td>{{ $priorityLabels[$expense->priority] ?? $expense->priority }}</td>
                         <td>{{ $expense->project?->name ?? '—' }}</td>
                         <td>
-                            <x-ds-status-badge :status="$statusLabels[$expense->status] ?? $expense->status" />
+                            <x-ds-status-badge :status="$expense->status" />
+                            @if ($hint = $approvalService->stepSummary($expense))
+                                <div>{{ $hint }}</div>
+                            @endif
                             @if ($expense->rejection_reason && in_array($expense->status, ['rejected', 'returned'], true))
                                 <div class="ds-text-muted">{{ $expense->rejection_reason }}</div>
                             @endif
@@ -264,7 +274,7 @@
                     </tr>
                 @endforelse
             </x-ds-table>
-            </div>
+            @endif
 
             {{ $allExpenses->links() }}
         </section>

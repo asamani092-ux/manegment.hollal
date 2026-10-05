@@ -14,11 +14,39 @@
     <div class="ds-filters-row">
         <div class="ds-filter-field">
             <label class="ds-label">من</label>
-            <input type="date" class="ds-input" wire:model.live="from">
+            <select class="ds-input" wire:model.live="fromDay" aria-label="يوم البداية">
+                @for ($day = 1; $day <= 31; $day++)
+                    <option value="{{ sprintf('%02d', $day) }}">{{ $day }}</option>
+                @endfor
+            </select>
+            <select class="ds-input" wire:model.live="fromMonth" aria-label="شهر البداية">
+                @foreach (\App\Support\ArabicStatus::MONTHS as $number => $name)
+                    <option value="{{ sprintf('%02d', $number) }}">{{ $name }}</option>
+                @endforeach
+            </select>
+            <select class="ds-input" wire:model.live="fromYear" aria-label="سنة البداية">
+                @for ($year = (int) now()->year - 2; $year <= (int) now()->year; $year++)
+                    <option value="{{ $year }}">{{ $year }}</option>
+                @endfor
+            </select>
         </div>
         <div class="ds-filter-field">
             <label class="ds-label">إلى</label>
-            <input type="date" class="ds-input" wire:model.live="to">
+            <select class="ds-input" wire:model.live="toDay" aria-label="يوم النهاية">
+                @for ($day = 1; $day <= 31; $day++)
+                    <option value="{{ sprintf('%02d', $day) }}">{{ $day }}</option>
+                @endfor
+            </select>
+            <select class="ds-input" wire:model.live="toMonth" aria-label="شهر النهاية">
+                @foreach (\App\Support\ArabicStatus::MONTHS as $number => $name)
+                    <option value="{{ sprintf('%02d', $number) }}">{{ $name }}</option>
+                @endforeach
+            </select>
+            <select class="ds-input" wire:model.live="toYear" aria-label="سنة النهاية">
+                @for ($year = (int) now()->year - 2; $year <= (int) now()->year; $year++)
+                    <option value="{{ $year }}">{{ $year }}</option>
+                @endfor
+            </select>
         </div>
         @if ($tab === 'ledger')
             <div class="ds-filter-field">

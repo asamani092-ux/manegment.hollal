@@ -4,6 +4,7 @@ namespace App\Livewire\Expenses;
 
 use App\Livewire\Concerns\UsesDsPagination;
 use App\Models\ExpenseRequest;
+use App\Models\User;
 use App\Models\Project;
 use App\Notifications\ExpenseRejected;
 use App\Services\AuditLogService;
@@ -25,6 +26,10 @@ class ExpensesIndex extends Component
     use UsesDsPagination;
     use WithFileUploads;
     use WithPagination;
+
+    public string $viewMode = 'table';
+
+    public bool $awaitingMe = false;
 
     public string $activeTab = 'my';
 
@@ -109,6 +114,20 @@ class ExpensesIndex extends Component
         if ($this->open) {
             $this->openExpenseView($this->open);
         }
+    }
+
+    public function setViewMode(string $mode): void
+    {
+        if (in_array($mode, ['table', 'cards'], true)) {
+            $this->viewMode = $mode;
+        }
+    }
+
+    public function toggleAwaitingMe(): void
+    {
+        $this->awaitingMe = ! $this->awaitingMe;
+        $this->resetPage('myExpensesPage');
+        $this->resetPage('allExpensesPage');
     }
 
     public function setTab(string $tab): void
@@ -443,7 +462,16 @@ class ExpensesIndex extends Component
                 'approver_id', 'approved_at', 'paid_ready_at', 'rejection_reason', 'created_at',
             ])
             ->when($this->statusFilter, fn ($q) => $q->where('status', $this->statusFilter))
-            ->when($this->projectFilter, fn ($q) => $q->where('project_id', $this->projectFilter));
+            ->when($this->projectFilter, fn ($q) => $q->where('project_id', $this->projectFilter))
+            ->when($this->awaitingMe, function ($q) use ($userId) {
+                $service = app(ExpenseApprovalService::class);
+                $viewer = User::query()->find($userId);
+                $ids = ExpenseRequest::query()->where('status', 'pending')->pluck('id');
+                $mine = ExpenseRequest::query()->whereIn('id', $ids)->get()
+                    ->filter(fn (ExpenseRequest $expense) => $viewer && $service->canApprove($viewer, $expense))
+                    ->pluck('id');
+                $q->whereIn('id', $mine->all() ?: [0]);
+            });
 
         if ($scope === 'my') {
             $query->where('requester_id', $userId)

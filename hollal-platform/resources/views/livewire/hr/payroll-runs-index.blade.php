@@ -3,7 +3,16 @@
 
     @can('hr.salaries.manage')
         <section class="ds-section ds-filter-bar">
-            <input type="month" class="ds-input" wire:model="month" dir="ltr" aria-label="شهر المسيّر">
+            <select class="ds-input" wire:model.live="monthNumber" aria-label="شهر المسيّر">
+                @foreach (\App\Support\ArabicStatus::MONTHS as $number => $name)
+                    <option value="{{ sprintf('%02d', $number) }}">{{ $name }}</option>
+                @endforeach
+            </select>
+            <select class="ds-input" wire:model.live="monthYear" aria-label="سنة المسيّر">
+                @for ($year = (int) now()->year - 1; $year <= (int) now()->year + 1; $year++)
+                    <option value="{{ $year }}">{{ $year }}</option>
+                @endfor
+            </select>
             <button type="button" class="ds-btn ds-btn-primary" wire:click="generate">
                 <i class="fas fa-gears" aria-hidden="true"></i> توليد مسيّر الشهر
             </button>
@@ -17,13 +26,24 @@
             <select id="run-status" class="ds-input" wire:model.live="statusFilter">
                 <option value="">— الكل —</option>
                 @foreach ($statusOptions as $opt)
-                    <option value="{{ $opt }}">{{ $opt }}</option>
+                    <option value="{{ $opt }}">{{ \App\Support\ArabicStatus::label($opt) }}</option>
                 @endforeach
             </select>
         </div>
         <div class="ds-filter-field">
             <label class="ds-label" for="run-month">الشهر</label>
-            <input id="run-month" type="month" class="ds-input" wire:model.live="monthFilter" dir="ltr">
+            <select id="run-month" class="ds-input" wire:model.live="filterNumber">
+                <option value="">— الكل —</option>
+                @foreach (\App\Support\ArabicStatus::MONTHS as $number => $name)
+                    <option value="{{ sprintf('%02d', $number) }}">{{ $name }}</option>
+                @endforeach
+            </select>
+            <select class="ds-input" wire:model.live="filterYear" aria-label="سنة التصفية">
+                <option value="">—</option>
+                @for ($year = (int) now()->year - 2; $year <= (int) now()->year; $year++)
+                    <option value="{{ $year }}">{{ $year }}</option>
+                @endfor
+            </select>
         </div>
     </div>
 
@@ -39,17 +59,17 @@
         </x-slot:head>
         @forelse ($runs as $run)
             <tr wire:key="run-{{ $run->id }}">
-                <td dir="ltr" class="ds-ltr-num">{{ $run->month }}</td>
+                <td>{{ \App\Support\ArabicStatus::month($run->month) }}</td>
                 <td class="ds-ltr-num">{{ $run->items_count }}</td>
                 <td class="ds-ltr-num">{{ number_format((float) $run->items_sum_net, 2) }} ر.س</td>
                 <td>
                     <x-ds-status-badge :status="$run->status" />
                 </td>
                 <td>
-                    <button type="button" class="ds-link" wire:click="openRun({{ $run->id }})">التفاصيل</button>
+                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openRun({{ $run->id }})">التفاصيل</button>
                     @can('hr.salaries.manage')
-                        @if (in_array($run->status, ['مسودة', 'معاد_للتصحيح'], true))
-                            <button type="button" class="ds-link" wire:click="submit({{ $run->id }})">رفع للمالية</button>
+                        @if ($run->items_count > 0 && in_array($run->status, [\App\Models\PayrollRun::STATUS_DRAFT, \App\Models\PayrollRun::STATUS_RETURNED], true))
+                            <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="submit({{ $run->id }})">رفع للمالية</button>
                         @endif
                     @endcan
                 </td>
@@ -65,7 +85,7 @@
 
     <x-ds-modal :show="$viewingRun !== null" title="تفاصيل المسيّر" close-action="closeRun" size="lg">
         @if ($viewingRun)
-            <p class="ds-text-muted">الشهر: <span class="ds-ltr-num">{{ $viewingRun->month }}</span> — الحالة: {{ $viewingRun->status }}</p>
+            <p class="ds-text-muted">الشهر: {{ \App\Support\ArabicStatus::month($viewingRun->month) }} — الحالة: {{ \App\Support\ArabicStatus::label($viewingRun->status) }}</p>
             @if ($viewingRun->notes)
                 <p class="ds-badge ds-badge-warning">سبب الإرجاع: {{ $viewingRun->notes }}</p>
             @endif
@@ -86,7 +106,7 @@
                         <td>
                             {{ $item->employee?->name }}
                             @if ($item->employee_id)
-                                <a class="ds-link" href="{{ route('users.profile', $item->employee_id) }}?tab=salary" target="_blank" rel="noopener">تعديل الراتب في الملف</a>
+                                <a class="ds-btn ds-btn-outline ds-btn-sm" href="{{ route('users.profile', $item->employee_id) }}?tab=pay" target="_blank" rel="noopener">تعديل الراتب في الملف</a>
                             @endif
                         </td>
                         <td class="ds-ltr-num">{{ number_format((float) $item->base, 2) }}</td>
@@ -105,8 +125,8 @@
                                 — السبب: {{ $variable['reason'] ?? '—' }}
                                 @if ($viewingRun->isEditable())
                                     @can('hr.salaries.manage')
-                                        <button type="button" class="ds-link" wire:click="startEditVariable({{ $item->id }}, {{ $vIndex }})">تعديل</button>
-                                        <button type="button" class="ds-link" wire:click="deleteVariable({{ $item->id }}, {{ $vIndex }})"
+                                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="startEditVariable({{ $item->id }}, {{ $vIndex }})">تعديل</button>
+                                        <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="deleteVariable({{ $item->id }}, {{ $vIndex }})"
                                                 wire:confirm="حذف هذا البند المتغير؟">حذف</button>
                                     @endcan
                                 @endif

@@ -28,7 +28,13 @@
         </div>
     </div>
 
-    <div class="ds-task-cards ds-list-cards-mobile">
+    <div class="ds-view-toggle" style="margin-bottom:0.75rem">
+        <button type="button" class="ds-btn ds-btn-sm {{ $viewMode === 'table' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setViewMode('table')">جدول</button>
+        <button type="button" class="ds-btn ds-btn-sm {{ $viewMode === 'cards' ? 'ds-btn-primary' : 'ds-btn-outline' }}" wire:click="setViewMode('cards')">بطاقات</button>
+    </div>
+
+    @if ($viewMode === 'cards')
+    <div class="ds-task-cards">
         @forelse ($custodies as $custody)
             <article class="ds-task-card {{ $open === $custody->id ? 'is-open-record' : '' }}" wire:key="custody-card-{{ $custody->id }}">
                 <h3 class="ds-task-card-title">{{ $custody->employee?->name ?? '—' }}</h3>
@@ -58,8 +64,7 @@
             <x-ds-empty-state message="لا توجد عهد مسجّلة" icon="fa-wallet" />
         @endforelse
     </div>
-
-    <div class="ds-list-table-desktop">
+    @else
         <x-ds-table>
             <x-slot:head>
                 <tr>
@@ -100,7 +105,7 @@
                 <tr><td colspan="6"><x-ds-empty-state message="لا توجد عهد مسجّلة" icon="fa-wallet" /></td></tr>
             @endforelse
         </x-ds-table>
-    </div>
+    @endif
 
     {{ $custodies->links() }}
 

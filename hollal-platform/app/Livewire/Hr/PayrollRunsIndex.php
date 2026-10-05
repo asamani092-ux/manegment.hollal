@@ -24,9 +24,17 @@ class PayrollRunsIndex extends Component
 
     public string $month = '';
 
+    public string $monthYear = '';
+
+    public string $monthNumber = '';
+
     public string $statusFilter = '';
 
     public string $monthFilter = '';
+
+    public string $filterYear = '';
+
+    public string $filterNumber = '';
 
     public ?int $viewingRunId = null;
 
@@ -66,6 +74,7 @@ class PayrollRunsIndex extends Component
     {
         $this->authorize('hr.salaries.view');
         $this->month = now()->format('Y-m');
+        $this->syncMonthParts();
 
         if ($this->open) {
             $this->openRun($this->open);
@@ -86,7 +95,50 @@ class PayrollRunsIndex extends Component
 
         app(PayrollRunService::class)->generate($this->month);
 
-        $this->dispatch('toast', type: 'success', message: 'تم توليد مسيّر رواتب '.$this->month);
+        $this->dispatch('toast', type: 'success', message: 'تم توليد مسيّر رواتب '.\App\Support\ArabicStatus::month($this->month));
+    }
+
+    public function updatedMonthYear(): void
+    {
+        $this->composeMonth();
+    }
+
+    public function updatedMonthNumber(): void
+    {
+        $this->composeMonth();
+    }
+
+    public function updatedFilterYear(): void
+    {
+        $this->composeFilter();
+    }
+
+    public function updatedFilterNumber(): void
+    {
+        $this->composeFilter();
+    }
+
+    private function syncMonthParts(): void
+    {
+        [$this->monthYear, $this->monthNumber] = array_pad(explode('-', $this->month), 2, '');
+    }
+
+    private function composeMonth(): void
+    {
+        if ($this->monthYear !== '' && $this->monthNumber !== '') {
+            $this->month = $this->monthYear.'-'.str_pad($this->monthNumber, 2, '0', STR_PAD_LEFT);
+        }
+    }
+
+    private function composeFilter(): void
+    {
+        $this->resetPage();
+        if ($this->filterYear === '' || $this->filterNumber === '') {
+            $this->monthFilter = '';
+
+            return;
+        }
+        $this->monthFilter = $this->filterYear.'-'.str_pad($this->filterNumber, 2, '0', STR_PAD_LEFT);
     }
 
     public function openRun(int $runId): void
