@@ -129,7 +129,7 @@ Route::get('/hr/deploy-marker', function () {
     }
 
     return response()->json([
-        'marker' => 'hr-fix-9',
+        'marker' => 'clarity-0',
         'commit' => env('SOURCE_COMMIT'),
         'migrate_status' => $file['migrate_status'] ?? 'unknown',
         'pending_migrations_count' => (int) ($file['pending_migrations_count'] ?? 0),

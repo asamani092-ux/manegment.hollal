@@ -26,7 +26,10 @@ class DeployMarkerTest extends TestCase
         ]);
         $payload = $response->json();
         $this->assertIsString($payload['marker'] ?? null);
-        $this->assertStringStartsWith('hr-fix-', $payload['marker']);
+        $this->assertTrue(
+            str_starts_with((string) $payload['marker'], 'hr-fix-')
+            || str_starts_with((string) $payload['marker'], 'clarity-')
+        );
         $this->assertArrayNotHasKey('error_lines', $payload);
         $this->assertStringNotContainsString('secret', $response->getContent());
         $this->assertStringNotContainsString('password', $response->getContent());
