@@ -93,6 +93,7 @@ class FinanceRemainingGapsTest extends TestCase
     public function test_no_fallback_to_chain_mode(): void
     {
         ApprovalRule::where('transaction_type', ApprovalRule::TYPE_EXPENSE)->delete();
+        \App\Models\ApprovalChain::query()->where('request_type', 'expense')->delete();
 
         $expense = ExpenseRequest::factory()->create([
             'amount' => 1500,

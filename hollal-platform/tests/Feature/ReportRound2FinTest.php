@@ -42,10 +42,10 @@ class ReportRound2FinTest extends TestCase
     {
         $this->seed(\Database\Seeders\ApprovalRulesSeeder::class);
         $category = ExpenseCategory::create(['name_ar' => 'تصنيف تجريبي', 'is_active' => true]);
-        $requester = User::factory()->create(['must_change_password' => false]);
-        $requester->givePermissionTo('finance.expenses.create');
         $approver = User::factory()->create(['must_change_password' => false]);
         $approver->assignRole('Super Admin');
+        $requester = User::factory()->create(['must_change_password' => false, 'manager_id' => $approver->id]);
+        $requester->givePermissionTo('finance.expenses.create');
 
         $expense = ExpenseRequest::create([
             'requester_id' => $requester->id,

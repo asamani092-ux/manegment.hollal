@@ -74,9 +74,16 @@ class FinanceTabClosureTest extends TestCase
 
         $service = app(CustodyService::class);
         $custody = $service->request($employee, 3000, 'عهدة اختبار', null, null, null, $employee);
-        $service->approve($custody, User::factory()->create());
+        $manager = User::factory()->create();
+        $employee->forceFill(['manager_id' => $manager->id])->save();
         $finance = User::factory()->create();
-        $finance->givePermissionTo('finance.expenses.pay');
+        $step = \App\Models\ApprovalChainStep::query()
+            ->where('approver_type', 'any_of_users')
+            ->whereHas('chain', fn ($q) => $q->where('request_type', 'custody'))
+            ->orderBy('position')
+            ->first();
+        $step?->update(['user_ids' => [$finance->id], 'on_unresolved' => 'skip']);
+        $service->approve($custody, $manager);
         $service->approve($custody->fresh(), $finance);
         $service->disburse($custody->fresh(), 'custodies/disbursements/proof.pdf');
 

@@ -73,8 +73,6 @@ use App\Livewire\Projects\VisitsIndex;
 use App\Livewire\Reports\AuditLogIndex;
 use App\Livewire\Reports\ReportsCenter;
 use App\Livewire\Reports\ReportsIndex;
-use App\Livewire\Settings\ApprovalRulesIndex;
-use App\Livewire\Settings\ExpenseSettingsIndex;
 use App\Livewire\Settings\GrantsIndex;
 use App\Livewire\Settings\MailSettingsIndex;
 use App\Livewire\Settings\ReferenceListsIndex;
@@ -129,7 +127,7 @@ Route::get('/hr/deploy-marker', function () {
     }
 
     return response()->json([
-        'marker' => 'clarity-0',
+        'marker' => 'clarity-1',
         'commit' => env('SOURCE_COMMIT'),
         'migrate_status' => $file['migrate_status'] ?? 'unknown',
         'pending_migrations_count' => (int) ($file['pending_migrations_count'] ?? 0),
@@ -296,12 +294,12 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->middleware('permission:structure.view|structure.manage')
         ->name('structure.org-tree');
 
-    Route::get('/settings/expenses', ExpenseSettingsIndex::class)
-        ->middleware('permission:settings.manage|settings.finance.manage')
+    Route::get('/settings/expenses', fn () => redirect()->route('settings.approval-chains'))
+        ->middleware('permission:settings.manage|settings.finance.manage|settings.approval-chains.manage')
         ->name('settings.expenses');
 
-    Route::get('/settings/approval-rules', ApprovalRulesIndex::class)
-        ->middleware('permission:settings.manage')
+    Route::get('/settings/approval-rules', fn () => redirect()->route('settings.approval-chains'))
+        ->middleware('permission:settings.manage|settings.approval-chains.manage')
         ->name('settings.approval-rules');
 
     Route::get('/settings/notifications', MailSettingsIndex::class)
@@ -309,7 +307,7 @@ Route::middleware(['auth', 'password.changed', 'maintenance'])->group(function (
         ->name('settings.notifications');
 
     Route::get('/settings/approval-chains', \App\Livewire\Settings\ApprovalChainsIndex::class)
-        ->middleware('permission:settings.approval-chains.manage')
+        ->middleware('permission:settings.approval-chains.manage|settings.manage')
         ->name('settings.approval-chains');
 
     Route::get('/settings/lists', ReferenceListsIndex::class)

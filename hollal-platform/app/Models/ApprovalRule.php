@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * قاعدة سلسلة اعتماد حسب نوع العملية ونطاق المبلغ.
+ * @deprecated المصدر صار approval_chains. الجدول يبقى ولا يُقرأ عند الاعتماد.
  * Time: O(1) | Space: O(steps)
  */
 class ApprovalRule extends Model
@@ -45,5 +45,14 @@ class ApprovalRule extends Model
             'approval_steps' => 'array',
             'is_active' => 'boolean',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        $sync = function (self $rule): void {
+            app(\App\Services\Approval\ApprovalChainDeriver::class)->syncType($rule->transaction_type);
+        };
+        static::saved($sync);
+        static::deleted($sync);
     }
 }

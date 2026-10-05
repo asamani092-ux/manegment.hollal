@@ -121,7 +121,7 @@ class ApprovalEngineTest extends TestCase
         app(ExpenseApprovalService::class)->initializeChain($expense);
         $expense->refresh();
 
-        $this->assertSame('role:Partnerships Manager', $expense->current_approval_stage);
+        $this->assertSame('users:'.$partner->id, $expense->current_approval_stage);
         $this->assertTrue(app(ExpenseApprovalService::class)->canApprove($partner, $expense));
     }
 

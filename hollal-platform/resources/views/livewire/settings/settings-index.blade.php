@@ -48,8 +48,7 @@
                     إعدادات مرتبطة
                 </h2>
                 <ul class="ds-link-list">
-                    <li><a href="{{ route('settings.approval-rules') }}" class="ds-link">سلسلة الاعتماد (قواعد حسب المبلغ — المصدر الأساسي)</a></li>
-                    <li><a href="{{ route('settings.expenses') }}" class="ds-link">احتياطي: نمط سلسلة قديم (كامل/مختصر) عند غياب القواعد</a></li>
+                    <li><a href="{{ route('settings.approval-chains') }}" class="ds-link">سلاسل الطلبات</a></li>
                     <li><a href="{{ route('settings.notifications') }}" class="ds-link">إعدادات البريد والإشعارات</a></li>
                 </ul>
             </section>

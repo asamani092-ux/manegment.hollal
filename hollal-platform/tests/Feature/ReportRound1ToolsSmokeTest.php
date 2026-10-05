@@ -46,7 +46,6 @@ class ReportRound1ToolsSmokeTest extends TestCase
             'documents.templates',
             'documents.versions',
             'documents.policies',
-            'settings.expenses',
         ] as $route) {
             $this->actingAs($admin)
                 ->get(route($route))
@@ -56,6 +55,10 @@ class ReportRound1ToolsSmokeTest extends TestCase
         $this->actingAs($admin)
             ->get(route('workload-board.index'))
             ->assertRedirect(route('team-tasks.index', ['tab' => 'loads']));
+
+        $this->actingAs($admin)
+            ->get(route('settings.expenses'))
+            ->assertRedirect(route('settings.approval-chains'));
     }
 
     public function test_recurring_task_template_create_smoke(): void

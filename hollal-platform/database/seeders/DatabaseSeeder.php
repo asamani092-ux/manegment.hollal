@@ -18,5 +18,7 @@ class DatabaseSeeder extends Seeder
             AdminUserSeeder::class,
             DemoTrialSeeder::class,
         ]);
+
+        app(\App\Services\Approval\ApprovalChainDeriver::class)->syncAll();
     }
 }

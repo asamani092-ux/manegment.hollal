@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\ExpenseApprovalLog;
 use App\Models\ExpenseRequest;
-use App\Models\ExpenseSetting;
 use App\Models\User;
 use App\Notifications\ExpenseAwaitingApproval;
 use App\Notifications\ExpensePaidReady;
@@ -41,9 +40,16 @@ class ExpenseApprovalService
         }
 
         $expense->loadMissing('requester.manager');
-        $settings = ExpenseSetting::current();
 
-        if (! ($expense->requester?->effectiveManager()) && $settings->skip_missing_department_manager) {
+        if (! ($expense->requester?->effectiveManager()) && in_array(self::STAGE_DEPARTMENT_MANAGER, $dynamic, true)) {
+            $step = \App\Models\ApprovalChainStep::query()
+                ->where('approver_type', 'direct_manager')
+                ->whereHas('chain', fn ($q) => $q->where('request_type', 'expense')->where('is_active', true))
+                ->orderBy('position')
+                ->first();
+            if (($step->on_unresolved ?? 'skip') === 'block') {
+                throw new \RuntimeException('لا يمكن تقديم الطلب لأن المدير المباشر غير محدد');
+            }
             $dynamic = array_values(array_filter(
                 $dynamic,
                 fn (string $s) => $s !== self::STAGE_DEPARTMENT_MANAGER
@@ -51,7 +57,9 @@ class ExpenseApprovalService
         }
 
         if ($dynamic === []) {
-            $dynamic = [self::STAGE_EXECUTIVE, self::STAGE_FINANCE];
+            throw new \RuntimeException(
+                "لا توجد قاعدة اعتماد مطابقة للنوع expense والمبلغ {$amount}"
+            );
         }
 
         return $dynamic;

@@ -94,8 +94,8 @@ class ExpenseApprovalChainTest extends TestCase
         $this->assertSame(
             [
                 ExpenseApprovalService::STAGE_DEPARTMENT_MANAGER,
-                ExpenseApprovalService::STAGE_EXECUTIVE,
-                ExpenseApprovalService::STAGE_FINANCE,
+                'users:'.$this->executive->id,
+                'users:'.$this->finance->id,
             ],
             $expense->approval_stages
         );
@@ -104,13 +104,13 @@ class ExpenseApprovalChainTest extends TestCase
 
         Livewire::actingAs($this->deptManager)->test(ExpensesIndex::class)->call('approveExpense', $expense->id);
         $expense->refresh();
-        $this->assertSame(ExpenseApprovalService::STAGE_EXECUTIVE, $expense->current_approval_stage);
+        $this->assertSame('users:'.$this->executive->id, $expense->current_approval_stage);
 
         Notification::assertSentTo($this->executive, ExpenseAwaitingApproval::class);
 
         Livewire::actingAs($this->executive)->test(ExpensesIndex::class)->call('approveExpense', $expense->id);
         $expense->refresh();
-        $this->assertSame(ExpenseApprovalService::STAGE_FINANCE, $expense->current_approval_stage);
+        $this->assertSame('users:'.$this->finance->id, $expense->current_approval_stage);
 
         Notification::assertSentTo($this->finance, ExpenseAwaitingApproval::class);
 
@@ -141,9 +141,9 @@ class ExpenseApprovalChainTest extends TestCase
         app(ExpenseApprovalService::class)->initializeChain($expense);
         $expense->refresh();
 
-        $this->assertSame(ExpenseApprovalService::STAGE_EXECUTIVE, $expense->current_approval_stage);
+        $this->assertSame('users:'.$this->executive->id, $expense->current_approval_stage);
         $this->assertSame(
-            [ExpenseApprovalService::STAGE_EXECUTIVE, ExpenseApprovalService::STAGE_FINANCE],
+            ['users:'.$this->executive->id, 'users:'.$this->finance->id],
             $expense->approval_stages
         );
     }
@@ -173,7 +173,7 @@ class ExpenseApprovalChainTest extends TestCase
         app(ExpenseApprovalService::class)->initializeChain($expense);
         $expense->refresh();
 
-        $this->assertSame(ExpenseApprovalService::STAGE_EXECUTIVE, $expense->current_approval_stage);
+        $this->assertSame('users:'.$this->executive->id, $expense->current_approval_stage);
         $this->assertNotContains(ExpenseApprovalService::STAGE_DEPARTMENT_MANAGER, $expense->approval_stages);
     }
 

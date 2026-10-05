@@ -132,7 +132,8 @@ class ApprovalEngine
         }
 
         return match ($stage) {
-            'department_manager' => true,
+            'department_manager' => $this->isDirectManager($request, $actor),
+            'department_head' => $this->isDepartmentHead($request, $actor),
             'executive' => $actor->can('finance.expenses.approve') || $actor->hasRole('Executive Manager'),
             'finance' => $actor->can('finance.expenses.pay') || $actor->hasRole('Finance'),
             default => false,
@@ -160,6 +161,27 @@ class ApprovalEngine
         }
 
         return $this->advance($existing, $actor);
+    }
+
+    private function isDirectManager(ApprovalRequest $request, User $actor): bool
+    {
+        $owner = User::query()->find($request->submitted_by);
+
+        return $owner !== null && (int) $owner->effectiveManager()?->id === (int) $actor->id;
+    }
+
+    private function isDepartmentHead(ApprovalRequest $request, User $actor): bool
+    {
+        $owner = User::query()->find($request->submitted_by);
+        $unit = $owner?->orgUnit;
+        while ($unit) {
+            if ($unit->manager_id && (int) $unit->manager_id === (int) $actor->id) {
+                return true;
+            }
+            $unit = $unit->parent;
+        }
+
+        return false;
     }
 
     /** @return bool true when the whole chain is approved */

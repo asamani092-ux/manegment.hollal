@@ -60,6 +60,8 @@ class ExpenseRequestTest extends TestCase
 
         $this->viewer = User::factory()->create(['phone' => '0505555555', 'must_change_password' => false]);
         $this->viewer->givePermissionTo(['finance.expenses.view']);
+
+        app(\App\Services\Approval\ApprovalChainDeriver::class)->syncAll();
     }
 
     public function test_user_can_create_and_submit_expense_to_pending(): void
@@ -83,7 +85,7 @@ class ExpenseRequestTest extends TestCase
 
         $this->assertNotNull($expense);
         $this->assertSame('pending', $expense->status);
-        $this->assertSame(ExpenseApprovalService::STAGE_EXECUTIVE, $expense->current_approval_stage);
+        $this->assertSame('users:'.$this->executive->id, $expense->current_approval_stage);
         $this->assertSame($this->requester->id, $expense->requester_id);
 
         Notification::assertSentTo($this->executive, ExpenseAwaitingApproval::class);
