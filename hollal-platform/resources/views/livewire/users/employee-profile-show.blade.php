@@ -41,8 +41,11 @@
         <div class="ds-profile-head" style="position:sticky;top:3.5rem;z-index:20;background:var(--ds-surface, #fff);padding:0.5rem 0">
             @php
                 $initial = mb_substr($user->name, 0, 1);
-                $alertCount = collect($documentMatrix ?? [])->whereIn('color', ['red', 'yellow'])->count()
-                    + (int) ($overviewFacts['statement_required'] ?? 0);
+                $alertCount = count($overviewFacts['alerts'] ?? []);
+                if ($alertCount === 0) {
+                    $alertCount = collect($documentMatrix ?? [])->whereIn('color', ['red', 'yellow'])->count()
+                        + (int) ($overviewFacts['statement_required'] ?? 0);
+                }
             @endphp
             <div style="display:flex;gap:0.75rem;align-items:center">
                 <span class="ds-badge ds-badge-neutral" style="width:2.5rem;height:2.5rem;display:grid;place-items:center">{{ $initial }}</span>
@@ -80,33 +83,55 @@
                 @if (($overviewFacts['alerts'] ?? []) !== [])
                     <div class="ds-card" style="padding:0.6rem;margin-bottom:0.8rem;border-color:#b42318">
                         @foreach ($overviewFacts['alerts'] as $alert)
-                            <p style="margin:0.2rem 0;color:#b42318">{{ $alert }}</p>
+                            @php
+                                $alertText = is_array($alert) ? ($alert['text'] ?? '') : (string) $alert;
+                                $alertAction = is_array($alert) ? ($alert['action'] ?? '') : '';
+                                $alertId = is_array($alert) ? (int) ($alert['id'] ?? 0) : 0;
+                            @endphp
+                            <p style="margin:0.2rem 0">
+                                <button type="button" style="background:none;border:0;padding:0;color:#b42318;cursor:pointer;text-decoration:underline" wire:click="openOverviewAlert('{{ $alertAction }}', {{ $alertId }})">{{ $alertText }}</button>
+                            </p>
                         @endforeach
                     </div>
                 @endif
-                @if (($overviewFacts['task_titles'] ?? []) !== [])
-                    <p>مهام مفتوحة: {{ implode('، ', $overviewFacts['task_titles']) }}</p>
-                @endif
-                <dl class="ds-detail-grid">
-                    <div><dt>المدير</dt><dd>{{ $user->effectiveManager()?->name ?? '—' }}</dd></div>
-                    <div><dt>تاريخ المباشرة</dt><dd>{{ $user->profile?->hire_date?->format('Y-m-d') ?? '—' }}</dd></div>
-                    <div><dt>القسم</dt><dd>{{ $user->orgPlacementLabel() }}</dd></div>
-                </dl>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr));gap:0.8rem;margin-bottom:0.8rem">
+                    <article class="ds-card" style="padding:0.75rem">
+                        <h3 style="margin-top:0">بيانات العمل</h3>
+                        <dl class="ds-detail-grid">
+                            <div><dt>المدير</dt><dd>{{ $user->effectiveManager()?->name ?? '—' }}</dd></div>
+                            <div><dt>تاريخ المباشرة</dt><dd>{{ $user->profile?->hire_date?->format('Y-m-d') ?? '—' }}</dd></div>
+                            <div><dt>القسم</dt><dd>{{ $user->orgPlacementLabel() }}</dd></div>
+                        </dl>
+                    </article>
+                    <article class="ds-card" style="padding:0.75rem">
+                        <h3 style="margin-top:0">المهام المفتوحة</h3>
+                        <ul style="margin:0;padding-inline-start:1.1rem">
+                            @forelse ($overviewFacts['open_task_rows'] ?? [] as $taskRow)
+                                <li style="{{ ($taskRow['overdue'] ?? false) ? 'color:#b42318' : '' }}">{{ $taskRow['title'] ?? '' }}</li>
+                            @empty
+                                <li class="ds-text-muted">لا مهام مفتوحة</li>
+                            @endforelse
+                        </ul>
+                        <button type="button" class="ds-btn ds-btn-sm" style="margin-top:0.5rem" wire:click="setTab('performance')">الأداء</button>
+                    </article>
+                </div>
                 @if (($onboardingItems ?? collect())->contains(fn ($item) => $item->status === 'open'))
-                    <h3>قائمة التهيئة</h3>
-                    <input type="date" class="ds-input" wire:model="onboardingDue">
-                    <ul>
-                        @foreach ($onboardingItems as $item)
-                            <li>
-                                {{ $item->referenceItem?->name_ar ?? 'خطوة' }} — {{ $item->status }}
-                                @if ($item->status === 'open' && $canUpdate)
-                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="completeOnboarding({{ $item->id }})">تم</button>
-                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="convertOnboarding({{ $item->id }})">تحويل إلى مهمة</button>
-                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="closeOnboarding({{ $item->id }})">إغلاق</button>
-                                @endif
-                            </li>
-                        @endforeach
-                    </ul>
+                    <article class="ds-card" style="padding:0.75rem">
+                        <h3 style="margin-top:0">قائمة التهيئة</h3>
+                        <input type="date" class="ds-input" wire:model="onboardingDue">
+                        <ul>
+                            @foreach ($onboardingItems as $item)
+                                <li>
+                                    {{ $item->referenceItem?->name_ar ?? 'خطوة' }} — {{ match ($item->status) { 'open' => 'مفتوحة', 'done' => 'تمت', 'closed' => 'مغلقة', default => \App\Support\ArabicStatus::label($item->status) } }}
+                                    @if ($item->status === 'open' && $canUpdate)
+                                        <button type="button" class="ds-btn ds-btn-sm" wire:click="completeOnboarding({{ $item->id }})">تم</button>
+                                        <button type="button" class="ds-btn ds-btn-sm" wire:click="convertOnboarding({{ $item->id }})">تحويل إلى مهمة</button>
+                                        <button type="button" class="ds-btn ds-btn-sm" wire:click="closeOnboarding({{ $item->id }})">إغلاق</button>
+                                    @endif
+                                </li>
+                            @endforeach
+                        </ul>
+                    </article>
                 @endif
             @elseif (in_array($activeTab, ['data', 'personal'], true))
                 <x-ds-collapsible-card title="بطاقة البيانات" :open="false">
@@ -334,7 +359,7 @@
                                     default => '#667085',
                                 };
                             @endphp
-                            <li style="color: {{ $tone }}">{{ $cell['name'] }} — {{ $cell['state'] }}</li>
+                            <li style="color: {{ $tone }}">{{ $cell['name'] }} — {{ $this->documentStateLabel($cell['state'] ?? '') }}</li>
                         @endforeach
                     </ul>
                     <p class="ds-text-muted ds-mb-3">هوية · إقامة · جواز · عقد عمل · أخرى — مع رقم الوثيقة وتاريخ الانتهاء للتنبيه قبل التجديد.</p>
@@ -406,7 +431,7 @@
                     @forelse ($tasks as $task)
                         <tr wire:key="t-{{ $task->id }}">
                             <td>{{ $task->title }}</td>
-                            <td>{{ $task->status }}</td>
+                            <td>{{ \App\Support\ArabicStatus::label($task->status) }}</td>
                             <td class="ds-ltr-num">{{ $task->due_date?->format('Y-m-d') ?? '—' }}</td>
                         </tr>
                     @empty
@@ -416,12 +441,18 @@
             @elseif ($activeTab === 'violations')
                 <x-ds-collapsible-card title="المخالفات" :open="true">
                     @forelse ($profileViolations as $violation)
-                        <p wire:key="pv-{{ $violation->id }}">{{ $violation->status }} — {{ $violation->facts }}
-                            @if ((int) auth()->id() === (int) $user->id && $violation->status === 'awaiting_statement')
-                                <textarea class="ds-input" wire:model="statementBody"></textarea>
-                                <button type="button" class="ds-btn ds-btn-sm" wire:click="submitViolationStatement({{ $violation->id }})">إرسال الإفادة</button>
+                        <div wire:key="pv-{{ $violation->id }}" id="violation-statement-{{ $violation->id }}" @if ($focusViolationId === $violation->id) style="outline:2px solid #b42318;padding:0.4rem" @endif>
+                            <p>{{ \App\Support\ArabicStatus::label($violation->status) }} — {{ $violation->facts }}</p>
+                            @if ($violation->status === 'awaiting_statement')
+                                <p>نموذج الإفادة</p>
+                                @if ((int) auth()->id() === (int) $user->id)
+                                    <textarea class="ds-input" wire:model="statementBody" @if ($focusViolationId === $violation->id) autofocus @endif></textarea>
+                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="submitViolationStatement({{ $violation->id }})">إرسال الإفادة</button>
+                                @else
+                                    <p class="ds-text-muted">يُرسل النموذج من حساب الموظف</p>
+                                @endif
                             @endif
-                        </p>
+                        </div>
                     @empty
                         <p class="ds-text-muted">لا توجد مخالفات.</p>
                     @endforelse
@@ -556,16 +587,22 @@
                 <input type="text" class="ds-input ds-ltr-num" wire:model="docNumber">
             </x-ds-form-group>
             <x-ds-form-group label="تاريخ الإصدار" :error="$errors->first('docIssueDate')">
-                <input type="date" class="ds-input ds-ltr-num" wire:model="docIssueDate">
+                @include('livewire.users.partials.doc-date-parts', ['field' => 'docIssueDate', 'value' => $docIssueDate])
             </x-ds-form-group>
             <x-ds-form-group label="تاريخ الانتهاء" :error="$errors->first('docExpiryDate')">
-                <input type="date" class="ds-input ds-ltr-num" wire:model="docExpiryDate">
+                @include('livewire.users.partials.doc-date-parts', ['field' => 'docExpiryDate', 'value' => $docExpiryDate])
             </x-ds-form-group>
             <x-ds-form-group label="ملاحظات" :error="$errors->first('docNotes')">
                 <textarea class="ds-input" rows="2" wire:model="docNotes"></textarea>
             </x-ds-form-group>
             <x-ds-form-group label="المرفق" :error="$errors->first('docFile')">
-                <input type="file" class="ds-input" wire:model="docFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx">
+                <label class="ds-btn ds-btn-outline">
+                    اختيار ملف
+                    <input type="file" wire:model="docFile" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">
+                </label>
+                @if ($docFile)
+                    <span>{{ $docFile->getClientOriginalName() }}</span>
+                @endif
             </x-ds-form-group>
             <x-slot:footer>
                 <button type="button" class="ds-btn ds-btn-primary" wire:click="saveDocument">حفظ</button>

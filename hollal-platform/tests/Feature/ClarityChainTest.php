@@ -11,6 +11,7 @@ use App\Services\Approval\ApprovalChainDeriver;
 use App\Services\Approval\ApprovalEngine;
 use App\Services\ApprovalChainService;
 use App\Services\CustodyService;
+use App\Support\ChainThresholdNormalizer;
 use Database\Seeders\ApprovalRulesSeeder;
 use Database\Seeders\PermissionSeeder;
 use Database\Seeders\RoleSeeder;
@@ -126,6 +127,81 @@ class ClarityChainTest extends TestCase
             ->steps()->where('label_ar', 'حاملو المالية')->first();
         $this->assertNotNull($step);
         $this->assertSame([$holder->id], array_map('intval', $step->user_ids));
-        $this->assertSame('gte', $step->condition_operator);
+        $this->assertSame('gt', $step->condition_operator);
+        $this->assertEquals(1000, (float) $step->condition_value);
+    }
+
+    public function test_fractional_gte_migrates_to_gt_once(): void
+    {
+        $chain = ApprovalChain::query()->create(['request_type' => 'expense', 'is_active' => true]);
+        $chain->steps()->create([
+            'position' => 1,
+            'approver_type' => 'direct_manager',
+            'condition_operator' => 'gte',
+            'condition_value' => 1000.01,
+            'on_unresolved' => 'skip',
+        ]);
+        $chain->steps()->create([
+            'position' => 2,
+            'approver_type' => 'direct_manager',
+            'condition_operator' => 'gte',
+            'condition_value' => 500,
+            'on_unresolved' => 'skip',
+        ]);
+
+        ChainThresholdNormalizer::run();
+        ChainThresholdNormalizer::run();
+
+        $steps = $chain->steps()->orderBy('position')->get();
+        $this->assertSame('gt', $steps[0]->condition_operator);
+        $this->assertEquals(1000, (float) $steps[0]->condition_value);
+        $this->assertSame('gte', $steps[1]->condition_operator);
+        $this->assertEquals(500, (float) $steps[1]->condition_value);
+    }
+
+    public function test_preview_names_approver_and_explains_missing_manager(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $admin = User::factory()->create(['name' => 'مدير النظام', 'must_change_password' => false]);
+        $admin->givePermissionTo('settings.manage');
+        $nora = User::factory()->create(['name' => 'نورة المالية']);
+        $hidden = User::factory()->create(['name' => 'خالد المخفي']);
+
+        ApprovalChain::query()->create(['request_type' => 'expense', 'is_active' => true])
+            ->steps()->createMany([
+                [
+                    'position' => 1,
+                    'approver_type' => 'direct_manager',
+                    'on_unresolved' => 'skip',
+                    'label_ar' => 'المدير المباشر',
+                ],
+                [
+                    'position' => 2,
+                    'approver_type' => 'any_of_users',
+                    'user_ids' => [$nora->id],
+                    'condition_operator' => 'gt',
+                    'condition_value' => 1000,
+                    'on_unresolved' => 'skip',
+                    'label_ar' => 'نورة المالية',
+                ],
+            ]);
+
+        Livewire::actingAs($admin)
+            ->test(ApprovalChainsIndex::class)
+            ->assertSet('previewRequesterId', $admin->id)
+            ->assertSet('previewValue', '1001')
+            ->assertSee('نورة المالية — إذا تجاوز المبلغ 1,000', false)
+            ->assertSee('لا يوجد مدير مباشر لـ مدير النظام — ستُتخطى الخطوة', false)
+            ->assertDontSee('أحد الموظفين', false)
+            ->assertDontSee('مدير غير محدد', false)
+            ->assertDontSeeHtml('wire:click="addEmployee')
+            ->set('picker', 'خالد')
+            ->assertSeeHtml('addEmployee')
+            ->assertSee('خالد المخفي', false)
+            ->call('setThreshold', 1, '2,500')
+            ->assertSet('steps.1.condition_value', '2500')
+            ->assertSee('2,500', false);
+
+        $this->assertNotSame($hidden->id, $nora->id);
     }
 }

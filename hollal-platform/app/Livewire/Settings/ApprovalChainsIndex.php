@@ -88,6 +88,38 @@ class ApprovalChainsIndex extends Component
         $this->steps[$index]['user_ids'] = [];
     }
 
+    /**
+     * إزالة موظف من رقائق الخطوة. Time: O(k) | Space: O(k)
+     */
+    public function removeEmployee(int $index, int $userId): void
+    {
+        if (! isset($this->steps[$index])) {
+            return;
+        }
+        if (($this->steps[$index]['approver_type'] ?? '') === 'user') {
+            if ((int) ($this->steps[$index]['user_id'] ?? 0) === $userId) {
+                $this->steps[$index]['user_id'] = null;
+            }
+
+            return;
+        }
+        $this->steps[$index]['user_ids'] = array_values(array_filter(
+            array_map('intval', $this->steps[$index]['user_ids'] ?? []),
+            fn (int $id) => $id !== $userId,
+        ));
+    }
+
+    /**
+     * يحفظ الحد رقماً بعد إزالة فواصل العرض. Time: O(1) | Space: O(1)
+     */
+    public function setThreshold(int $index, string $raw): void
+    {
+        if (! isset($this->steps[$index])) {
+            return;
+        }
+        $this->steps[$index]['condition_value'] = $this->numericText($raw);
+    }
+
     public function save(): void
     {
         abort_unless(auth()->user()->can('settings.approval-chains.manage') || auth()->user()->can('settings.manage'), 403);
@@ -106,7 +138,7 @@ class ApprovalChainsIndex extends Component
                 'user_id' => ($step['approver_type'] ?? '') === 'user' ? ($step['user_id'] ?: null) : null,
                 'user_ids' => ($step['approver_type'] ?? '') === 'any_of_users' ? array_values(array_map('intval', $step['user_ids'] ?? [])) : null,
                 'condition_operator' => $operator !== '' ? $operator : null,
-                'condition_value' => $operator !== '' && ($step['condition_value'] ?? '') !== '' ? $step['condition_value'] : null,
+                'condition_value' => $operator !== '' && ($step['condition_value'] ?? '') !== '' ? $this->numericText((string) $step['condition_value']) : null,
                 'on_unresolved' => ($step['on_unresolved'] ?? 'skip') === 'block' ? 'block' : 'skip',
                 'label_ar' => $step['label_ar'] ?: null,
             ]);
@@ -154,6 +186,30 @@ class ApprovalChainsIndex extends Component
                 'label_ar' => $step->label_ar ?? '',
             ])->all()
             : [];
+
+        $this->previewRequesterId = auth()->id();
+        $threshold = null;
+        foreach ($this->steps as $step) {
+            $raw = (string) ($step['condition_value'] ?? '');
+            if ($raw !== '') {
+                $threshold = (float) $raw;
+                break;
+            }
+        }
+        $this->previewValue = (string) ($threshold === null ? 0 : $threshold + 1);
+    }
+
+    /**
+     * Time: O(n) | Space: O(1)
+     */
+    private function numericText(string $raw): string
+    {
+        $clean = str_replace([',', '٬', ' ', '٫'], ['', '', '', '.'], trim($raw));
+        if ($clean === '' || ! is_numeric($clean)) {
+            return '';
+        }
+
+        return (string) (0 + $clean);
     }
 
     /** @return array<string, mixed> */
@@ -235,7 +291,12 @@ class ApprovalChainsIndex extends Component
         if ($type === 'direct_manager') {
             $manager = $requester?->effectiveManager();
 
-            return $manager ? $this->withDelegation($manager) : 'مدير غير محدد';
+            if ($manager) {
+                return $this->withDelegation($manager);
+            }
+            $name = $requester?->name ?? 'مقدّم الطلب';
+
+            return 'لا يوجد مدير مباشر لـ '.$name.' — ستُتخطى الخطوة';
         }
         if ($type === 'department_head') {
             return 'رئيس القسم';

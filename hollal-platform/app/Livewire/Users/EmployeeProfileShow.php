@@ -50,6 +50,8 @@ class EmployeeProfileShow extends Component
 
     public string $statementBody = '';
 
+    public ?int $focusViolationId = null;
+
     public string $onboardingDue = '';
 
     public bool $ownUpload = false;
@@ -177,6 +179,45 @@ class EmployeeProfileShow extends Component
             ->effectiveOn(today())
             ->value('amount');
         $this->baseAmount = $base !== null ? (string) $base : '0';
+    }
+
+    /**
+     * ينقل تنبيه النظرة إلى موضع الإجراء. Time: O(1) | Space: O(1)
+     */
+    public function openOverviewAlert(string $action, int $id = 0): void
+    {
+        $target = $id > 0 ? $id : null;
+        if ($action === 'document') {
+            $this->setTab('documents');
+            if (auth()->user()->can('hr.employees.update')) {
+                $this->openDocumentModal($target);
+            } elseif ((int) auth()->id() === (int) $this->userId) {
+                $this->openOwnUpload();
+            }
+
+            return;
+        }
+        if ($action === 'statement' && $target) {
+            $this->focusViolationId = $target;
+            $this->setTab('violations');
+        }
+    }
+
+    /**
+     * تسمية حالة الوثيقة للعرض. Time: O(1) | Space: O(1)
+     */
+    public function documentStateLabel(string $state): string
+    {
+        return match ($state) {
+            'expired' => 'وثيقة منتهية',
+            'missing' => 'وثيقة ناقصة',
+            'expiring' => 'وثيقة قاربت على الانتهاء',
+            'pending_review' => 'بانتظار المراجعة',
+            'rejected' => 'وثيقة مرفوضة',
+            'approved' => 'سارية',
+            'optional' => 'اختيارية',
+            default => 'تحتاج إجراء',
+        };
     }
 
     public function setTab(string $tab): void
@@ -545,6 +586,25 @@ class EmployeeProfileShow extends Component
         $this->dispatch('toast', type: 'success', message: 'سُجّل تعليقك على التقييم');
     }
 
+    /**
+     * يجمع تاريخ الوثيقة من قوائم اليوم والشهر والسنة. Time: O(1) | Space: O(1)
+     */
+    public function setDocPart(string $field, string $part, string $value): void
+    {
+        if (! in_array($field, ['docIssueDate', 'docExpiryDate'], true) || ! in_array($part, ['year', 'month', 'day'], true)) {
+            return;
+        }
+        $current = (string) $this->{$field};
+        $parts = preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $current, $match)
+            ? [$match[1], $match[2], $match[3]]
+            : ['', '', ''];
+        $index = ['year' => 0, 'month' => 1, 'day' => 2][$part];
+        $parts[$index] = $value;
+        $this->{$field} = ($parts[0] !== '' && $parts[1] !== '' && $parts[2] !== '')
+            ? sprintf('%04d-%02d-%02d', (int) $parts[0], (int) $parts[1], (int) $parts[2])
+            : '';
+    }
+
     public function openDocumentModal(?int $id = null): void
     {
         $this->authorize('hr.employees.update');
@@ -854,10 +914,6 @@ class EmployeeProfileShow extends Component
     }
 
     /**
-     * @param  \Illuminate\Support\Collection<int, SalaryComponent>  $components
-     * @return array{base: float, allowances: float, deductions: float, monthly: float}
-     */
-    /**
      * بطاقات النظرة العامة. Time: O(n) للشهر | Space: O(1)
      *
      * @return array<string, mixed>
@@ -870,16 +926,24 @@ class EmployeeProfileShow extends Component
             ->get(['type']);
         $total = $records->count();
         $present = $records->where('type', 'حضور')->count();
-        $titles = Task::query()
+        $openTasks = Task::query()
             ->where('assigned_to', $user->id)
             ->whereNotIn('status', ['completed', 'done'])
+            ->orderByRaw('CASE WHEN due_date IS NULL THEN 1 ELSE 0 END')
+            ->orderBy('due_date')
             ->limit(5)
-            ->pluck('title')
-            ->all();
-        $statements = \App\Models\Violation::query()
+            ->get(['id', 'title', 'due_date']);
+        $titles = $openTasks->pluck('title')->all();
+        $taskRows = $openTasks->map(fn (Task $task) => [
+            'title' => $task->title,
+            'overdue' => $task->due_date !== null && $task->due_date->toDateString() < now()->toDateString(),
+        ])->all();
+        $pendingStatements = \App\Models\Violation::query()
             ->where('employee_id', $user->id)
             ->where('status', 'awaiting_statement')
-            ->count();
+            ->limit(5)
+            ->get(['id']);
+        $statements = $pendingStatements->count();
         $score = EmployeeEvaluation::query()
             ->where('employee_id', $user->id)
             ->whereNotNull('total_score')
@@ -890,35 +954,50 @@ class EmployeeProfileShow extends Component
             ->latest('id')
             ->value('net');
         $alerts = [];
-        if ($statements > 0) {
-            $alerts[] = 'إفادة مطلوبة';
+        foreach ($pendingStatements as $violation) {
+            $alerts[] = ['text' => 'إفادة مطلوبة', 'action' => 'statement', 'id' => $violation->id];
         }
-        $expiredDocs = EmployeeDocument::query()
-            ->where('user_id', $user->id)
-            ->whereDate('expiry_date', '<', today())
-            ->count();
-        if ($expiredDocs > 0) {
-            $alerts[] = 'وثيقة منتهية';
-        }
+        $docAlerts = [];
         foreach ($matrix as $cell) {
-            if (in_array($cell['color'] ?? '', ['red', 'yellow'], true)) {
-                $alerts[] = ($cell['name'] ?? 'وثيقة').' — '.($cell['state'] ?? '');
+            if (! in_array($cell['color'] ?? '', ['red', 'yellow'], true)) {
+                continue;
+            }
+            $docAlerts[] = [
+                'text' => ($cell['name'] ?? 'وثيقة').' — '.$this->documentStateLabel((string) ($cell['state'] ?? '')),
+                'action' => 'document',
+                'id' => $cell['document_id'] ?? null,
+            ];
+        }
+        if ($docAlerts === []) {
+            $expiredDocs = EmployeeDocument::query()
+                ->where('user_id', $user->id)
+                ->whereDate('expiry_date', '<', today())
+                ->limit(5)
+                ->get(['id']);
+            foreach ($expiredDocs as $doc) {
+                $docAlerts[] = ['text' => 'وثيقة منتهية', 'action' => 'document', 'id' => $doc->id];
             }
         }
+        $alerts = array_merge($alerts, $docAlerts);
 
         return [
             'leave' => $user->profile?->annual_leave_balance ?? '—',
-            'attendance_pct' => $total > 0 ? ((int) round($present / $total * 100)).'٪' : '—',
+            'attendance_pct' => $present > 0 ? ((int) round($present / $total * 100)).'٪' : 'لا بيانات',
             'violations' => \App\Models\Violation::query()->where('employee_id', $user->id)->count(),
             'open_tasks' => count($titles),
             'last_evaluation' => $score !== null ? (string) $score : '—',
             'last_net' => $net !== null ? number_format((float) $net, 2) : '—',
             'statement_required' => $statements,
             'task_titles' => $titles,
+            'open_task_rows' => $taskRows,
             'alerts' => $alerts,
         ];
     }
 
+    /**
+     * @param  \Illuminate\Support\Collection<int, SalaryComponent>  $components
+     * @return array{base: float, allowances: float, deductions: float, monthly: float}
+     */
     private function totalsFromComponents(User $user, $components): array
     {
         $base = (float) $components->where('type', SalaryComponent::TYPE_BASE)->sum('amount');

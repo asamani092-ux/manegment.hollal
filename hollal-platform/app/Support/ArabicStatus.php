@@ -38,6 +38,13 @@ class ArabicStatus
         'returned' => 'معاد للمراجعة',
         'submitted' => 'مرفوع',
         'executed' => 'منفذ',
+        'awaiting_statement' => 'بانتظار الإفادة',
+        'pending_decision' => 'بانتظار القرار',
+        'new' => 'جديدة',
+        'in_progress' => 'قيد التنفيذ',
+        'pending_review' => 'بانتظار المراجعة',
+        'completed' => 'مكتملة',
+        'overdue' => 'متأخرة',
     ];
 
     public static function label(?string $status): string

@@ -46,16 +46,24 @@
             @foreach ($steps as $index => $step)
                 @php
                     $n = $index + 1;
+                    $selectedIds = ($step['approver_type'] ?? '') === 'user'
+                        ? array_values(array_filter([(int) ($step['user_id'] ?? 0)]))
+                        : array_map('intval', $step['user_ids'] ?? []);
+                    $selectedNames = collect($selectedIds)
+                        ->map(fn (int $id) => optional($allEmployees->firstWhere('id', $id))->name)
+                        ->filter()
+                        ->values();
                     $who = match ($step['approver_type']) {
                         'direct_manager' => 'المدير المباشر',
                         'department_head' => 'رئيس القسم',
-                        'user' => optional($allEmployees->firstWhere('id', (int) ($step['user_id'] ?? 0)))->name ?? 'موظف',
-                        default => 'أحد الموظفين',
+                        'user' => $selectedNames->first() ?: 'موظف غير محدد',
+                        default => $selectedNames->isNotEmpty() ? $selectedNames->implode(' أو ') : 'خطوة بلا معتمد',
                     };
+                    $formattedLimit = number_format((float) ($step['condition_value'] ?: 0), 0);
                     $cond = match ($step['condition_operator'] ?? '') {
-                        'gt' => 'إذا تجاوز '.$valueLabel.' '.number_format((float) ($step['condition_value'] ?: 0), 0).' '.$unit,
-                        'gte' => 'إذا بلغ '.$valueLabel.' '.number_format((float) ($step['condition_value'] ?: 0), 0).' '.$unit,
-                        'lt' => 'إذا قل '.$valueLabel.' عن '.number_format((float) ($step['condition_value'] ?: 0), 0).' '.$unit,
+                        'gt' => 'إذا تجاوز '.$valueLabel.' '.$formattedLimit.' '.$unit,
+                        'gte' => 'إذا بلغ '.$valueLabel.' '.$formattedLimit.' '.$unit,
+                        'lt' => 'إذا قل '.$valueLabel.' عن '.$formattedLimit.' '.$unit,
                         default => 'دائمًا',
                     };
                 @endphp
@@ -64,35 +72,52 @@
                     ondragover="event.preventDefault()"
                     ondrop="event.preventDefault(); $wire.moveStep(parseInt(event.dataTransfer.getData('text/plain'), 10), {{ $index }})">
                     <header style="display:flex;justify-content:space-between;gap:0.5rem;align-items:center">
-                        <strong>{{ $n }} — {{ $who }} — {{ $cond }}</strong>
-                        <span>
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="moveStep({{ $index }}, {{ max(0, $index - 1) }})">أعلى</button>
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="moveStep({{ $index }}, {{ min(count($steps) - 1, $index + 1) }})">أسفل</button>
-                            <button type="button" class="ds-btn ds-btn-sm" wire:click="removeStep({{ $index }})">حذف</button>
-                        </span>
+                        <strong>{{ $who }} — {{ $cond }}</strong>
+                        <button type="button" class="ds-btn ds-btn-sm" wire:click="removeStep({{ $index }})">حذف</button>
                     </header>
+                    <p class="ds-text-muted" style="margin:0.35rem 0">الخطوة {{ $n }} — اسحب البطاقة لإعادة الترتيب</p>
+                    <div>
+                        <span class="ds-text-muted">بديل لوحة المفاتيح</span>
+                        <button type="button" class="ds-btn ds-btn-sm ds-btn-outline" wire:click="moveStep({{ $index }}, {{ max(0, $index - 1) }})">أعلى</button>
+                        <button type="button" class="ds-btn ds-btn-sm ds-btn-outline" wire:click="moveStep({{ $index }}, {{ min(count($steps) - 1, $index + 1) }})">أسفل</button>
+                    </div>
                     <div style="display:grid;gap:0.4rem;margin-top:0.6rem">
                         <label>المعتمد
                             <select class="ds-input" wire:model.live="steps.{{ $index }}.approver_type">
                                 <option value="direct_manager">المدير المباشر</option>
                                 <option value="department_head">رئيس القسم</option>
                                 <option value="user">موظف بالاسم</option>
-                                <option value="any_of_users">أحد عدة موظفين</option>
+                                <option value="any_of_users">عدة موظفين محددين</option>
                             </select>
                         </label>
                         @if (($step['approver_type'] ?? '') === 'user' || ($step['approver_type'] ?? '') === 'any_of_users')
-                            <label>بحث بالاسم
-                                <input class="ds-input" wire:model.live="picker" placeholder="اسم الموظف">
-                            </label>
                             <div style="display:flex;flex-wrap:wrap;gap:0.3rem">
-                                @foreach ($employees->take(8) as $person)
-                                    @if (($step['approver_type'] ?? '') === 'user')
-                                        <button type="button" class="ds-btn ds-btn-sm" wire:click="chooseEmployee({{ $index }}, {{ $person->id }})">{{ $person->name }}</button>
-                                    @else
-                                        <button type="button" class="ds-btn ds-btn-sm" wire:click="addEmployee({{ $index }}, {{ $person->id }})">{{ $person->name }}</button>
+                                @foreach ($selectedIds as $sid)
+                                    @php $person = $allEmployees->firstWhere('id', (int) $sid); @endphp
+                                    @if ($person)
+                                        <span style="display:inline-flex;align-items:center;gap:0.35rem;background:#0f4c5c;color:#fff;border-radius:999px;padding:0.15rem 0.55rem">
+                                            {{ $person->name }}
+                                            <button type="button" style="background:transparent;color:#fff;border:0;cursor:pointer" wire:click="removeEmployee({{ $index }}, {{ $person->id }})">إزالة</button>
+                                        </span>
                                     @endif
                                 @endforeach
                             </div>
+                            <label>بحث بالاسم
+                                <input class="ds-input" wire:model.live="picker" placeholder="اسم الموظف">
+                            </label>
+                            @if ($picker !== '')
+                                <div style="display:flex;flex-wrap:wrap;gap:0.3rem">
+                                    @foreach ($employees as $person)
+                                        @if (! in_array($person->id, $selectedIds, true))
+                                            @if (($step['approver_type'] ?? '') === 'user')
+                                                <button type="button" class="ds-btn ds-btn-sm" wire:click="chooseEmployee({{ $index }}, {{ $person->id }})">{{ $person->name }}</button>
+                                            @else
+                                                <button type="button" class="ds-btn ds-btn-sm" wire:click="addEmployee({{ $index }}, {{ $person->id }})">{{ $person->name }}</button>
+                                            @endif
+                                        @endif
+                                    @endforeach
+                                </div>
+                            @endif
                         @endif
                         <label>الشرط
                             <select class="ds-input" wire:model.live="steps.{{ $index }}.condition_operator">
@@ -104,7 +129,9 @@
                         </label>
                         @if (($step['condition_operator'] ?? '') !== '')
                             <label>الحد {{ $unit }}
-                                <input class="ds-input" type="number" wire:model.live="steps.{{ $index }}.condition_value" min="0">
+                                <input class="ds-input" type="text" inputmode="numeric"
+                                    value="{{ ($step['condition_value'] ?? '') !== '' ? number_format((float) $step['condition_value'], 0) : '' }}"
+                                    wire:change="setThreshold({{ $index }}, $event.target.value)">
                             </label>
                         @endif
                         <label>إذا تعذّر تحديد المعتمد

@@ -121,8 +121,17 @@ class DemoHrSeeder extends Seeder
                 'title' => 'إعداد تقرير الأسبوع',
                 'assigned_by' => $employee->id,
                 'assigned_to' => $employee->id,
-                'status' => 'جديدة',
+                'status' => 'new',
                 'due_date' => now()->addDays(4)->toDateString(),
+            ]);
+        }
+        if (! \App\Models\Task::query()->where('assigned_to', $employee->id)->where('title', 'إغلاق مهمة متأخرة')->exists()) {
+            \App\Models\Task::query()->create([
+                'title' => 'إغلاق مهمة متأخرة',
+                'assigned_by' => $employee->id,
+                'assigned_to' => $employee->id,
+                'status' => 'new',
+                'due_date' => now()->subDay()->toDateString(),
             ]);
         }
     }

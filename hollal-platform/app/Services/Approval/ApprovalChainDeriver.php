@@ -89,14 +89,29 @@ class ApprovalChainDeriver
             $operator = null;
             $value = null;
             if (! $inEveryBand && $mins !== []) {
-                $operator = 'gte';
-                $value = min($mins);
+                [$operator, $value] = $this->thresholdFromMin(min($mins));
             }
 
             $row = $this->toRow($normal, $position, $operator, $value);
             $chain->steps()->create($row);
             $position++;
         }
+    }
+
+    /**
+     * gte بقيمة كسرية 0.01 تصبح gt على العدد الصحيح.
+     * Time: O(1) | Space: O(1)
+     *
+     * @return array{0: string, 1: float|int}
+     */
+    private function thresholdFromMin(float $min): array
+    {
+        $scaled = (int) round($min * 100);
+        if ($scaled % 100 === 1) {
+            return ['gt', intdiv($scaled, 100)];
+        }
+
+        return ['gte', $min];
     }
 
     private function isCatchAll(ApprovalRule $rule): bool
@@ -168,7 +183,7 @@ class ApprovalChainDeriver
             'direct_manager' => 'المدير المباشر',
             'department_head' => 'رئيس القسم',
             'user' => User::query()->whereKey($normal['user_id'])->value('name') ?: 'موظف محدد',
-            default => 'أحد الموظفين',
+            default => 'خطوة بلا معتمد',
         };
 
         if ($kind === 'role' && $normal['role']) {
