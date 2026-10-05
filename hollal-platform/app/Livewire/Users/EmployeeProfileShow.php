@@ -779,6 +779,9 @@ class EmployeeProfileShow extends Component
             ? SalaryComponent::query()->where('employee_id', $this->userId)->effectiveOn(today())->orderBy('type')->get()
             : collect();
         $showCatalogs = $this->showEdit;
+        $documentMatrix = in_array($tab, ['overview', 'documents'], true)
+            ? app(\App\Services\DocumentRequirementService::class)->matrix($user)
+            : [];
 
         return view('livewire.users.employee-profile-show', [
             'user' => $user,
@@ -795,9 +798,7 @@ class EmployeeProfileShow extends Component
                 : collect(),
             'salaryComponents' => $salaryComponents,
             'salaryTotals' => $salaryTab ? $this->totalsFromComponents($user, $salaryComponents) : null,
-            'documentMatrix' => in_array($tab, ['overview', 'documents'], true)
-                ? app(\App\Services\DocumentRequirementService::class)->matrix($user)
-                : [],
+            'documentMatrix' => $documentMatrix,
             'performanceSummary' => $tab === 'performance'
                 ? app(\App\Services\PerformanceService::class)->summary($user, now()->startOfYear(), now()->endOfYear())
                 : null,
@@ -816,7 +817,7 @@ class EmployeeProfileShow extends Component
             'assetRows' => $tab === 'custody'
                 ? \App\Models\Asset::query()->where('current_holder_id', $this->userId)->latest('id')->limit(20)->get()
                 : collect(),
-            'contracts' => $tab === 'documents'
+            'contracts' => in_array($tab, ['job', 'pay'], true)
                 ? Contract::query()->where('employee_id', $this->userId)->latest('end_date')->get()
                 : collect(),
             'onboardingItems' => $tab === 'overview' && \Illuminate\Support\Facades\Schema::hasTable('employee_onboarding_items')
@@ -848,6 +849,7 @@ class EmployeeProfileShow extends Component
                 ? Task::query()->where('assigned_to', $this->userId)->latest()->limit(20)->get(['id', 'title', 'status', 'due_date'])
                 : collect(),
             'profileLogEntries' => $tab === 'log' ? $this->profileLogEntries() : collect(),
+            'overviewFacts' => $tab === 'overview' ? $this->overviewFacts($user, is_array($documentMatrix) ? $documentMatrix : []) : [],
         ])->layout('layouts.app', ['title' => 'الملف الوظيفي — '.$user->name]);
     }
 
@@ -855,6 +857,68 @@ class EmployeeProfileShow extends Component
      * @param  \Illuminate\Support\Collection<int, SalaryComponent>  $components
      * @return array{base: float, allowances: float, deductions: float, monthly: float}
      */
+    /**
+     * بطاقات النظرة العامة. Time: O(n) للشهر | Space: O(1)
+     *
+     * @return array<string, mixed>
+     */
+    private function overviewFacts(User $user, array $matrix = []): array
+    {
+        $records = \App\Models\AttendanceRecord::query()
+            ->where('employee_id', $user->id)
+            ->whereBetween('date', [now()->startOfMonth()->toDateString(), now()->endOfMonth()->toDateString()])
+            ->get(['type']);
+        $total = $records->count();
+        $present = $records->where('type', 'حضور')->count();
+        $titles = Task::query()
+            ->where('assigned_to', $user->id)
+            ->whereNotIn('status', ['completed', 'done'])
+            ->limit(5)
+            ->pluck('title')
+            ->all();
+        $statements = \App\Models\Violation::query()
+            ->where('employee_id', $user->id)
+            ->where('status', 'awaiting_statement')
+            ->count();
+        $score = EmployeeEvaluation::query()
+            ->where('employee_id', $user->id)
+            ->whereNotNull('total_score')
+            ->latest('id')
+            ->value('total_score');
+        $net = \App\Models\PayrollRunItem::query()
+            ->where('employee_id', $user->id)
+            ->latest('id')
+            ->value('net');
+        $alerts = [];
+        if ($statements > 0) {
+            $alerts[] = 'إفادة مطلوبة';
+        }
+        $expiredDocs = EmployeeDocument::query()
+            ->where('user_id', $user->id)
+            ->whereDate('expiry_date', '<', today())
+            ->count();
+        if ($expiredDocs > 0) {
+            $alerts[] = 'وثيقة منتهية';
+        }
+        foreach ($matrix as $cell) {
+            if (in_array($cell['color'] ?? '', ['red', 'yellow'], true)) {
+                $alerts[] = ($cell['name'] ?? 'وثيقة').' — '.($cell['state'] ?? '');
+            }
+        }
+
+        return [
+            'leave' => $user->profile?->annual_leave_balance ?? '—',
+            'attendance_pct' => $total > 0 ? ((int) round($present / $total * 100)).'٪' : '—',
+            'violations' => \App\Models\Violation::query()->where('employee_id', $user->id)->count(),
+            'open_tasks' => count($titles),
+            'last_evaluation' => $score !== null ? (string) $score : '—',
+            'last_net' => $net !== null ? number_format((float) $net, 2) : '—',
+            'statement_required' => $statements,
+            'task_titles' => $titles,
+            'alerts' => $alerts,
+        ];
+    }
+
     private function totalsFromComponents(User $user, $components): array
     {
         $base = (float) $components->where('type', SalaryComponent::TYPE_BASE)->sum('amount');

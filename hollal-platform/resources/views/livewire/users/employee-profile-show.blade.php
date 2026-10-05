@@ -6,16 +6,16 @@
             'منتهية_علاقته' => 'ds-badge-danger',
         ];
         $tabs = [
-            'overview' => 'نظرة',
-            'personal' => 'البيانات',
-            'job' => 'الوظيفة',
-            'pay' => 'الراتب',
+            'overview' => 'نظرة عامة',
+            'personal' => 'البيانات الشخصية',
+            'job' => 'الوظيفة والعقد',
+            'pay' => 'الراتب والمستحقات',
             'attendance' => 'الحضور',
-            'documents' => 'العقود والمستندات',
-            'performance' => 'المهام',
-            'leaves' => 'الإجازات',
-            'violations' => 'المخالفات',
-            'custody' => 'العهد',
+            'leaves' => 'الإجازات والإنابة',
+            'performance' => 'الأداء',
+            'violations' => 'المخالفات والإفادات',
+            'custody' => 'العهد والأصول',
+            'documents' => 'الوثائق والشهادات',
             'log' => 'السجل',
         ];
         $typeLabels = [
@@ -38,12 +38,23 @@
     </x-ds-page-header>
 
     <section class="ds-section">
-        <div class="ds-profile-head">
-            <h2>{{ $user->name }}</h2>
-            <span class="ds-badge {{ $statusLabels[$user->employment_status] ?? '' }}">
-                {{ $user->employment_status }}
-            </span>
-            <div class="ds-text-muted">{{ $user->profile?->job_title ?? '—' }} — {{ $user->orgPlacementLabel() === '—' ? 'بدون قسم' : $user->orgPlacementLabel() }}</div>
+        <div class="ds-profile-head" style="position:sticky;top:3.5rem;z-index:20;background:var(--ds-surface, #fff);padding:0.5rem 0">
+            @php
+                $initial = mb_substr($user->name, 0, 1);
+                $alertCount = collect($documentMatrix ?? [])->whereIn('color', ['red', 'yellow'])->count()
+                    + (int) ($overviewFacts['statement_required'] ?? 0);
+            @endphp
+            <div style="display:flex;gap:0.75rem;align-items:center">
+                <span class="ds-badge ds-badge-neutral" style="width:2.5rem;height:2.5rem;display:grid;place-items:center">{{ $initial }}</span>
+                <div>
+                    <h2 style="margin:0">{{ $user->name }}</h2>
+                    <div class="ds-text-muted">{{ $user->profile?->job_title ?? '—' }} — {{ $user->orgPlacementLabel() === '—' ? 'بدون قسم' : $user->orgPlacementLabel() }}</div>
+                </div>
+                <span class="ds-badge {{ $statusLabels[$user->employment_status] ?? '' }}">{{ $user->employment_status }}</span>
+                @if ($alertCount > 0)
+                    <span class="ds-badge ds-badge-danger">تنبيهات {{ $alertCount }}</span>
+                @endif
+            </div>
         </div>
 
         <nav class="ds-tabs" role="tablist">
@@ -58,38 +69,45 @@
 
         <div class="ds-tab-panel">
             @if ($activeTab === 'overview')
-                <x-ds-collapsible-card title="ملخص" :open="true">
-                    <dl class="ds-detail-grid">
-                        <div><dt>الحالة</dt><dd>{{ $user->employment_status }}</dd></div>
-                        <div><dt>المسمى</dt><dd>{{ $user->profile?->job_title ?? '—' }}</dd></div>
-                        <div><dt>المدير</dt><dd>{{ $user->effectiveManager()?->name ?? '—' }}</dd></div>
-                        <div><dt>تاريخ المباشرة</dt><dd>{{ $user->profile?->hire_date?->format('Y-m-d') ?? '—' }}</dd></div>
-                    </dl>
-                    @php $alertCount = collect($documentMatrix ?? [])->whereIn('color', ['red', 'yellow'])->count(); @endphp
-                    @if ($alertCount > 0)
-                        <p>وثائق تحتاج متابعة: {{ $alertCount }}</p>
-                    @endif
-                    @if ((int) auth()->id() === (int) $user->id)
-                        <h3>إنابة</h3>
-                        <p class="ds-text-muted">للرحلات: اختر البديل من شاشة الإجازات أو سجّل الإنابة مع الطلب.</p>
-                    @endif
-                    @if (($onboardingItems ?? collect())->contains(fn ($item) => $item->status === 'open'))
-                        <h3>قائمة التهيئة</h3>
-                        <input type="date" class="ds-input" wire:model="onboardingDue">
-                        <ul>
-                            @foreach ($onboardingItems as $item)
-                                <li>
-                                    {{ $item->referenceItem?->name_ar ?? 'خطوة' }} — {{ $item->status }}
-                                    @if ($item->status === 'open' && $canUpdate)
-                                        <button type="button" class="ds-btn ds-btn-sm" wire:click="completeOnboarding({{ $item->id }})">تم</button>
-                                        <button type="button" class="ds-btn ds-btn-sm" wire:click="convertOnboarding({{ $item->id }})">تحويل إلى مهمة</button>
-                                        <button type="button" class="ds-btn ds-btn-sm" wire:click="closeOnboarding({{ $item->id }})">إغلاق</button>
-                                    @endif
-                                </li>
-                            @endforeach
-                        </ul>
-                    @endif
-                </x-ds-collapsible-card>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:0.6rem;margin-bottom:0.8rem">
+                    <article class="ds-card" style="padding:0.6rem"><div class="ds-text-muted">رصيد الإجازة</div><strong>{{ $overviewFacts['leave'] ?? '—' }}</strong></article>
+                    <article class="ds-card" style="padding:0.6rem"><div class="ds-text-muted">حضور الشهر</div><strong>{{ $overviewFacts['attendance_pct'] ?? '—' }}</strong></article>
+                    <article class="ds-card" style="padding:0.6rem"><div class="ds-text-muted">مخالفات</div><strong>{{ $overviewFacts['violations'] ?? 0 }}</strong></article>
+                    <article class="ds-card" style="padding:0.6rem"><div class="ds-text-muted">مهام مفتوحة</div><strong>{{ $overviewFacts['open_tasks'] ?? 0 }}</strong></article>
+                    <article class="ds-card" style="padding:0.6rem"><div class="ds-text-muted">آخر تقييم</div><strong>{{ $overviewFacts['last_evaluation'] ?? '—' }}</strong></article>
+                    <article class="ds-card" style="padding:0.6rem"><div class="ds-text-muted">آخر صافي</div><strong class="ds-ltr-num">{{ $overviewFacts['last_net'] ?? '—' }}</strong></article>
+                </div>
+                @if (($overviewFacts['alerts'] ?? []) !== [])
+                    <div class="ds-card" style="padding:0.6rem;margin-bottom:0.8rem;border-color:#b42318">
+                        @foreach ($overviewFacts['alerts'] as $alert)
+                            <p style="margin:0.2rem 0;color:#b42318">{{ $alert }}</p>
+                        @endforeach
+                    </div>
+                @endif
+                @if (($overviewFacts['task_titles'] ?? []) !== [])
+                    <p>مهام مفتوحة: {{ implode('، ', $overviewFacts['task_titles']) }}</p>
+                @endif
+                <dl class="ds-detail-grid">
+                    <div><dt>المدير</dt><dd>{{ $user->effectiveManager()?->name ?? '—' }}</dd></div>
+                    <div><dt>تاريخ المباشرة</dt><dd>{{ $user->profile?->hire_date?->format('Y-m-d') ?? '—' }}</dd></div>
+                    <div><dt>القسم</dt><dd>{{ $user->orgPlacementLabel() }}</dd></div>
+                </dl>
+                @if (($onboardingItems ?? collect())->contains(fn ($item) => $item->status === 'open'))
+                    <h3>قائمة التهيئة</h3>
+                    <input type="date" class="ds-input" wire:model="onboardingDue">
+                    <ul>
+                        @foreach ($onboardingItems as $item)
+                            <li>
+                                {{ $item->referenceItem?->name_ar ?? 'خطوة' }} — {{ $item->status }}
+                                @if ($item->status === 'open' && $canUpdate)
+                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="completeOnboarding({{ $item->id }})">تم</button>
+                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="convertOnboarding({{ $item->id }})">تحويل إلى مهمة</button>
+                                    <button type="button" class="ds-btn ds-btn-sm" wire:click="closeOnboarding({{ $item->id }})">إغلاق</button>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
             @elseif (in_array($activeTab, ['data', 'personal'], true))
                 <x-ds-collapsible-card title="بطاقة البيانات" :open="false">
                     <x-slot:actions>
@@ -121,6 +139,23 @@
                         <div><dt>الساعات الأساسية أسبوعيًا</dt><dd class="ds-ltr-num">{{ $user->profile?->weekly_hours ?? '—' }}</dd></div>
                         <div><dt>برنامج الحضور</dt><dd>{{ $user->attendance_enabled ? 'مفعّل لهذا الموظف فقط' : 'متوقّف — التقييم على المهام' }}</dd></div>
                     </dl>
+                </x-ds-collapsible-card>
+
+                <x-ds-collapsible-card title="عقود التوظيف" :open="true">
+                    <x-ds-table>
+                        <x-slot:head>
+                            <tr><th>البداية</th><th>النهاية</th><th>الحالة</th></tr>
+                        </x-slot:head>
+                        @forelse ($contracts as $contract)
+                            <tr wire:key="c-{{ $contract->id }}">
+                                <td class="ds-ltr-num">{{ $contract->start_date?->format('Y-m-d') }}</td>
+                                <td class="ds-ltr-num">{{ $contract->end_date?->format('Y-m-d') }}</td>
+                                <td>{{ $contract->statusLabel() }}</td>
+                            </tr>
+                        @empty
+                            <tr><td colspan="3" class="ds-text-muted">لا توجد عقود</td></tr>
+                        @endforelse
+                    </x-ds-table>
                 </x-ds-collapsible-card>
 
                 <x-ds-collapsible-card title="المسؤوليات الوظيفية">
@@ -279,29 +314,8 @@
                     </x-ds-collapsible-card>
                 @endif
             @elseif (in_array($activeTab, ['contracts_documents', 'documents'], true))
-                <p class="ds-text-muted ds-mb-3">فترات التوظيف الرسمية (قراءة فقط) والوثائق الرسمية (هوية · إقامة · جواز · عقد عمل · أخرى).</p>
-                <x-ds-collapsible-card title="عقود التوظيف" :open="true">
-                <x-ds-table>
-                    <x-slot:head>
-                        <tr>
-                            <th>البداية</th>
-                            <th>النهاية</th>
-                            <th>الحالة</th>
-                        </tr>
-                    </x-slot:head>
-                    @forelse ($contracts as $contract)
-                        <tr wire:key="c-{{ $contract->id }}">
-                            <td class="ds-ltr-num">{{ $contract->start_date?->format('Y-m-d') }}</td>
-                            <td class="ds-ltr-num">{{ $contract->end_date?->format('Y-m-d') }}</td>
-                            <td>{{ $contract->statusLabel() }}</td>
-                        </tr>
-                    @empty
-                        <tr><td colspan="3" class="ds-text-muted">لا توجد عقود</td></tr>
-                    @endforelse
-                </x-ds-table>
-                </x-ds-collapsible-card>
-
-                <x-ds-collapsible-card title="الوثائق الرسمية" :open="true">
+                <p class="ds-text-muted ds-mb-3">الوثائق والشهادات وحالتها. العقود في تبويب الوظيفة والعقد.</p>
+                <x-ds-collapsible-card title="الوثائق والشهادات" :open="true">
                     <x-slot:actions>
                         @if ($canUpdate)
                             <button type="button" class="ds-btn ds-btn-primary ds-btn-sm" wire:click="openDocumentModal">إضافة وثيقة</button>
