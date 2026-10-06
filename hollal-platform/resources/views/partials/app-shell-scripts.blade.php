@@ -305,3 +305,142 @@
         });
     })();
 </script>
+<script>
+    (function () {
+        if (window.__orgChartBound) {
+            return;
+        }
+        window.__orgChartBound = true;
+
+        function initOrgChart() {
+            var root = document.getElementById('org-chart-root');
+            if (!root || root.dataset.bound === '1') {
+                return;
+            }
+            root.dataset.bound = '1';
+            var stage = document.getElementById('org-chart-stage');
+            var scroller = root.querySelector('.org-chart-scroll');
+            var scale = 1;
+
+            function applyScale() {
+                if (!stage) {
+                    return;
+                }
+                stage.style.transform = 'scale(' + scale + ')';
+            }
+
+            function center() {
+                if (!scroller) {
+                    return;
+                }
+                var max = scroller.scrollWidth - scroller.clientWidth;
+                if (max > 0) {
+                    scroller.scrollLeft = max / 2;
+                }
+            }
+
+            root.querySelectorAll('[data-org-toggle]').forEach(function (button) {
+                button.addEventListener('click', function (event) {
+                    event.stopPropagation();
+                    var item = button.closest('.org-li');
+                    if (item) {
+                        item.classList.toggle('is-collapsed');
+                    }
+                });
+            });
+
+            root.querySelectorAll('[data-org-zoom]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var mode = button.getAttribute('data-org-zoom');
+                    if (mode === 'in') {
+                        scale = Math.min(1.8, scale + 0.1);
+                    } else if (mode === 'out') {
+                        scale = Math.max(0.4, scale - 0.1);
+                    } else if (stage && scroller) {
+                        scale = Math.min(1, scroller.clientWidth / Math.max(stage.scrollWidth, 1));
+                    }
+                    applyScale();
+                });
+            });
+
+            root.querySelectorAll('[data-org-fold]').forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var collapse = button.getAttribute('data-org-fold') === 'all';
+                    root.querySelectorAll('.org-li').forEach(function (item) {
+                        if (item.querySelector(':scope > ul')) {
+                            item.classList.toggle('is-collapsed', collapse);
+                        }
+                    });
+                });
+            });
+
+            var search = document.getElementById('org-search');
+            if (search) {
+                search.addEventListener('input', function () {
+                    var query = search.value.trim();
+                    root.querySelectorAll('.org-card').forEach(function (card) {
+                        card.classList.remove('is-hit', 'is-dim');
+                    });
+                    if (query === '') {
+                        return;
+                    }
+                    var first = null;
+                    root.querySelectorAll('.org-li').forEach(function (item) {
+                        var card = item.querySelector(':scope > .org-card');
+                        var label = item.getAttribute('data-org-label') || '';
+                        if (label.indexOf(query) !== -1) {
+                            if (card) {
+                                card.classList.add('is-hit');
+                            }
+                            if (!first) {
+                                first = card;
+                            }
+                            var cursor = item;
+                            while (cursor) {
+                                cursor.classList.remove('is-collapsed');
+                                var parent = cursor.parentElement ? cursor.parentElement.closest('.org-li') : null;
+                                if (parent) {
+                                    var parentCard = parent.querySelector(':scope > .org-card');
+                                    if (parentCard) {
+                                        parentCard.classList.add('is-hit');
+                                        parentCard.classList.remove('is-dim');
+                                    }
+                                }
+                                cursor = parent;
+                            }
+                        } else if (card && !card.classList.contains('is-hit')) {
+                            card.classList.add('is-dim');
+                        }
+                    });
+                    if (first) {
+                        first.scrollIntoView({ inline: 'center', block: 'nearest' });
+                    }
+                });
+            }
+
+            root.addEventListener('keydown', function (event) {
+                if (event.key === '+' || event.key === '=') {
+                    scale = Math.min(1.8, scale + 0.1);
+                    applyScale();
+                }
+                if (event.key === '-' || event.key === '_') {
+                    scale = Math.max(0.4, scale - 0.1);
+                    applyScale();
+                }
+            });
+
+            if (window.matchMedia('(max-width: 1023px)').matches) {
+                root.querySelectorAll('[data-collapse-mobile="1"]').forEach(function (item) {
+                    item.classList.add('is-collapsed');
+                });
+            }
+            center();
+        }
+
+        document.addEventListener('DOMContentLoaded', initOrgChart);
+        document.addEventListener('livewire:navigated', initOrgChart);
+        if (document.readyState !== 'loading') {
+            initOrgChart();
+        }
+    })();
+</script>

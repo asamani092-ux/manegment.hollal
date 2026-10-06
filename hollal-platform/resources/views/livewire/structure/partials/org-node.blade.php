@@ -2,6 +2,7 @@
 @php
     $levelClass = match ($node->level) {
         \App\Models\OrgUnit::LEVEL_TOP => 'org-node--admin',
+        \App\Models\OrgUnit::LEVEL_TOP_POSITION => 'org-node--admin',
         \App\Models\OrgUnit::LEVEL_ADMINISTRATION => 'org-node--admin',
         \App\Models\OrgUnit::LEVEL_UNIT => 'org-node--unit',
         \App\Models\OrgUnit::LEVEL_JOB => 'org-node--job',
@@ -36,9 +37,17 @@
             @endcan
         @endif
         @can('structure.manage')
-            @if (\App\Models\OrgUnit::CHILD_LEVEL[$node->level] !== null)
+            @if ($node->level === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
+                <select class="ds-input" wire:change="followTop({{ $node->id }}, $event.target.value)">
+                    <option value="0">يتبع لـ</option>
+                    @foreach ($topPositions as $seat)
+                        <option value="{{ $seat->id }}" @selected($node->parent_id === $seat->id)>{{ $seat->name }}</option>
+                    @endforeach
+                </select>
+            @endif
+            @if (\App\Models\OrgUnit::addLabel($node->level))
                 <button type="button" class="ds-btn ds-btn-sm" wire:click="openUnitModal({{ $node->id }})">
-                    إضافة {{ \App\Models\OrgUnit::CHILD_LEVEL[$node->level] }}
+                    إضافة {{ \App\Models\OrgUnit::addLabel($node->level) }}
                 </button>
             @endif
         @endcan

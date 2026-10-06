@@ -5,6 +5,7 @@ namespace App\Livewire\Structure;
 use App\Models\Committee;
 use App\Models\OrgUnit;
 use App\Models\User;
+use App\Services\OrgChartService;
 use App\Services\OrgStructureService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
@@ -53,6 +54,16 @@ class OrgTreeIndex extends Component
 
     public ?int $viewingJobId = null;
 
+    public ?int $viewingUnitId = null;
+
+    public bool $showTopModal = false;
+
+    public string $topTitle = '';
+
+    public ?int $topOccupantId = null;
+
+    public int $topOrder = 1;
+
     public function mount(): void
     {
         $this->authorize('structure.view');
@@ -61,7 +72,58 @@ class OrgTreeIndex extends Component
     public function gatherUnderTop(): void
     {
         $this->authorize('structure.manage');
-        app(OrgStructureService::class)->gatherAdministrationsUnderTop();
+        try {
+            app(OrgStructureService::class)->gatherAdministrationsUnderTop();
+            $this->dispatch('ds-toast', message: 'رُبطت الإدارات بآخر منصب أعلى');
+        } catch (\InvalidArgumentException $e) {
+            $this->dispatch('ds-toast', type: 'error', message: $e->getMessage());
+        }
+    }
+
+    public function openTopModal(): void
+    {
+        $this->authorize('structure.manage');
+        $this->topTitle = '';
+        $this->topOccupantId = null;
+        $this->topOrder = (int) OrgUnit::query()->where('level', OrgUnit::LEVEL_TOP_POSITION)->max('position') + 1;
+        $this->showTopModal = true;
+    }
+
+    /** Time: O(n) | Space: O(1) */
+    public function saveTopPosition(): void
+    {
+        $this->authorize('structure.manage');
+        $this->validate([
+            'topTitle' => 'required|string|max:255',
+            'topOccupantId' => 'nullable|exists:users,id',
+            'topOrder' => 'required|integer|min:0',
+        ], [], ['topTitle' => 'المسمى']);
+        app(OrgStructureService::class)->addTopPosition($this->topTitle, $this->topOccupantId, $this->topOrder);
+        $this->showTopModal = false;
+        $this->dispatch('ds-toast', message: 'أُضيف المنصب الأعلى');
+    }
+
+    /** Time: O(1) | Space: O(1) */
+    public function followTop(int $adminId, int $topId): void
+    {
+        $this->authorize('structure.manage');
+        if ($topId === 0) {
+            return;
+        }
+        app(OrgStructureService::class)->attachAdministration(
+            OrgUnit::query()->findOrFail($adminId),
+            OrgUnit::query()->findOrFail($topId),
+        );
+    }
+
+    public function openDrawer(int $unitId): void
+    {
+        $this->viewingUnitId = $unitId;
+    }
+
+    public function closeDrawer(): void
+    {
+        $this->viewingUnitId = null;
     }
 
     public function openUnitModal(?int $parentId = null): void
@@ -70,7 +132,8 @@ class OrgTreeIndex extends Component
 
         $this->parentId = $parentId;
         $parent = $parentId ? OrgUnit::find($parentId) : null;
-        $this->unitLevel = $parent ? (OrgUnit::CHILD_LEVEL[$parent->level] ?? OrgUnit::LEVEL_JOB) : OrgUnit::LEVEL_ADMINISTRATION;
+        $allowed = $parent ? (OrgUnit::CHILD_LEVEL[$parent->level] ?? []) : [OrgUnit::LEVEL_ADMINISTRATION];
+        $this->unitLevel = OrgUnit::addLabel($parent->level ?? '') ?? ($allowed[0] ?? OrgUnit::LEVEL_ADMINISTRATION);
         $this->unitName = '';
         $this->jobPurpose = null;
         $this->jobResponsibilities = '';
@@ -204,7 +267,8 @@ class OrgTreeIndex extends Component
 
     public function render(): View
     {
-        $tree = app(OrgStructureService::class)->tree();
+        $tree = $this->tab === 'table' ? app(OrgStructureService::class)->tree() : collect();
+        $parent = $this->parentId ? OrgUnit::query()->find($this->parentId) : null;
 
         $deleteTarget = $this->committeeDeleteConfirmId
             ? Committee::query()->select(['id', 'name'])->withCount('meetings')->find($this->committeeDeleteConfirmId)
@@ -212,6 +276,12 @@ class OrgTreeIndex extends Component
 
         return view('livewire.structure.org-tree-index', [
             'tree' => $tree,
+            'chart' => $this->tab === 'tree' ? app(OrgChartService::class)->tree() : [],
+            'drawer' => $this->viewingUnitId
+                ? OrgUnit::query()->with(['manager:id,name', 'members:id,name'])->find($this->viewingUnitId)
+                : null,
+            'topPositions' => OrgUnit::query()->where('level', OrgUnit::LEVEL_TOP_POSITION)->orderBy('position')->get(['id', 'name']),
+            'childLevels' => $parent ? (OrgUnit::CHILD_LEVEL[$parent->level] ?? []) : [OrgUnit::LEVEL_TOP, OrgUnit::LEVEL_ADMINISTRATION],
             'transfers' => \App\Models\EmployeeTransfer::with(['employee', 'fromUnit', 'toUnit'])
                 ->orderByDesc('id')->limit(50)->get(),
             'committees' => Committee::query()
@@ -228,8 +298,7 @@ class OrgTreeIndex extends Component
                 ->with(['parent:id,name', 'manager:id,name'])
                 ->orderBy('name')
                 ->get(['id', 'name', 'parent_id', 'manager_id', 'job_purpose']),
-            'adminColors' => $this->administrationColors($tree),
-            'chartNodes' => $this->chartNodes(),
+            'adminColors' => $this->tab === 'table' ? $this->administrationColors($tree) : [],
         ])->layout('layouts.app', ['title' => 'الهيكل التنظيمي']);
     }
 
@@ -239,39 +308,6 @@ class OrgTreeIndex extends Component
      * @param  \Illuminate\Support\Collection<int, OrgUnit>  $tree
      * @return array<int, string>
      */
-    /** @return list<array<string, mixed>> */
-    private function chartNodes(): array
-    {
-        $flat = OrgUnit::query()->with('manager:id,name')->withCount('members')->orderBy('position')->get();
-        $rows = $flat->map(fn (OrgUnit $unit) => [
-            'id' => (string) $unit->id,
-            'parentId' => $unit->parent_id ? (string) $unit->parent_id : null,
-            'name' => $unit->name,
-            'level' => $unit->level,
-            'head' => $unit->manager?->name ?? '—',
-            'members' => $unit->members_count,
-        ])->values()->all();
-        $roots = collect($rows)->whereNull('parentId')->count();
-        if ($roots > 1) {
-            foreach ($rows as &$row) {
-                if ($row['parentId'] === null) {
-                    $row['parentId'] = 'root';
-                }
-            }
-            unset($row);
-            array_unshift($rows, [
-                'id' => 'root',
-                'parentId' => null,
-                'name' => 'الهيكل',
-                'level' => 'جذر',
-                'head' => '—',
-                'members' => 0,
-            ]);
-        }
-
-        return $rows;
-    }
-
     private function administrationColors($tree): array
     {
         $palette = ['#0F3446', '#1B6B93', '#2D6A4F', '#C45C26', '#6B4C9A', '#8B5A2B'];

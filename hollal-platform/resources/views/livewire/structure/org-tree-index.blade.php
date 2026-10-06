@@ -3,37 +3,80 @@
 
     <section class="ds-section ds-filter-bar">
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'tree')">الشجرة</button>
+        <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'table')">عرض الجدول</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'jobs')">الوظائف</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'transfers')">النقل</button>
         <button type="button" class="ds-btn ds-btn-sm" wire:click="$set('tab', 'committees')">اللجان</button>
         @can('structure.manage')
             <button type="button" class="ds-btn ds-btn-primary" wire:click="openUnitModal">إضافة إدارة</button>
-            <button type="button" class="ds-btn ds-btn-outline" wire:click="gatherUnderTop">اجمع الإدارات تحت الإدارة العليا</button>
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="openTopModal">إضافة منصب أعلى</button>
+            <button type="button" class="ds-btn ds-btn-outline" wire:click="gatherUnderTop" wire:confirm="ستُربط الإدارات غير التابعة بمنصب بآخر منصب أعلى. متابعة؟">اربط الإدارات بآخر منصب أعلى</button>
         @endcan
     </section>
 
     @if ($tab === 'tree')
-        <section class="ds-section">
-            <h2 class="ds-section-title">عرض الشجرة</h2>
-            <p>
-                <span style="color:#0F3446">الإدارة العليا</span>
-                · <span style="color:#C4A052">إدارة</span>
-                · <span style="color:#27A588">قسم</span>
-                · <span style="color:#5C6B73">وظيفة</span>
-            </p>
-            <div id="org-chart-wide" wire:ignore>
-                <input id="org-search" class="ds-input" placeholder="بحث عن موظف أو وحدة">
-                <button type="button" class="ds-btn ds-btn-sm" id="org-export-png">تصدير صورة</button>
-                <button type="button" class="ds-btn ds-btn-sm" id="org-export-pdf">تصدير ملف</button>
-                <div id="org-chart"></div>
-                <script type="application/json" id="org-chart-data">@json($chartNodes)</script>
+        <section class="ds-section org-print-root" id="org-chart-root">
+            <div class="org-toolbar">
+                <input id="org-search" class="ds-input" placeholder="بحث" autocomplete="off">
+                <button type="button" class="ds-btn ds-btn-sm" data-org-zoom="in">تكبير</button>
+                <button type="button" class="ds-btn ds-btn-sm" data-org-zoom="out">تصغير</button>
+                <button type="button" class="ds-btn ds-btn-sm" data-org-zoom="fit">ملاءمة الشاشة</button>
+                <button type="button" class="ds-btn ds-btn-sm" data-org-fold="all">طي الكل</button>
+                <button type="button" class="ds-btn ds-btn-sm" data-org-fold="none">فتح الكل</button>
+                <button type="button" class="ds-btn ds-btn-sm" onclick="window.print()">طباعة / PDF</button>
             </div>
-            <ul id="org-chart-mobile">
-                @foreach ($tree as $root)
-                    @include('livewire.structure.partials.org-branch', ['node' => $root])
-                @endforeach
-            </ul>
-            <h2 class="ds-section-title">عرض الجدول</h2>
+            <div class="org-chart-scroll">
+                <div class="org-chart-stage" id="org-chart-stage">
+                    <ul class="org-chart">
+                        @forelse ($chart as $node)
+                            @include('livewire.structure.partials.org-chart-node', ['node' => $node])
+                        @empty
+                            <li class="org-empty">لا يوجد هيكل بعد. أضف منصبًا أعلى أو إدارة.</li>
+                        @endforelse
+                    </ul>
+                </div>
+            </div>
+        </section>
+        @if ($drawer)
+            <aside class="org-drawer">
+                <h2>{{ $drawer->name }}</h2>
+                <p>الغرض: {{ $drawer->job_purpose ?: '—' }}</p>
+                <p>المسؤول: {{ $drawer->manager?->name ?: '—' }}</p>
+                @if ($drawer->job_responsibilities)
+                    <ul>
+                        @foreach ($drawer->job_responsibilities as $line)
+                            <li>{{ $line }}</li>
+                        @endforeach
+                    </ul>
+                @endif
+                <p>الأعضاء:</p>
+                <ul>
+                    @forelse ($drawer->members as $member)
+                        <li><a href="{{ route('users.profile', $member->id) }}">{{ $member->name }}</a></li>
+                    @empty
+                        <li>لا يوجد شاغل</li>
+                    @endforelse
+                </ul>
+                @can('structure.manage')
+                    @if ($drawer->level === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
+                        <label>يتبع لـ
+                            <select class="ds-input" wire:change="followTop({{ $drawer->id }}, $event.target.value)">
+                                <option value="0">—</option>
+                                @foreach ($topPositions as $seat)
+                                    <option value="{{ $seat->id }}" @selected($drawer->parent_id === $seat->id)>{{ $seat->name }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    @endif
+                    <button type="button" class="ds-btn ds-btn-sm" wire:click="openUnitModal({{ $drawer->id }})">إضافة فرع</button>
+                @endcan
+                <button type="button" class="ds-btn ds-btn-sm" wire:click="closeDrawer">إغلاق</button>
+            </aside>
+        @endif
+    @endif
+
+    @if ($tab === 'table')
+        <section class="ds-section">
             <x-ds-table>
                 <x-slot:head>
                     <tr><th>الوحدة</th><th>المستوى</th><th>المسؤول</th><th>الأعضاء</th><th>إجراءات</th></tr>
@@ -220,9 +263,9 @@
 
         <x-ds-form-group label="المستوى" :error="$errors->first('unitLevel')">
             <select class="ds-input" wire:model="unitLevel">
-                <option value="إدارة">إدارة</option>
-                <option value="قسم">قسم</option>
-                <option value="وظيفة">وظيفة</option>
+                @foreach ($childLevels as $level)
+                    <option value="{{ $level }}">{{ $level }}</option>
+                @endforeach
             </select>
         </x-ds-form-group>
 
@@ -239,43 +282,87 @@
             <button type="button" class="ds-btn ds-btn-primary" wire:click="saveUnit">حفظ</button>
         </x-slot:footer>
     </x-ds-modal>
+    <x-ds-modal :show="$showTopModal">
+        <x-slot:header><h2>منصب أعلى</h2></x-slot:header>
+        <x-ds-form-group label="المسمى" :error="$errors->first('topTitle')">
+            <input type="text" class="ds-input" wire:model="topTitle">
+        </x-ds-form-group>
+        <x-ds-form-group label="الموظف">
+            <select class="ds-input" wire:model="topOccupantId">
+                <option value="">شاغر</option>
+                @foreach ($users as $user)
+                    <option value="{{ $user->id }}">{{ $user->name }}</option>
+                @endforeach
+            </select>
+        </x-ds-form-group>
+        <x-ds-form-group label="الترتيب">
+            <input type="number" class="ds-input" wire:model="topOrder" min="0">
+        </x-ds-form-group>
+        <x-slot:footer>
+            <button type="button" class="ds-btn" wire:click="$set('showTopModal', false)">إلغاء</button>
+            <button type="button" class="ds-btn ds-btn-primary" wire:click="saveTopPosition">حفظ</button>
+        </x-slot:footer>
+    </x-ds-modal>
+    <style>
+        .org-toolbar { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-bottom: 0.6rem; align-items: center; }
+        .org-toolbar .ds-input { max-width: 16rem; }
+        .org-chart-scroll { overflow-x: auto; overflow-y: hidden; width: 100%; max-width: 100%; }
+        .org-chart-stage { display: inline-block; min-width: 100%; transform-origin: top center; }
+        .org-chart, .org-chart ul { display: flex; flex-direction: row; justify-content: center; list-style: none; margin: 0; padding: 1.4rem 0 0; position: relative; }
+        .org-chart { padding-top: 0; }
+        .org-li { display: flex; flex-direction: column; align-items: center; position: relative; padding: 1.4rem 0.45rem 0; }
+        .org-chart > .org-li { padding-top: 0; }
+        .org-li::before, .org-li::after { content: ''; position: absolute; top: 0; width: 50%; height: 1.4rem; border-top: 2px solid var(--accent, #0F3446); }
+        .org-li::before { right: 50%; }
+        .org-li::after { left: 50%; border-left: 2px solid var(--accent, #0F3446); }
+        .org-li:first-child::after, .org-li:last-child::before { border-top: 0; }
+        .org-li:first-child::before { border-right: 2px solid var(--accent, #0F3446); }
+        .org-li:only-child::before { border: 0; }
+        .org-li:only-child::after { border-top: 0; width: 0; left: 50%; }
+        .org-chart > .org-li::before, .org-chart > .org-li::after { display: none; }
+        .org-li > ul::before { content: ''; position: absolute; top: 0; left: 50%; border-left: 2px solid var(--accent, #0F3446); height: 1.4rem; }
+        .org-card { width: 210px; border-radius: 12px; box-shadow: 0 6px 16px rgba(15, 52, 70, 0.12); background: #fff; padding: 0.7rem; position: relative; text-align: center; }
+        .org-card--top { background: #0F3446; color: #fff; border-top: 4px solid #C4A052; }
+        .org-card--admin { border-top: 8px solid var(--accent, #0F3446); }
+        .org-card--section { border-inline-start: 4px solid var(--accent, #27A588); text-align: start; }
+        .org-card--job { padding: 0.45rem 0.6rem; }
+        .org-card.is-vacant { border: 1px dashed #98a2b3; color: #667085; box-shadow: none; }
+        .org-card.is-hit { outline: 3px solid #C4A052; }
+        .org-card.is-dim { opacity: 0.22; }
+        .org-title { background: none; border: 0; color: inherit; font-weight: 700; cursor: pointer; width: 100%; }
+        .org-card--top .org-title { color: #fff; }
+        .org-person, .org-head { margin: 0.25rem 0 0; font-size: 0.85rem; }
+        .org-person { display: flex; gap: 0.35rem; align-items: center; justify-content: center; color: inherit; text-decoration: none; }
+        .org-avatar { width: 1.6rem; height: 1.6rem; border-radius: 50%; background: #C4A052; color: #0F3446; display: grid; place-items: center; font-size: 0.75rem; }
+        .org-count-chip, .org-role { display: inline-block; margin-top: 0.3rem; font-size: 0.75rem; color: #667085; background: #f2f4f7; border-radius: 999px; padding: 0.1rem 0.45rem; }
+        .org-card--top .org-role { background: rgba(255,255,255,.15); color: #fff; }
+        .org-toggle { position: absolute; bottom: -0.7rem; left: 50%; transform: translateX(-50%); border: 0; border-radius: 999px; background: #fff; box-shadow: 0 1px 4px rgba(0,0,0,.15); cursor: pointer; z-index: 2; }
+        .org-toggle-closed { display: none; }
+        .org-li.is-collapsed > ul { display: none; }
+        .org-li.is-collapsed > .org-card .org-toggle-open { display: none; }
+        .org-li.is-collapsed > .org-card .org-toggle-closed { display: inline; }
+        .org-drawer { position: fixed; inset-inline-start: 0; top: 0; height: 100vh; width: min(22rem, 100%); background: #fff; box-shadow: 0 0 24px rgba(0,0,0,.15); padding: 1rem; overflow: auto; z-index: 30; }
+        @media (max-width: 1023px) {
+            .org-chart-scroll { overflow-x: hidden; }
+            .org-chart-stage { transform: none !important; display: block; width: 100%; }
+            .org-toolbar [data-org-zoom] { display: none; }
+            .org-toolbar { position: sticky; top: 0; background: #fff; z-index: 5; }
+            .org-chart, .org-chart ul { display: block; padding: 0 16px 0 0; border-inline-end: 2px solid var(--accent, #0F3446); }
+            .org-chart { border: 0; padding: 0; }
+            .org-li { display: block; padding: 0.45rem 0 0; }
+            .org-li::before, .org-li::after, .org-li > ul::before { display: none; }
+            .org-li { position: relative; }
+            .org-li::before { display: block; content: ''; position: absolute; top: 1.2rem; inset-inline-end: -16px; width: 16px; height: 0; border-top: 2px solid var(--accent, #0F3446); border-left: 0; }
+            .org-chart > .org-li::before { display: none; }
+            .org-card { width: 100%; max-width: 100%; }
+        }
+        @media print {
+            @page { size: A3 landscape; margin: 8mm; }
+            body * { visibility: hidden; }
+            .org-print-root, .org-print-root * { visibility: visible; }
+            .org-print-root { position: absolute; inset: 0; }
+            .org-toolbar, .org-toggle { display: none !important; }
+            .org-chart-scroll { overflow: visible; }
+        }
+    </style>
     </x-ds-page>
-    @once
-        @push('scripts')
-            <style>
-                @media (max-width: 768px) { #org-chart-wide { display: none; } }
-                @media (min-width: 769px) { #org-chart-mobile { display: none; } }
-            </style>
-            <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-            <script src="https://cdn.jsdelivr.net/npm/d3-org-chart@3"></script>
-            <script>
-                document.addEventListener('DOMContentLoaded', function () {
-                    var node = document.getElementById('org-chart-data');
-                    if (!node || !window.d3 || !d3.OrgChart) return;
-                    var data = JSON.parse(node.textContent || '[]');
-                    if (!data.length) return;
-                    var colors = {'الإدارة العليا':'#0F3446','إدارة':'#C4A052','قسم':'#27A588','وظيفة':'#5C6B73','جذر':'#0F3446'};
-                    var chart = new d3.OrgChart()
-                        .container('#org-chart')
-                        .data(data)
-                        .nodeWidth(function () { return 220; })
-                        .nodeHeight(function () { return 92; })
-                        .nodeContent(function (d) {
-                            var color = colors[d.data.level] || '#0F3446';
-                            return '<div style="border:2px solid '+color+';padding:8px;direction:rtl;background:#fff"><strong>'+d.data.name+'</strong><div>'+d.data.head+'</div><div>'+d.data.members+'</div></div>';
-                        })
-                        .render();
-                    var png = document.getElementById('org-export-png');
-                    if (png) png.addEventListener('click', function () { if (chart.exportImg) chart.exportImg(); });
-                    var pdf = document.getElementById('org-export-pdf');
-                    if (pdf) pdf.addEventListener('click', function () { window.print(); });
-                    var search = document.getElementById('org-search');
-                    if (search) search.addEventListener('input', function () {
-                        var q = search.value.trim();
-                        var hit = data.find(function (row) { return q && (row.name.indexOf(q) !== -1 || row.head.indexOf(q) !== -1); });
-                        if (hit && chart.setHighlighted) chart.setHighlighted(hit.id).render();
-                    });
-                });
-            </script>
-        @endpush
-    @endonce

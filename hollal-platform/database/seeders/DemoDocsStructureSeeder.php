@@ -327,6 +327,33 @@ class DemoDocsStructureSeeder extends Seeder
                 'إلمام بأنظمة حماية بيانات المستفيدين',
             ],
         ]);
+
+        $container = OrgUnit::query()->firstOrCreate(
+            ['level' => OrgUnit::LEVEL_TOP, 'name' => 'الإدارة العليا'],
+            ['position' => 0]
+        );
+        $general = OrgUnit::query()->firstOrCreate(
+            ['level' => OrgUnit::LEVEL_TOP_POSITION, 'name' => 'المدير العام'],
+            ['position' => 1, 'parent_id' => $container->id, 'manager_id' => $manager->id]
+        );
+        $general->forceFill(['parent_id' => $container->id, 'position' => 1, 'manager_id' => $manager->id])->save();
+        $executiveSeat = OrgUnit::query()->firstOrCreate(
+            ['level' => OrgUnit::LEVEL_TOP_POSITION, 'name' => 'المدير التنفيذي'],
+            ['position' => 2, 'parent_id' => $general->id, 'manager_id' => $executive->id]
+        );
+        $executiveSeat->forceFill(['parent_id' => $general->id, 'position' => 2, 'manager_id' => $executive->id])->save();
+        $executiveAdmin->forceFill(['parent_id' => $executiveSeat->id])->save();
+        $projectsAdmin->forceFill(['parent_id' => $executiveSeat->id])->save();
+        $manager->forceFill(['org_unit_id' => $general->id])->save();
+        $executive->forceFill(['org_unit_id' => $executiveSeat->id])->save();
+        $coordinator = OrgUnit::query()->where('name', 'منسق مشاريع')->where('level', OrgUnit::LEVEL_JOB)->first();
+        $follower = OrgUnit::query()->where('name', 'أخصائي متابعة المستفيدين')->where('level', OrgUnit::LEVEL_JOB)->first();
+        if ($coordinator) {
+            $projectManager->forceFill(['org_unit_id' => $coordinator->id])->save();
+        }
+        if ($follower) {
+            $employee->forceFill(['org_unit_id' => $follower->id])->save();
+        }
     }
 
     /** ٣ قوالب مهام متكررة بترددات مختلفة (أسبوعي/شهري) مع قالب موقوف. */

@@ -65,8 +65,11 @@ class StructureRolesSettingsTest extends TestCase
         $this->assertSame('قسم', $unit->level);
         $this->assertTrue($job->isJobCard());
 
+        $direct = $service->createUnit('وظيفة تحت إدارة', OrgUnit::LEVEL_JOB, $administration);
+        $this->assertSame($administration->id, $direct->parent_id);
+
         $this->expectException(\InvalidArgumentException::class);
-        $service->createUnit('وظيفة تحت إدارة', OrgUnit::LEVEL_JOB, $administration);
+        $service->createUnit('قسم تحت وظيفة', OrgUnit::LEVEL_UNIT, $job);
     }
 
     public function test_root_must_be_an_administration(): void

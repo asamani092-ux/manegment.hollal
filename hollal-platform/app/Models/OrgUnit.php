@@ -17,6 +17,8 @@ class OrgUnit extends Model
 
     public const LEVEL_TOP = 'الإدارة العليا';
 
+    public const LEVEL_TOP_POSITION = 'منصب أعلى';
+
     public const LEVEL_ADMINISTRATION = 'إدارة';
 
     /** Structural mid-level (Arabic label «قسم»; constant kept for callers). */
@@ -24,12 +26,17 @@ class OrgUnit extends Model
 
     public const LEVEL_JOB = 'وظيفة';
 
-    /** @var array<string, ?string> level => the level allowed beneath it */
+    /**
+     * المستويات المسموح وضعها مباشرة تحت كل مستوى.
+     *
+     * @var array<string, list<string>>
+     */
     public const CHILD_LEVEL = [
-        self::LEVEL_TOP => self::LEVEL_ADMINISTRATION,
-        self::LEVEL_ADMINISTRATION => self::LEVEL_UNIT,
-        self::LEVEL_UNIT => self::LEVEL_JOB,
-        self::LEVEL_JOB => null,
+        self::LEVEL_TOP => [self::LEVEL_TOP_POSITION],
+        self::LEVEL_TOP_POSITION => [self::LEVEL_TOP_POSITION, self::LEVEL_ADMINISTRATION],
+        self::LEVEL_ADMINISTRATION => [self::LEVEL_UNIT, self::LEVEL_JOB],
+        self::LEVEL_UNIT => [self::LEVEL_JOB],
+        self::LEVEL_JOB => [],
     ];
 
     /** @var list<string> */
@@ -75,5 +82,22 @@ class OrgUnit extends Model
     public function isJobCard(): bool
     {
         return $this->level === self::LEVEL_JOB;
+    }
+
+    public function isPosition(): bool
+    {
+        return in_array($this->level, [self::LEVEL_TOP_POSITION, self::LEVEL_JOB], true);
+    }
+
+    /** المستوى الافتراضي لزر الإضافة. Time: O(1) | Space: O(1) */
+    public static function addLabel(string $level): ?string
+    {
+        return match ($level) {
+            self::LEVEL_TOP => self::LEVEL_TOP_POSITION,
+            self::LEVEL_TOP_POSITION => self::LEVEL_ADMINISTRATION,
+            self::LEVEL_ADMINISTRATION => self::LEVEL_UNIT,
+            self::LEVEL_UNIT => self::LEVEL_JOB,
+            default => null,
+        };
     }
 }

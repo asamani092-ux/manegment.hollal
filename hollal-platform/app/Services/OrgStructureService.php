@@ -23,9 +23,10 @@ class OrgStructureService
             throw new \InvalidArgumentException('مستوى تنظيمي غير معروف');
         }
 
-        if ($parent && OrgUnit::CHILD_LEVEL[$parent->level] !== $level) {
+        $allowed = $parent ? (OrgUnit::CHILD_LEVEL[$parent->level] ?? []) : [];
+        if ($parent && ! in_array($level, $allowed, true)) {
             throw new \InvalidArgumentException(
-                'الترتيب الهرمي إدارة ← قسم ← وظيفة لا يسمح بوضع «'.$level.'» تحت «'.$parent->level.'»'
+                'لا يمكن وضع «'.$level.'» تحت «'.$parent->level.'»'
             );
         }
 
@@ -106,18 +107,80 @@ class OrgStructureService
     /**
      * @return Collection<int, EmployeeTransfer>
      */
+    /**
+     * يربط الإدارات الجذرية بآخر منصب أعلى. لا ينشئ المناصب تلقائيًا.
+     * Time: O(n) | Space: O(1)
+     */
     public function gatherAdministrationsUnderTop(): OrgUnit
     {
-        $top = OrgUnit::query()->firstOrCreate(
+        $last = OrgUnit::query()
+            ->where('level', OrgUnit::LEVEL_TOP_POSITION)
+            ->orderByDesc('position')
+            ->orderByDesc('id')
+            ->first();
+        if (! $last) {
+            throw new \InvalidArgumentException('أضف منصبًا أعلى أولًا');
+        }
+
+        OrgUnit::query()
+            ->where('level', OrgUnit::LEVEL_ADMINISTRATION)
+            ->where(function ($query) {
+                $query->whereNull('parent_id')
+                    ->orWhereHas('parent', fn ($parent) => $parent->where('level', OrgUnit::LEVEL_TOP));
+            })
+            ->update(['parent_id' => $last->id]);
+
+        return $last;
+    }
+
+    /**
+     * منصب أعلى جديد في السلسلة، أبوه المنصب السابق أو حاوية الإدارة العليا.
+     * Time: O(n) لإعادة ربط السلسلة | Space: O(n)
+     */
+    public function addTopPosition(string $title, ?int $occupantId, int $order): OrgUnit
+    {
+        $container = OrgUnit::query()->firstOrCreate(
             ['level' => OrgUnit::LEVEL_TOP, 'name' => 'الإدارة العليا'],
             ['position' => 0]
         );
-        OrgUnit::query()
-            ->where('level', OrgUnit::LEVEL_ADMINISTRATION)
-            ->whereNull('parent_id')
-            ->update(['parent_id' => $top->id]);
+        $seat = OrgUnit::query()->create([
+            'name' => $title,
+            'level' => OrgUnit::LEVEL_TOP_POSITION,
+            'parent_id' => $container->id,
+            'position' => $order,
+        ]);
+        $this->rechainTopPositions($container);
+        if ($occupantId) {
+            User::query()->whereKey($occupantId)->update(['org_unit_id' => $seat->id]);
+        }
 
-        return $top;
+        return $seat->fresh();
+    }
+
+    /** Time: O(n) | Space: O(n) */
+    public function rechainTopPositions(OrgUnit $container): void
+    {
+        $chain = OrgUnit::query()
+            ->where('level', OrgUnit::LEVEL_TOP_POSITION)
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get();
+        $parentId = $container->id;
+        foreach ($chain as $node) {
+            if ((int) $node->parent_id !== (int) $parentId) {
+                $node->forceFill(['parent_id' => $parentId])->save();
+            }
+            $parentId = $node->id;
+        }
+    }
+
+    /** Time: O(1) | Space: O(1) */
+    public function attachAdministration(OrgUnit $administration, OrgUnit $topPosition): void
+    {
+        if ($administration->level !== OrgUnit::LEVEL_ADMINISTRATION || $topPosition->level !== OrgUnit::LEVEL_TOP_POSITION) {
+            throw new \InvalidArgumentException('الإدارة تتبع منصبًا أعلى');
+        }
+        $administration->forceFill(['parent_id' => $topPosition->id])->save();
     }
 
     public function placeEmployee(User $user, OrgUnit $job): User

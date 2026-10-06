@@ -29,6 +29,7 @@ class DeployMarkerTest extends TestCase
         $this->assertTrue(
             str_starts_with((string) $payload['marker'], 'hr-fix-')
             || str_starts_with((string) $payload['marker'], 'clarity-')
+            || str_starts_with((string) $payload['marker'], 'org-')
         );
         $this->assertArrayNotHasKey('error_lines', $payload);
         $this->assertStringNotContainsString('secret', $response->getContent());

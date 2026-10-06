@@ -290,7 +290,8 @@ class HrRemainderTest extends TestCase
         $next = User::factory()->create();
         $service = app(OrgStructureService::class);
         $top = $service->createUnit('الإدارة العليا', OrgUnit::LEVEL_TOP);
-        $admin = $service->createUnit('الإدارة', OrgUnit::LEVEL_ADMINISTRATION, $top);
+        $seat = $service->createUnit('المدير العام', OrgUnit::LEVEL_TOP_POSITION, $top);
+        $admin = $service->createUnit('الإدارة', OrgUnit::LEVEL_ADMINISTRATION, $seat);
         $unit = $service->createUnit('قسم', OrgUnit::LEVEL_UNIT, $admin);
         $unit->update(['manager_id' => $head->id]);
         $job = $service->createUnit('محلل', OrgUnit::LEVEL_JOB, $unit, ['default_role' => 'Employee']);
