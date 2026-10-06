@@ -23,8 +23,15 @@ class ReferenceListsSeeder extends Seeder
                     ['name' => 'max_days_per_request', 'type' => 'integer', 'required' => false, 'label_ar' => 'الحد لكل طلب'],
                     ['name' => 'annual_entitlement_days', 'type' => 'integer', 'required' => false, 'label_ar' => 'الاستحقاق السنوي'],
                     ['name' => 'entitlement_after_5y_days', 'type' => 'integer', 'required' => false, 'label_ar' => 'الاستحقاق بعد خمس سنوات'],
-                    ['name' => 'pay_tiers', 'type' => 'json', 'required' => false, 'label_ar' => 'شرائح الأجر'],
-                    ['name' => 'deducts_from', 'type' => 'string', 'required' => false, 'label_ar' => 'يخصم من'],
+                    ['name' => 'pay_tiers', 'type' => 'json', 'required' => false, 'label_ar' => 'شرائح الأجر', 'columns' => [
+                        ['name' => 'days', 'label_ar' => 'الأيام', 'type' => 'integer'],
+                        ['name' => 'pay_pct', 'label_ar' => 'نسبة الأجر', 'type' => 'integer'],
+                    ]],
+                    ['name' => 'deducts_from', 'type' => 'string', 'required' => false, 'label_ar' => 'يخصم من', 'options' => [
+                        ['value' => 'own', 'label_ar' => 'رصيدها'],
+                        ['value' => 'annual', 'label_ar' => 'السنوية'],
+                        ['value' => 'none', 'label_ar' => 'لا يخصم'],
+                    ]],
                     ['name' => 'once_per_service', 'type' => 'boolean', 'required' => false, 'label_ar' => 'مرة واحدة'],
                     ['name' => 'min_service_months', 'type' => 'integer', 'required' => false, 'label_ar' => 'الحد الأدنى للخدمة بالأشهر'],
                     ['name' => 'requires_attachment', 'type' => 'boolean', 'required' => false, 'label_ar' => 'يتطلب مرفقاً'],
@@ -38,7 +45,10 @@ class ReferenceListsSeeder extends Seeder
                 'schema' => [
                     ['name' => 'category', 'type' => 'string', 'required' => true, 'label_ar' => 'التصنيف'],
                     ['name' => 'description', 'type' => 'string', 'required' => false, 'label_ar' => 'الوصف'],
-                    ['name' => 'penalties', 'type' => 'json', 'required' => false, 'label_ar' => 'الجزاءات'],
+                    ['name' => 'penalties', 'type' => 'json', 'required' => false, 'label_ar' => 'الجزاءات', 'columns' => [
+                        ['name' => 'type', 'label_ar' => 'النوع', 'type' => 'string'],
+                        ['name' => 'value', 'label_ar' => 'القيمة', 'type' => 'integer'],
+                    ]],
                     ['name' => 'auto_detectable', 'type' => 'string', 'required' => false, 'label_ar' => 'الاكتشاف الآلي'],
                     ['name' => 'late_threshold_minutes', 'type' => 'integer', 'required' => false, 'label_ar' => 'حد التأخر بالدقائق'],
                     ['name' => 'ministry_baseline', 'type' => 'json', 'required' => false, 'label_ar' => 'أساس الوزارة'],
@@ -49,19 +59,38 @@ class ReferenceListsSeeder extends Seeder
                 'name_ar' => 'بنود تسوية المسير',
                 'description_ar' => 'بنود الإضافة والحسم',
                 'schema' => [
-                    ['name' => 'kind', 'type' => 'string', 'required' => true, 'label_ar' => 'النوع'],
+                    ['name' => 'kind', 'type' => 'string', 'required' => true, 'label_ar' => 'النوع', 'options' => [
+                        ['value' => 'earning', 'label_ar' => 'إضافة'],
+                        ['value' => 'deduction', 'label_ar' => 'حسم'],
+                    ]],
                     ['name' => 'account_code', 'type' => 'string', 'required' => false, 'label_ar' => 'رمز الحساب'],
-                    ['name' => 'auto_source', 'type' => 'string', 'required' => false, 'label_ar' => 'المصدر الآلي'],
+                    ['name' => 'auto_source', 'type' => 'string', 'required' => false, 'label_ar' => 'المصدر الآلي', 'options' => [
+                        ['value' => 'none', 'label_ar' => 'لا'],
+                        ['value' => 'overtime', 'label_ar' => 'عمل إضافي'],
+                        ['value' => 'delegation_allowance', 'label_ar' => 'بدل انتداب'],
+                        ['value' => 'absence', 'label_ar' => 'غياب'],
+                        ['value' => 'leave_unpaid', 'label_ar' => 'إجازة بلا أجر'],
+                        ['value' => 'leave_partial', 'label_ar' => 'إجازة بأجر جزئي'],
+                        ['value' => 'violation', 'label_ar' => 'مخالفة'],
+                    ]],
                 ],
             ],
             'document_types' => [
                 'name_ar' => 'أنواع الوثائق',
                 'description_ar' => 'وثائق الموظف المطلوبة',
                 'schema' => [
-                    ['name' => 'category', 'type' => 'string', 'required' => true, 'label_ar' => 'التصنيف'],
+                    ['name' => 'category', 'type' => 'string', 'required' => true, 'label_ar' => 'التصنيف', 'options' => [
+                        ['value' => 'official', 'label_ar' => 'رسمي'],
+                        ['value' => 'academic', 'label_ar' => 'علمي'],
+                        ['value' => 'professional', 'label_ar' => 'مهني'],
+                        ['value' => 'other', 'label_ar' => 'أخرى'],
+                    ]],
                     ['name' => 'has_expiry', 'type' => 'boolean', 'required' => false, 'label_ar' => 'لها انتهاء'],
                     ['name' => 'renewal_notice_days', 'type' => 'integer', 'required' => false, 'label_ar' => 'أيام التنبيه'],
-                    ['name' => 'required_for', 'type' => 'string', 'required' => false, 'label_ar' => 'الإلزام'],
+                    ['name' => 'required_for', 'type' => 'string', 'required' => false, 'label_ar' => 'الإلزام', 'options' => [
+                        ['value' => 'all', 'label_ar' => 'الجميع'],
+                        ['value' => 'optional', 'label_ar' => 'اختياري'],
+                    ]],
                 ],
             ],
             'onboarding_steps' => [
@@ -87,16 +116,20 @@ class ReferenceListsSeeder extends Seeder
                     ['name' => 'screen_key', 'type' => 'string', 'required' => true, 'label_ar' => 'مفتاح الشاشة'],
                     ['name' => 'title_ar', 'type' => 'string', 'required' => true, 'label_ar' => 'العنوان'],
                     ['name' => 'body_ar', 'type' => 'string', 'required' => true, 'label_ar' => 'النص'],
-                    ['name' => 'steps', 'type' => 'json', 'required' => false, 'label_ar' => 'الخطوات'],
+                    ['name' => 'steps', 'type' => 'json', 'required' => false, 'label_ar' => 'الخطوات', 'columns' => [
+                        ['name' => 'text', 'label_ar' => 'الخطوة', 'type' => 'string'],
+                    ]],
                 ],
             ],
         ];
 
         foreach ($definitions as $key => $def) {
-            ReferenceList::query()->firstOrCreate(
-                ['key' => $key],
-                $def
-            );
+            $list = ReferenceList::query()->firstOrCreate(['key' => $key], $def);
+            $list->update([
+                'name_ar' => $def['name_ar'],
+                'description_ar' => $def['description_ar'],
+                'schema' => $def['schema'],
+            ]);
         }
 
         $service = app(ReferenceListService::class);
@@ -111,17 +144,6 @@ class ReferenceListsSeeder extends Seeder
             ['hajj', 'حج', ['max_days_per_request' => 15, 'once_per_service' => true, 'min_service_months' => 24, 'paid' => true]],
             ['exceptional', 'استثنائية', ['paid' => false, 'deducts_from' => 'none']],
         ];
-        if (! $service->item('violations', 'draft-sample')) {
-            $draft = $service->createDraft('violations', 'draft-sample', 'نموذج — للاختبار', [
-                'category' => 'مواعيد العمل',
-                'description' => 'نموذج — للاختبار',
-                'origin' => 'ministry',
-                'auto_detectable' => 'none',
-                'penalties' => [],
-                'ministry_baseline' => [],
-            ], now()->toDateString());
-        }
-
         foreach ([
             ['login', 'حساب الدخول'],
             ['role', 'الدور والصلاحيات'],

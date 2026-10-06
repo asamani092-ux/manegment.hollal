@@ -17,7 +17,7 @@
         @if (! empty($topic->attributes['steps']) && is_array($topic->attributes['steps']))
             <ol>
                 @foreach ($topic->attributes['steps'] as $step)
-                    <li>{{ $step }}</li>
+                    <li>{{ is_array($step) ? ($step['text'] ?? '') : $step }}</li>
                 @endforeach
             </ol>
         @endif

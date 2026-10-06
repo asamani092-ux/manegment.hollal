@@ -8,7 +8,9 @@
             @endforeach
         </div>
 
-        @if ($current)
+        @if ($current && $current->key === 'violations')
+            <livewire:hr.violation-catalog />
+        @elseif ($current)
             <div class="ds-card">
                 <h2 class="ds-page-title">{{ $current->name_ar }}</h2>
                 <select class="ds-input" wire:model.live="statusFilter">
@@ -36,7 +38,7 @@
                             <tr>
                                 <td>{{ $item->code }}</td>
                                 <td>{{ $item->name_ar }}</td>
-                                <td>{{ $item->status }}</td>
+                                <td>{{ \App\Support\ArabicStatus::label($item->status) }}</td>
                                 <td>{{ $item->version }}</td>
                                 <td>{{ $item->effective_from?->toDateString() }}</td>
                                 <td>{{ $item->effective_to?->toDateString() }}</td>
@@ -64,13 +66,10 @@
                         <input class="ds-input" wire:model="name_ar">
                     </x-ds-form-group>
                     @foreach (($current->schema ?? []) as $field)
-                        <x-ds-form-group :label="$field['label_ar'] ?? $field['name']">
-                            <input class="ds-input" wire:model="itemAttributes.{{ $field['name'] }}">
-                            <x-field-hint>{{ $field['label_ar'] ?? '' }}</x-field-hint>
-                        </x-ds-form-group>
+                        @include('livewire.settings.partials.schema-field', ['field' => $field])
                     @endforeach
                     <x-ds-form-group label="سريان من">
-                        <input type="date" class="ds-input" wire:model="effective_from">
+                        @include('livewire.settings.partials.arabic-date', ['value' => $effective_from, 'method' => 'setEffectiveFromPart'])
                     </x-ds-form-group>
                     <x-ds-form-group label="السبب" :error="$errors->first('reason')">
                         <input class="ds-input" wire:model="reason">
@@ -80,7 +79,10 @@
 
                 <div class="ds-card" style="margin-top: 1rem;">
                     <h3>استيراد</h3>
-                    <input type="file" wire:model="importFile">
+                    <label class="ds-btn ds-btn-outline">
+                        رفع الملف
+                        <input type="file" wire:model="importFile" accept=".xlsx,.xls,.csv" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0)">
+                    </label>
                     <button type="button" class="ds-btn" wire:click="previewImport">معاينة</button>
                     @if ($importPreview)
                         <p>إضافات: {{ count($importPreview['adds']) }} — تعديلات: {{ count($importPreview['changes']) }}</p>
@@ -102,7 +104,7 @@
                 <aside class="ds-card" style="margin-top: 1rem;">
                     <h3>سجل النسخ</h3>
                     @foreach ($history as $row)
-                        <p>{{ $row->code }} نسخة {{ $row->version }} — {{ $row->name_ar }} — {{ $row->status }}</p>
+                        <p>{{ $row->code }} نسخة {{ $row->version }} — {{ $row->name_ar }} — {{ \App\Support\ArabicStatus::label($row->status) }}</p>
                     @endforeach
                 </aside>
             @endif

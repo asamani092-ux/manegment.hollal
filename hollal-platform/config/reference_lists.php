@@ -11,5 +11,8 @@ return [
         'leave_types' => [
             ['table' => 'leave_requests', 'column' => 'reference_item_id'],
         ],
+        'violations' => [
+            ['table' => 'violations', 'column' => 'reference_item_id'],
+        ],
     ],
 ];

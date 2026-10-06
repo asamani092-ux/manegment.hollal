@@ -34,6 +34,11 @@ class HrSeedReference extends Command
             }
         }
 
+        $removed = app(\App\Services\ViolationCatalogService::class)->purgeSampleItems();
+        if ($removed > 0) {
+            $this->info('removed sample violation items: '.$removed);
+        }
+
         $this->info('hr:seed-reference done');
 
         return self::SUCCESS;

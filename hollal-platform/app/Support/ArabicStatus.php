@@ -45,6 +45,15 @@ class ArabicStatus
         'pending_review' => 'بانتظار المراجعة',
         'completed' => 'مكتملة',
         'overdue' => 'متأخرة',
+        'active' => 'ساري',
+        'suspended' => 'موقوف',
+        'archived' => 'مؤرشف',
+        'suggested' => 'مقترحة',
+        'applied' => 'مطبّقة',
+        'excluded' => 'مستبعدة',
+        'cancelled' => 'ملغاة',
+        'reduced' => 'مخففة',
+        'recorded' => 'مسجّلة',
     ];
 
     public static function label(?string $status): string

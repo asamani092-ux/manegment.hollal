@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 
 class DatabaseSeeder extends Seeder
 {
@@ -16,6 +17,11 @@ class DatabaseSeeder extends Seeder
             ChartOfAccountsSeeder::class,
             ApprovalRulesSeeder::class,
             AdminUserSeeder::class,
+        ]);
+
+        Artisan::call('hr:seed-reference');
+
+        $this->call([
             DemoTrialSeeder::class,
         ]);
 

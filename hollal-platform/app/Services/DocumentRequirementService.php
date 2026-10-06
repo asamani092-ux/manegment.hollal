@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\Models\EmployeeDocument;
 use App\Models\ReferenceItem;
-use App\Models\ReferenceList;
 use App\Models\User;
 use Illuminate\Support\Facades\Schema;
 
@@ -19,15 +18,33 @@ class DocumentRequirementService
      */
     public function matrix(User $user): array
     {
-        if (! Schema::hasTable('reference_lists') || ! ReferenceList::query()->where('key', 'document_types')->exists()) {
+        if (! Schema::hasTable('reference_items')) {
             return [];
         }
 
-        $types = app(ReferenceListService::class)->activeItems('document_types');
+        $types = ReferenceItem::query()
+            ->whereIn('status', [ReferenceItem::STATUS_ACTIVE, ReferenceItem::STATUS_ARCHIVED])
+            ->whereDate('effective_from', '<=', today())
+            ->where(function ($query) {
+                $query->whereNull('effective_to')->orWhereDate('effective_to', '>=', today());
+            })
+            ->whereHas('list', fn ($query) => $query->where('key', 'document_types'))
+            ->orderBy('sort_order')
+            ->orderByDesc('version')
+            ->get()
+            ->groupBy('code')
+            ->map(fn ($group) => $group->sortByDesc('version')->first())
+            ->filter()
+            ->sortBy('sort_order')
+            ->values();
+        if ($types->isEmpty()) {
+            return [];
+        }
+
         $documents = EmployeeDocument::query()
             ->where('user_id', $user->id)
             ->orderByDesc('id')
-            ->get();
+            ->get(['id', 'type', 'status', 'expiry_date', 'rejection_reason']);
 
         $rows = [];
         foreach ($types as $type) {

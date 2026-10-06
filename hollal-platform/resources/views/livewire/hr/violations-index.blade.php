@@ -1,8 +1,8 @@
 <div>
     <x-ds-page>
         <x-ds-page-header title="المخالفات" screen="hr.violations" />
-        <p class="ds-text-muted">جزاء الشركة يظهر بجانب جزاء الوزارة. إذا كان أشد يظهر تنبيه أحمر ويلزم سبب فيه كلمة أؤكد. الجدول الرسمي ما زال بانتظار المالك، والبند الحالي مسودة «نموذج — للاختبار».</p>
         <div class="ds-tabs">
+            <button type="button" class="ds-tab {{ $tab === 'catalog' ? 'ds-tab-active' : '' }}" wire:click="$set('tab','catalog')">جدول المخالفات</button>
             <button type="button" class="ds-tab" wire:click="$set('tab','suggested')">مقترحة</button>
             <button type="button" class="ds-tab" wire:click="$set('tab','statement')">بانتظار الإفادة</button>
             <button type="button" class="ds-tab" wire:click="$set('tab','decision')">بانتظار القرار</button>
@@ -12,8 +12,11 @@
                 <button type="button" class="ds-btn ds-btn-sm" wire:click="confirmAllSuggested">تأكيد المقترح</button>
             @endif
         </div>
+        @if ($tab === 'catalog')
+            <livewire:hr.violation-catalog />
+        @else
         @foreach ($rows as $row)
-            <p wire:key="v-{{ $row->id }}">{{ $row->status }} — {{ $row->facts }}
+            <p wire:key="v-{{ $row->id }}">{{ \App\Support\ArabicStatus::label($row->status) }} — {{ $row->facts }}
                 @if ($canManage && $row->status === 'suggested')
                     <button type="button" class="ds-btn ds-btn-sm" wire:click="exclude({{ $row->id }}, 'استبعاد')">استبعاد</button>
                     <button type="button" class="ds-btn ds-btn-sm" wire:click="confirmOne({{ $row->id }})">تأكيد</button>
@@ -39,9 +42,10 @@
                     <option value="{{ $item->id }}">{{ $item->name_ar }}</option>
                 @endforeach
             </select>
-            <input class="ds-input" type="date" wire:model="manualOccurred">
+            <input class="ds-input" wire:model="manualOccurred" placeholder="2026-10-06" inputmode="numeric">
             <textarea class="ds-input" wire:model="manualFacts" placeholder="الوقائع"></textarea>
             <button type="button" class="ds-btn" wire:click="recordManualFromList">تسجيل</button>
+        @endif
         @endif
     </x-ds-page>
 </div>

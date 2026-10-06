@@ -89,33 +89,6 @@ class DemoHrSeeder extends Seeder
             ],
         );
 
-        $list = \App\Models\ReferenceList::query()->firstOrCreate(
-            ['key' => 'violations'],
-            ['name_ar' => 'المخالفات'],
-        );
-        $violationItem = \App\Models\ReferenceItem::query()->firstOrCreate(
-            ['reference_list_id' => $list->id, 'code' => 'clarity-late'],
-            [
-                'name_ar' => 'تأخر',
-                'status' => 'active',
-                'version' => 1,
-                'effective_from' => now()->subYear()->toDateString(),
-            ],
-        );
-        if ($violationItem && ! \App\Models\Violation::query()->where('employee_id', $employee->id)->exists()) {
-            \App\Models\Violation::query()->create([
-                'employee_id' => $employee->id,
-                'reference_item_id' => $violationItem->id,
-                'occurred_on' => now()->subDays(3)->toDateString(),
-                'discovered_on' => now()->subDays(3)->toDateString(),
-                'facts' => 'تأخر عن الدوام دون إذن',
-                'status' => 'awaiting_statement',
-                'statement_deadline_on' => now()->addDays(5)->toDateString(),
-                'occurrence_index' => 1,
-                'source' => 'manual',
-            ]);
-        }
-
         if (! \App\Models\Task::query()->where('assigned_to', $employee->id)->where('title', 'إعداد تقرير الأسبوع')->exists()) {
             \App\Models\Task::query()->create([
                 'title' => 'إعداد تقرير الأسبوع',

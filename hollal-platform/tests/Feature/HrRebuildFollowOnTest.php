@@ -19,8 +19,11 @@ class HrRebuildFollowOnTest extends TestCase
     public function test_violation_window_and_decision_gate_and_draft_seed(): void
     {
         $this->seed(ReferenceListsSeeder::class);
-        $item = \App\Models\ReferenceItem::query()->where('code', 'draft-sample')->first();
-        $this->assertNotNull($item);
+        $item = app(\App\Services\ReferenceListService::class)->createDraft('violations', 'follow-sample', 'مسودة للاختبار', [
+            'category' => 'سلوك العامل',
+            'origin' => 'company',
+            'penalties' => [['type' => 'warning', 'value' => 0]],
+        ], now()->toDateString());
         $this->assertSame('draft', $item->status);
 
         $employee = User::factory()->create();

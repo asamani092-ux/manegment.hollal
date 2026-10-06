@@ -296,14 +296,18 @@ class ViolationService
     private function penaltyForIndex(?ReferenceItem $item, int $index): ?array
     {
         $penalties = $item?->attributes['penalties'] ?? [];
-        if (! is_array($penalties) || $penalties === []) {
+        if (! is_array($penalties) || $penalties === [] || $index < 1) {
             return null;
+        }
+        $zero = $index - 1;
+        if (array_is_list($penalties)) {
+            return isset($penalties[$zero]) && is_array($penalties[$zero]) ? $penalties[$zero] : null;
         }
         if (isset($penalties[$index]) && is_array($penalties[$index])) {
             return $penalties[$index];
         }
-        if (isset($penalties[$index - 1]) && is_array($penalties[$index - 1])) {
-            return $penalties[$index - 1];
+        if (isset($penalties[$zero]) && is_array($penalties[$zero])) {
+            return $penalties[$zero];
         }
 
         return null;
