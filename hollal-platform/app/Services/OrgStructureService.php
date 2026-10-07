@@ -189,6 +189,50 @@ class OrgStructureService
     }
 
     /**
+     * تعديل الاسم وموضع البطاقة دون مسح سجل النقل. Time: O(n) | Space: O(n)
+     *
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateUnit(OrgUnit $unit, string $name, ?int $parentId, array $attributes = []): OrgUnit
+    {
+        if ($this->parentIsInside($unit->id, $parentId)) {
+            throw new \InvalidArgumentException('لا يمكن ربط الوحدة بنفسها أو بفرعها');
+        }
+
+        if ($unit->level === OrgUnit::LEVEL_ADMINISTRATION) {
+            $hasTop = OrgUnit::query()->where('level', OrgUnit::LEVEL_TOP_POSITION)->exists();
+            if ($hasTop && ! $parentId) {
+                throw new \InvalidArgumentException('الإدارة يجب أن تتبع منصباً أعلى');
+            }
+            if ($parentId) {
+                $parent = OrgUnit::query()->findOrFail($parentId);
+                if ($parent->level !== OrgUnit::LEVEL_TOP_POSITION) {
+                    throw new \InvalidArgumentException('الإدارة تتبع منصباً أعلى');
+                }
+            }
+        } elseif ($unit->level === OrgUnit::LEVEL_TOP_POSITION || $unit->level === OrgUnit::LEVEL_TOP) {
+            $parentId = $unit->parent_id;
+        } elseif ($parentId) {
+            $parent = OrgUnit::query()->findOrFail($parentId);
+            $allowed = OrgUnit::CHILD_LEVEL[$parent->level] ?? [];
+            if (! in_array($unit->level, $allowed, true)) {
+                throw new \InvalidArgumentException('لا يمكن وضع «'.$unit->level.'» تحت «'.$parent->level.'»');
+            }
+        } else {
+            throw new \InvalidArgumentException('اختر الوحدة التي يتبعها هذا المستوى');
+        }
+
+        $unit->forceFill([
+            'name' => $name,
+            'parent_id' => $parentId,
+            'job_purpose' => $attributes['job_purpose'] ?? $unit->job_purpose,
+            'job_responsibilities' => $attributes['job_responsibilities'] ?? $unit->job_responsibilities,
+        ])->save();
+
+        return $unit->fresh();
+    }
+
+    /**
      * إخفاء الإدارة وفروعها دون مسح سجل النقل. Time: O(n) | Space: O(n)
      */
     public function deleteAdministration(OrgUnit $administration, ?User $actor = null): void
@@ -197,8 +241,47 @@ class OrgStructureService
             throw new \InvalidArgumentException('الحذف من الشجرة للإدارات فقط');
         }
 
+        $this->hideSubtree($administration, $actor, 'حذف الإدارة');
+    }
+
+    /**
+     * إخفاء أي بطاقة ظاهرة وفروعها. Time: O(n) | Space: O(n)
+     */
+    public function deleteUnitNode(OrgUnit $unit, ?User $actor = null): void
+    {
+        if ($unit->level === OrgUnit::LEVEL_TOP) {
+            throw new \InvalidArgumentException('لا يُحذف جذر الإدارة العليا');
+        }
+
+        $this->hideSubtree($unit, $actor, 'حذف الوحدة');
+    }
+
+    /** Time: O(n) | Space: O(n) */
+    private function parentIsInside(int $unitId, ?int $parentId): bool
+    {
+        if (! $parentId || $parentId === $unitId) {
+            return $parentId === $unitId;
+        }
+
+        $byId = OrgUnit::query()->get(['id', 'parent_id'])->keyBy('id');
+        $cursor = $parentId;
+        $guard = 0;
+        while ($cursor && $guard < $byId->count() + 1) {
+            if ((int) $cursor === $unitId) {
+                return true;
+            }
+            $cursor = $byId->get($cursor)?->parent_id;
+            $guard++;
+        }
+
+        return false;
+    }
+
+    /** Time: O(n) | Space: O(n) */
+    private function hideSubtree(OrgUnit $unit, ?User $actor, string $reason): void
+    {
         $units = OrgUnit::query()->get(['id', 'parent_id']);
-        $childrenOf = $units->groupBy(fn (OrgUnit $unit) => (string) $unit->parent_id);
+        $childrenOf = $units->groupBy(fn (OrgUnit $row) => (string) $row->parent_id);
         $ids = [];
         $walk = function (int $id) use (&$walk, &$ids, $childrenOf): void {
             $ids[] = $id;
@@ -206,16 +289,16 @@ class OrgStructureService
                 $walk((int) $child->id);
             }
         };
-        $walk($administration->id);
+        $walk($unit->id);
 
-        DB::transaction(function () use ($ids, $administration, $actor) {
-            User::query()->whereIn('org_unit_id', $ids)->orderBy('id')->each(function (User $user) use ($actor) {
-                $this->transfer($user, null, 'حذف الإدارة', $actor);
+        DB::transaction(function () use ($ids, $unit, $actor, $reason) {
+            User::query()->whereIn('org_unit_id', $ids)->orderBy('id')->each(function (User $user) use ($actor, $reason) {
+                $this->transfer($user, null, $reason, $actor);
             });
-            OrgUnit::query()->whereIn('id', $ids)->orderByDesc('id')->each(function (OrgUnit $unit) {
-                $unit->delete();
+            OrgUnit::query()->whereIn('id', $ids)->orderByDesc('id')->each(function (OrgUnit $row) {
+                $row->delete();
             });
-            app(AuditLogService::class)->record('structure.unit.delete', $administration, [
+            app(AuditLogService::class)->record('structure.unit.delete', $unit, [
                 'ids' => $ids,
             ], $actor);
         });

@@ -194,7 +194,7 @@ class OrgChartTest extends TestCase
 
         Livewire::actingAs($manager)->test(OrgTreeIndex::class)
             ->call('askDeleteUnit', $administration->id)
-            ->assertSee('تأكيد حذف الإدارة')
+            ->assertSee('تأكيد الحذف')
             ->call('deleteUnit', $administration->id)
             ->assertDispatched('ds-toast');
 
@@ -205,13 +205,58 @@ class OrgChartTest extends TestCase
         $this->assertDatabaseHas('employee_transfers', [
             'user_id' => $worker->id,
             'from_org_unit_id' => $job->id,
-            'reason' => 'حذف الإدارة',
+            'reason' => 'حذف الوحدة',
         ]);
         $this->assertDatabaseHas('audit_logs', ['action' => 'structure.unit.delete']);
 
         $flat = json_encode(app(OrgChartService::class)->tree(), JSON_UNESCAPED_UNICODE);
         $this->assertStringNotContainsString('إدارة مؤقتة', $flat);
         $this->assertStringNotContainsString('قسم مؤقت', $flat);
+    }
+
+    public function test_edit_and_delete_are_on_tree_cards_and_the_table(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $service = app(OrgStructureService::class);
+        $seat = $service->addTopPosition('المدير العام', null, 1);
+        $administration = $service->createUnit('إدارة البرامج', OrgUnit::LEVEL_ADMINISTRATION, $seat);
+        $section = $service->createUnit('قسم التدريب', OrgUnit::LEVEL_UNIT, $administration);
+        $job = $service->createUnit('مدرب أول', OrgUnit::LEVEL_JOB, $section);
+        $worker = User::factory()->create();
+        $worker->forceFill(['org_unit_id' => $job->id])->save();
+        $manager = User::factory()->create(['must_change_password' => false]);
+        $manager->givePermissionTo(['structure.view', 'structure.manage']);
+
+        $html = $this->actingAs($manager)->get(route('structure.org-tree'))->assertOk()->getContent();
+        foreach ([$seat, $administration, $section, $job] as $card) {
+            $this->assertStringContainsString('openEditUnit('.$card->id.')', $html);
+            $this->assertStringContainsString('askDeleteUnit('.$card->id.')', $html);
+        }
+
+        Livewire::actingAs($manager)->test(OrgTreeIndex::class)
+            ->set('tab', 'table')
+            ->assertSee('openEditUnit('.$section->id.')')
+            ->assertSee('askDeleteUnit('.$job->id.')')
+            ->call('openEditUnit', $section->id)
+            ->assertSet('editingUnitId', $section->id)
+            ->set('unitName', 'قسم مطور')
+            ->call('saveUnit')
+            ->assertHasNoErrors();
+
+        $this->assertSame('قسم مطور', $section->fresh()->name);
+        $this->assertSame($administration->id, $section->fresh()->parent_id);
+
+        Livewire::actingAs($manager)->test(OrgTreeIndex::class)
+            ->call('deleteUnit', $job->id);
+
+        $this->assertSoftDeleted('org_units', ['id' => $job->id]);
+        $this->assertNull($worker->fresh()->org_unit_id);
+        $this->assertDatabaseHas('employee_transfers', [
+            'user_id' => $worker->id,
+            'from_org_unit_id' => $job->id,
+            'reason' => 'حذف الوحدة',
+        ]);
+        $this->assertNotSoftDeleted('org_units', ['id' => $section->id]);
     }
 
     public function test_delete_rejects_a_top_position(): void

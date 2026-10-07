@@ -93,8 +93,9 @@
                                 </select>
                             </label>
                         @endif
+                        <button type="button" class="ds-btn ds-btn-sm" wire:click="openEditUnit({{ $drawer->id }})">تعديل</button>
                         <button type="button" class="ds-btn ds-btn-sm" wire:click="openUnitModal({{ $drawer->id }})">إضافة فرع</button>
-                        @if ($drawer->level === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
+                        @if ($drawer->level !== \App\Models\OrgUnit::LEVEL_TOP)
                             <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDeleteUnit({{ $drawer->id }})">حذف</button>
                         @endif
                     @endcan
@@ -108,11 +109,11 @@
             <div class="ds-modal-overlay" wire:key="org-unit-delete-{{ $unitDeleteTarget->id }}" wire:click.self="cancelDeleteUnit" wire:keydown.escape.window="cancelDeleteUnit" style="z-index:1300">
                 <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl" wire:click.stop>
                     <div class="ds-modal-header">
-                        <h3>تأكيد حذف الإدارة</h3>
+                        <h3>تأكيد الحذف</h3>
                         <button type="button" class="ds-modal-close" wire:click="cancelDeleteUnit" aria-label="إغلاق">&times;</button>
                     </div>
                     <div class="ds-modal-body">
-                        <p>حذف الإدارة «{{ $unitDeleteTarget->name }}»؟ تُخفى الأقسام والوظائف التابعة، ويبقى سجل نقل الموظفين.</p>
+                        <p>حذف «{{ $unitDeleteTarget->name }}»؟ تُخفى الفروع التابعة، ويبقى سجل نقل الموظفين.</p>
                         <div class="ds-toolbar-actions">
                             <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelDeleteUnit">إلغاء</button>
                             <button type="button" class="ds-btn ds-btn-primary" wire:click="deleteUnit({{ $unitDeleteTarget->id }})">تأكيد الحذف</button>
@@ -306,20 +307,37 @@
     @endif
 
     <x-ds-modal :show="$showUnitModal">
-        <x-slot:header><h2>وحدة تنظيمية جديدة</h2></x-slot:header>
+        <x-slot:header><h2>{{ $editingUnitId ? 'تعديل البطاقة' : 'وحدة تنظيمية جديدة' }}</h2></x-slot:header>
 
         <x-ds-form-group label="الاسم" :error="$errors->first('unitName')">
             <input type="text" class="ds-input" wire:model="unitName">
         </x-ds-form-group>
 
         <x-ds-form-group label="المستوى" :error="$errors->first('unitLevel')">
-            <select class="ds-input" wire:model.live="unitLevel">
-                @foreach ($childLevels as $level)
-                    <option value="{{ $level }}">{{ $level }}</option>
-                @endforeach
-            </select>
+            @if ($editingUnitId)
+                <input type="text" class="ds-input" value="{{ $unitLevel }}" readonly>
+            @else
+                <select class="ds-input" wire:model.live="unitLevel">
+                    @foreach ($childLevels as $level)
+                        <option value="{{ $level }}">{{ $level }}</option>
+                    @endforeach
+                </select>
+            @endif
         </x-ds-form-group>
-        @if ($unitLevel === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
+        @if ($editingUnitId && in_array($unitLevel, [\App\Models\OrgUnit::LEVEL_UNIT, \App\Models\OrgUnit::LEVEL_JOB], true))
+            <x-ds-form-group label="يتبع لـ" :error="$errors->first('parentId')">
+                <select class="ds-input" wire:model="parentId">
+                    @foreach ($units as $unitOption)
+                        @if ((int) $unitOption->id !== (int) $editingUnitId && (
+                            ($unitLevel === \App\Models\OrgUnit::LEVEL_UNIT && $unitOption->level === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
+                            || ($unitLevel === \App\Models\OrgUnit::LEVEL_JOB && in_array($unitOption->level, [\App\Models\OrgUnit::LEVEL_ADMINISTRATION, \App\Models\OrgUnit::LEVEL_UNIT], true))
+                        ))
+                            <option value="{{ $unitOption->id }}">{{ $unitOption->name }} ({{ $unitOption->level }})</option>
+                        @endif
+                    @endforeach
+                </select>
+            </x-ds-form-group>
+        @elseif ($unitLevel === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
             <x-ds-form-group label="يتبع لـ" :error="$errors->first('parentId')">
                 <select class="ds-input" wire:model="parentId" @if ($topPositions->isNotEmpty()) required @endif>
                     @forelse ($topPositions as $seat)
@@ -391,6 +409,9 @@
         .org-card.is-vacant { border: 1px dashed #98a2b3; color: #667085; box-shadow: none; }
         .org-card.is-hit { outline: 3px solid #C4A052; }
         .org-card.is-dim { opacity: 0.22; }
+        .org-node-mobile-actions { display: none; }
+        .org-card-actions { display: flex; gap: 0.25rem; justify-content: center; margin-top: 0.35rem; }
+        .org-card--top .org-card-actions .ds-btn { color: #fff; border-color: rgba(255,255,255,.55); background: transparent; }
         .org-title { background: none; border: 0; color: inherit; font-weight: 700; cursor: pointer; width: 100%; }
         .org-card--top .org-title { color: #fff; }
         .org-person, .org-head { margin: 0.25rem 0 0; font-size: 0.85rem; }
@@ -420,6 +441,7 @@
             .org-li::before { display: block; content: ''; position: absolute; top: 1.2rem; inset-inline-end: -16px; width: 16px; height: 0; border-top: 2px solid var(--accent, #0F3446); border-left: 0; }
             .org-chart > .org-li::before { display: none; }
             .org-card { width: 100%; max-width: 100%; }
+            .org-node-mobile-actions { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.35rem; }
             .org-drawer { top: auto; bottom: 0; left: 0; right: 0; width: 100%; height: auto; max-height: 85vh; }
         }
         @media print {

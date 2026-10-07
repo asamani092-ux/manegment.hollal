@@ -54,6 +54,8 @@ class OrgTreeIndex extends Component
 
     public ?int $unitDeleteConfirmId = null;
 
+    public ?int $editingUnitId = null;
+
     public ?int $viewingJobId = null;
 
     public ?int $viewingUnitId = null;
@@ -156,7 +158,7 @@ class OrgTreeIndex extends Component
     {
         $this->authorize('structure.manage');
         try {
-            app(OrgStructureService::class)->deleteAdministration(
+            app(OrgStructureService::class)->deleteUnitNode(
                 OrgUnit::query()->findOrFail($id),
                 auth()->user(),
             );
@@ -164,7 +166,7 @@ class OrgTreeIndex extends Component
                 $this->viewingUnitId = null;
             }
             $this->unitDeleteConfirmId = null;
-            $this->dispatch('ds-toast', message: 'حُذفت الإدارة');
+            $this->dispatch('ds-toast', message: 'حُذفت البطاقة');
         } catch (\InvalidArgumentException $e) {
             $this->unitDeleteConfirmId = null;
             $this->dispatch('ds-toast', type: 'error', message: $e->getMessage());
@@ -184,6 +186,7 @@ class OrgTreeIndex extends Component
     public function openUnitModal(?int $parentId = null): void
     {
         $this->authorize('structure.manage');
+        $this->editingUnitId = null;
 
         $this->parentId = $parentId ?: $this->defaultAdministrationParentId();
         $parent = $this->parentId ? OrgUnit::find($this->parentId) : null;
@@ -192,6 +195,20 @@ class OrgTreeIndex extends Component
         $this->unitName = '';
         $this->jobPurpose = null;
         $this->jobResponsibilities = '';
+        $this->showUnitModal = true;
+    }
+
+    /** Time: O(1) | Space: O(1) */
+    public function openEditUnit(int $id): void
+    {
+        $this->authorize('structure.manage');
+        $unit = OrgUnit::query()->findOrFail($id);
+        $this->editingUnitId = $unit->id;
+        $this->unitName = $unit->name;
+        $this->unitLevel = $unit->level;
+        $this->parentId = $unit->parent_id;
+        $this->jobPurpose = $unit->job_purpose;
+        $this->jobResponsibilities = implode("\n", $unit->job_responsibilities ?? []);
         $this->showUnitModal = true;
     }
 
@@ -213,16 +230,32 @@ class OrgTreeIndex extends Component
             return;
         }
 
+        $details = [
+            'job_purpose' => $this->jobPurpose,
+            'job_responsibilities' => collect(explode("\n", (string) $this->jobResponsibilities))
+                ->map(fn ($line) => trim($line))->filter()->values()->all(),
+        ];
+
         try {
+            if ($this->editingUnitId) {
+                app(OrgStructureService::class)->updateUnit(
+                    OrgUnit::query()->findOrFail($this->editingUnitId),
+                    $this->unitName,
+                    $this->parentId ? (int) $this->parentId : null,
+                    $details,
+                );
+                $this->editingUnitId = null;
+                $this->showUnitModal = false;
+                $this->dispatch('ds-toast', message: 'حُفظ التعديل');
+
+                return;
+            }
+
             app(OrgStructureService::class)->createUnit(
                 $this->unitName,
                 $this->unitLevel,
                 $this->parentId ? OrgUnit::findOrFail($this->parentId) : null,
-                [
-                    'job_purpose' => $this->jobPurpose,
-                    'job_responsibilities' => collect(explode("\n", $this->jobResponsibilities))
-                        ->map(fn ($line) => trim($line))->filter()->values()->all(),
-                ],
+                $details,
             );
 
             $this->showUnitModal = false;

@@ -23,6 +23,14 @@
             {{ $node->level }}
         </span>
         <strong class="org-node__name">{{ $node->name }}</strong>
+        @can('structure.manage')
+            <span class="org-node-mobile-actions">
+                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEditUnit({{ $node->id }})">تعديل</button>
+                @if ($node->level !== \App\Models\OrgUnit::LEVEL_TOP)
+                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDeleteUnit({{ $node->id }})">حذف</button>
+                @endif
+            </span>
+        @endcan
     </td>
     <td>
         <span class="org-node__level-pill org-node__level-pill--{{ $badgeMod }}">{{ $node->level }}</span>
@@ -37,8 +45,11 @@
             @endcan
         @endif
         @can('structure.manage')
-            @if ($node->level === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
+            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEditUnit({{ $node->id }})">تعديل</button>
+            @if ($node->level !== \App\Models\OrgUnit::LEVEL_TOP)
                 <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDeleteUnit({{ $node->id }})">حذف</button>
+            @endif
+            @if ($node->level === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
                 <select class="ds-input" wire:change="followTop({{ $node->id }}, $event.target.value)">
                     <option value="0">يتبع لـ</option>
                     @foreach ($topPositions as $seat)

@@ -26,11 +26,14 @@
             <p class="org-head">المسؤول: {{ $node['head'] ?: '—' }}</p>
             @if ($node['type'] === 'admin')
                 <span class="org-count-chip">{{ $node['member_count'] }} موظف</span>
-                @can('structure.manage')
-                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDeleteUnit({{ $node['id'] }})">حذف</button>
-                @endcan
             @endif
         @endif
+        @can('structure.manage')
+            <div class="org-card-actions">
+                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="openEditUnit({{ $node['id'] }})">تعديل</button>
+                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDeleteUnit({{ $node['id'] }})">حذف</button>
+            </div>
+        @endcan
         @if ($node['role'])
             @php $roleLabel = hollal_role_label($node['role']); @endphp
             @if (! preg_match('/[A-Za-z]{3,}/', $roleLabel))
