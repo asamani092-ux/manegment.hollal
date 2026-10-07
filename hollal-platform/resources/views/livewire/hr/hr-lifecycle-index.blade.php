@@ -97,7 +97,8 @@
     {{ $users->links() }}
 
     @if ($confirmStartId)
-        <div class="ds-modal-overlay" wire:key="confirm-start" wire:click.self="cancelConfirm" wire:keydown.escape.window="cancelConfirm">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:key="confirm-start" wire:click.self="cancelConfirm" wire:keydown.escape.window="cancelConfirm">
             <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl">
                 <div class="ds-modal-header">
                     <h3>تأكيد بدء إنهاء العلاقة</h3>
@@ -120,10 +121,12 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($confirmCompleteId)
-        <div class="ds-modal-overlay" wire:key="confirm-complete" wire:click.self="cancelConfirm" wire:keydown.escape.window="cancelConfirm">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:key="confirm-complete" wire:click.self="cancelConfirm" wire:keydown.escape.window="cancelConfirm">
             <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl">
                 <div class="ds-modal-header">
                     <h3>تأكيد إغلاق وتعطيل الحساب</h3>
@@ -138,10 +141,12 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($confirmFreezeId)
-        <div class="ds-modal-overlay" wire:key="confirm-freeze" wire:click.self="cancelConfirm" wire:keydown.escape.window="cancelConfirm">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:key="confirm-freeze" wire:click.self="cancelConfirm" wire:keydown.escape.window="cancelConfirm">
             <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl">
                 <div class="ds-modal-header">
                     <h3>تأكيد التجميد المؤقت</h3>
@@ -156,10 +161,12 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($confirmUnfreezeId)
-        <div class="ds-modal-overlay" wire:key="confirm-unfreeze" wire:click.self="cancelConfirm" wire:keydown.escape.window="cancelConfirm">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:key="confirm-unfreeze" wire:click.self="cancelConfirm" wire:keydown.escape.window="cancelConfirm">
             <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl">
                 <div class="ds-modal-header">
                     <h3>تأكيد إلغاء التجميد</h3>
@@ -174,10 +181,12 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($confirmCancelOffboardingId)
-        <div class="ds-modal-overlay" wire:key="confirm-cancel-off" wire:click.self="cancelConfirm" wire:keydown.escape.window="cancelConfirm">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:key="confirm-cancel-off" wire:click.self="cancelConfirm" wire:keydown.escape.window="cancelConfirm">
             <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl">
                 <div class="ds-modal-header">
                     <h3>تأكيد التراجع عن الإنهاء</h3>
@@ -192,6 +201,7 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($detailUserId && $detailUser)
@@ -205,7 +215,8 @@
                 'cancelled' => 'ملغاة',
             ];
         @endphp
-        <div
+        @teleport('body')
+<div
             class="ds-modal-overlay"
             wire:key="detail-panel-{{ $detailUserId }}"
             wire:click.self="closeDetails"
@@ -325,5 +336,6 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 </x-ds-page>

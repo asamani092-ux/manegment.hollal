@@ -6,7 +6,8 @@
 ])
 
 @if ($show)
-    <div {{ $attributes->merge(['class' => 'ds-modal-overlay']) }}
+@teleport('body')
+    <div {{ $attributes->merge(['class' => 'ds-modal-overlay']) }} style="z-index:1300"
          dir="rtl"
          @if ($closeAction)
              wire:click.self="{{ $closeAction }}"
@@ -40,4 +41,5 @@
             @endif
         </div>
     </div>
+@endteleport
 @endif

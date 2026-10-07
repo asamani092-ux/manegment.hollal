@@ -30,6 +30,11 @@ class OrgStructureService
             );
         }
 
+        if (! $parent && $level === OrgUnit::LEVEL_ADMINISTRATION
+            && OrgUnit::query()->where('level', OrgUnit::LEVEL_TOP_POSITION)->exists()) {
+            throw new \InvalidArgumentException('الإدارة يجب أن تتبع منصباً أعلى');
+        }
+
         if (! $parent && ! in_array($level, [OrgUnit::LEVEL_TOP, OrgUnit::LEVEL_ADMINISTRATION], true)) {
             throw new \InvalidArgumentException('جذر الشجرة يجب أن يكون إدارة أو الإدارة العليا');
         }

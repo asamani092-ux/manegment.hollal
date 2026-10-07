@@ -179,7 +179,8 @@
     @endif
 
     @if ($showModal)
-        <div class="ds-modal-overlay" wire:click.self="closeModal">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="closeModal">
             <div class="ds-modal" role="dialog">
                 <div class="ds-modal-header">
                     <h3>
@@ -250,10 +251,12 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($showRenewModal)
-        <div class="ds-modal-overlay" wire:click.self="closeRenewModal">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="closeRenewModal">
             <div class="ds-modal" role="dialog" aria-modal="true">
                 <div class="ds-modal-header">
                     <h3>تجديد العقد</h3>
@@ -273,5 +276,6 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 </x-ds-page>

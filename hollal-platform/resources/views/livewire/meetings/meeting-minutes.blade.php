@@ -223,7 +223,8 @@
   </div>
 
   @if ($showApproveModal)
-    <div class="ds-modal-overlay ds-no-print" wire:click.self="$set('showApproveModal', false)" style="z-index:1300">
+    @teleport('body')
+<div class="ds-modal-overlay ds-no-print" wire:click.self="$set('showApproveModal', false)" style="z-index:1300">
       <div class="ds-modal" role="dialog" dir="rtl" wire:click.stop>
         <div class="ds-modal-header">
           <h3>اعتماد المحضر</h3>
@@ -246,10 +247,12 @@
         </div>
       </div>
     </div>
+@endteleport
   @endif
 
   @if ($showItemModal)
-    <div class="ds-modal-overlay ds-no-print" wire:click.self="closeItemModal">
+    @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay ds-no-print" wire:click.self="closeItemModal">
       <div class="ds-modal ds-modal-lg" role="dialog" dir="rtl">
         <div class="ds-modal-header">
           <h3>{{ $itemViewOnly ? 'عرض بند' : ($itemId ? 'تعديل بند' : 'قرار / بند') }}</h3>
@@ -287,10 +290,12 @@
         </div>
       </div>
     </div>
+@endteleport
   @endif
 
   @if ($showSignatureModal)
-    <div class="ds-modal-overlay ds-no-print" wire:click.self="$set('showSignatureModal', false)" style="z-index:1300">
+    @teleport('body')
+<div class="ds-modal-overlay ds-no-print" wire:click.self="$set('showSignatureModal', false)" style="z-index:1300">
       <div class="ds-modal" role="dialog" dir="rtl" wire:click.stop>
         <div class="ds-modal-header">
           <h3>حفظ توقيعك الإلكتروني</h3>
@@ -309,10 +314,12 @@
         </div>
       </div>
     </div>
+@endteleport
   @endif
 
   @if ($showSignedUploadModal)
-    <div class="ds-modal-overlay ds-no-print" wire:click.self="$set('showSignedUploadModal', false)" style="z-index:1300">
+    @teleport('body')
+<div class="ds-modal-overlay ds-no-print" wire:click.self="$set('showSignedUploadModal', false)" style="z-index:1300">
       <div class="ds-modal" role="dialog" dir="rtl" wire:click.stop>
         <div class="ds-modal-header">
           <h3>رفع نسخة موقعة يدويًا</h3>
@@ -345,5 +352,6 @@
         </div>
       </div>
     </div>
+@endteleport
   @endif
 </x-ds-page>

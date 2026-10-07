@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Structure\OrgTreeIndex;
 use App\Models\OrgUnit;
 use App\Models\User;
 use App\Services\OrgChartService;
@@ -9,6 +10,7 @@ use App\Services\OrgStructureService;
 use Database\Seeders\PermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 /**
@@ -66,7 +68,124 @@ class OrgChartTest extends TestCase
         DB::enableQueryLog();
         $tree = app(OrgChartService::class)->tree();
         $this->assertLessThanOrEqual(6, count(DB::getQueryLog()));
-        $this->assertNotSame([], $tree);
-        $this->assertSame('top', $tree[0]['type']);
+        $this->assertNotSame([], $tree['roots']);
+        $this->assertSame([], $tree['unlinked']);
+        $this->assertSame('top', $tree['roots'][0]['type']);
+        $this->assertAccentsAvoidNavyAndGold($tree['roots']);
+    }
+
+    public function test_orphan_administration_is_rejected_once_a_top_position_exists(): void
+    {
+        $service = app(OrgStructureService::class);
+        $service->createUnit('إدارة قبل المنصب', OrgUnit::LEVEL_ADMINISTRATION);
+        $service->addTopPosition('المدير العام', null, 1);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('الإدارة يجب أن تتبع منصباً أعلى');
+        $service->createUnit('إدارة يتيمة', OrgUnit::LEVEL_ADMINISTRATION);
+    }
+
+    public function test_unlinked_administrations_stack_below_the_single_tree(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $service = app(OrgStructureService::class);
+        $orphan = $service->createUnit('إدارة يتيمة', OrgUnit::LEVEL_ADMINISTRATION);
+        $container = OrgUnit::query()->where('level', OrgUnit::LEVEL_TOP)->first()
+            ?? $service->createUnit('الإدارة العليا', OrgUnit::LEVEL_TOP);
+        $underContainer = OrgUnit::query()->create([
+            'name' => 'إدارة الحاوية',
+            'level' => OrgUnit::LEVEL_ADMINISTRATION,
+            'parent_id' => $container->id,
+            'position' => 0,
+        ]);
+        $seat = $service->addTopPosition('المدير العام', null, 1);
+        $linked = $service->createUnit('إدارة مربوطة', OrgUnit::LEVEL_ADMINISTRATION, $seat);
+
+        $tree = app(OrgChartService::class)->tree();
+        $this->assertSame(['المدير العام'], array_column($tree['roots'], 'title'));
+        $this->assertEqualsCanonicalizing(
+            ['إدارة يتيمة', 'إدارة الحاوية'],
+            array_column($tree['unlinked'], 'title')
+        );
+        $this->assertNotContains('#0F3446', array_column($tree['unlinked'], 'accent'));
+        $this->assertNotContains('#C4A052', array_column($tree['unlinked'], 'accent'));
+        $this->assertSame($linked->parent_id, $seat->id);
+
+        $viewer = User::factory()->create(['must_change_password' => false]);
+        $viewer->givePermissionTo(['structure.view', 'structure.manage']);
+        $html = $this->actingAs($viewer)->get(route('structure.org-tree'))->assertOk()->getContent();
+        $this->assertStringContainsString('إدارات غير مرتبطة', $html);
+        $this->assertStringContainsString('اربطها بـ', $html);
+        $this->assertStringContainsString('flex-direction: column', $html);
+        $this->assertLessThan(
+            strpos($html, 'إدارات غير مرتبطة'),
+            strpos($html, 'org-chart')
+        );
+
+        Livewire::actingAs($viewer)->test(OrgTreeIndex::class)
+            ->set('linkChoice.'.$orphan->id, $seat->id)
+            ->call('linkAdministration', $orphan->id)
+            ->call('openDrawer', $linked->id)
+            ->assertSee('يتبع لـ');
+        $this->assertSame($seat->id, $orphan->fresh()->parent_id);
+        $this->assertSame($container->id, $underContainer->fresh()->parent_id);
+    }
+
+    public function test_add_administration_defaults_to_the_last_top_position(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $service = app(OrgStructureService::class);
+        $service->addTopPosition('المدير العام', null, 1);
+        $last = $service->addTopPosition('المدير التنفيذي', null, 2);
+        $admin = User::factory()->create(['must_change_password' => false]);
+        $admin->givePermissionTo(['structure.view', 'structure.manage']);
+
+        Livewire::actingAs($admin)->test(OrgTreeIndex::class)
+            ->call('openUnitModal')
+            ->assertSet('parentId', $last->id)
+            ->assertSet('unitLevel', OrgUnit::LEVEL_ADMINISTRATION)
+            ->assertSee('يتبع لـ')
+            ->set('parentId', null)
+            ->set('unitName', 'إدارة بلا أب')
+            ->set('unitLevel', OrgUnit::LEVEL_ADMINISTRATION)
+            ->call('saveUnit')
+            ->assertHasErrors(['parentId' => 'اختر المنصب الأعلى الذي تتبعه الإدارة']);
+    }
+
+    public function test_unit_drawer_is_a_body_level_panel(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $service = app(OrgStructureService::class);
+        $seat = $service->addTopPosition('المدير العام', null, 1);
+        $viewer = User::factory()->create(['must_change_password' => false]);
+        $viewer->givePermissionTo('structure.view');
+
+        $html = Livewire::actingAs($viewer)->test(OrgTreeIndex::class)
+            ->call('openDrawer', $seat->id)
+            ->assertSee('org-drawer')
+            ->assertSeeHtml('x-teleport="body"')
+            ->html();
+
+        $this->assertStringContainsString('org-drawer-overlay', $html);
+        $this->assertStringContainsString('z-index: 1300', $html);
+        $this->assertStringContainsString('z-index: 1301', $html);
+        $this->assertStringContainsString('left: 0', $html);
+        $this->assertStringContainsString('max-height: 85vh', $html);
+        $this->assertStringNotContainsString('inset-inline-start: 0', $html);
+        $this->assertStringNotContainsString('z-index: 30', $html);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $nodes
+     */
+    private function assertAccentsAvoidNavyAndGold(array $nodes): void
+    {
+        foreach ($nodes as $node) {
+            if ($node['type'] === 'admin') {
+                $this->assertNotContains($node['accent'], ['#0F3446', '#C4A052']);
+                $this->assertContains($node['accent'], OrgChartService::PALETTE);
+            }
+            $this->assertAccentsAvoidNavyAndGold($node['children']);
+        }
     }
 }

@@ -84,7 +84,8 @@
     </div>
 
     @if ($selectedTask)
-        <div class="ds-modal-overlay" wire:click.self="closePeek">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="closePeek">
             <div class="ds-modal" role="dialog" dir="rtl">
                 <div class="ds-modal-header">
                     <h3>{{ $selectedTask->title }}</h3>
@@ -107,10 +108,12 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($dayPeek)
-        <div class="ds-modal-overlay" wire:click.self="closePeek">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="closePeek">
             <div class="ds-modal" role="dialog" dir="rtl">
                 <div class="ds-modal-header">
                     <h3>أحداث <span class="ds-ltr-num">{{ $dayPeek['date'] }}</span></h3>
@@ -139,10 +142,12 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($selectedMeeting)
-        <div class="ds-modal-overlay" wire:click.self="closePeek">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="closePeek">
             <div class="ds-modal" role="dialog" dir="rtl">
                 <div class="ds-modal-header">
                     <h3>{{ $selectedMeeting->title }}</h3>
@@ -158,10 +163,12 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($selectedLeave)
-        <div class="ds-modal-overlay" wire:click.self="closePeek">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="closePeek">
             <div class="ds-modal" role="dialog" dir="rtl">
                 <div class="ds-modal-header">
                     <h3>إجازة معتمدة</h3>
@@ -180,5 +187,6 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 </x-ds-page>

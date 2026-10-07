@@ -281,7 +281,8 @@
     @endif
 
     @if ($showExpenseModal)
-        <div class="ds-modal-overlay" wire:click.self="closeExpenseModal">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="closeExpenseModal">
             <div class="ds-modal ds-modal-lg" role="dialog">
                 <div class="ds-modal-header">
                     <h3>
@@ -385,10 +386,12 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($showRejectModal)
-        <div class="ds-modal-overlay" wire:click.self="closeRejectModal">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="closeRejectModal">
             <div class="ds-modal" role="dialog">
                 <div class="ds-modal-header">
                     <h3>رفض طلب المصروف</h3>
@@ -407,10 +410,12 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($showReturnModal)
-        <div class="ds-modal-overlay" wire:click.self="closeReturnModal">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="closeReturnModal">
             <div class="ds-modal" role="dialog">
                 <div class="ds-modal-header">
                     <h3>إعادة الطلب للمراجعة</h3>
@@ -430,10 +435,12 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 
     @if ($showPayModal && $payExpense)
-        <div class="ds-modal-overlay" wire:click.self="closePayModal">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="closePayModal">
             <div class="ds-modal" role="dialog">
                 <div class="ds-modal-header">
                     <h3>تسجيل الدفع</h3>
@@ -462,5 +469,6 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 </x-ds-page>

@@ -12,8 +12,8 @@ use Illuminate\Support\Collection;
  */
 class OrgChartService
 {
-    /** @var list<string> */
-    public const PALETTE = ['#0F3446', '#C4A052', '#27A588', '#1B6B93', '#6B4C9A', '#C45C26'];
+    /** ألوان الإدارات دون كحلي المناصب ولا الذهبي. */
+    public const PALETTE = ['#1B6B93', '#27A588', '#6B4C9A', '#C45C26', '#3D6B4F', '#8A5A44'];
 
     private int $adminIndex = 0;
 
@@ -60,10 +60,34 @@ class OrgChartService
             }
         }
 
-        return $visible
-            ->map(fn (OrgUnit $unit) => $build($unit, '#0F3446'))
-            ->values()
-            ->all();
+        $hasTop = $units->contains(fn (OrgUnit $unit) => $unit->level === OrgUnit::LEVEL_TOP_POSITION);
+        $linked = [];
+        $unlinked = [];
+        foreach ($visible as $unit) {
+            $node = $build($unit, '#0F3446');
+            if ($hasTop && $this->isUnlinkedAdministration($unit, $units)) {
+                $unlinked[] = $node;
+            } else {
+                $linked[] = $node;
+            }
+        }
+        usort($linked, fn (array $a, array $b) => ($a['type'] === 'top' ? 0 : 1) <=> ($b['type'] === 'top' ? 0 : 1));
+
+        return ['roots' => $linked, 'unlinked' => $unlinked];
+    }
+
+    /** @param  Collection<int, OrgUnit>  $units */
+    private function isUnlinkedAdministration(OrgUnit $unit, Collection $units): bool
+    {
+        if ($unit->level !== OrgUnit::LEVEL_ADMINISTRATION) {
+            return false;
+        }
+        if ($unit->parent_id === null) {
+            return true;
+        }
+        $parent = $units->firstWhere('id', $unit->parent_id);
+
+        return $parent !== null && $parent->level === OrgUnit::LEVEL_TOP;
     }
 
     /**

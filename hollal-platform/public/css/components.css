@@ -670,7 +670,7 @@
 .ds-modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 1040;
+  z-index: 1300;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -776,7 +776,7 @@
   bottom: 1.5rem;
   inset-inline-end: 1.5rem;
   inset-inline-start: auto;
-  z-index: 1100;
+  z-index: 1450;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -1485,7 +1485,9 @@
   .ds-sidebar,
   .ds-topbar,
   .ds-task-card-actions,
-  .ds-modal-overlay {
+  .ds-modal-overlay,
+  .ds-help-overlay,
+  .org-drawer-overlay {
     display: none !important;
   }
 
@@ -1629,7 +1631,7 @@
   font-weight: 700;
   vertical-align: middle;
 }
-.org-node__badge--admin { background: #0F3446; color: #fff; }
+.org-node__badge--admin { background: var(--accent, #1B6B93); color: #fff; }
 .org-node__badge--unit { background: #1a6b5c; color: #fff; }
 .org-node__badge--job { background: #e8eef2; color: #0F3446; border: 1px solid #c5d0d8; }
 
@@ -1640,11 +1642,12 @@
   font-size: 0.75rem;
   font-weight: 700;
 }
-.org-node__level-pill--admin { background: #0F3446; color: #fff; }
+.org-node__level-pill--admin { background: var(--accent, #1B6B93); color: #fff; }
 .org-node__level-pill--unit { background: #d8f0ea; color: #0f4a3f; }
 .org-node__level-pill--job { background: #f0f3f5; color: #334; }
 
-.org-node--admin { background: color-mix(in srgb, #0F3446 8%, white); border-inline-start: 4px solid #0F3446; }
+.org-node--top { background: color-mix(in srgb, #0F3446 8%, white); border-inline-start: 4px solid #0F3446; }
+.org-node--admin { background: color-mix(in srgb, var(--accent, #1B6B93) 8%, white); border-inline-start: 4px solid var(--accent, #1B6B93); }
 .org-node--unit { background: color-mix(in srgb, #1a6b5c 5%, white); border-inline-start: 4px solid #1a6b5c; }
 .org-node--job { background: transparent; border-inline-start: 4px solid #c5d0d8; }
 
@@ -1654,6 +1657,8 @@
   .ds-topbar,
   .ds-task-card-actions,
   .ds-modal-overlay,
+  .ds-help-overlay,
+  .org-drawer-overlay,
   .ds-page-toolbar.ds-no-print {
     display: none !important;
   }
@@ -1966,30 +1971,37 @@
   margin-bottom: 1rem;
 }
 
-/* Help drawer sits in the content column, clear of the fixed sidebar. */
+/* لوحة الشرح: يسار الشاشة فوق الشريط، وورقة سفلية على الجوال. */
+.ds-help-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(0, 44, 61, 0.45);
+}
+
 .ds-help-panel {
   position: fixed;
-  z-index: 900;
-  top: calc(var(--ds-navbar-height) + 0.75rem);
-  inset-inline-start: calc(var(--ds-sidebar-width) + 1rem);
-  width: min(22rem, calc(100vw - var(--ds-sidebar-width) - 2rem));
-  max-height: calc(100vh - var(--ds-navbar-height) - 6rem);
+  z-index: 1301;
+  top: 0;
+  left: 0;
+  width: min(24rem, 100%);
+  height: 100vh;
+  max-height: 100vh;
   overflow: auto;
   margin: 0;
   padding: 1rem;
+  background: var(--ds-card, #fff);
   box-shadow: var(--ds-shadow-md);
 }
 
-@media (min-width: 769px) {
-  .ds-main-layout.is-sidebar-collapsed .ds-help-panel {
-    inset-inline-start: calc(56px + 1rem);
-    width: min(22rem, calc(100vw - 56px - 2rem));
-  }
-}
-
-@media (max-width: 768px) {
+@media (max-width: 1023px) {
   .ds-help-panel {
-    inset-inline-start: 0.75rem;
-    width: min(22rem, calc(100vw - 1.5rem));
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: auto;
+    max-height: 85vh;
   }
 }

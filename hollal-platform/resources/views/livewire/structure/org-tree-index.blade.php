@@ -28,51 +28,76 @@
             <div class="org-chart-scroll">
                 <div class="org-chart-stage" id="org-chart-stage">
                     <ul class="org-chart">
-                        @forelse ($chart as $node)
+                        @forelse ($chart['roots'] as $node)
                             @include('livewire.structure.partials.org-chart-node', ['node' => $node])
                         @empty
-                            <li class="org-empty">لا يوجد هيكل بعد. أضف منصبًا أعلى أو إدارة.</li>
+                            @if (($chart['unlinked'] ?? []) === [])
+                                <li class="org-empty">لا يوجد هيكل بعد. أضف منصبًا أعلى أو إدارة.</li>
+                            @endif
                         @endforelse
                     </ul>
                 </div>
             </div>
+            @if (($chart['unlinked'] ?? []) !== [])
+                <section class="org-unlinked">
+                    <h2>إدارات غير مرتبطة</h2>
+                    <p>هذه الإدارات ليست تحت منصب أعلى. اربط كل واحدة حتى تدخل الشجرة.</p>
+                    @foreach ($chart['unlinked'] as $admin)
+                        <div class="org-unlinked-row">
+                            <strong>{{ $admin['title'] }}</strong>
+                            @can('structure.manage')
+                                <select class="ds-input" wire:model="linkChoice.{{ $admin['id'] }}">
+                                    <option value="">اربطها بـ</option>
+                                    @foreach ($topPositions as $seat)
+                                        <option value="{{ $seat->id }}">{{ $seat->name }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" class="ds-btn ds-btn-sm" wire:click="linkAdministration({{ $admin['id'] }})">حفظ</button>
+                            @endcan
+                        </div>
+                    @endforeach
+                </section>
+            @endif
         </section>
-        @if ($drawer)
-            <aside class="org-drawer">
-                <h2>{{ $drawer->name }}</h2>
-                <p>الغرض: {{ $drawer->job_purpose ?: '—' }}</p>
-                <p>المسؤول: {{ $drawer->manager?->name ?: '—' }}</p>
-                @if ($drawer->job_responsibilities)
-                    <ul>
-                        @foreach ($drawer->job_responsibilities as $line)
-                            <li>{{ $line }}</li>
-                        @endforeach
-                    </ul>
-                @endif
-                <p>الأعضاء:</p>
-                <ul>
-                    @forelse ($drawer->members as $member)
-                        <li><a href="{{ route('users.profile', $member->id) }}">{{ $member->name }}</a></li>
-                    @empty
-                        <li>لا يوجد شاغل</li>
-                    @endforelse
-                </ul>
-                @can('structure.manage')
-                    @if ($drawer->level === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
-                        <label>يتبع لـ
-                            <select class="ds-input" wire:change="followTop({{ $drawer->id }}, $event.target.value)">
-                                <option value="0">—</option>
-                                @foreach ($topPositions as $seat)
-                                    <option value="{{ $seat->id }}" @selected($drawer->parent_id === $seat->id)>{{ $seat->name }}</option>
-                                @endforeach
-                            </select>
-                        </label>
+    @endif
+    @if ($drawer)
+        @teleport('body')
+            <div class="org-drawer-overlay" wire:click.self="closeDrawer" wire:keydown.escape.window="closeDrawer">
+                <aside class="org-drawer" role="dialog" aria-modal="true" aria-label="{{ $drawer->name }}">
+                    <h2>{{ $drawer->name }}</h2>
+                    <p>الغرض: {{ $drawer->job_purpose ?: '—' }}</p>
+                    <p>المسؤول: {{ $drawer->manager?->name ?: '—' }}</p>
+                    @if ($drawer->job_responsibilities)
+                        <ul>
+                            @foreach ($drawer->job_responsibilities as $line)
+                                <li>{{ $line }}</li>
+                            @endforeach
+                        </ul>
                     @endif
-                    <button type="button" class="ds-btn ds-btn-sm" wire:click="openUnitModal({{ $drawer->id }})">إضافة فرع</button>
-                @endcan
-                <button type="button" class="ds-btn ds-btn-sm" wire:click="closeDrawer">إغلاق</button>
-            </aside>
-        @endif
+                    <p>الأعضاء:</p>
+                    <ul>
+                        @forelse ($drawer->members as $member)
+                            <li><a href="{{ route('users.profile', $member->id) }}">{{ $member->name }}</a></li>
+                        @empty
+                            <li>لا يوجد شاغل</li>
+                        @endforelse
+                    </ul>
+                    @can('structure.manage')
+                        @if ($drawer->level === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
+                            <label>يتبع لـ
+                                <select class="ds-input" wire:change="followTop({{ $drawer->id }}, $event.target.value)">
+                                    @foreach ($topPositions as $seat)
+                                        <option value="{{ $seat->id }}" @selected((int) $drawer->parent_id === (int) $seat->id)>{{ $seat->name }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                        @endif
+                        <button type="button" class="ds-btn ds-btn-sm" wire:click="openUnitModal({{ $drawer->id }})">إضافة فرع</button>
+                    @endcan
+                    <button type="button" class="ds-btn ds-btn-sm" wire:click="closeDrawer">إغلاق</button>
+                </aside>
+            </div>
+        @endteleport
     @endif
 
     @if ($tab === 'table')
@@ -85,7 +110,8 @@
                     @include('livewire.structure.partials.org-node', [
                         'node' => $root,
                         'depth' => 0,
-                        'adminColor' => $adminColors[$root->id] ?? '#0F3446',
+                        'adminColor' => $adminColors[$root->id] ?? '#1B6B93',
+                        'adminColors' => $adminColors,
                     ])
                 @empty
                     <tr><td colspan="5" class="ds-text-muted ds-table-empty">لا يوجد هيكل بعد</td></tr>
@@ -228,7 +254,8 @@
         </x-ds-table>
 
         @if ($committeeDeleteConfirmId && $committeeDeleteTarget)
-            <div class="ds-modal-overlay" wire:key="org-committee-delete-{{ $committeeDeleteConfirmId }}" wire:click.self="cancelDeleteCommittee" wire:keydown.escape.window="cancelDeleteCommittee" style="z-index:1300">
+            @teleport('body')
+<div class="ds-modal-overlay" wire:key="org-committee-delete-{{ $committeeDeleteConfirmId }}" wire:click.self="cancelDeleteCommittee" wire:keydown.escape.window="cancelDeleteCommittee" style="z-index:1300">
                 <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl" wire:click.stop>
                     <div class="ds-modal-header">
                         <h3>تأكيد حذف اللجنة</h3>
@@ -251,6 +278,7 @@
                     </div>
                 </div>
             </div>
+@endteleport
         @endif
     @endif
 
@@ -262,12 +290,23 @@
         </x-ds-form-group>
 
         <x-ds-form-group label="المستوى" :error="$errors->first('unitLevel')">
-            <select class="ds-input" wire:model="unitLevel">
+            <select class="ds-input" wire:model.live="unitLevel">
                 @foreach ($childLevels as $level)
                     <option value="{{ $level }}">{{ $level }}</option>
                 @endforeach
             </select>
         </x-ds-form-group>
+        @if ($unitLevel === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
+            <x-ds-form-group label="يتبع لـ" :error="$errors->first('parentId')">
+                <select class="ds-input" wire:model="parentId" @if ($topPositions->isNotEmpty()) required @endif>
+                    @forelse ($topPositions as $seat)
+                        <option value="{{ $seat->id }}">{{ $seat->name }}</option>
+                    @empty
+                        <option value="">لا يوجد منصب أعلى</option>
+                    @endforelse
+                </select>
+            </x-ds-form-group>
+        @endif
 
         <x-ds-form-group label="غرض الوظيفة (لبطاقة الوظيفة)">
             <textarea class="ds-input" wire:model="jobPurpose"></textarea>
@@ -308,8 +347,8 @@
         .org-toolbar .ds-input { max-width: 16rem; }
         .org-chart-scroll { overflow-x: auto; overflow-y: hidden; width: 100%; max-width: 100%; }
         .org-chart-stage { display: inline-block; min-width: 100%; transform-origin: top center; }
-        .org-chart, .org-chart ul { display: flex; flex-direction: row; justify-content: center; list-style: none; margin: 0; padding: 1.4rem 0 0; position: relative; }
-        .org-chart { padding-top: 0; }
+        .org-chart { display: flex; flex-direction: column; align-items: center; gap: 2rem; list-style: none; margin: 0; padding: 0; position: relative; }
+        .org-chart ul { display: flex; flex-direction: row; justify-content: center; list-style: none; margin: 0; padding: 1.4rem 0 0; position: relative; }
         .org-li { display: flex; flex-direction: column; align-items: center; position: relative; padding: 1.4rem 0.45rem 0; }
         .org-chart > .org-li { padding-top: 0; }
         .org-li::before, .org-li::after { content: ''; position: absolute; top: 0; width: 50%; height: 1.4rem; border-top: 2px solid var(--accent, #0F3446); }
@@ -323,7 +362,7 @@
         .org-li > ul::before { content: ''; position: absolute; top: 0; left: 50%; border-left: 2px solid var(--accent, #0F3446); height: 1.4rem; }
         .org-card { width: 210px; border-radius: 12px; box-shadow: 0 6px 16px rgba(15, 52, 70, 0.12); background: #fff; padding: 0.7rem; position: relative; text-align: center; }
         .org-card--top { background: #0F3446; color: #fff; border-top: 4px solid #C4A052; }
-        .org-card--admin { border-top: 8px solid var(--accent, #0F3446); }
+        .org-card--admin { border-top: 8px solid var(--accent, #1B6B93); }
         .org-card--section { border-inline-start: 4px solid var(--accent, #27A588); text-align: start; }
         .org-card--job { padding: 0.45rem 0.6rem; }
         .org-card.is-vacant { border: 1px dashed #98a2b3; color: #667085; box-shadow: none; }
@@ -341,7 +380,10 @@
         .org-li.is-collapsed > ul { display: none; }
         .org-li.is-collapsed > .org-card .org-toggle-open { display: none; }
         .org-li.is-collapsed > .org-card .org-toggle-closed { display: inline; }
-        .org-drawer { position: fixed; inset-inline-start: 0; top: 0; height: 100vh; width: min(22rem, 100%); background: #fff; box-shadow: 0 0 24px rgba(0,0,0,.15); padding: 1rem; overflow: auto; z-index: 30; }
+        .org-unlinked { margin-top: 1.5rem; padding: 0.8rem; border: 1px solid #F5C16C; background: #FFF8EB; border-radius: 12px; }
+        .org-unlinked-row { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 0.5rem; }
+        .org-drawer-overlay { position: fixed; inset: 0; z-index: 1300; background: rgba(0, 44, 61, 0.45); }
+        .org-drawer { position: fixed; top: 0; left: 0; height: 100vh; width: min(24rem, 100%); z-index: 1301; background: #fff; box-shadow: 0 0 24px rgba(0,0,0,.15); padding: 1rem; overflow: auto; }
         @media (max-width: 1023px) {
             .org-chart-scroll { overflow-x: hidden; }
             .org-chart-stage { transform: none !important; display: block; width: 100%; }
@@ -355,6 +397,7 @@
             .org-li::before { display: block; content: ''; position: absolute; top: 1.2rem; inset-inline-end: -16px; width: 16px; height: 0; border-top: 2px solid var(--accent, #0F3446); border-left: 0; }
             .org-chart > .org-li::before { display: none; }
             .org-card { width: 100%; max-width: 100%; }
+            .org-drawer { top: auto; bottom: 0; left: 0; right: 0; width: 100%; height: auto; max-height: 85vh; }
         }
         @media print {
             @page { size: A3 landscape; margin: 8mm; }

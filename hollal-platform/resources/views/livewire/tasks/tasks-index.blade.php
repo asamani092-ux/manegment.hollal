@@ -185,7 +185,8 @@
     @endif
 
     @if ($showTaskModal)
-        <div class="ds-modal-overlay" wire:click.self="closeTaskModal">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="closeTaskModal">
             <div class="ds-modal ds-modal-lg" role="dialog" dir="rtl">
                 <div class="ds-modal-header">
                     <h3>
@@ -305,5 +306,6 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 </x-ds-page>

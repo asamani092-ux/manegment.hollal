@@ -1,8 +1,8 @@
 {{-- 09-B1 — one node of the org chart, indented by depth, level-styled. --}}
 @php
     $levelClass = match ($node->level) {
-        \App\Models\OrgUnit::LEVEL_TOP => 'org-node--admin',
-        \App\Models\OrgUnit::LEVEL_TOP_POSITION => 'org-node--admin',
+        \App\Models\OrgUnit::LEVEL_TOP => 'org-node--top',
+        \App\Models\OrgUnit::LEVEL_TOP_POSITION => 'org-node--top',
         \App\Models\OrgUnit::LEVEL_ADMINISTRATION => 'org-node--admin',
         \App\Models\OrgUnit::LEVEL_UNIT => 'org-node--unit',
         \App\Models\OrgUnit::LEVEL_JOB => 'org-node--job',
@@ -16,7 +16,7 @@
     };
     $badgeMod = $node->level === 'إدارة' ? 'admin' : ($node->level === \App\Models\OrgUnit::LEVEL_UNIT ? 'unit' : 'job');
 @endphp
-<tr wire:key="org-node-{{ $node->id }}" class="org-node {{ $levelClass }}">
+<tr wire:key="org-node-{{ $node->id }}" class="org-node {{ $levelClass }}" @if ($node->level === \App\Models\OrgUnit::LEVEL_ADMINISTRATION) style="--accent: {{ $adminColors[$node->id] ?? ($adminColor ?? '#1B6B93') }}" @endif>
     <td style="padding-inline-start: {{ $depth * 22 }}px">
         <span class="org-node__badge org-node__badge--{{ $badgeMod }}">
             <i class="fas {{ $levelIcon }}" aria-hidden="true"></i>
@@ -55,5 +55,5 @@
 </tr>
 
 @foreach ($node->children as $child)
-    @include('livewire.structure.partials.org-node', ['node' => $child, 'depth' => $depth + 1, 'adminColor' => $adminColor ?? '#0F3446'])
+    @include('livewire.structure.partials.org-node', ['node' => $child, 'depth' => $depth + 1, 'adminColor' => $adminColor ?? '#1B6B93', 'adminColors' => $adminColors ?? []])
 @endforeach

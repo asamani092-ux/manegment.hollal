@@ -58,6 +58,9 @@ class OrgTreeIndex extends Component
 
     public bool $showTopModal = false;
 
+    /** @var array<int, int|string> */
+    public array $linkChoice = [];
+
     public string $topTitle = '';
 
     public ?int $topOccupantId = null;
@@ -104,6 +107,12 @@ class OrgTreeIndex extends Component
     }
 
     /** Time: O(1) | Space: O(1) */
+    public function linkAdministration(int $adminId): void
+    {
+        $this->followTop($adminId, (int) ($this->linkChoice[$adminId] ?? 0));
+    }
+
+    /** Time: O(1) | Space: O(1) */
     public function followTop(int $adminId, int $topId): void
     {
         $this->authorize('structure.manage');
@@ -114,6 +123,18 @@ class OrgTreeIndex extends Component
             OrgUnit::query()->findOrFail($adminId),
             OrgUnit::query()->findOrFail($topId),
         );
+    }
+
+    /** آخر منصب أعلى ليكون الأب الافتراضي للإدارة. Time: O(1) | Space: O(1) */
+    private function defaultAdministrationParentId(): ?int
+    {
+        $id = OrgUnit::query()
+            ->where('level', OrgUnit::LEVEL_TOP_POSITION)
+            ->orderByDesc('position')
+            ->orderByDesc('id')
+            ->value('id');
+
+        return $id ? (int) $id : null;
     }
 
     public function openDrawer(int $unitId): void
@@ -130,8 +151,8 @@ class OrgTreeIndex extends Component
     {
         $this->authorize('structure.manage');
 
-        $this->parentId = $parentId;
-        $parent = $parentId ? OrgUnit::find($parentId) : null;
+        $this->parentId = $parentId ?: $this->defaultAdministrationParentId();
+        $parent = $this->parentId ? OrgUnit::find($this->parentId) : null;
         $allowed = $parent ? (OrgUnit::CHILD_LEVEL[$parent->level] ?? []) : [OrgUnit::LEVEL_ADMINISTRATION];
         $this->unitLevel = OrgUnit::addLabel($parent->level ?? '') ?? ($allowed[0] ?? OrgUnit::LEVEL_ADMINISTRATION);
         $this->unitName = '';
@@ -148,7 +169,15 @@ class OrgTreeIndex extends Component
             'unitName' => 'required|string|max:255',
             'unitLevel' => 'required|in:'.implode(',', array_keys(OrgUnit::CHILD_LEVEL)),
             'parentId' => 'nullable|exists:org_units,id',
-        ], [], ['unitName' => 'اسم الوحدة التنظيمية']);
+        ], [], ['unitName' => 'اسم الوحدة التنظيمية', 'parentId' => 'يتبع لـ']);
+
+        if ($this->unitLevel === OrgUnit::LEVEL_ADMINISTRATION
+            && OrgUnit::query()->where('level', OrgUnit::LEVEL_TOP_POSITION)->exists()
+            && ! $this->parentId) {
+            $this->addError('parentId', 'اختر المنصب الأعلى الذي تتبعه الإدارة');
+
+            return;
+        }
 
         try {
             app(OrgStructureService::class)->createUnit(
@@ -276,7 +305,7 @@ class OrgTreeIndex extends Component
 
         return view('livewire.structure.org-tree-index', [
             'tree' => $tree,
-            'chart' => $this->tab === 'tree' ? app(OrgChartService::class)->tree() : [],
+            'chart' => $this->tab === 'tree' ? app(OrgChartService::class)->tree() : ['roots' => [], 'unlinked' => []],
             'drawer' => $this->viewingUnitId
                 ? OrgUnit::query()->with(['manager:id,name', 'members:id,name'])->find($this->viewingUnitId)
                 : null,
@@ -310,11 +339,19 @@ class OrgTreeIndex extends Component
      */
     private function administrationColors($tree): array
     {
-        $palette = ['#0F3446', '#1B6B93', '#2D6A4F', '#C45C26', '#6B4C9A', '#8B5A2B'];
+        $palette = OrgChartService::PALETTE;
         $colors = [];
-        foreach ($tree as $index => $root) {
-            $colors[$root->id] = $palette[$index % count($palette)];
-        }
+        $index = 0;
+        $walk = function ($nodes) use (&$walk, &$colors, &$index, $palette): void {
+            foreach ($nodes as $node) {
+                if ($node->level === OrgUnit::LEVEL_ADMINISTRATION) {
+                    $colors[$node->id] = $palette[$index % count($palette)];
+                    $index++;
+                }
+                $walk($node->children ?? []);
+            }
+        };
+        $walk($tree);
 
         return $colors;
     }

@@ -18,7 +18,8 @@
     </div>
 
     @if ($showModal)
-        <div class="ds-modal-overlay" wire:click.self="$set('showModal', false)">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay" wire:click.self="$set('showModal', false)">
             <div class="ds-modal" role="dialog">
                 <div class="ds-modal-header">
                     <h3>{{ $editingId ? 'تعديل حساب' : 'حساب جديد' }}</h3>
@@ -67,5 +68,6 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 </x-ds-page>

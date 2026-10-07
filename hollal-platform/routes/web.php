@@ -127,7 +127,7 @@ Route::get('/hr/deploy-marker', function () {
     }
 
     return response()->json([
-        'marker' => 'org-1',
+        'marker' => 'org-2',
         'commit' => env('SOURCE_COMMIT'),
         'migrate_status' => $file['migrate_status'] ?? 'unknown',
         'pending_migrations_count' => (int) ($file['pending_migrations_count'] ?? 0),

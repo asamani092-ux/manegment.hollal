@@ -137,7 +137,8 @@
     </x-ds-modal>
 
     @if ($deleteConfirmId && $deleteTarget)
-        <div class="ds-modal-overlay" wire:key="committee-delete-{{ $deleteConfirmId }}" wire:click.self="cancelDelete" wire:keydown.escape.window="cancelDelete" style="z-index:1300">
+        @teleport('body')
+<div class="ds-modal-overlay" wire:key="committee-delete-{{ $deleteConfirmId }}" wire:click.self="cancelDelete" wire:keydown.escape.window="cancelDelete" style="z-index:1300">
             <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl" wire:click.stop>
                 <div class="ds-modal-header">
                     <h3>تأكيد حذف اللجنة</h3>
@@ -160,5 +161,6 @@
                 </div>
             </div>
         </div>
+@endteleport
     @endif
 </x-ds-page>

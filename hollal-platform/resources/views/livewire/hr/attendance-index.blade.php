@@ -363,7 +363,8 @@
     @endif
 
     @if ($showPrint && $printReport)
-        <div class="ds-modal-overlay ds-no-print" wire:click.self="closePrint">
+        @teleport('body')
+<div style="z-index:1300" class="ds-modal-overlay ds-no-print" wire:click.self="closePrint">
             <div class="ds-modal" role="dialog" aria-modal="true" style="max-width:48rem">
                 <div class="ds-modal-header">
                     <h3>سجل الحضور الشهري — <span class="ds-ltr-num">{{ $printReport['month'] }}</span></h3>
@@ -380,6 +381,7 @@
                 </div>
             </div>
         </div>
+@endteleport
 
         <div class="ds-attendance-print-sheet" aria-hidden="true">
             <h1>سجل الحضور الشهري — {{ $printReport['month'] }}</h1>
