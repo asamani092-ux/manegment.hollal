@@ -53,6 +53,7 @@
                                     @endforeach
                                 </select>
                                 <button type="button" class="ds-btn ds-btn-sm" wire:click="linkAdministration({{ $admin['id'] }})">حفظ</button>
+                                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDeleteUnit({{ $admin['id'] }})">حذف</button>
                             @endcan
                         </div>
                     @endforeach
@@ -93,9 +94,31 @@
                             </label>
                         @endif
                         <button type="button" class="ds-btn ds-btn-sm" wire:click="openUnitModal({{ $drawer->id }})">إضافة فرع</button>
+                        @if ($drawer->level === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
+                            <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDeleteUnit({{ $drawer->id }})">حذف</button>
+                        @endif
                     @endcan
                     <button type="button" class="ds-btn ds-btn-sm" wire:click="closeDrawer">إغلاق</button>
                 </aside>
+            </div>
+        @endteleport
+    @endif
+    @if ($unitDeleteTarget)
+        @teleport('body')
+            <div class="ds-modal-overlay" wire:key="org-unit-delete-{{ $unitDeleteTarget->id }}" wire:click.self="cancelDeleteUnit" wire:keydown.escape.window="cancelDeleteUnit" style="z-index:1300">
+                <div class="ds-modal" role="dialog" aria-modal="true" dir="rtl" wire:click.stop>
+                    <div class="ds-modal-header">
+                        <h3>تأكيد حذف الإدارة</h3>
+                        <button type="button" class="ds-modal-close" wire:click="cancelDeleteUnit" aria-label="إغلاق">&times;</button>
+                    </div>
+                    <div class="ds-modal-body">
+                        <p>حذف الإدارة «{{ $unitDeleteTarget->name }}»؟ تُخفى الأقسام والوظائف التابعة، ويبقى سجل نقل الموظفين.</p>
+                        <div class="ds-toolbar-actions">
+                            <button type="button" class="ds-btn ds-btn-outline" wire:click="cancelDeleteUnit">إلغاء</button>
+                            <button type="button" class="ds-btn ds-btn-primary" wire:click="deleteUnit({{ $unitDeleteTarget->id }})">تأكيد الحذف</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         @endteleport
     @endif

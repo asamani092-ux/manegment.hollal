@@ -188,6 +188,39 @@ class OrgStructureService
         $administration->forceFill(['parent_id' => $topPosition->id])->save();
     }
 
+    /**
+     * إخفاء الإدارة وفروعها دون مسح سجل النقل. Time: O(n) | Space: O(n)
+     */
+    public function deleteAdministration(OrgUnit $administration, ?User $actor = null): void
+    {
+        if ($administration->level !== OrgUnit::LEVEL_ADMINISTRATION) {
+            throw new \InvalidArgumentException('الحذف من الشجرة للإدارات فقط');
+        }
+
+        $units = OrgUnit::query()->get(['id', 'parent_id']);
+        $childrenOf = $units->groupBy(fn (OrgUnit $unit) => (string) $unit->parent_id);
+        $ids = [];
+        $walk = function (int $id) use (&$walk, &$ids, $childrenOf): void {
+            $ids[] = $id;
+            foreach ($childrenOf[(string) $id] ?? [] as $child) {
+                $walk((int) $child->id);
+            }
+        };
+        $walk($administration->id);
+
+        DB::transaction(function () use ($ids, $administration, $actor) {
+            User::query()->whereIn('org_unit_id', $ids)->orderBy('id')->each(function (User $user) use ($actor) {
+                $this->transfer($user, null, 'حذف الإدارة', $actor);
+            });
+            OrgUnit::query()->whereIn('id', $ids)->orderByDesc('id')->each(function (OrgUnit $unit) {
+                $unit->delete();
+            });
+            app(AuditLogService::class)->record('structure.unit.delete', $administration, [
+                'ids' => $ids,
+            ], $actor);
+        });
+    }
+
     public function placeEmployee(User $user, OrgUnit $job): User
     {
         if ($job->level !== OrgUnit::LEVEL_JOB) {

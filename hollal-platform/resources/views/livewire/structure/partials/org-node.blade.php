@@ -38,6 +38,7 @@
         @endif
         @can('structure.manage')
             @if ($node->level === \App\Models\OrgUnit::LEVEL_ADMINISTRATION)
+                <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDeleteUnit({{ $node->id }})">حذف</button>
                 <select class="ds-input" wire:change="followTop({{ $node->id }}, $event.target.value)">
                     <option value="0">يتبع لـ</option>
                     @foreach ($topPositions as $seat)

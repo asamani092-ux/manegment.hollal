@@ -175,6 +175,55 @@ class OrgChartTest extends TestCase
         $this->assertStringNotContainsString('z-index: 30', $html);
     }
 
+    public function test_manager_can_hide_an_administration_and_keep_transfer_history(): void
+    {
+        $this->seed(PermissionSeeder::class);
+        $service = app(OrgStructureService::class);
+        $seat = $service->addTopPosition('المدير العام', null, 1);
+        $administration = $service->createUnit('إدارة مؤقتة', OrgUnit::LEVEL_ADMINISTRATION, $seat);
+        $section = $service->createUnit('قسم مؤقت', OrgUnit::LEVEL_UNIT, $administration);
+        $job = $service->createUnit('وظيفة مؤقتة', OrgUnit::LEVEL_JOB, $section);
+        $worker = User::factory()->create(['must_change_password' => false]);
+        $worker->forceFill(['org_unit_id' => $job->id])->save();
+        $manager = User::factory()->create(['must_change_password' => false]);
+        $manager->givePermissionTo(['structure.view', 'structure.manage']);
+
+        $html = $this->actingAs($manager)->get(route('structure.org-tree'))->assertOk()->getContent();
+        $this->assertStringContainsString('askDeleteUnit('.$administration->id.')', $html);
+        $this->assertStringContainsString('>حذف<', $html);
+
+        Livewire::actingAs($manager)->test(OrgTreeIndex::class)
+            ->call('askDeleteUnit', $administration->id)
+            ->assertSee('تأكيد حذف الإدارة')
+            ->call('deleteUnit', $administration->id)
+            ->assertDispatched('ds-toast');
+
+        $this->assertSoftDeleted('org_units', ['id' => $administration->id]);
+        $this->assertSoftDeleted('org_units', ['id' => $section->id]);
+        $this->assertSoftDeleted('org_units', ['id' => $job->id]);
+        $this->assertNull($worker->fresh()->org_unit_id);
+        $this->assertDatabaseHas('employee_transfers', [
+            'user_id' => $worker->id,
+            'from_org_unit_id' => $job->id,
+            'reason' => 'حذف الإدارة',
+        ]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'structure.unit.delete']);
+
+        $flat = json_encode(app(OrgChartService::class)->tree(), JSON_UNESCAPED_UNICODE);
+        $this->assertStringNotContainsString('إدارة مؤقتة', $flat);
+        $this->assertStringNotContainsString('قسم مؤقت', $flat);
+    }
+
+    public function test_delete_rejects_a_top_position(): void
+    {
+        $service = app(OrgStructureService::class);
+        $seat = $service->addTopPosition('المدير العام', null, 1);
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('الحذف من الشجرة للإدارات فقط');
+        $service->deleteAdministration($seat);
+    }
+
     /**
      * @param  list<array<string, mixed>>  $nodes
      */

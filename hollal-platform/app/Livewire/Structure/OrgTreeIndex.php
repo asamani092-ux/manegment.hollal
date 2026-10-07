@@ -52,6 +52,8 @@ class OrgTreeIndex extends Component
 
     public ?int $committeeDeleteConfirmId = null;
 
+    public ?int $unitDeleteConfirmId = null;
+
     public ?int $viewingJobId = null;
 
     public ?int $viewingUnitId = null;
@@ -135,6 +137,38 @@ class OrgTreeIndex extends Component
             ->value('id');
 
         return $id ? (int) $id : null;
+    }
+
+    /** Time: O(1) | Space: O(1) */
+    public function askDeleteUnit(int $id): void
+    {
+        $this->authorize('structure.manage');
+        $this->unitDeleteConfirmId = $id;
+    }
+
+    public function cancelDeleteUnit(): void
+    {
+        $this->unitDeleteConfirmId = null;
+    }
+
+    /** Time: O(n) | Space: O(n) */
+    public function deleteUnit(int $id): void
+    {
+        $this->authorize('structure.manage');
+        try {
+            app(OrgStructureService::class)->deleteAdministration(
+                OrgUnit::query()->findOrFail($id),
+                auth()->user(),
+            );
+            if ((int) $this->viewingUnitId === $id) {
+                $this->viewingUnitId = null;
+            }
+            $this->unitDeleteConfirmId = null;
+            $this->dispatch('ds-toast', message: 'حُذفت الإدارة');
+        } catch (\InvalidArgumentException $e) {
+            $this->unitDeleteConfirmId = null;
+            $this->dispatch('ds-toast', type: 'error', message: $e->getMessage());
+        }
     }
 
     public function openDrawer(int $unitId): void
@@ -319,6 +353,9 @@ class OrgTreeIndex extends Component
                 ->orderBy('name')
                 ->get(['id', 'name', 'chair_id', 'is_active', 'guests']),
             'committeeDeleteTarget' => $deleteTarget,
+            'unitDeleteTarget' => $this->unitDeleteConfirmId
+                ? OrgUnit::query()->select(['id', 'name', 'level'])->find($this->unitDeleteConfirmId)
+                : null,
             'users' => User::orderBy('name')->get(['id', 'name']),
             'units' => OrgUnit::orderBy('name')->get(['id', 'name', 'level']),
             'jobCard' => $this->viewingJobId ? OrgUnit::find($this->viewingJobId) : null,

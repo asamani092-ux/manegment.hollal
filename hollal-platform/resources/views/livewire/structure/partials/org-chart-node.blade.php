@@ -26,6 +26,9 @@
             <p class="org-head">المسؤول: {{ $node['head'] ?: '—' }}</p>
             @if ($node['type'] === 'admin')
                 <span class="org-count-chip">{{ $node['member_count'] }} موظف</span>
+                @can('structure.manage')
+                    <button type="button" class="ds-btn ds-btn-outline ds-btn-sm" wire:click="askDeleteUnit({{ $node['id'] }})">حذف</button>
+                @endcan
             @endif
         @endif
         @if ($node['role'])
